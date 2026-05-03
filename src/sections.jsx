@@ -1,30 +1,148 @@
 import {
-  Home, Bird, Egg, PawPrint, Building2, Wrench, Truck, Wheat,
+  Home, Bird, Egg, PawPrint, Wrench, Truck, Wheat,
   Calendar, ListChecks, Tent, Sparkles, Package, Tag, Boxes,
-  FolderKanban, Workflow, NotebookPen, MessageCircleQuestion
+  FolderKanban, Workflow, NotebookPen, MessageCircleQuestion,
+  Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
+  CalendarRange, Layers, Tractor, Container, Caravan, TreePine,
+  Store, Cog, Box, CalendarClock,
+  UserPlus, ClipboardList, CalendarDays, Newspaper
 } from "lucide-react";
 
+// Updates flagged as needing attention — anything sitting in or past review.
+// Surfaced as the counter on both Farm updates and Content calendar.
+function countUpdatesNeedingAttention(d) {
+  return (d.updates ?? []).filter(u => u.status === "ready_for_review" || u.status === "reviewed").length;
+}
+
+// Counts the number of event occurrences (recurring or one-off) that fall
+// within the current Mon–Sun week.
+function countEventsThisWeek(d) {
+  const now = new Date();
+  const dow = (now.getUTCDay() + 6) % 7; // Mon=0..Sun=6
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dow));
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  sunday.setUTCHours(23, 59, 59, 999);
+  let n = 0;
+  for (const k of d.events.kinds) {
+    for (const inst of k.instances) {
+      if (inst.date) {
+        const dt = new Date(inst.date + "T12:00:00Z");
+        if (dt >= monday && dt <= sunday) n++;
+      } else if (inst.recurrence?.type === "weekly") {
+        const start = inst.recurrence.seasonStart ? new Date(inst.recurrence.seasonStart + "T00:00:00Z") : null;
+        const end = inst.recurrence.seasonEnd ? new Date(inst.recurrence.seasonEnd + "T23:59:59Z") : null;
+        if ((!start || start <= sunday) && (!end || end >= monday)) n++;
+      }
+    }
+  }
+  return n;
+}
+
+// Top-level sidebar entries. `kind`:
+//   "page"    → normal navigation item (default)
+//   "spacer"  → renders only as a vertical gap
+//   "action"  → renders with an arrow indicator (action-style item)
+//   "flyout"  → renders with a chevron; opens a submenu pane with `children`
 export const SECTIONS = [
-  { id: "overview", group: null, label: "Overview", icon: Home, description: "Single-glance state of the farm", getCount: () => null },
-  { id: "livestock_layers", group: "Livestock", label: "Layers", icon: Egg, getCount: (d) => d.livestock.species.find(s => s.id === "layers")?.groups.length ?? 0 },
-  { id: "livestock_broilers", group: "Livestock", label: "Broilers", icon: Bird, getCount: (d) => d.livestock.species.find(s => s.id === "broilers")?.groups.length ?? 0 },
-  { id: "livestock_sheep", group: "Livestock", label: "Sheep", icon: PawPrint, getCount: (d) => d.livestock.species.find(s => s.id === "sheep")?.groups.length ?? 0 },
-  { id: "spaces", group: "Entities", label: "Spaces", icon: Building2, description: "Physical locations: coops, brooders, pasture, chicken tractors", getCount: (d) => d.spaces.items.length },
-  { id: "machines", group: "Entities", label: "Machines", icon: Wrench, description: "Powered equipment owned by the farm", getCount: (d) => d.machines.length },
-  { id: "suppliers", group: "Entities", label: "Suppliers", icon: Truck, description: "Vendors and sources NFF buys from", getCount: (d) => d.suppliers.length },
-  { id: "feeds", group: "Entities", label: "Feeds", icon: Wheat, description: "Feed types, suppliers, costs, and reorder rules", getCount: (d) => d.feeds.length },
-  { id: "products", group: "Commerce", label: "Products", icon: Tag, description: "What NFF sells — SKUs by size bracket, with cost-floor and pricing-recommendation surface", getCount: (d) => d.productKinds.reduce((a, k) => a + k.sizeBrackets.length, 0) },
-  { id: "inventory", group: "Commerce", label: "Inventory", icon: Boxes, description: "Current stock — egg cartons in the fridge, chicken lots in freezers, FIFO-ordered", getCount: (d) => d.inventory.eggLots.length + d.inventory.chickenLots.length },
-  { id: "schedule", group: "Activity", label: "Schedule", icon: Calendar, description: "Calendar and timeline view of everything date-bound", getCount: () => null },
-  { id: "chores", group: "Activity", label: "Chores", icon: ListChecks, description: "Recurring scheduled work and the activity log", getCount: (d) => d.chores.definitions.length },
-  { id: "events_farmers_market", group: "Events", label: "Farmers markets", icon: Tent, getCount: (d) => d.events.kinds.find(k => k.id === "farmers_market")?.instances.length ?? 0 },
-  { id: "events_popup_event", group: "Events", label: "Pop-up events", icon: Sparkles, getCount: (d) => d.events.kinds.find(k => k.id === "popup_event")?.instances.length ?? 0 },
-  { id: "events_egg_drop", group: "Events", label: "Egg drop", icon: Package, getCount: (d) => d.events.kinds.find(k => k.id === "egg_drop")?.instances.length ?? 0 },
-  { id: "projects", group: "Planning", label: "Projects", icon: FolderKanban, description: "Discrete, time-bound work", getCount: (d) => d.projects.length },
-  { id: "processes", group: "Planning", label: "Processes", icon: Workflow, description: "Repeatable workflows and SOPs", getCount: (d) => d.processes.length },
-  { id: "notes", group: "Planning", label: "Notes", icon: NotebookPen, description: "Uncategorized brain dumps", getCount: (d) => d.notes.length },
-  { id: "threads", group: "Meta", label: "Threads", icon: MessageCircleQuestion, description: "Open questions and resolved decisions", getCount: (d) => d.threads.filter(t => t.status === "open").length }
+  { id: "overview", group: null, label: "Dashboard", icon: Home, description: "Single-glance state of the farm", getCount: () => null },
+
+  { kind: "spacer" },
+
+  { id: "schedule", group: null, label: "Schedule", icon: Calendar, description: "Calendar and timeline view of everything date-bound", getCount: () => null },
+  { id: "chores", group: null, label: "Chores", icon: ListChecks, description: "Recurring scheduled work and the activity log",
+    // "Chores left to do today". With no completion log modeled yet, fall back to the
+    // total count of chore definitions (i.e. nothing has been logged as done yet).
+    // 0 when there are no chores at all.
+    getCount: (d) => d.chores.definitions.length },
+  { id: "projects", group: null, label: "Projects", icon: FolderKanban, description: "Discrete, time-bound work",
+    // Projects active today and not yet complete.
+    getCount: (d) => {
+      const today = new Date().toISOString().slice(0, 10);
+      return d.projects.filter(p => p.status !== "completed" && (!p.start || p.start <= today) && (!p.end || p.end >= today)).length;
+    }
+  },
+
+  { id: "products", group: "Products", label: "SKUs", icon: Tag, description: "What NFF sells — SKUs by size bracket, with cost-floor and pricing-recommendation surface", getCount: () => null },
+  { id: "inventory", group: "Products", label: "Inventory", icon: Boxes, description: "Current stock — egg cartons in the fridge, chicken lots in freezers, FIFO-ordered", getCount: () => null },
+  { id: "add_to_inventory", group: "Products", label: "Add to inventory", icon: PackagePlus, kind: "action", description: "Quick form to record new lots — eggs collected, broiler lots after processing day. Placeholder.", getCount: () => null },
+
+  { id: "orders", group: "Sales", label: "Orders", icon: Receipt, description: "Customer orders against inventory and event sales — placeholder until the sales model is built.",
+    // Open orders. No order model yet → 0.
+    getCount: (d) => (d.orders ?? []).filter(o => o.status === "open").length },
+  { id: "point_of_sale", group: "Sales", label: "Point of sale", icon: Banknote, kind: "action", description: "Record a sale on the spot at a market or event — drains inventory FIFO. Placeholder.", getCount: () => null },
+
+  { id: "events_this_week", group: "Events", label: "Upcoming", icon: CalendarClock, description: "Every event happening between Monday and Sunday of the current week.", getCount: countEventsThisWeek },
+  { id: "events_all_types", group: "Events", label: "Show all events", flyoutTitle: "All events", icon: CalendarRange, kind: "flyout",
+    children: [
+      // Sorted alphabetically by label.
+      { id: "events_deliveries", label: "Deliveries", icon: Truck, description: "Deliveries to wholesale or restaurant partners. Placeholder." },
+      { id: "events_egg_drop", label: "Egg drop", icon: Package, description: "Off-season egg pickup at the same farmers market site." },
+      { id: "events_farmers_market", label: "Farmers markets", icon: Tent, description: "Recurring weekly farmers markets NFF attends during market season." },
+      { id: "events_farm_visits", label: "Farm visits", icon: Users, description: "Visitors coming to the farm. Placeholder." },
+      { id: "events_pickups", label: "Pick-ups", icon: ShoppingBag, description: "Customer pick-ups directly from the farm. Placeholder." },
+      { id: "events_popup_event", label: "Pop-ups", icon: Sparkles, description: "One-off selling occasions outside the regular weekly schedule." },
+      { id: "events_processing_days", label: "Processing days", icon: Scissors, description: "Broiler-processing day events. Placeholder until process is formalized." }
+      // Note: keep ids in sync with data.events.kinds[].id (after the `events_` prefix).
+    ]
+  },
+
+  { id: "livestock_layers", group: "Animals", label: "Layers", icon: Egg, getCount: () => null },
+  { id: "livestock_broilers", group: "Animals", label: "Broilers", icon: Bird, getCount: () => null },
+  { id: "livestock_sheep", group: "Animals", label: "Sheep", icon: PawPrint, getCount: () => null },
+  { id: "manage_feed_schedule", group: "Animals", label: "Manage feed", icon: Wheat, kind: "action", description: "Edit the per-species feed schedule by week of life. Placeholder.", getCount: () => null },
+
+  { id: "customers", group: "CRM", label: "Customers", icon: Users, description: "Customer directory \u2014 placeholder until the CRM model is built.", getCount: () => null },
+  { id: "manage_lists", group: "CRM", label: "Lists", icon: ClipboardList, description: "Customer lists \u2014 segmentation, mailing groups, etc. Placeholder.", getCount: () => null },
+  { id: "add_new_customer", group: "CRM", label: "Add new customer", icon: UserPlus, kind: "action", description: "Create a new customer record. Placeholder.", getCount: () => null },
+
+  // "Items needing attention" — drafts that have been pushed to review and are
+  // awaiting a decision. Shared count between Farm updates and Content calendar
+  // so the two surfaces stay in sync.
+  { id: "farm_news_updates", group: "Communication", label: "Farm updates", icon: Newspaper, description: "Drafted, in-review, and published farm updates.",
+    getCount: countUpdatesNeedingAttention },
+  { id: "content_calendar", group: "Communication", label: "Content calendar", icon: CalendarDays, description: "Plan and schedule customer-facing communication. Placeholder.",
+    getCount: countUpdatesNeedingAttention },
+
+  { id: "resources_all", group: "Resources", label: "Show all resources", flyoutTitle: "All resources", icon: Layers, kind: "flyout",
+    children: [
+      // Sorted alphabetically by label.
+      { id: "resources_brooders", label: "Brooders", icon: Box, description: "Heated enclosures for chicks. Placeholder." },
+      { id: "resources_chicken_tractors", label: "Chicken tractors", icon: Tractor, description: "Mobile bottomless pens used on pasture. Placeholder." },
+      { id: "resources_containers", label: "Containers", icon: Container, description: "Storage containers and bins. Placeholder." },
+      { id: "resources_equipment", label: "Equipment", icon: Wrench, description: "General equipment — egg washer, processing tools, etc. Placeholder." },
+      { id: "resources_feed", label: "Feed", icon: Wheat, description: "Feed types, suppliers, costs, and reorder rules." },
+      { id: "resources_machinery", label: "Machinery", icon: Cog, description: "Powered equipment owned by the farm." },
+      { id: "resources_mobile_coops", label: "Mobile coops", icon: Caravan, description: "Wheeled hen coops moved across paddocks. Placeholder." },
+      { id: "resources_pastures", label: "Pastures", icon: TreePine, description: "Paddocks and grazing areas. Placeholder." },
+      { id: "resources_suppliers", label: "Suppliers", icon: Store, description: "Vendors and sources NFF buys from." },
+      { id: "resources_trailers", label: "Trailers", icon: Truck, description: "Towable trailers used for transport. Placeholder." }
+    ]
+  },
+
+  { id: "processes", group: "Other", label: "Processes", icon: Workflow, description: "Repeatable workflows and SOPs", getCount: () => null },
+  { id: "notes", group: "Other", label: "Notes", icon: NotebookPen, description: "Uncategorized brain dumps", getCount: () => null },
+  { id: "threads", group: "Other", label: "Threads", icon: MessageCircleQuestion, description: "Open questions and resolved decisions", getCount: (d) => d.threads.filter(t => t.status === "open").length }
 ];
+
+export function findSection(id) {
+  for (const s of SECTIONS) {
+    if (s.kind === "spacer") continue;
+    if (s.id === id) return s;
+    if (s.children) {
+      const c = s.children.find(ch => ch.id === id);
+      if (c) return c;
+    }
+  }
+  return null;
+}
+
+export function findFlyoutParentForChild(id) {
+  for (const s of SECTIONS) {
+    if (s.kind === "flyout" && s.children?.some(c => c.id === id)) return s;
+  }
+  return null;
+}
 
 export function getSpeciesFromSectionId(id, data) {
   if (!id.startsWith("livestock_")) return null;

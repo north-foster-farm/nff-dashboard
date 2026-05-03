@@ -8,7 +8,7 @@ Drop the North Foster Farm logo here as `logo.svg` (preferred) or `logo.png`.
 
 `TopBar.jsx` looks up `/logo.svg` first, falls back to `/logo.png`, and finally renders a generic sprout icon if neither is found.
 
-The logo is tinted to the accent green via a CSS `filter` in `TopBar.jsx`. If your logo is already full-color and you want to preserve its colors, remove the `filter` line from the `<img>` style.
+The logo renders in its natural colors. If you want it to follow the active theme accent (`var(--c-accent)`), provide an SVG that uses `currentColor` for fill/stroke and we'll set the parent `color` to `T.accent` so it auto-tints across light/dark modes.
 
 ## Favicon
 

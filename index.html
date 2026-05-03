@@ -8,12 +8,123 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap"
     />
     <style>
+      /* Nacelle — local custom font from dotcolon.net.
+         Drop OTF/WOFF2 files into /public/fonts/ (see public/fonts/README.md). */
+      @font-face {
+        font-family: 'Nacelle';
+        src: url('/fonts/Nacelle-Regular.woff2') format('woff2'),
+             url('/fonts/Nacelle-Regular.otf') format('opentype');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Nacelle';
+        src: url('/fonts/Nacelle-Bold.woff2') format('woff2'),
+             url('/fonts/Nacelle-Bold.otf') format('opentype');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+      /* Dark theme (default). Brand anchor #297D5A lightened to #4cba85 for legible
+         accent on near-black surfaces. Earthy, warm, slightly green-tinted neutrals. */
+      :root,
+      html[data-theme="dark"] {
+        --c-bg: #101614;
+        --c-surface: #151a15;
+        --c-surface-alt: #1d231e;
+        --c-border: #3e473d;
+        --c-text: #f2efe4;
+        --c-text-dim: #c4bfad;
+        --c-text-muted: #8e8877;
+        --c-text-faint: #6a6658;
+        --c-accent: #adc8ad;
+        --c-accent-deep: #297d5a;
+        --c-warn: #e6b85a;
+        --c-resolved: #4cba85;
+        --c-on-accent: #0d1410;
+        --c-on-cat: #0d1410;
+        --c-cat-fm: #4cba85;
+        --c-cat-popup: #e6b85a;
+        --c-cat-egg: #8fbcd0;
+        --c-cat-chore: #c4bfad;
+        --c-cat-deliveries: #d49b6a;
+        --c-cat-farm-visits: #b196d0;
+        --c-cat-pickups: #d97a8b;
+        --c-cat-processing: #8a8f7a;
+        --c-cat-default: #8e8877;
+        --c-row-active: rgba(173, 200, 173, 0.12);
+        --c-row-hover: rgba(173, 200, 173, 0.07);
+        --c-row-active-dim: rgba(255, 255, 255, 0.05);
+        color-scheme: dark;
+      }
+
+      /* Light theme. Warm off-white background, brand used directly as accent.
+         Same earthy character, just inverted. */
+      html[data-theme="light"] {
+        --c-bg: #f6f6f6;
+        --c-surface: #ffffff;
+        --c-surface-alt: #ececec;
+        --c-border: #d6d6d6;
+        --c-text: #1a201a;
+        --c-text-dim: #4f5347;
+        --c-text-muted: #7a7666;
+        --c-text-faint: #aea899;
+        --c-accent: #297d5a;
+        --c-accent-deep: #1d5a40;
+        --c-warn: #a06d10;
+        --c-resolved: #297d5a;
+        --c-on-accent: #ffffff;
+        --c-on-cat: #ffffff;
+        --c-cat-fm: #297d5a;
+        --c-cat-popup: #a06d10;
+        --c-cat-egg: #3d7a96;
+        --c-cat-chore: #7a7666;
+        --c-cat-deliveries: #a05a14;
+        --c-cat-farm-visits: #6f4ea8;
+        --c-cat-pickups: #a83d52;
+        --c-cat-processing: #5a5e4d;
+        --c-cat-default: #7a7666;
+        --c-row-active: rgba(41, 125, 90, 0.16);
+        --c-row-hover: rgba(41, 125, 90, 0.09);
+        --c-row-active-dim: rgba(0, 0, 0, 0.06);
+        color-scheme: light;
+      }
+
+      @keyframes nff-flyout-in {
+        from { transform: translateX(-8px); opacity: 0; }
+        to   { transform: translateX(0);    opacity: 1; }
+      }
+      @keyframes nff-flyout-out {
+        from { transform: translateX(0);    opacity: 1; }
+        to   { transform: translateX(-8px); opacity: 0; }
+      }
+
       html, body, #root { margin: 0; padding: 0; height: 100%; }
-      body { background: #181c19; }
+      body {
+        background: var(--c-bg);
+        color: var(--c-text);
+        font-family: 'Nacelle', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        transition: background-color 120ms ease, color 120ms ease;
+      }
     </style>
+    <script>
+      // Apply saved theme before React boots to avoid flash of wrong palette.
+      (function () {
+        try {
+          var saved = localStorage.getItem('nff-theme');
+          var t = saved === 'light' || saved === 'dark' ? saved : 'dark';
+          document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

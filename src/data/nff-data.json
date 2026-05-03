@@ -186,7 +186,11 @@
         "instances": [
           { "id": "scituate_egg_drop", "label": "Scituate Egg Drop", "recurrence": { "type": "weekly", "dayOfWeek": 6, "startTime": "10:00", "endTime": "11:00", "seasonStart": "2026-11-02", "seasonEnd": "2027-04-30" }, "location": { "name": "Scituate Rotary", "address": "46 Institute Lane, North Scituate, RI" }, "notes": "Continues meeting regular customers at the farmers market site after market season ends." }
         ]
-      }
+      },
+      { "id": "deliveries", "label": "Deliveries", "description": "Deliveries to wholesale or restaurant partners.", "instances": [] },
+      { "id": "farm_visits", "label": "Farm visits", "description": "Visitors coming to the farm.", "instances": [] },
+      { "id": "pickups", "label": "Pick-ups", "description": "Customer pick-ups directly from the farm.", "instances": [] },
+      { "id": "processing_days", "label": "Processing days", "description": "Broiler-processing day events.", "instances": [] }
     ],
     "modelNotes": [
       "'Event' in NFF's domain language means sales occasions only — markets, pop-ups, egg drops.",
@@ -331,6 +335,9 @@
   "projects": [],
   "processes": [],
   "notes": [],
+  "customers": [],
+  "customerLists": [],
+  "updates": [],
   "threads": [
     { "id": "thread_customers_in_admin", "title": "Customers: same app or separate app?", "question": "Will customers log in to this same admin app to see their orders, or get a separate customer-facing app?", "status": "open" },
     { "id": "thread_sheep_data", "title": "Sheep are unaccounted for in livestock", "question": "Sheep referenced in chore but no livestock data provided.", "status": "resolved", "resolution": "3 Katahdin sheep — Lily, Ivy, Violet. Pets, no production. Consolidated into a single group 'Lily, Ivy, and Violet'." },

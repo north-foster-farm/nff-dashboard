@@ -11,7 +11,11 @@ export default function Schedule({ data, onShowDetail }) {
   const [view, setView] = useState("calendar");
   const today = useMemo(() => todayUTC(), []);
   const [viewDate, setViewDate] = useState(() => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
-  const [filters, setFilters] = useState({ farmers_market: true, popup_event: true, egg_drop: true, chore: false });
+  // Initialise filters from the data: every event kind starts visible. Adding a
+  // new kind to data flows through automatically as a new chip + filter.
+  const [filters, setFilters] = useState(() =>
+    Object.fromEntries(data.events.kinds.map(k => [k.id, true]))
+  );
 
   const { fromDate, toDate } = useMemo(() => {
     if (view === "calendar") {
@@ -44,6 +48,7 @@ export default function Schedule({ data, onShowDetail }) {
         viewDate={viewDate}
         onPrev={goToPrevMonth} onNext={goToNextMonth} onToday={goToToday}
         filters={filters} onFiltersChange={setFilters}
+        kinds={data.events.kinds}
       />
       {view === "calendar" ? (
         <CalendarView
@@ -58,7 +63,7 @@ export default function Schedule({ data, onShowDetail }) {
   );
 }
 
-function ScheduleControls({ view, onViewChange, viewDate, onPrev, onNext, onToday, filters, onFiltersChange }) {
+function ScheduleControls({ view, onViewChange, viewDate, onPrev, onNext, onToday, filters, onFiltersChange, kinds }) {
   const monthLabel = viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
   return (
     <div style={{ marginBottom: 18 }}>
@@ -78,7 +83,7 @@ function ScheduleControls({ view, onViewChange, viewDate, onPrev, onNext, onToda
           )}
         </div>
       </div>
-      <FilterChips filters={filters} onChange={onFiltersChange} />
+      <FilterChips filters={filters} onChange={onFiltersChange} kinds={kinds} />
     </div>
   );
 }
@@ -102,32 +107,53 @@ function IconBtn({ onClick, children }) {
   );
 }
 
-function FilterChips({ filters, onChange }) {
-  const chipDefs = [
-    { id: "farmers_market", label: "Markets", color: T.cat.farmers_market },
-    { id: "popup_event", label: "Pop-ups", color: T.cat.popup_event },
-    { id: "egg_drop", label: "Egg drop", color: T.cat.egg_drop },
-    { id: "chore", label: "Chores", color: T.cat.chore, disabled: true }
-  ];
+function FilterChips({ filters, onChange, kinds }) {
+  // Build one chip per event kind in the data, in the order they appear there.
+  // Empty kinds remain toggleable so the user can pre-stage filters before any
+  // instances exist; they're just rendered with reduced visual weight.
+  const chipDefs = kinds.map(k => ({
+    id: k.id,
+    label: k.label,
+    color: T.cat[k.id] || T.cat.default,
+    count: k.instances?.length ?? 0
+  }));
   const toggle = id => onChange({ ...filters, [id]: !filters[id] });
+  const allOn = chipDefs.every(c => filters[c.id]);
+  const setAll = (val) => onChange(Object.fromEntries(chipDefs.map(c => [c.id, val])));
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+      <button
+        onClick={() => setAll(!allOn)}
+        style={{
+          background: "transparent", border: `1px solid ${T.border}`,
+          color: T.textDim, fontFamily: "inherit", fontSize: 10, fontWeight: 600,
+          padding: "5px 9px", cursor: "pointer",
+          textTransform: "uppercase", letterSpacing: "0.12em"
+        }}
+        title={allOn ? "Hide all" : "Show all"}
+      >
+        {allOn ? "None" : "All"}
+      </button>
       {chipDefs.map(c => {
-        const active = filters[c.id];
+        const active = !!filters[c.id];
+        const empty = c.count === 0;
         return (
-          <button key={c.id} onClick={() => !c.disabled && toggle(c.id)} disabled={c.disabled} style={{
-            display: "flex", alignItems: "center", gap: 6,
+          <button key={c.id} onClick={() => toggle(c.id)} style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
             background: active ? T.surface : "transparent",
             border: `1px solid ${active ? c.color : T.border}`,
-            color: c.disabled ? T.textFaint : (active ? T.text : T.textDim),
+            color: active ? T.text : T.textDim,
             fontFamily: "inherit", fontSize: 10, fontWeight: 600,
-            padding: "6px 10px", cursor: c.disabled ? "not-allowed" : "pointer",
+            padding: "5px 9px", cursor: "pointer",
             textTransform: "uppercase", letterSpacing: "0.12em",
-            opacity: c.disabled ? 0.5 : 1
+            opacity: empty && !active ? 0.55 : 1,
+            transition: "background-color 120ms ease, border-color 120ms ease, opacity 120ms ease"
           }}>
-            <span style={{ width: 8, height: 8, background: c.color, borderRadius: "50%" }} />
+            <span style={{
+              width: 8, height: 8, background: c.color, borderRadius: "50%",
+              opacity: active ? 1 : 0.7
+            }} />
             {c.label}
-            {c.disabled && <span style={{ fontSize: 8, fontStyle: "italic", textTransform: "none", letterSpacing: 0, marginLeft: 2 }}>no instances</span>}
           </button>
         );
       })}
@@ -171,7 +197,7 @@ function DayCell({ date, inMonth, items, isToday, onClickItem }) {
       {items.slice(0, 2).map((it, idx) => (
         <button key={idx} onClick={() => onClickItem(it)} style={{
           display: "block", width: "100%", textAlign: "left", marginBottom: 2,
-          background: T.cat[it.kindId] || T.textDim, border: "none", color: "#181c19",
+          background: T.cat[it.kindId] || T.textDim, border: "none", color: T.onCat,
           fontFamily: "inherit", fontSize: 9, fontWeight: 600,
           padding: "2px 5px", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
         }}>{formatTime12h(it.startTime).replace(" ", "")} {it.instanceLabel}</button>

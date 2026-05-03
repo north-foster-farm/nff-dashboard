@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { T } from "./theme.js";
-import { SECTIONS } from "./sections.jsx";
+import { findSection } from "./sections.jsx";
 import NFF_DATA from "./data/nff-data.json";
 import TopBar from "./components/TopBar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
@@ -12,11 +12,11 @@ export default function App() {
   const [currentSection, setCurrentSection] = useState("overview");
   const [scheduleDetail, setScheduleDetail] = useState(null);
 
-  const section = SECTIONS.find(s => s.id === currentSection) || SECTIONS[0];
+  const section = findSection(currentSection) || findSection("overview");
   const isSpeciesPage = section.id.startsWith("livestock_");
 
   return (
-    <div style={{ background: T.bg, color: T.text, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: T.mono, fontSize: 13 }}>
+    <div style={{ background: T.bg, color: T.text, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: T.body, fontSize: 13 }}>
       <TopBar data={NFF_DATA} />
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <Sidebar current={currentSection} onSelect={setCurrentSection} data={NFF_DATA} />

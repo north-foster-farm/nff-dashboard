@@ -28,9 +28,15 @@ export default function SectionContent({ section, data, onShowDetail }) {
   switch (section.id) {
     case "overview": return <Overview data={data} />;
     case "spaces": return <Spaces data={data} />;
-    case "machines": return <Machines data={data} />;
-    case "suppliers": return <Suppliers data={data} />;
-    case "feeds": return <Feeds data={data} />;
+    case "machines":
+    case "resources_machinery":
+      return <Machines data={data} />;
+    case "suppliers":
+    case "resources_suppliers":
+      return <Suppliers data={data} />;
+    case "feeds":
+    case "resources_feed":
+      return <Feeds data={data} />;
     case "products": return <Products data={data} />;
     case "inventory": return <Inventory data={data} />;
     case "schedule": return <Schedule data={data} onShowDetail={onShowDetail} />;
