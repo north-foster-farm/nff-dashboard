@@ -20,7 +20,7 @@ function FeedRow({ feed, suppliers }) {
     <div style={{ background: T.surface, padding: "18px 22px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6, gap: 16, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500 }}>{feed.name}</div>
+          <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600 }}>{feed.name}</div>
           {feed.description && <div style={{ fontSize: 12, color: T.textDim, marginTop: 3 }}>{feed.description}</div>}
         </div>
         <div style={{ fontFamily: T.serif, fontSize: 18, color: T.accent }}>{cost}</div>

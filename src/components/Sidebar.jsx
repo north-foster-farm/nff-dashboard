@@ -4,7 +4,7 @@ import { SECTIONS } from "../sections.jsx";
 export default function Sidebar({ current, onSelect, data }) {
   let lastGroup = undefined;
   return (
-    <nav style={{ width: 220, borderRight: `1px solid ${T.border}`, padding: "20px 0", flexShrink: 0, overflowY: "auto", maxHeight: "calc(100vh - 57px)" }}>
+    <nav style={{ width: 220, borderRight: `1px solid ${T.border}`, padding: "20px 0", flexShrink: 0, overflowY: "auto" }}>
       {SECTIONS.map(s => {
         const showHeader = s.group !== lastGroup;
         lastGroup = s.group;

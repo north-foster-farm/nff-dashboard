@@ -11,6 +11,8 @@ import Threads from "../pages/Threads.jsx";
 import Schedule from "../pages/Schedule.jsx";
 import SpeciesPage from "../pages/SpeciesPage.jsx";
 import EventKindPage from "../pages/EventKindPage.jsx";
+import Products from "../pages/Products.jsx";
+import Inventory from "../pages/Inventory.jsx";
 
 export default function SectionContent({ section, data, onShowDetail }) {
   if (section.id.startsWith("livestock_")) {
@@ -29,6 +31,8 @@ export default function SectionContent({ section, data, onShowDetail }) {
     case "machines": return <Machines data={data} />;
     case "suppliers": return <Suppliers data={data} />;
     case "feeds": return <Feeds data={data} />;
+    case "products": return <Products data={data} />;
+    case "inventory": return <Inventory data={data} />;
     case "schedule": return <Schedule data={data} onShowDetail={onShowDetail} />;
     case "chores": return <Chores data={data} />;
     case "threads": return <Threads data={data} />;
@@ -45,7 +49,7 @@ function GenericItemList({ items }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
       {items.map((item, idx) => (
         <div key={idx} style={{ background: T.surface, padding: "16px 20px" }}>
-          <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, marginBottom: 4 }}>{item.title || item.name || "Untitled"}</div>
+          <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{item.title || item.name || "Untitled"}</div>
           {item.description && <p style={{ fontSize: 12, color: T.textDim, lineHeight: 1.6, margin: 0 }}>{item.description}</p>}
         </div>
       ))}

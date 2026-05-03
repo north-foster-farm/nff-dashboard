@@ -61,7 +61,7 @@ function GroupCard({ group, species }) {
     <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "14px 16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
         <div>
-          <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, lineHeight: 1.2 }}>{group.label}</div>
+          <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600, lineHeight: 1.2 }}>{group.label}</div>
           {species.breed && <div style={{ fontSize: 11, color: T.textDim, marginTop: 3 }}>{species.breed}</div>}
         </div>
         {group.ordinal != null && <div style={{ fontSize: 10, color: T.textMuted }}>#{group.ordinal}</div>}
@@ -131,7 +131,7 @@ function MoreInfoView({ species }) {
             {species.lifecycle.map((stage, idx) => (
               <div key={idx} style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "12px 16px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
-                  <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500 }}>{stage.stage}</div>
+                  <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600 }}>{stage.stage}</div>
                   <div style={{ fontSize: 11, color: T.textDim }}>{stage.duration}</div>
                 </div>
                 {stage.graduationCriteria && <div style={{ fontSize: 12, color: T.textDim, lineHeight: 1.6, marginBottom: 4 }}><span style={{ color: T.accent }}>→</span> {stage.graduationCriteria}</div>}
@@ -184,7 +184,7 @@ function FeedSchedulePanel({ schedule, feeds, species }) {
   return (
     <section style={{ background: T.surface, border: `1px solid ${T.border}` }}>
       <header style={{ padding: "18px 22px", borderBottom: `1px solid ${T.border}` }}>
-        <h3 style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, margin: 0 }}>{schedule.name}</h3>
+        <h3 style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 600, margin: 0 }}>{schedule.name}</h3>
         {schedule.description && <p style={{ fontSize: 12, color: T.textDim, margin: "4px 0 0", lineHeight: 1.6 }}>{schedule.description}</p>}
         <div style={{ fontSize: 11, color: T.textMuted, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.surfaceAlt}` }}>
           <span style={{ color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.12em", marginRight: 8, fontSize: 9 }}>Assigned to</span>
@@ -237,7 +237,7 @@ function StageRow({ stage }) {
   return (
     <div style={{ background: T.surface, padding: "14px 22px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 12, flexWrap: "wrap" }}>
-        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500 }}>{stage.name}</div>
+        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600 }}>{stage.name}</div>
         <div style={{ fontSize: 10, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.12em" }}>
           {dayRange}{days != null && ` · ${days} day${days === 1 ? "" : "s"}`}
         </div>

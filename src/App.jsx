@@ -16,9 +16,9 @@ export default function App() {
   const isSpeciesPage = section.id.startsWith("livestock_");
 
   return (
-    <div style={{ background: T.bg, color: T.text, minHeight: "100vh", fontFamily: T.mono, fontSize: 13 }}>
+    <div style={{ background: T.bg, color: T.text, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: T.mono, fontSize: 13 }}>
       <TopBar data={NFF_DATA} />
-      <div style={{ display: "flex", minHeight: "calc(100vh - 57px)" }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <Sidebar current={currentSection} onSelect={setCurrentSection} data={NFF_DATA} />
         <main style={{ flex: 1, padding: "32px 40px", overflowY: "auto", minWidth: 0 }}>
           <SectionHeader section={section} data={NFF_DATA} noBottomBorder={isSpeciesPage} />

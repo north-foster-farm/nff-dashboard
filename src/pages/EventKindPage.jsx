@@ -28,7 +28,7 @@ function EventInstanceCard({ instance }) {
   return (
     <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "18px 22px" }}>
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, lineHeight: 1.2 }}>{instance.label}</div>
+        <div style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 600, lineHeight: 1.2 }}>{instance.label}</div>
         {instance.subtitle && <div style={{ fontSize: 12, color: T.textDim, marginTop: 4 }}>{instance.subtitle}</div>}
       </div>
       {isRecurring ? <RecurringScheduleBlock recurrence={instance.recurrence} /> : <SingleDateBlock instance={instance} />}

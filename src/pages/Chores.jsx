@@ -28,7 +28,7 @@ export function ChoreRow({ chore }) {
   return (
     <div style={{ background: T.surface, padding: "16px 20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500 }}>{chore.title}</div>
+        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600 }}>{chore.title}</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {chore.tags.map(tag => (
             <span key={tag} style={{ fontSize: 9, color: T.textDim, background: T.surfaceAlt, border: `1px solid ${T.border}`, padding: "2px 7px", textTransform: "uppercase", letterSpacing: "0.08em" }}>{tag}</span>

@@ -12,7 +12,7 @@ function SupplierRow({ supplier }) {
   return (
     <div style={{ background: T.surface, padding: "18px 22px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-        <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500 }}>{supplier.label}</div>
+        <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600 }}>{supplier.label}</div>
         <div style={{ fontSize: 10, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.12em" }}>{supplier.category}</div>
       </div>
       <div style={{ fontSize: 11, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Supplies</div>

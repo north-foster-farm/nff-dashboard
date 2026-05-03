@@ -71,7 +71,7 @@ function ScheduleControls({ view, onViewChange, viewDate, onPrev, onNext, onToda
           {view === "calendar" && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <IconBtn onClick={onPrev}><ChevronLeft size={14} /></IconBtn>
-              <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, minWidth: 160, textAlign: "center" }}>{monthLabel}</div>
+              <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600, minWidth: 160, textAlign: "center" }}>{monthLabel}</div>
               <IconBtn onClick={onNext}><ChevronRight size={14} /></IconBtn>
               <button onClick={onToday} style={{ marginLeft: 4, background: "transparent", border: `1px solid ${T.border}`, color: T.textDim, fontFamily: "inherit", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", padding: "5px 10px", cursor: "pointer" }}>Today</button>
             </div>
@@ -120,7 +120,7 @@ function FilterChips({ filters, onChange }) {
             background: active ? T.surface : "transparent",
             border: `1px solid ${active ? c.color : T.border}`,
             color: c.disabled ? T.textFaint : (active ? T.text : T.textDim),
-            fontFamily: "inherit", fontSize: 10, fontWeight: 500,
+            fontFamily: "inherit", fontSize: 10, fontWeight: 600,
             padding: "6px 10px", cursor: c.disabled ? "not-allowed" : "pointer",
             textTransform: "uppercase", letterSpacing: "0.12em",
             opacity: c.disabled ? 0.5 : 1
@@ -172,7 +172,7 @@ function DayCell({ date, inMonth, items, isToday, onClickItem }) {
         <button key={idx} onClick={() => onClickItem(it)} style={{
           display: "block", width: "100%", textAlign: "left", marginBottom: 2,
           background: T.cat[it.kindId] || T.textDim, border: "none", color: "#181c19",
-          fontFamily: "inherit", fontSize: 9, fontWeight: 500,
+          fontFamily: "inherit", fontSize: 9, fontWeight: 600,
           padding: "2px 5px", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
         }}>{formatTime12h(it.startTime).replace(" ", "")} {it.instanceLabel}</button>
       ))}
@@ -226,7 +226,7 @@ function TimelineRow({ item, onClick }) {
       <div style={{ fontSize: 11, color: T.textDim }}>{formatTime12h(item.startTime)}{item.endTime && ` – ${formatTime12h(item.endTime)}`}</div>
       <div style={{ width: 4, height: 28, background: T.cat[item.kindId] || T.textDim }} />
       <div>
-        <div style={{ fontSize: 13, color: T.text, fontFamily: T.serif, fontWeight: 500 }}>{item.instanceLabel}</div>
+        <div style={{ fontSize: 13, color: T.text, fontFamily: T.serif, fontWeight: 600 }}>{item.instanceLabel}</div>
         {item.subtitle && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{item.subtitle}</div>}
       </div>
       <div style={{ fontSize: 11, color: T.textDim, textAlign: "right" }}>{item.location.name}</div>

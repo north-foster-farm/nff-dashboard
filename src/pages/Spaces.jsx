@@ -15,7 +15,7 @@ function SpaceKindPanel({ kind, items }) {
   return (
     <section style={{ background: T.surface, border: `1px solid ${T.border}` }}>
       <header style={{ padding: "20px 24px", borderBottom: `1px solid ${T.border}` }}>
-        <h3 style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, margin: 0 }}>{kind.label}</h3>
+        <h3 style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 600, margin: 0 }}>{kind.label}</h3>
         {kind.usedBy && <p style={{ fontSize: 11, color: T.textDim, margin: 0, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Used by {kind.usedBy}</p>}
       </header>
       <div style={{ padding: "16px 24px" }}>
@@ -39,7 +39,7 @@ function SpaceKindPanel({ kind, items }) {
 function SpaceItemCard({ item }) {
   return (
     <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "12px 14px" }}>
-      <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, marginBottom: 8 }}>{item.label}</div>
+      <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, marginBottom: 8 }}>{item.label}</div>
       {item.currentResidents ? (
         <div style={{ fontSize: 11, color: T.accent, lineHeight: 1.6, marginBottom: 6 }}>{item.currentResidents}</div>
       ) : (

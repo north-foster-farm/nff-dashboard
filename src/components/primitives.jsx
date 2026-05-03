@@ -22,7 +22,7 @@ export function Subsection({ title, children }) {
 export function Tile({ label, value }) {
   return (
     <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "18px 20px" }}>
-      <div style={{ fontFamily: T.serif, fontSize: 36, fontWeight: 500, lineHeight: 1, color: value > 0 ? T.text : T.textMuted, marginBottom: 8 }}>{String(value).padStart(2, "0")}</div>
+      <div style={{ fontFamily: T.serif, fontSize: 36, fontWeight: 600, lineHeight: 1, color: value > 0 ? T.text : T.textMuted, marginBottom: 8 }}>{String(value).padStart(2, "0")}</div>
       <div style={{ fontSize: 10, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.12em" }}>{label}</div>
     </div>
   );
@@ -37,7 +37,7 @@ export function TabStrip({ tabs, active, onChange }) {
           <button key={t.id} onClick={() => onChange(t.id)} style={{
             background: "transparent", border: "none",
             borderBottom: isActive ? `2px solid ${T.accent}` : "2px solid transparent",
-            color: isActive ? T.text : T.textDim, fontFamily: "inherit", fontSize: 11, fontWeight: 500,
+            color: isActive ? T.text : T.textDim, fontFamily: "inherit", fontSize: 11, fontWeight: 600,
             padding: "10px 14px", cursor: "pointer", marginBottom: -1,
             textTransform: "uppercase", letterSpacing: "0.12em"
           }}>{t.label}</button>

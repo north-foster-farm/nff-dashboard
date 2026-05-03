@@ -1,6 +1,6 @@
 {
   "meta": {
-    "version": "0.7.0",
+    "version": "0.8.0",
     "lastUpdated": "2026-05-01",
     "businessName": "North Foster Farm",
     "location": "Foster, Rhode Island",
@@ -31,7 +31,7 @@
         "id": "broilers",
         "name": "Broilers",
         "purpose": "Meat",
-        "breed": "Cornish Rock Hybrid",
+        "breed": "Cornish Cross (straight run)",
         "trackingModel": "batch",
         "acquisition": "Day-old chicks shipped via USPS; shipped the same day they hatch.",
         "lifecycle": [
@@ -87,7 +87,7 @@
   ],
   "suppliers": [
     { "id": "supplier_pullet_sources", "label": "Pullet sources (preferred)", "category": "pullet_source", "supplies": ["pullets — juvenile female layers"], "notes": "Names, contacts, and terms TBD." },
-    { "id": "supplier_chick_hatchery", "label": "Broiler chick hatchery", "category": "hatchery", "supplies": ["day-old broiler chicks (Cornish Rock Hybrid)"], "notes": "Specific hatchery TBD." },
+    { "id": "supplier_chick_hatchery", "label": "Broiler chick hatchery", "category": "hatchery", "supplies": ["day-old broiler chicks (Cornish Cross, straight run)"], "notes": "Specific hatchery TBD." },
     { "id": "supplier_feed_mill", "label": "Feed mill", "category": "feed_supplier", "supplies": ["broiler starter", "broiler grower", "broiler finisher", "layer feed"], "notes": "Specific mill TBD." },
     { "id": "supplier_hay", "label": "Hay supplier", "category": "hay_supplier", "supplies": ["sheep hay"], "notes": "Specific supplier TBD." }
   ],
@@ -207,6 +207,127 @@
       "'Event' must NOT appear in log type names. Storage architecture open — see thread_log_storage."
     ]
   },
+  "productKinds": [
+    {
+      "id": "eggs",
+      "name": "Eggs",
+      "category": "egg",
+      "saleUnit": "dozen",
+      "sourceSpeciesId": "layers",
+      "sourceMaterial": "egg",
+      "sizeBrackets": [
+        { "id": "default", "label": "1 dozen" }
+      ]
+    },
+    {
+      "id": "whole_chicken",
+      "name": "Whole chicken",
+      "category": "broiler_whole",
+      "saleUnit": "each",
+      "sourceSpeciesId": "broilers",
+      "sourceMaterial": "whole_dressed_bird",
+      "sizeBrackets": [
+        { "id": "wc_2_25",  "label": "2–2.5 lb",  "minLb": 2.0, "maxLb": 2.5 },
+        { "id": "wc_25_3",  "label": "2.5–3 lb",  "minLb": 2.5, "maxLb": 3.0 },
+        { "id": "wc_3_35",  "label": "3–3.5 lb",  "minLb": 3.0, "maxLb": 3.5 },
+        { "id": "wc_35_4",  "label": "3.5–4 lb",  "minLb": 3.5, "maxLb": 4.0 },
+        { "id": "wc_4_45",  "label": "4–4.5 lb",  "minLb": 4.0, "maxLb": 4.5 },
+        { "id": "wc_45_5",  "label": "4.5–5 lb",  "minLb": 4.5, "maxLb": 5.0 },
+        { "id": "wc_55_6",  "label": "5.5–6 lb",  "minLb": 5.5, "maxLb": 6.0 }
+      ]
+    },
+    {
+      "id": "bone_in_thighs",
+      "name": "Bone-in thighs",
+      "category": "broiler_cut",
+      "saleUnit": "package",
+      "sourceSpeciesId": "broilers",
+      "sourceMaterial": "thigh_bone_in",
+      "yieldShareOfDressedWeight": 0.17,
+      "sizeBrackets": [
+        { "id": "th_1_15",  "label": "1–1.5 lb",  "minLb": 1.0, "maxLb": 1.5 },
+        { "id": "th_15_2",  "label": "1.5–2 lb",  "minLb": 1.5, "maxLb": 2.0 },
+        { "id": "th_2_25",  "label": "2–2.5 lb",  "minLb": 2.0, "maxLb": 2.5 }
+      ]
+    },
+    {
+      "id": "boneless_breast",
+      "name": "Boneless breast",
+      "category": "broiler_cut",
+      "saleUnit": "package",
+      "sourceSpeciesId": "broilers",
+      "sourceMaterial": "breast_boneless",
+      "yieldShareOfDressedWeight": 0.32,
+      "sizeBrackets": [
+        { "id": "br_05_1",  "label": "0.5–1 lb",  "minLb": 0.5, "maxLb": 1.0 },
+        { "id": "br_1_15",  "label": "1–1.5 lb",  "minLb": 1.0, "maxLb": 1.5 },
+        { "id": "br_15_2",  "label": "1.5–2 lb",  "minLb": 1.5, "maxLb": 2.0 }
+      ]
+    },
+    {
+      "id": "wings",
+      "name": "Wings",
+      "category": "broiler_cut",
+      "saleUnit": "package",
+      "sourceSpeciesId": "broilers",
+      "sourceMaterial": "wings",
+      "yieldShareOfDressedWeight": 0.11,
+      "sizeBrackets": [
+        { "id": "wg_1_2",  "label": "1–2 lb", "minLb": 1.0, "maxLb": 2.0 },
+        { "id": "wg_2_3",  "label": "2–3 lb", "minLb": 2.0, "maxLb": 3.0 }
+      ]
+    },
+    {
+      "id": "drumsticks",
+      "name": "Drumsticks",
+      "category": "broiler_cut",
+      "saleUnit": "package",
+      "sourceSpeciesId": "broilers",
+      "sourceMaterial": "drumsticks",
+      "yieldShareOfDressedWeight": 0.11,
+      "sizeBrackets": [
+        { "id": "dr_075_1",  "label": "0.75–1 lb",  "minLb": 0.75, "maxLb": 1.0 },
+        { "id": "dr_1_15",   "label": "1–1.5 lb",   "minLb": 1.0,  "maxLb": 1.5 },
+        { "id": "dr_15_2",   "label": "1.5–2 lb",   "minLb": 1.5,  "maxLb": 2.0 }
+      ]
+    }
+  ],
+  "costs": {
+    "currency": "USD",
+    "broilers": {
+      "chickPurchasePerBird": null,
+      "processingSlaughterPerBird": 7.50,
+      "processingCutAdditionalPerBird": 4.00,
+      "packagingPerWholeBird": null,
+      "packagingPerCutPackage": null,
+      "yieldLiveToDressed": 0.70,
+      "yieldDressedBreakdown": {
+        "boneless_breast": 0.32,
+        "bone_in_thighs": 0.17,
+        "drumsticks": 0.11,
+        "wings": 0.11,
+        "frame_remainder": 0.29
+      },
+      "notes": "Industry rule-of-thumb yields for Cornish Cross — confirm with processor (thread_processing_yields). Chick cost (thread_chick_cost) and packaging (thread_packaging_cost) still TBD."
+    },
+    "eggs": {
+      "packagingPerDozen": null,
+      "notes": "Carton/label cost TBD — see thread_packaging_cost. Per-dozen feed-cost share derivable from layer feed consumption once tracked."
+    },
+    "pricingTargets": {
+      "marginNote": "Target gross margin per SKU not yet defined — see thread_pricing_targets. Once set, the Products page will surface recommended price ranges anchored to known cost floor."
+    }
+  },
+  "inventory": {
+    "eggLots": [],
+    "chickenLots": [],
+    "modelNotes": [
+      "Egg lots are FIFO by collectionDate; eggs sit in the fridge in cartons.",
+      "Chicken lots are FIFO by processingDate within each (productKindId, sizeBracketId); each lot lives in a freezer.",
+      "Egg inventory is currently created by counting cartons just before going to a market — see thread_egg_inventory_model.",
+      "Chicken inventory is created on broiler-processing day as a final step of that process."
+    ]
+  },
   "projects": [],
   "processes": [],
   "notes": [],
@@ -241,8 +362,17 @@
     { "id": "thread_tilted_barn_date_range", "title": "Tilted Barn market date range", "question": "Captured range is 'June 3, 2025 – August 26, 2026' — 14 months continuous, unusual for a summer market. Likely a typo (should both years be 2026?). Confirm.", "status": "open" },
     { "id": "thread_popup_event_year", "title": "Year on pop-up event dates", "question": "The source image listed pop-up dates without a year. Claude assumed 2026.", "status": "open" },
     { "id": "thread_feed_specifics", "title": "Feed specifics — supplier, prices, lead times", "question": "Cost-per-lb figures, reorder points, reorder quantities, lead times, and package sizes are illustrative placeholders. Replace with real figures from the actual feed mill and hay supplier.", "status": "open" },
-    { "id": "thread_broiler_feed_pattern", "title": "Broiler feed amount pattern (decreasing?)", "question": "Week 3 = 100 lb/day, week 4 = 75 lb/day. Decreasing consumption is unusual for Cornish Rock. Confirm pattern direction and fill in weeks 5–7.", "status": "open" },
+    { "id": "thread_broiler_feed_pattern", "title": "Broiler feed amount pattern (decreasing?)", "question": "Week 3 = 100 lb/day, week 4 = 75 lb/day. Decreasing consumption is unusual for Cornish Cross. Confirm pattern direction and fill in weeks 5–7.", "status": "open" },
     { "id": "thread_schedule_full_scope", "title": "Schedule view — full feature set deferred", "question": "Prototype has calendar, timeline, filters, click-to-detail. Deferred: drag-and-drop, in-place editing, GCal push-sync, multi-month views.", "status": "open" },
-    { "id": "thread_chore_schedule_population", "title": "Chores need specific times to populate Schedule", "question": "Most chores still have when=TBD. Until specific times are defined, the Schedule's Chores filter has nothing to render.", "status": "open" }
+    { "id": "thread_chore_schedule_population", "title": "Chores need specific times to populate Schedule", "question": "Most chores still have when=TBD. Until specific times are defined, the Schedule's Chores filter has nothing to render.", "status": "open" },
+    { "id": "thread_breed_correction", "title": "Broiler breed correction", "question": "Earlier capture said 'Cornish Rock Hybrid'.", "status": "resolved", "resolution": "Corrected to 'Cornish Cross (straight run)' across livestock, supplier descriptions, and feed-pattern thread." },
+    { "id": "thread_processing_yields", "title": "Processing yields — confirm with processor", "question": "Industry rule-of-thumb yields seeded in costs.broilers.yieldDressedBreakdown (live→dressed 0.70; breast 32% / thighs 17% / drumsticks 11% / wings 11% / frame 29%). Confirm or correct after first processing day.", "status": "open" },
+    { "id": "thread_chick_cost", "title": "Broiler chick purchase cost", "question": "Per-chick cost from the hatchery is needed to complete cost-per-bird math. Currently null in costs.broilers.chickPurchasePerBird.", "status": "open" },
+    { "id": "thread_packaging_cost", "title": "Packaging costs (egg cartons, chicken bags, labels)", "question": "Per-dozen carton/label cost, per-whole-bird bag cost, per-cut-package bag/label cost. Probably small but needed to close the COGS picture.", "status": "open" },
+    { "id": "thread_whole_vs_cut_ratio", "title": "Whole-vs-cut ratio per batch", "question": "What fraction of each broiler batch goes whole vs broken into cuts? Plan: ask processor for a recommendation on the first batch, then refine based on actual sales mix.", "status": "open" },
+    { "id": "thread_egg_inventory_model", "title": "Egg inventory: count-before-market vs log-as-collected", "question": "Current practice is to count cartons just before going to a market. Future option is daily collection logging that builds up the lot in real time.", "status": "open", "notes": "Captured for now as count-before-market: lots exist by collectionDate but quantities are entered/updated when convenient. Schema supports both flows without migration." },
+    { "id": "thread_pricing_targets", "title": "Pricing targets / margin policy", "question": "What target gross margin per SKU (or per category — eggs vs whole vs cuts)? Needed before the Products page can surface concrete recommended prices.", "status": "open" },
+    { "id": "thread_processing_day_process", "title": "Broiler processing day — define the process", "question": "Steps from transport to processor through inventory creation. Captured at a high level (transport → pickup → sort by size & cut → create lots → compute batch cost). Worth a formal Process entry once Processes section is built.", "status": "open" },
+    { "id": "thread_seasonal_availability", "title": "Seasonal availability per product", "question": "Eggs are year-round; broilers/cuts only available after each processing day until sold out. Surface availability windows in Products view eventually.", "status": "open" }
   ]
 }

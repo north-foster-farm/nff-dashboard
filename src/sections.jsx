@@ -1,6 +1,6 @@
 import {
   Home, Bird, Egg, PawPrint, Building2, Wrench, Truck, Wheat,
-  Calendar, ListChecks, Tent, Sparkles, Package,
+  Calendar, ListChecks, Tent, Sparkles, Package, Tag, Boxes,
   FolderKanban, Workflow, NotebookPen, MessageCircleQuestion
 } from "lucide-react";
 
@@ -13,6 +13,8 @@ export const SECTIONS = [
   { id: "machines", group: "Entities", label: "Machines", icon: Wrench, description: "Powered equipment owned by the farm", getCount: (d) => d.machines.length },
   { id: "suppliers", group: "Entities", label: "Suppliers", icon: Truck, description: "Vendors and sources NFF buys from", getCount: (d) => d.suppliers.length },
   { id: "feeds", group: "Entities", label: "Feeds", icon: Wheat, description: "Feed types, suppliers, costs, and reorder rules", getCount: (d) => d.feeds.length },
+  { id: "products", group: "Commerce", label: "Products", icon: Tag, description: "What NFF sells — SKUs by size bracket, with cost-floor and pricing-recommendation surface", getCount: (d) => d.productKinds.reduce((a, k) => a + k.sizeBrackets.length, 0) },
+  { id: "inventory", group: "Commerce", label: "Inventory", icon: Boxes, description: "Current stock — egg cartons in the fridge, chicken lots in freezers, FIFO-ordered", getCount: (d) => d.inventory.eggLots.length + d.inventory.chickenLots.length },
   { id: "schedule", group: "Activity", label: "Schedule", icon: Calendar, description: "Calendar and timeline view of everything date-bound", getCount: () => null },
   { id: "chores", group: "Activity", label: "Chores", icon: ListChecks, description: "Recurring scheduled work and the activity log", getCount: (d) => d.chores.definitions.length },
   { id: "events_farmers_market", group: "Events", label: "Farmers markets", icon: Tent, getCount: (d) => d.events.kinds.find(k => k.id === "farmers_market")?.instances.length ?? 0 },

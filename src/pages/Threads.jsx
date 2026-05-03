@@ -25,7 +25,7 @@ function ThreadRow({ thread }) {
   return (
     <div style={{ background: T.surface, padding: "18px 22px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 12 }}>
-        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: T.text }}>{thread.title}</div>
+        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.text }}>{thread.title}</div>
         <span style={{ fontSize: 10, color: isResolved ? T.resolved : T.warn, textTransform: "uppercase", letterSpacing: "0.12em", flexShrink: 0 }}>{thread.status}</span>
       </div>
       <p style={{ fontSize: 12, color: T.textDim, lineHeight: 1.7, margin: 0, marginBottom: isResolved || thread.notes ? 10 : 0 }}>{thread.question}</p>

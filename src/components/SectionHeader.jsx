@@ -9,8 +9,8 @@ export default function SectionHeader({ section, data, noBottomBorder }) {
       paddingBottom: noBottomBorder ? 0 : 14,
       borderBottom: noBottomBorder ? "none" : `1px solid ${T.border}`
     }}>
-      <h2 style={{ fontFamily: T.serif, fontSize: 34, fontWeight: 500, letterSpacing: "-0.02em", margin: 0, marginBottom: 4 }}>{section.label}</h2>
-      {description && <p style={{ fontSize: 12, color: T.textDim, margin: 0 }}>{description}</p>}
+      <h2 style={{ fontFamily: T.heading, fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em", margin: 0, marginBottom: 6, color: T.text }}>{section.label}</h2>
+      {description && <p style={{ fontSize: 13, color: T.textDim, margin: 0, lineHeight: 1.55 }}>{description}</p>}
     </div>
   );
 }

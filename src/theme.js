@@ -1,22 +1,25 @@
 export const T = {
   bg: "#181c19",
-  surface: "#23291f",
+  surface: "#252c23",
   surfaceAlt: "#1f2520",
-  border: "#2f3631",
-  text: "#e8e4d8",
-  textDim: "#9a9484",
-  textMuted: "#5e6a5e",
-  textFaint: "#3f4a40",
-  accent: "#a0b87f",
-  accentDim: "#7a9e5e",
-  warn: "#d4a346",
-  resolved: "#7a9e5e",
+  border: "#3a4239",
+  text: "#f2efe4",
+  textDim: "#c4bfad",
+  textMuted: "#8e8877",
+  textFaint: "#6a6658",
+  accent: "#b8d092",
+  accentDim: "#8fb06c",
+  warn: "#e6b85a",
+  resolved: "#8fb06c",
   cat: {
-    farmers_market: "#a0b87f",
-    popup_event: "#d4a346",
-    egg_drop: "#7ea3b5",
-    chore: "#9a9484"
+    farmers_market: "#b8d092",
+    popup_event: "#e6b85a",
+    egg_drop: "#8fbcd0",
+    chore: "#c4bfad"
   },
-  serif: "'Fraunces', Georgia, serif",
+  heading: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
   mono: "'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace"
 };
+
+// Back-compat alias — older files may still reference T.serif
+T.serif = T.heading;

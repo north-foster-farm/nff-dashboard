@@ -24,7 +24,7 @@ export default function DetailModal({ item, onClose }) {
           <span style={{ width: 10, height: 10, background: T.cat[item.kindId] || T.textDim, borderRadius: "50%" }} />
           <span style={{ fontSize: 9, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.14em" }}>{item.kindLabel}</span>
         </div>
-        <h3 style={{ fontFamily: T.serif, fontSize: 24, fontWeight: 500, margin: "0 0 4px", letterSpacing: "-0.01em" }}>{item.instanceLabel}</h3>
+        <h3 style={{ fontFamily: T.serif, fontSize: 24, fontWeight: 600, margin: "0 0 4px", letterSpacing: "-0.01em" }}>{item.instanceLabel}</h3>
         {item.subtitle && <p style={{ fontSize: 12, color: T.textDim, margin: "0 0 18px" }}>{item.subtitle}</p>}
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 18 }}>
           <Row label="Date" value={dateLong} />
