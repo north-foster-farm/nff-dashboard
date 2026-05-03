@@ -13,20 +13,26 @@ import SpeciesPage from "../pages/SpeciesPage.jsx";
 import EventKindPage from "../pages/EventKindPage.jsx";
 import Products from "../pages/Products.jsx";
 import Inventory from "../pages/Inventory.jsx";
+import Trailers from "../pages/Trailers.jsx";
+import AllEvents from "../pages/AllEvents.jsx";
+import Activity from "../pages/Activity.jsx";
 
-export default function SectionContent({ section, data, onShowDetail }) {
+export default function SectionContent({ section, data, onShowDetail, onNavigate }) {
   if (section.id.startsWith("livestock_")) {
     const sp = getSpeciesFromSectionId(section.id, data);
     if (!sp) return <EmptyState label={section.label} />;
     return <SpeciesPage species={sp} data={data} />;
   }
+  if (section.id === "events_all") {
+    return <AllEvents data={data} />;
+  }
   if (section.id.startsWith("events_")) {
     const ek = getEventKindFromSectionId(section.id, data);
     if (!ek) return <EmptyState label={section.label} />;
-    return <EventKindPage kind={ek} />;
+    return <EventKindPage kind={ek} data={data} />;
   }
   switch (section.id) {
-    case "overview": return <Overview data={data} />;
+    case "overview": return <Overview data={data} onNavigate={onNavigate} />;
     case "spaces": return <Spaces data={data} />;
     case "machines":
     case "resources_machinery":
@@ -37,10 +43,12 @@ export default function SectionContent({ section, data, onShowDetail }) {
     case "feeds":
     case "resources_feed":
       return <Feeds data={data} />;
+    case "resources_trailers": return <Trailers data={data} />;
     case "products": return <Products data={data} />;
     case "inventory": return <Inventory data={data} />;
     case "schedule": return <Schedule data={data} onShowDetail={onShowDetail} />;
     case "chores": return <Chores data={data} />;
+    case "activity": return <Activity data={data} />;
     case "threads": return <Threads data={data} />;
     default: {
       const items = data[section.id] ?? [];

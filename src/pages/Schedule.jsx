@@ -108,15 +108,17 @@ function IconBtn({ onClick, children }) {
 }
 
 function FilterChips({ filters, onChange, kinds }) {
-  // Build one chip per event kind in the data, in the order they appear there.
+  // Build one chip per event kind in the data, sorted alphabetically by label.
   // Empty kinds remain toggleable so the user can pre-stage filters before any
   // instances exist; they're just rendered with reduced visual weight.
-  const chipDefs = kinds.map(k => ({
-    id: k.id,
-    label: k.label,
-    color: T.cat[k.id] || T.cat.default,
-    count: k.instances?.length ?? 0
-  }));
+  const chipDefs = kinds
+    .map(k => ({
+      id: k.id,
+      label: k.label,
+      color: T.cat[k.id] || T.cat.default,
+      count: k.instances?.length ?? 0
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
   const toggle = id => onChange({ ...filters, [id]: !filters[id] });
   const allOn = chipDefs.every(c => filters[c.id]);
   const setAll = (val) => onChange(Object.fromEntries(chipDefs.map(c => [c.id, val])));

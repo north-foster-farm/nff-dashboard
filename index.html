@@ -12,7 +12,13 @@
     />
     <style>
       /* Nacelle — local custom font from dotcolon.net.
-         Drop OTF/WOFF2 files into /public/fonts/ (see public/fonts/README.md). */
+         Drop OTF/WOFF2 files into /public/fonts/ (see public/fonts/README.md),
+         then uncomment the two @font-face blocks below. They're commented out
+         by default because referencing missing files produces console errors
+         ("downloadable font: rejected by sanitizer" — the browser treats the
+         404 HTML as a font). Until real font files land we fall through to
+         the system-ui stack declared on body. */
+      /*
       @font-face {
         font-family: 'Nacelle';
         src: url('/fonts/Nacelle-Regular.woff2') format('woff2'),
@@ -29,6 +35,7 @@
         font-style: normal;
         font-display: swap;
       }
+      */
       /* Dark theme (default). Brand anchor #297D5A lightened to #4cba85 for legible
          accent on near-black surfaces. Earthy, warm, slightly green-tinted neutrals. */
       :root,
@@ -69,10 +76,10 @@
         --c-surface: #ffffff;
         --c-surface-alt: #ececec;
         --c-border: #d6d6d6;
-        --c-text: #1a201a;
-        --c-text-dim: #4f5347;
-        --c-text-muted: #7a7666;
-        --c-text-faint: #aea899;
+        --c-text: #14180f;
+        --c-text-dim: #2f3329;
+        --c-text-muted: #4d4a3e;
+        --c-text-faint: #6f6b5d;
         --c-accent: #297d5a;
         --c-accent-deep: #1d5a40;
         --c-warn: #a06d10;

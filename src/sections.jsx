@@ -1,6 +1,6 @@
 import {
   Home, Bird, Egg, PawPrint, Wrench, Truck, Wheat,
-  Calendar, ListChecks, Tent, Sparkles, Package, Tag, Boxes,
+  Calendar, ListChecks, Tent, Sparkles, Package, Tag, Boxes, Activity,
   FolderKanban, Workflow, NotebookPen, MessageCircleQuestion,
   Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
   CalendarRange, Layers, Tractor, Container, Caravan, TreePine,
@@ -72,8 +72,9 @@ export const SECTIONS = [
     getCount: (d) => (d.orders ?? []).filter(o => o.status === "open").length },
   { id: "point_of_sale", group: "Sales", label: "Point of sale", icon: Banknote, kind: "action", description: "Record a sale on the spot at a market or event — drains inventory FIFO. Placeholder.", getCount: () => null },
 
+  { id: "events_all", group: "Events", label: "All events", icon: CalendarRange, description: "Every event in chronological order, with type filters and a date-range selector.", getCount: () => null },
   { id: "events_this_week", group: "Events", label: "Upcoming", icon: CalendarClock, description: "Every event happening between Monday and Sunday of the current week.", getCount: countEventsThisWeek },
-  { id: "events_all_types", group: "Events", label: "Show all events", flyoutTitle: "All events", icon: CalendarRange, kind: "flyout",
+  { id: "events_all_types", group: "Events", label: "Event types", flyoutTitle: "Types of events", icon: Layers, kind: "flyout",
     children: [
       // Sorted alphabetically by label.
       { id: "events_deliveries", label: "Deliveries", icon: Truck, description: "Deliveries to wholesale or restaurant partners. Placeholder." },
@@ -104,7 +105,7 @@ export const SECTIONS = [
   { id: "content_calendar", group: "Communication", label: "Content calendar", icon: CalendarDays, description: "Plan and schedule customer-facing communication. Placeholder.",
     getCount: countUpdatesNeedingAttention },
 
-  { id: "resources_all", group: "Resources", label: "Show all resources", flyoutTitle: "All resources", icon: Layers, kind: "flyout",
+  { id: "resources_all", group: "Resources", label: "Resource types", flyoutTitle: "Types of resources", icon: Layers, kind: "flyout",
     children: [
       // Sorted alphabetically by label.
       { id: "resources_brooders", label: "Brooders", icon: Box, description: "Heated enclosures for chicks. Placeholder." },
@@ -116,10 +117,11 @@ export const SECTIONS = [
       { id: "resources_mobile_coops", label: "Mobile coops", icon: Caravan, description: "Wheeled hen coops moved across paddocks. Placeholder." },
       { id: "resources_pastures", label: "Pastures", icon: TreePine, description: "Paddocks and grazing areas. Placeholder." },
       { id: "resources_suppliers", label: "Suppliers", icon: Store, description: "Vendors and sources NFF buys from." },
-      { id: "resources_trailers", label: "Trailers", icon: Truck, description: "Towable trailers used for transport. Placeholder." }
+      { id: "resources_trailers", label: "Trailers", icon: Truck, description: "Towable trailers used for transport." }
     ]
   },
 
+  { id: "activity", group: "Other", label: "Activity", icon: Activity, description: "Every action logged across the farm — chore completions, temperature readings, weight logs, sales, and more.", getCount: () => null },
   { id: "processes", group: "Other", label: "Processes", icon: Workflow, description: "Repeatable workflows and SOPs", getCount: () => null },
   { id: "notes", group: "Other", label: "Notes", icon: NotebookPen, description: "Uncategorized brain dumps", getCount: () => null },
   { id: "threads", group: "Other", label: "Threads", icon: MessageCircleQuestion, description: "Open questions and resolved decisions", getCount: (d) => d.threads.filter(t => t.status === "open").length }

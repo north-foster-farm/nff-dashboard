@@ -14,6 +14,8 @@ export default function App() {
 
   const section = findSection(currentSection) || findSection("overview");
   const isSpeciesPage = section.id.startsWith("livestock_");
+  // Pages that render their own header row (title + tabs/actions inline).
+  const isSelfHeadered = section.id === "overview" || section.id === "chores";
 
   return (
     <div style={{ background: T.bg, color: T.text, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: T.body, fontSize: 13 }}>
@@ -21,8 +23,8 @@ export default function App() {
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <Sidebar current={currentSection} onSelect={setCurrentSection} data={NFF_DATA} />
         <main style={{ flex: 1, padding: "32px 40px", overflowY: "auto", minWidth: 0 }}>
-          <SectionHeader section={section} data={NFF_DATA} noBottomBorder={isSpeciesPage} />
-          <SectionContent section={section} data={NFF_DATA} onShowDetail={setScheduleDetail} />
+          {!isSelfHeadered && <SectionHeader section={section} noBottomBorder={isSpeciesPage} />}
+          <SectionContent section={section} data={NFF_DATA} onShowDetail={setScheduleDetail} onNavigate={setCurrentSection} />
         </main>
       </div>
       {scheduleDetail && <DetailModal item={scheduleDetail} onClose={() => setScheduleDetail(null)} />}

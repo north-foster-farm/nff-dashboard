@@ -80,6 +80,9 @@
       { "id": "layer_pasture", "label": "Layer pasture", "kindId": "pasture", "currentResidents": "Mobile coops MC1 and MC2 rotate through this pasture.", "notes": "Dimensions and satellite-image boundary pending." }
     ]
   },
+  "trailers": [
+    { "id": "flatbed_trailer", "label": "Flatbed trailer", "category": "flatbed", "uses": ["Transport broiler crates to Pat's Pastured on processing days."], "notes": null }
+  ],
   "machines": [
     { "id": "kubota_tractor", "label": "Tractor", "category": "agricultural_tractor", "manufacturer": "Kubota", "model": "TBD", "uses": ["Move mobile coops within the layer pasture via drawbar hitch."], "notes": "The farm's primary agricultural utility vehicle." },
     { "id": "jd_backhoe", "label": "Backhoe", "category": "backhoe", "manufacturer": "John Deere", "model": "TBD", "uses": [], "notes": null },
@@ -137,15 +140,7 @@
     }
   ],
   "chores": {
-    "definitions": [
-      { "id": "open_mobile_coops", "title": "Open mobile coops", "description": "Open the doors of the mobile coops to release layers for the day.", "when": "TBD", "how": "TBD", "who": "TBD", "tags": ["layers", "daily"] },
-      { "id": "give_sheep_hay", "title": "Give sheep a flake of hay", "description": "Provide hay to Lily, Ivy, and Violet.", "when": "TBD", "how": "TBD", "who": "TBD", "tags": ["sheep"] },
-      { "id": "log_brooder_temp", "title": "Log brooder temperature", "description": "Record the current brooder temperature so it can be tracked against the weekly target.", "when": "TBD", "how": "TBD", "who": "TBD", "tags": ["broilers", "brooder", "data-capture"] },
-      { "id": "move_chicken_tractor", "title": "Move chicken tractor", "description": "Move a chicken tractor to fresh pasture.", "when": "Twice daily — morning and afternoon", "how": "TBD", "who": "TBD", "tags": ["broilers", "pasture", "daily"] },
-      { "id": "move_mobile_coop", "title": "Move mobile coop", "description": "Relocate a mobile coop within the layer pasture using the tractor and drawbar hitch.", "when": "TBD", "how": "TBD", "who": "TBD", "tags": ["layers", "tractor"] },
-      { "id": "feed_broiler_batch", "title": "Feed a batch of broilers", "description": "Provide the appropriate weekly ration to a broiler batch and log feed amount provided.", "when": "TBD", "how": "TBD", "who": "TBD", "tags": ["broilers", "feed", "data-capture"] },
-      { "id": "collect_eggs", "title": "Collect eggs", "description": "Collect eggs from layer coops.", "when": "TBD", "how": "TBD", "who": "TBD", "tags": ["layers", "data-capture"] }
-    ],
+    "definitions": [],
     "completions": [],
     "modelNotes": [
       "A chore definition describes a recurring activity. Each occurrence is an instance, and a completion is a ChoreCompletionLog entry.",
@@ -162,7 +157,7 @@
         "instances": [
           { "id": "scituate_rotary", "label": "Scituate Rotary Farmers Market", "recurrence": { "type": "weekly", "dayOfWeek": 6, "startTime": "09:00", "endTime": "13:00", "seasonStart": "2026-05-09", "seasonEnd": "2026-11-01" }, "location": { "name": "Scituate Rotary", "address": "46 Institute Lane, North Scituate, RI" } },
           { "id": "foster_market", "label": "Foster Farmers Market", "recurrence": { "type": "weekly", "dayOfWeek": 0, "startTime": "09:00", "endTime": "12:00", "seasonStart": "2026-06-01", "seasonEnd": "2026-11-01" }, "location": { "name": "Foster Farmers Market", "address": "164 Danielson Pike, Foster, RI" } },
-          { "id": "tilted_barn", "label": "Summer Market at Tilted Barn", "recurrence": { "type": "weekly", "dayOfWeek": 3, "startTime": "16:00", "endTime": "19:00", "seasonStart": "2025-06-03", "seasonEnd": "2026-08-26" }, "location": { "name": "Tilted Barn", "address": "One Hemsley Place, Exeter, RI 02822" }, "notes": "14-month range — likely a typo. See thread_tilted_barn_date_range." }
+          { "id": "tilted_barn", "label": "Summer Market at Tilted Barn", "recurrence": { "type": "weekly", "dayOfWeek": 3, "startTime": "16:00", "endTime": "19:00", "seasonStart": "2026-06-03", "seasonEnd": "2026-08-26" }, "location": { "name": "Tilted Barn", "address": "One Hemsley Place, Exeter, RI 02822" } }
         ]
       },
       {
@@ -176,8 +171,7 @@
           { "id": "rocky_point_august_concert", "label": "Summer Concert", "subtitle": "Marketplace / Food Trucks", "date": "2026-08-08", "startTime": "11:00", "endTime": "15:00", "location": { "name": "Rocky Point", "address": "1 Rocky Point Ave, Warwick, RI 02889" } },
           { "id": "warwick_august_concert", "label": "Summer Concert", "subtitle": "Marketplace / Food Trucks", "date": "2026-08-26", "startTime": "17:00", "endTime": "20:00", "location": { "name": "Warwick City Hall Plaza", "address": "3275 Post Rd, Warwick, RI 02886" } },
           { "id": "warwick_apple_fest", "label": "Apple Fest", "subtitle": "Concert, vendors & food trucks", "date": "2026-09-19", "startTime": "12:00", "endTime": "15:00", "location": { "name": "Warwick City Hall Plaza", "address": "3275 Post Rd, Warwick, RI 02886" } }
-        ],
-        "notes": "Pop-up dates from the source image had no year — assumed 2026."
+        ]
       },
       {
         "id": "egg_drop",
@@ -190,11 +184,26 @@
       { "id": "deliveries", "label": "Deliveries", "description": "Deliveries to wholesale or restaurant partners.", "instances": [] },
       { "id": "farm_visits", "label": "Farm visits", "description": "Visitors coming to the farm.", "instances": [] },
       { "id": "pickups", "label": "Pick-ups", "description": "Customer pick-ups directly from the farm.", "instances": [] },
-      { "id": "processing_days", "label": "Processing days", "description": "Broiler-processing day events.", "instances": [] }
+      {
+        "id": "processing_days",
+        "label": "Processing days",
+        "description": "Broiler-processing day events at Pat's Pastured. Each day processes one batch of ~275 Cornish Cross.",
+        "instances": [
+          { "id": "processing_2026_05_04", "label": "Broiler processing day", "date": "2026-05-04", "startTime": "04:00", "endTime": "16:00", "location": { "name": "Pat's Pastured", "address": "830 South Road, East Greenwich, RI 02818" }, "processing": { "batchId": null, "batchSize": 275, "breed": "Cornish Cross", "birdsPerCrate": 9, "cratesPacked": null, "finalCount": null, "cutSheetDocumentId": null, "resourcesRequired": [{ "type": "trailer", "id": "flatbed_trailer" }] } },
+          { "id": "processing_2026_06_02", "label": "Broiler processing day", "date": "2026-06-02", "startTime": "04:00", "endTime": "16:00", "location": { "name": "Pat's Pastured", "address": "830 South Road, East Greenwich, RI 02818" }, "processing": { "batchId": null, "batchSize": 275, "breed": "Cornish Cross", "birdsPerCrate": 9, "cratesPacked": null, "finalCount": null, "cutSheetDocumentId": null, "resourcesRequired": [{ "type": "trailer", "id": "flatbed_trailer" }] } },
+          { "id": "processing_2026_06_23", "label": "Broiler processing day", "date": "2026-06-23", "startTime": "04:00", "endTime": "16:00", "location": { "name": "Pat's Pastured", "address": "830 South Road, East Greenwich, RI 02818" }, "processing": { "batchId": null, "batchSize": 275, "breed": "Cornish Cross", "birdsPerCrate": 9, "cratesPacked": null, "finalCount": null, "cutSheetDocumentId": null, "resourcesRequired": [{ "type": "trailer", "id": "flatbed_trailer" }] } },
+          { "id": "processing_2026_07_14", "label": "Broiler processing day", "date": "2026-07-14", "startTime": "04:00", "endTime": "16:00", "location": { "name": "Pat's Pastured", "address": "830 South Road, East Greenwich, RI 02818" }, "processing": { "batchId": null, "batchSize": 275, "breed": "Cornish Cross", "birdsPerCrate": 9, "cratesPacked": null, "finalCount": null, "cutSheetDocumentId": null, "resourcesRequired": [{ "type": "trailer", "id": "flatbed_trailer" }] } },
+          { "id": "processing_2026_08_04", "label": "Broiler processing day", "date": "2026-08-04", "startTime": "04:00", "endTime": "16:00", "location": { "name": "Pat's Pastured", "address": "830 South Road, East Greenwich, RI 02818" }, "processing": { "batchId": null, "batchSize": 275, "breed": "Cornish Cross", "birdsPerCrate": 9, "cratesPacked": null, "finalCount": null, "cutSheetDocumentId": null, "resourcesRequired": [{ "type": "trailer", "id": "flatbed_trailer" }] } },
+          { "id": "processing_2026_08_25", "label": "Broiler processing day", "date": "2026-08-25", "startTime": "04:00", "endTime": "16:00", "location": { "name": "Pat's Pastured", "address": "830 South Road, East Greenwich, RI 02818" }, "processing": { "batchId": null, "batchSize": 275, "breed": "Cornish Cross", "birdsPerCrate": 9, "cratesPacked": null, "finalCount": null, "cutSheetDocumentId": null, "resourcesRequired": [{ "type": "trailer", "id": "flatbed_trailer" }] } },
+          { "id": "processing_2026_09_08", "label": "Broiler processing day", "date": "2026-09-08", "startTime": "04:00", "endTime": "16:00", "location": { "name": "Pat's Pastured", "address": "830 South Road, East Greenwich, RI 02818" }, "processing": { "batchId": null, "batchSize": 275, "breed": "Cornish Cross", "birdsPerCrate": 9, "cratesPacked": null, "finalCount": null, "cutSheetDocumentId": null, "resourcesRequired": [{ "type": "trailer", "id": "flatbed_trailer" }] } },
+          { "id": "processing_2026_10_06", "label": "Broiler processing day", "date": "2026-10-06", "startTime": "04:00", "endTime": "16:00", "location": { "name": "Pat's Pastured", "address": "830 South Road, East Greenwich, RI 02818" }, "processing": { "batchId": null, "batchSize": 275, "breed": "Cornish Cross", "birdsPerCrate": 9, "cratesPacked": null, "finalCount": null, "cutSheetDocumentId": null, "resourcesRequired": [{ "type": "trailer", "id": "flatbed_trailer" }] } }
+        ]
+      }
     ],
     "modelNotes": [
-      "'Event' in NFF's domain language means sales occasions only — markets, pop-ups, egg drops.",
-      "Recurring instances carry a recurrence pattern; single instances carry an explicit date."
+      "'Event' in NFF's domain language means a bounded farm occasion — sales events (markets, pop-ups, egg drops, deliveries, pick-ups), processing days, and farm visits. Reserved word; never used for log entries.",
+      "Recurring instances carry a recurrence pattern; single instances carry an explicit date.",
+      "Event kinds can carry kind-specific payloads on each instance (e.g. processing.batchSize, processing.cratesPacked, processing.resourcesRequired). Generic fields (date/time/location) are always present; kind-specific fields live under a kind-named sub-object."
     ]
   },
   "schedule": {
@@ -366,15 +375,16 @@
     { "id": "thread_layer_arrival_history", "title": "Arrival dates for older layer generations", "question": "No bands and blue bands have unknown arrival dates.", "status": "open" },
     { "id": "thread_age_format_gap", "title": "Age formatting: 5–8 week gap", "question": "Spec listed [1-4] weeks then [2-11] months. Confirm interpretation (currently: weeks for ≤4 weeks, months for 1–11 months, '1 year' exact, then 'Y years, M months').", "status": "open" },
     { "id": "thread_log_storage", "title": "Log storage architecture", "question": "Where do LogEntry instances live? Single global array vs. distributed by domain.", "status": "open" },
-    { "id": "thread_tilted_barn_date_range", "title": "Tilted Barn market date range", "question": "Captured range is 'June 3, 2025 – August 26, 2026' — 14 months continuous, unusual for a summer market. Likely a typo (should both years be 2026?). Confirm.", "status": "open" },
-    { "id": "thread_popup_event_year", "title": "Year on pop-up event dates", "question": "The source image listed pop-up dates without a year. Claude assumed 2026.", "status": "open" },
+    { "id": "thread_tilted_barn_date_range", "title": "Tilted Barn market date range", "question": "Captured range is 'June 3, 2025 – August 26, 2026' — 14 months continuous, unusual for a summer market. Likely a typo (should both years be 2026?). Confirm.", "status": "resolved", "resolution": "Confirmed both years are 2026. Season runs June 3, 2026 – August 26, 2026." },
+    { "id": "thread_popup_event_year", "title": "Year on pop-up event dates", "question": "The source image listed pop-up dates without a year. Claude assumed 2026.", "status": "resolved", "resolution": "Confirmed: 2026 is correct." },
     { "id": "thread_feed_specifics", "title": "Feed specifics — supplier, prices, lead times", "question": "Cost-per-lb figures, reorder points, reorder quantities, lead times, and package sizes are illustrative placeholders. Replace with real figures from the actual feed mill and hay supplier.", "status": "open" },
     { "id": "thread_broiler_feed_pattern", "title": "Broiler feed amount pattern (decreasing?)", "question": "Week 3 = 100 lb/day, week 4 = 75 lb/day. Decreasing consumption is unusual for Cornish Cross. Confirm pattern direction and fill in weeks 5–7.", "status": "open" },
     { "id": "thread_schedule_full_scope", "title": "Schedule view — full feature set deferred", "question": "Prototype has calendar, timeline, filters, click-to-detail. Deferred: drag-and-drop, in-place editing, GCal push-sync, multi-month views.", "status": "open" },
-    { "id": "thread_chore_schedule_population", "title": "Chores need specific times to populate Schedule", "question": "Most chores still have when=TBD. Until specific times are defined, the Schedule's Chores filter has nothing to render.", "status": "open" },
+    { "id": "thread_chore_schedule_population", "title": "Chores need specific times to populate Schedule", "question": "Most chores still have when=TBD. Until specific times are defined, the Schedule's Chores filter has nothing to render.", "status": "resolved", "resolution": "Replaced TBD chore data with the full structured schedule (daily AM / PM / evening, weekly, twice-weekly, monthly). Chore definitions now carry frequency, period, startTime, deadline, and optional per-day-of-week assignment." },
     { "id": "thread_breed_correction", "title": "Broiler breed correction", "question": "Earlier capture said 'Cornish Rock Hybrid'.", "status": "resolved", "resolution": "Corrected to 'Cornish Cross (straight run)' across livestock, supplier descriptions, and feed-pattern thread." },
     { "id": "thread_processing_yields", "title": "Processing yields — confirm with processor", "question": "Industry rule-of-thumb yields seeded in costs.broilers.yieldDressedBreakdown (live→dressed 0.70; breast 32% / thighs 17% / drumsticks 11% / wings 11% / frame 29%). Confirm or correct after first processing day.", "status": "open" },
     { "id": "thread_chick_cost", "title": "Broiler chick purchase cost", "question": "Per-chick cost from the hatchery is needed to complete cost-per-bird math. Currently null in costs.broilers.chickPurchasePerBird.", "status": "open" },
+    { "id": "thread_batch_assignment", "title": "Broiler batches for the 8 processing days", "question": "8 processing days are scheduled (May 4 → Oct 6, 2026), but only 2 placeholder batches exist in livestock.broilers.groups. Need to define one batch per processing day with arrival date (≈5–7 weeks before) and assign batchId on each processing event. UI for assigning a batch to a processing day is also pending.", "status": "open" },
     { "id": "thread_packaging_cost", "title": "Packaging costs (egg cartons, chicken bags, labels)", "question": "Per-dozen carton/label cost, per-whole-bird bag cost, per-cut-package bag/label cost. Probably small but needed to close the COGS picture.", "status": "open" },
     { "id": "thread_whole_vs_cut_ratio", "title": "Whole-vs-cut ratio per batch", "question": "What fraction of each broiler batch goes whole vs broken into cuts? Plan: ask processor for a recommendation on the first batch, then refine based on actual sales mix.", "status": "open" },
     { "id": "thread_egg_inventory_model", "title": "Egg inventory: count-before-market vs log-as-collected", "question": "Current practice is to count cartons just before going to a market. Future option is daily collection logging that builds up the lot in real time.", "status": "open", "notes": "Captured for now as count-before-market: lots exist by collectionDate but quantities are entered/updated when convenient. Schema supports both flows without migration." },

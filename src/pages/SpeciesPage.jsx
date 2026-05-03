@@ -3,11 +3,13 @@ import { T } from "../theme.js";
 import { TabStrip, DataField, Subsection } from "../components/primitives.jsx";
 import { computeAge, formatDate } from "../lib/dates.js";
 import { computeStageCost } from "../lib/feedCost.js";
-import { ChoreRow } from "./Chores.jsx";
+import {
+  getAllChoreDefinitions, describeFrequency, displayStartTime, CHORE_CATEGORIES
+} from "../lib/chores.js";
 
 export default function SpeciesPage({ species, data }) {
   const [tab, setTab] = useState("groups");
-  const speciesChores = data.chores.definitions.filter(c => c.tags.includes(species.id));
+  const speciesChores = getAllChoreDefinitions(data).filter(c => c.tags.includes(species.id));
   const speciesSchedules = data.feedSchedules.filter(fs => fs.speciesId === species.id);
 
   return (
@@ -100,7 +102,7 @@ function SpeciesChoresTab({ species, chores }) {
         Recurring chore definitions tagged for {species.name.toLowerCase()}. Once the recurrence engine generates instances, upcoming ones will appear here.
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
-        {chores.map(c => <ChoreRow key={c.id} chore={c} />)}
+        {chores.map(c => <SpeciesChoreRow key={c.id} chore={c} />)}
       </div>
     </div>
   );
@@ -248,6 +250,28 @@ function StageRow({ stage }) {
         <div><span style={{ color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.1em", fontSize: 9, marginRight: 6 }}>Cost</span><span style={{ color: stage.costInfo?.cost != null ? T.accent : T.textDim }}>{costText}</span></div>
       </div>
       {stage.notes && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${T.surfaceAlt}`, fontStyle: "italic", lineHeight: 1.5 }}>{stage.notes}</div>}
+    </div>
+  );
+}
+
+// Compact per-species view of a chore definition.
+function SpeciesChoreRow({ chore }) {
+  return (
+    <div style={{ background: T.surface, padding: "14px 20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6, gap: 10, flexWrap: "wrap" }}>
+        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600 }}>{chore.title}</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(chore.tags ?? []).map(tag => (
+            <span key={tag} style={{ fontSize: 9, color: T.textDim, background: T.surfaceAlt, border: `1px solid ${T.border}`, padding: "2px 7px", textTransform: "uppercase", letterSpacing: "0.08em" }}>{tag}</span>
+          ))}
+        </div>
+      </div>
+      {chore.description && <div style={{ fontSize: 12, color: T.textDim, lineHeight: 1.6, margin: "0 0 8px" }}>{chore.description}</div>}
+      <div style={{ fontSize: 11, color: T.textMuted }}>
+        {CHORE_CATEGORIES[chore.category]?.label ?? chore.category}
+        {" · "}{displayStartTime(chore)}
+        {" · "}{describeFrequency(chore)}
+      </div>
     </div>
   );
 }
