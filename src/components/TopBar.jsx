@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { Sprout, Sun, Moon } from "lucide-react";
+import { Sprout, Sun, Moon, LogOut } from "lucide-react";
 import { T } from "../theme.js";
+import UserAvatarMenu from "./UserAvatarMenu.jsx";
+import { supabase } from "../lib/supabase.js";
 
 function getInitialTheme() {
   if (typeof document === "undefined") return "dark";
   return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
 }
 
-export default function TopBar({ data }) {
+export default function TopBar({ data, session, onOpenSettings }) {
   const [theme, setTheme] = useState(getInitialTheme);
 
   useEffect(() => {
@@ -15,34 +17,55 @@ export default function TopBar({ data }) {
     try { localStorage.setItem("nff-theme", theme); } catch {}
   }, [theme]);
 
-  const toggle = () => setTheme(t => (t === "dark" ? "light" : "dark"));
+  const toggleTheme = () => setTheme(t => (t === "dark" ? "light" : "dark"));
+  const handleSignOut = () => {
+    supabase.auth.signOut();
+    // LoginGate's onAuthStateChange listener handles the re-render.
+  };
 
   return (
-    <header style={{ borderBottom: `1px solid ${T.border}`, padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: T.bg, flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+    <header style={{ borderBottom: `1px solid ${T.border}`, padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: T.bg, flexShrink: 0, gap: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
         <LogoMark />
         <span style={{ fontFamily: T.uiLabel, fontSize: 11, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600 }}>
           Admin · v{data.meta.version}
         </span>
       </div>
-      <button
-        onClick={toggle}
-        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-        title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-        style={{
-          background: "transparent",
-          border: "none",
-          color: T.textDim,
-          padding: 6,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}
-      >
-        {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+        <UserAvatarMenu session={session} onClick={onOpenSettings} />
+        <IconButton
+          onClick={toggleTheme}
+          ariaLabel={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </IconButton>
+        <IconButton onClick={handleSignOut} ariaLabel="Sign out">
+          <LogOut size={16} />
+        </IconButton>
+      </div>
     </header>
+  );
+}
+
+function IconButton({ onClick, ariaLabel, children }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel}
+      title={ariaLabel}
+      style={{
+        background: "transparent",
+        border: "none",
+        color: T.textDim,
+        padding: 6,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

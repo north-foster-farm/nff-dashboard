@@ -11,31 +11,43 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap"
     />
     <style>
-      /* Nacelle — local custom font from dotcolon.net.
-         Drop OTF/WOFF2 files into /public/fonts/ (see public/fonts/README.md),
-         then uncomment the two @font-face blocks below. They're commented out
-         by default because referencing missing files produces console errors
-         ("downloadable font: rejected by sanitizer" — the browser treats the
-         404 HTML as a font). Until real font files land we fall through to
-         the system-ui stack declared on body. */
-      /*
+      /* Nacelle — local custom font from dotcolon.net. Files live in
+         /public/fonts/ as .woff2. */
       @font-face {
         font-family: 'Nacelle';
-        src: url('/fonts/Nacelle-Regular.woff2') format('woff2'),
-             url('/fonts/Nacelle-Regular.otf') format('opentype');
+        src: url('/fonts/Nacelle-Regular.woff2') format('woff2');
         font-weight: 400;
         font-style: normal;
         font-display: swap;
       }
       @font-face {
         font-family: 'Nacelle';
-        src: url('/fonts/Nacelle-Bold.woff2') format('woff2'),
-             url('/fonts/Nacelle-Bold.otf') format('opentype');
+        src: url('/fonts/Nacelle-Italic.woff2') format('woff2');
+        font-weight: 400;
+        font-style: italic;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Nacelle';
+        src: url('/fonts/Nacelle-SemiBold.woff2') format('woff2');
+        font-weight: 600;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Nacelle';
+        src: url('/fonts/Nacelle-Bold.woff2') format('woff2');
         font-weight: 700;
         font-style: normal;
         font-display: swap;
       }
-      */
+      @font-face {
+        font-family: 'Nacelle';
+        src: url('/fonts/Nacelle-BoldItalic.woff2') format('woff2');
+        font-weight: 700;
+        font-style: italic;
+        font-display: swap;
+      }
       /* Dark theme (default). Brand anchor #297D5A lightened to #4cba85 for legible
          accent on near-black surfaces. Earthy, warm, slightly green-tinted neutrals. */
       :root,

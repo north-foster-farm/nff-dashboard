@@ -1,5 +1,5 @@
 import { getSpeciesFromSectionId, getEventKindFromSectionId } from "../sections.jsx";
-import EmptyState from "./EmptyState.jsx";
+import ComingSoon from "./ComingSoon.jsx";
 import { T } from "../theme.js";
 import Overview from "../pages/Overview.jsx";
 import Spaces from "../pages/Spaces.jsx";
@@ -16,11 +16,15 @@ import Inventory from "../pages/Inventory.jsx";
 import Trailers from "../pages/Trailers.jsx";
 import AllEvents from "../pages/AllEvents.jsx";
 import Activity from "../pages/Activity.jsx";
+import Settings from "../pages/Settings.jsx";
 
 export default function SectionContent({ section, data, onShowDetail, onNavigate }) {
+  // Sections explicitly flagged with comingSoon get the full-page placeholder.
+  if (section.comingSoon) return <ComingSoon featureName={section.label} />;
+
   if (section.id.startsWith("livestock_")) {
     const sp = getSpeciesFromSectionId(section.id, data);
-    if (!sp) return <EmptyState label={section.label} />;
+    if (!sp) return <ComingSoon featureName={section.label} />;
     return <SpeciesPage species={sp} data={data} />;
   }
   if (section.id === "events_all") {
@@ -28,7 +32,7 @@ export default function SectionContent({ section, data, onShowDetail, onNavigate
   }
   if (section.id.startsWith("events_")) {
     const ek = getEventKindFromSectionId(section.id, data);
-    if (!ek) return <EmptyState label={section.label} />;
+    if (!ek) return <ComingSoon featureName={section.label} />;
     return <EventKindPage kind={ek} data={data} />;
   }
   switch (section.id) {
@@ -50,9 +54,10 @@ export default function SectionContent({ section, data, onShowDetail, onNavigate
     case "chores": return <Chores data={data} />;
     case "activity": return <Activity />;
     case "threads": return <Threads data={data} />;
+    case "settings": return <Settings />;
     default: {
       const items = data[section.id] ?? [];
-      if (items.length === 0) return <EmptyState label={section.label} />;
+      if (items.length === 0) return <ComingSoon featureName={section.label} />;
       return <GenericItemList items={items} />;
     }
   }

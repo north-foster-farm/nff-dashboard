@@ -4,7 +4,8 @@ import { T } from "../theme.js";
 import {
   CHORE_CATEGORIES, CHORE_PERIODS,
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
-  displayStartTime, displayDeadline, displayDeadlineConcrete
+  displayStartTime, displayDeadline, displayDeadlineConcrete,
+  getChorePeriodTimeLabel
 } from "../lib/chores.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 
@@ -140,6 +141,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
 
 function PeriodGroup({ period, instances, cols, completedSet, onToggle }) {
   const meta = CHORE_PERIODS[period];
+  const timeLabel = getChorePeriodTimeLabel(instances, period) || meta?.hint || "";
   return (
     <div style={{ marginBottom: 32 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
@@ -149,7 +151,7 @@ function PeriodGroup({ period, instances, cols, completedSet, onToggle }) {
         }}>
           {meta?.label ?? period}
         </div>
-        {meta?.hint && <div style={{ fontSize: 12, color: T.textDim }}>{meta.hint}</div>}
+        {timeLabel && <div style={{ fontSize: 12, color: T.textDim }}>{timeLabel}</div>}
         <div style={{ fontSize: 11, color: T.textMuted, marginLeft: "auto" }}>
           {instances.length} {instances.length === 1 ? "chore" : "chores"}
         </div>

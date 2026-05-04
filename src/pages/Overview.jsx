@@ -7,9 +7,11 @@ import { T } from "../theme.js";
 import { formatTime12h } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
 import {
-  getChoresForDay, CHORE_CATEGORIES, CHORE_PERIODS, displayDeadlineConcrete
+  getChoresForDay, CHORE_CATEGORIES, CHORE_PERIODS,
+  displayDeadlineConcrete, getChorePeriodTimeLabel
 } from "../lib/chores.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
+import CurrentConditionsCard from "../components/WeatherWidget.jsx";
 
 // The Dashboard is the first screen James / Jim see every morning. It
 // surfaces everything happening "right now" without requiring navigation —
@@ -29,10 +31,14 @@ export default function Overview({ data, onNavigate }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Row 1: what's left to do on the left, the full-day schedule on the right. */}
+      {/* Row 1: chores on the left; conditions stacked above the day's
+          schedule on the right. */}
       <GridRow cols={2}>
         <UpcomingChoresCard data={data} today={today} />
-        <TodayScheduleCard data={data} today={today} />
+        <Stack>
+          <CurrentConditionsCard />
+          <TodayScheduleCard data={data} today={today} />
+        </Stack>
       </GridRow>
       {/* Row 2: three status cards, each taking a third of the row. */}
       <GridRow cols={3}>
@@ -51,6 +57,15 @@ export default function Overview({ data, onNavigate }) {
 function GridRow({ cols, children }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 16, alignItems: "start" }}>
+      {children}
+    </div>
+  );
+}
+
+// Vertical stack of cards inside a single grid column.
+function Stack({ children }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {children}
     </div>
   );
@@ -139,10 +154,8 @@ function TodayScheduleCard({ data, today }) {
     (a, b) => (CHORE_PERIODS[a]?.order ?? 99) - (CHORE_PERIODS[b]?.order ?? 99)
   );
 
-  const todayLabel = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-
   return (
-    <Card title="Today's schedule" subtitle={todayLabel} icon={Clock}>
+    <Card title="Schedule at a glance" icon={Clock}>
       {occurrences.length === 0 && instances.length === 0 ? (
         <EmptyLine>Nothing on the calendar today.</EmptyLine>
       ) : (
@@ -167,10 +180,11 @@ function TodayScheduleCard({ data, today }) {
           {orderedPeriods.map(p => {
             const count = choresByPeriod[p].length;
             const meta = CHORE_PERIODS[p];
+            const timeLabel = getChorePeriodTimeLabel(instances, p) || meta?.hint || "";
             return (
               <ChoreRollupRow
                 key={p}
-                time={meta?.hint ?? ""}
+                time={timeLabel}
                 title={`${meta?.label ?? p} chores`}
                 count={count}
               />
@@ -242,6 +256,7 @@ function UpcomingChoresCard({ data, today }) {
 
 function UpcomingPeriodGroup({ period, instances }) {
   const meta = CHORE_PERIODS[period];
+  const timeLabel = getChorePeriodTimeLabel(instances, period) || meta?.hint || "";
   return (
     <div>
       <div style={{
@@ -249,7 +264,7 @@ function UpcomingPeriodGroup({ period, instances }) {
         letterSpacing: "0.14em", fontWeight: 700, marginBottom: 6
       }}>
         {meta?.label ?? period}
-        {meta?.hint && <span style={{ color: T.textMuted, fontWeight: 500, marginLeft: 8 }}>{meta.hint}</span>}
+        {timeLabel && <span style={{ color: T.textMuted, fontWeight: 500, marginLeft: 8 }}>{timeLabel}</span>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {instances.map(inst => <UpcomingChoreRow key={inst.choreId} inst={inst} />)}
@@ -291,7 +306,7 @@ function UpcomingChoreRow({ inst }) {
 function ProjectsInProgressCard({ data }) {
   const inProgress = (data.projects ?? []).filter(p => p.status === "in_progress");
   return (
-    <Card title="Projects in progress" icon={FolderKanban}>
+    <Card title="This week's projects" icon={FolderKanban}>
       {inProgress.length === 0 ? (
         <EmptyLine>No projects in progress.</EmptyLine>
       ) : (
@@ -325,7 +340,7 @@ function FarmUpdatesCard({ data }) {
     u.status === "ready_for_review" || u.status === "reviewed"
   );
   return (
-    <Card title="Farm updates needing attention" icon={Newspaper}>
+    <Card title="In-progress farm updates" icon={Newspaper}>
       {needsAttention.length === 0 ? (
         <EmptyLine>Nothing in the review queue.</EmptyLine>
       ) : (

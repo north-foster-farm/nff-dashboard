@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { T } from "./theme.js";
-import { findSection } from "./sections.jsx";
+import { findSection, findFlyoutParentForChild } from "./sections.jsx";
 import NFF_DATA from "./data/nff-data.json";
 import TopBar from "./components/TopBar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
@@ -31,16 +31,33 @@ export default function App({ session }) {
 
   const section = findSection(currentSection) || findSection("overview");
   const isSpeciesPage = section.id.startsWith("livestock_");
-  // Pages that render their own header row (title + tabs/actions inline).
-  const isSelfHeadered = section.id === "overview" || section.id === "chores";
+  // Pages that render their own header row (title + tabs/actions inline) or
+  // are full-page takeovers (Settings, ComingSoon stubs) that don't want any
+  // SectionHeader chrome.
+  const isSelfHeadered =
+    section.id === "overview" ||
+    section.id === "chores" ||
+    section.id === "settings" ||
+    section.comingSoon === true;
 
   return (
     <div style={{ background: T.bg, color: T.text, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: T.body, fontSize: 13 }}>
-      <TopBar data={data} />
+      <TopBar
+        data={data}
+        session={session}
+        onOpenSettings={() => setCurrentSection("settings")}
+      />
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <Sidebar current={currentSection} onSelect={setCurrentSection} data={data} session={session} />
+        <Sidebar current={currentSection} onSelect={setCurrentSection} data={data} />
         <main style={{ flex: 1, padding: "32px 40px", overflowY: "auto", minWidth: 0 }}>
-          {!isSelfHeadered && <SectionHeader section={section} noBottomBorder={isSpeciesPage} />}
+          {!isSelfHeadered && (
+            <SectionHeader
+              section={section}
+              parent={findFlyoutParentForChild(section.id)}
+              onNavigate={setCurrentSection}
+              noBottomBorder={isSpeciesPage}
+            />
+          )}
           <SectionContent section={section} data={data} onShowDetail={setScheduleDetail} onNavigate={setCurrentSection} />
         </main>
       </div>

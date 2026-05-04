@@ -168,6 +168,53 @@ export function describeFrequency(chore) {
   }
 }
 
+// Format a "HH:MM" time as a short 12h clock string (no leading zero on the
+// hour, no minutes when the chore starts on the hour).
+export function formatTime12hShort(hhmm) {
+  const [h, m] = (hhmm || "00:00").split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = ((h + 11) % 12) + 1;
+  return m === 0 ? `${h12} ${ampm}` : `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+// Compute the displayed start-time label for a chore period given the chore
+// instances scheduled on a particular day. The label is the earliest start
+// time among that period's chores, formatted via formatTime12hShort. Returns
+// "" if the period has no qualifying chores.
+//
+// Period windows (per spec):
+//   morning   05:00–11:59
+//   afternoon 12:00–17:59
+//   evening   18:00–04:59  (wraps midnight)
+//
+// Evening sort treats post-midnight times (00:00–04:59) as occurring after
+// 23:59, so 6 PM precedes 3 AM.
+export function getChorePeriodTimeLabel(instances, period) {
+  const inWindow = (t) => {
+    const [h, m] = (t || "00:00").split(":").map(Number);
+    const minutes = h * 60 + m;
+    if (period === "morning") return minutes >= 300 && minutes <= 719;
+    if (period === "afternoon") return minutes >= 720 && minutes <= 1079;
+    if (period === "evening") return minutes >= 1080 || minutes <= 299;
+    return false;
+  };
+  const candidates = instances.filter(
+    (i) => i.chore.period === period && inWindow(i.chore.startTime)
+  );
+  if (candidates.length === 0) return "";
+  const eveningOrder = (t) => {
+    const [h, m] = (t || "00:00").split(":").map(Number);
+    return (h < 5 ? h + 24 : h) * 60 + m;
+  };
+  const dayOrder = (t) => {
+    const [h, m] = (t || "00:00").split(":").map(Number);
+    return h * 60 + m;
+  };
+  const ord = period === "evening" ? eveningOrder : dayOrder;
+  candidates.sort((a, b) => ord(a.chore.startTime) - ord(b.chore.startTime));
+  return formatTime12hShort(candidates[0].chore.startTime);
+}
+
 // Short display for a chore's start time, respecting evening chores that are
 // anchored to sunset rather than a literal clock time.
 export function displayStartTime(chore) {
