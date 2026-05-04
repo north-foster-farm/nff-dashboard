@@ -10,14 +10,15 @@
 // the cadence lives next to the code rather than in netlify.toml.
 //
 // Env vars required (set in the Netlify site dashboard, NOT committed):
-//   SUPABASE_SERVICE_ROLE_KEY  — service-role secret. Bypasses RLS so the
-//                                upsert works without a logged-in user.
-//                                Never prefix with VITE_; that would
-//                                bake it into the client bundle.
-//   SUPABASE_URL               — same URL the frontend uses. Optional;
-//                                falls back to VITE_SUPABASE_URL if only
-//                                that one is set, since it's already
-//                                configured for the build.
+//   SUPABASE_SECRET_KEY  — secret API key (sb_secret_...). The 2025-era
+//                          replacement for the legacy service_role JWT;
+//                          bypasses RLS so the upsert works without a
+//                          logged-in user. Never prefix with VITE_; that
+//                          would bake it into the client bundle.
+//   SUPABASE_URL         — same URL the frontend uses. Optional; falls
+//                          back to VITE_SUPABASE_URL if only that one is
+//                          set, since it's already configured for the
+//                          build.
 //
 // Manual invocation for testing:
 //   curl -X POST https://<site>.netlify.app/.netlify/functions/heartbeat
@@ -27,23 +28,23 @@ const HEARTBEAT_ID = 1; // Single-row table; id=1 is the only row we touch.
 
 export default async () => {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!url || !serviceKey) {
+  if (!url || !secretKey) {
     // Fail loudly so a misconfigured deploy shows up in Netlify logs
     // instead of silently letting the project drift toward suspension.
     return new Response(
       JSON.stringify({
         ok: false,
-        error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env var"
+        error: "Missing SUPABASE_URL or SUPABASE_SECRET_KEY env var"
       }),
       { status: 500, headers: { "content-type": "application/json" } }
     );
   }
 
-  // Service-role client is created fresh per invocation — no session
+  // Secret-key client is created fresh per invocation — no session
   // persistence, no token refresh, no realtime. This is a one-shot call.
-  const supabase = createClient(url, serviceKey, {
+  const supabase = createClient(url, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 
