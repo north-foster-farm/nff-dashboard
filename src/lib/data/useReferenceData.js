@@ -13,13 +13,15 @@ import NFF_DATA from "../../data/nff-data.json";
 // half-loaded state — they see JSON data until the DB pulls in, then flip
 // atomically to DB data.
 //
-// Keys exposed (growing over batches):
+// Keys exposed:
 //   Batch 1 — suppliers, machines, trailers, feeds, spaces
 //   Batch 2 — livestock ({species}), feedSchedules, chores ({definitions})
 //   Batch 3 — events ({kinds}), productKinds, inventory ({eggLots, chickenLots})
+//   Batch 4 — threads, orders, updates, projects
 //
-// Later batches will add keys to INITIAL / the final return without
-// touching App.jsx again.
+// This is the complete migrated reference set. Anything still living in
+// nff-data.json (costs, model notes, meta) is intentionally left there:
+// it's static config / display prose with no editing surface.
 const INITIAL = {
   suppliers: null,
   machines: null,
@@ -31,7 +33,11 @@ const INITIAL = {
   chores: null,
   events: null,
   productKinds: null,
-  inventory: null
+  inventory: null,
+  threads: null,
+  orders: null,
+  updates: null,
+  projects: null
 };
 
 export function useReferenceData() {
@@ -53,6 +59,10 @@ export function useReferenceData() {
     loadEvents().then(v => !cancelled && setState(s => ({ ...s, events: v })));
     loadProductKinds().then(v => !cancelled && setState(s => ({ ...s, productKinds: v })));
     loadInventory().then(v => !cancelled && setState(s => ({ ...s, inventory: v })));
+    loadThreads().then(v => !cancelled && setState(s => ({ ...s, threads: v })));
+    loadOrders().then(v => !cancelled && setState(s => ({ ...s, orders: v })));
+    loadUpdates().then(v => !cancelled && setState(s => ({ ...s, updates: v })));
+    loadProjects().then(v => !cancelled && setState(s => ({ ...s, projects: v })));
     return () => { cancelled = true; };
   }, []);
 
@@ -385,3 +395,86 @@ async function loadInventory() {
     modelNotes: NFF_DATA.inventory?.modelNotes ?? []
   };
 }
+
+// Threads — open questions / decision records. Status is "open" or
+// "resolved" today; future statuses just work without schema changes.
+async function loadThreads() {
+  const { data, error } = await supabase
+    .from("threads")
+    .select("id, title, question, status, resolution, notes, ordinal")
+    .order("ordinal");
+  if (error) { console.error("loadThreads:", error); return null; }
+  // Threads.jsx reads each thread directly with t.status, t.title, etc.
+  // Existing JSON entries have no `notes` key on most rows; we strip
+  // null `notes`/`resolution` to keep the shape identical to JSON.
+  return data.map(t => {
+    const out = {
+      id: t.id,
+      title: t.title,
+      question: t.question,
+      status: t.status
+    };
+    if (t.resolution !== null) out.resolution = t.resolution;
+    if (t.notes !== null) out.notes = t.notes;
+    return out;
+  });
+}
+
+// Orders / updates / projects — empty at launch, but we still surface
+// them as empty arrays so downstream filters / map calls Just Work.
+async function loadOrders() {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id, customer_name, status, total_cents, notes, placed_at, fulfilled_at, line_items")
+    .order("placed_at", { ascending: false });
+  if (error) { console.error("loadOrders:", error); return null; }
+  return data.map(o => ({
+    id: o.id,
+    customerName: o.customer_name,
+    status: o.status,
+    totalCents: o.total_cents,
+    notes: o.notes,
+    placedAt: o.placed_at,
+    fulfilledAt: o.fulfilled_at,
+    lineItems: o.line_items
+  }));
+}
+
+async function loadUpdates() {
+  const { data, error } = await supabase
+    .from("updates")
+    .select("id, title, body, status, author_email, created_at, updated_at, published_at")
+    .order("created_at", { ascending: false });
+  if (error) { console.error("loadUpdates:", error); return null; }
+  return data.map(u => ({
+    id: u.id,
+    title: u.title,
+    body: u.body,
+    status: u.status,
+    authorEmail: u.author_email,
+    createdAt: u.created_at,
+    updatedAt: u.updated_at,
+    publishedAt: u.published_at
+  }));
+}
+
+async function loadProjects() {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, title, description, status, owner_email, started_at, target_date, completed_at, notes, created_at")
+    .order("created_at", { ascending: false });
+  if (error) { console.error("loadProjects:", error); return null; }
+  return data.map(p => ({
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    status: p.status,
+    ownerEmail: p.owner_email,
+    startedAt: p.started_at,
+    targetDate: p.target_date,
+    completedAt: p.completed_at,
+    notes: p.notes,
+    createdAt: p.created_at
+  }));
+}
+
