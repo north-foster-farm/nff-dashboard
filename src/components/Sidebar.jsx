@@ -1,7 +1,8 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { ArrowRight, ChevronRight, X } from "lucide-react";
+import { ArrowRight, ChevronRight, LogOut, X } from "lucide-react";
 import { T } from "../theme.js";
 import { SECTIONS, findFlyoutParentForChild } from "../sections.jsx";
+import { supabase } from "../lib/supabase.js";
 
 const SIDEBAR_WIDTH = 240;
 
@@ -9,7 +10,7 @@ const SIDEBAR_WIDTH = 240;
 // declared in index.html (`nff-flyout-in` / `nff-flyout-out`).
 const FLYOUT_ANIM_MS = 140;
 
-export default function Sidebar({ current, onSelect, data }) {
+export default function Sidebar({ current, onSelect, data, session }) {
   const [openFlyoutId, setOpenFlyoutId] = useState(null);
   const [closing, setClosing] = useState(false);
   const flyoutRef = useRef(null);
@@ -66,8 +67,15 @@ export default function Sidebar({ current, onSelect, data }) {
     <>
       <nav
         ref={navRef}
-        style={{ width: SIDEBAR_WIDTH, borderRight: `1px solid ${T.border}`, padding: "20px 0", flexShrink: 0, overflowY: "auto", background: T.surface }}
+        style={{
+          width: SIDEBAR_WIDTH, borderRight: `1px solid ${T.border}`,
+          flexShrink: 0, background: T.surface,
+          // Flex column so the sign-in footer pins to the bottom; the inner
+          // list scrolls independently if the sections overflow vertically.
+          display: "flex", flexDirection: "column"
+        }}
       >
+        <div style={{ padding: "20px 0", flex: 1, overflowY: "auto" }}>
         {SECTIONS.map((s, idx) => {
           if (s.kind === "spacer") {
             return <div key={`spacer-${idx}`} style={{ height: 14 }} />;
@@ -102,6 +110,8 @@ export default function Sidebar({ current, onSelect, data }) {
             </div>
           );
         })}
+        </div>
+        <SessionFooter session={session} />
       </nav>
 
       {openFlyoutId && (
@@ -254,5 +264,83 @@ function FlyoutItem({ child, active, count, onSelect }) {
         )}
       </TrailingSlot>
     </button>
+  );
+}
+
+// Session footer — pinned to the bottom of the sidebar. Shows who's signed
+// in and gives a one-click path to sign out. The avatar is Google's own
+// profile picture (available on the session's user_metadata when the user
+// signed in via Google OAuth); we fall back to an initials bubble if the
+// picture is missing or fails to load.
+function SessionFooter({ session }) {
+  const [hover, setHover] = useState(false);
+  const [pictureFailed, setPictureFailed] = useState(false);
+
+  if (!session?.user) return null;
+  const user = session.user;
+  const meta = user.user_metadata ?? {};
+  const displayName = meta.full_name || meta.name || user.email;
+  const picture = !pictureFailed ? (meta.avatar_url || meta.picture) : null;
+  const initial = (displayName?.[0] ?? "?").toUpperCase();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    // LoginGate's onAuthStateChange listener handles the re-render.
+  };
+
+  return (
+    <div
+      style={{
+        borderTop: `1px solid ${T.border}`,
+        padding: "10px 16px",
+        display: "flex", alignItems: "center", gap: 10,
+        background: hover ? T.rowHover : "transparent",
+        transition: "background-color 140ms ease"
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {picture ? (
+        <img
+          src={picture}
+          alt=""
+          width={24}
+          height={24}
+          referrerPolicy="no-referrer"
+          onError={() => setPictureFailed(true)}
+          style={{ borderRadius: "50%", flexShrink: 0, objectFit: "cover" }}
+        />
+      ) : (
+        <div style={{
+          width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+          background: T.accent, color: T.onAccent,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 11, fontWeight: 700
+        }}>
+          {initial}
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {displayName}
+        </div>
+        <div style={{ fontSize: 10, color: T.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {user.email}
+        </div>
+      </div>
+      <button
+        onClick={handleSignOut}
+        title="Sign out"
+        aria-label="Sign out"
+        style={{
+          background: "transparent", border: "none",
+          color: T.textMuted, cursor: "pointer",
+          padding: 6, display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0
+        }}
+      >
+        <LogOut size={14} />
+      </button>
+    </div>
   );
 }

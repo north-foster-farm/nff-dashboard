@@ -1,0 +1,194 @@
+import { useEffect, useState } from "react";
+import { T } from "../theme.js";
+import { supabase } from "../lib/supabase.js";
+
+// LoginGate wraps the entire app and enforces three possible states:
+//
+//   1. Unauthenticated  → show "Sign in with Google" button
+//   2. Authenticated but not on the admins allowlist → show "not authorized"
+//      with a sign-out button. Covers the (very unlikely) case where Google
+//      hands us a successful session for an email we haven't approved.
+//   3. Authenticated + on allowlist → render children (the real app)
+//
+// Children receive the current Supabase session via the `session` prop so
+// downstream components can show the user's email in the sidebar footer, etc.
+// A bare `<AuthContext>` is overkill given we only have one consumer.
+export default function LoginGate({ children }) {
+  const [state, setState] = useState({ status: "loading", session: null });
+
+  useEffect(() => {
+    // Initial check on mount. getSession() is synchronous against localStorage
+    // (fast) and will return null if nothing is cached.
+    supabase.auth.getSession().then(({ data }) => {
+      checkAdmin(data.session).then(setState);
+    });
+
+    // Live updates whenever auth state changes (sign-in, sign-out, token
+    // refresh, and — critically — the PKCE code exchange that happens
+    // automatically after the OAuth redirect).
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      checkAdmin(session).then(setState);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  if (state.status === "loading") return <Splash label="Loading…" />;
+  if (state.status === "signed-out") return <SignInView />;
+  if (state.status === "not-authorized") return <NotAuthorizedView session={state.session} />;
+  // Authenticated admin — render the app, hand them the session.
+  return children(state.session);
+}
+
+// Runs the is-admin RPC against the current session and resolves to the
+// concrete UI state. Isolated here so both the initial load and the
+// onAuthStateChange handler can share the logic.
+async function checkAdmin(session) {
+  if (!session) return { status: "signed-out", session: null };
+  const { data, error } = await supabase.rpc("current_user_is_admin");
+  if (error) {
+    // Swallow the error as "not authorized" rather than crashing the UI —
+    // safer default if the function is missing or the DB is unreachable.
+    // The user can at least sign out and try again.
+    console.error("is-admin check failed:", error);
+    return { status: "not-authorized", session };
+  }
+  return { status: data ? "authorized" : "not-authorized", session };
+}
+
+// ─── Sign-in view ───────────────────────────────────────────────────────────
+
+function SignInView() {
+  const [signingIn, setSigningIn] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const handleSignIn = async () => {
+    setSigningIn(true);
+    setErr(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        // Come back to whatever origin initiated the sign-in. In dev this is
+        // http://localhost:5173; in prod it's https://admin.northfosterfarm.com.
+        // Both must be listed in Supabase Auth → URL Configuration.
+        redirectTo: window.location.origin,
+        // Request all three scopes explicitly. `openid` + `email` are
+        // Supabase's defaults; adding `profile` is what causes Google to
+        // return the user's display name and avatar URL as OIDC claims,
+        // which Supabase then surfaces as avatar_url / picture /
+        // full_name on user_metadata. Without this, user_metadata comes
+        // back almost empty (just email + sub).
+        scopes: "openid email profile",
+        // `prompt=consent` forces Google to show the consent screen on
+        // every sign-in instead of silently reusing a cached grant. We
+        // need this once after expanding scopes on the OAuth consent
+        // screen, otherwise users with an existing grant log in via the
+        // old narrower scope set and never receive the picture claim.
+        // Safe to leave on long-term: the friction is one extra click
+        // every few months when Google rotates session cookies.
+        queryParams: { prompt: "consent" }
+      }
+    });
+    if (error) {
+      setErr(error.message);
+      setSigningIn(false);
+    }
+    // On success, the browser navigates to Google and never returns to this
+    // line — we don't clear `signingIn` on the happy path.
+  };
+
+  return (
+    <Centered>
+      <div style={{ fontFamily: T.heading, fontSize: 28, fontWeight: 700, color: T.text, marginBottom: 8 }}>
+        North Foster Farm
+      </div>
+      <div style={{ fontSize: 13, color: T.textDim, marginBottom: 32 }}>
+        Admin dashboard
+      </div>
+      <button
+        onClick={handleSignIn}
+        disabled={signingIn}
+        style={{
+          background: T.accent, color: T.onAccent,
+          border: "none", fontFamily: "inherit", fontWeight: 600, fontSize: 13,
+          padding: "10px 18px", cursor: signingIn ? "default" : "pointer",
+          opacity: signingIn ? 0.7 : 1,
+          display: "inline-flex", alignItems: "center", gap: 10
+        }}
+      >
+        <GoogleGlyph /> {signingIn ? "Redirecting…" : "Sign in with Google"}
+      </button>
+      {err && (
+        <div style={{ marginTop: 16, fontSize: 12, color: T.warn, maxWidth: 360, textAlign: "center" }}>
+          {err}
+        </div>
+      )}
+    </Centered>
+  );
+}
+
+// ─── Not-authorized view ────────────────────────────────────────────────────
+
+function NotAuthorizedView({ session }) {
+  const email = session?.user?.email ?? "unknown";
+  const handleSignOut = () => supabase.auth.signOut();
+  return (
+    <Centered>
+      <div style={{ fontFamily: T.heading, fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 12 }}>
+        Not authorized
+      </div>
+      <div style={{ fontSize: 13, color: T.textDim, maxWidth: 380, textAlign: "center", marginBottom: 24 }}>
+        You're signed in as <strong style={{ color: T.text }}>{email}</strong>, but
+        that address isn't on the admin allowlist for this dashboard.
+      </div>
+      <button
+        onClick={handleSignOut}
+        style={{
+          background: "transparent", color: T.textDim,
+          border: `1px solid ${T.border}`, fontFamily: "inherit",
+          fontSize: 12, fontWeight: 600, padding: "8px 14px", cursor: "pointer",
+          textTransform: "uppercase", letterSpacing: "0.12em"
+        }}
+      >
+        Sign out
+      </button>
+    </Centered>
+  );
+}
+
+// ─── Layout helpers ─────────────────────────────────────────────────────────
+
+function Splash({ label }) {
+  return (
+    <Centered>
+      <div style={{ fontSize: 12, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.18em" }}>
+        {label}
+      </div>
+    </Centered>
+  );
+}
+
+function Centered({ children }) {
+  return (
+    <div style={{
+      background: T.bg, color: T.text, minHeight: "100vh",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      fontFamily: T.body, padding: 24
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// Inline Google "G" SVG so we don't pull in another icon library just for
+// the sign-in button. Colors match Google's brand palette.
+function GoogleGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.8 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.3 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.4-.4-3.5z"/>
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16.1 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.3 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35 26.8 36 24 36c-5.3 0-9.8-3.1-11.3-7.5l-6.5 5C9.6 39.6 16.2 44 24 44z"/>
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 2-2 3.8-3.7 5.1l6.2 5.2C41.9 34 44 29.4 44 24c0-1.2-.1-2.4-.4-3.5z"/>
+    </svg>
+  );
+}
