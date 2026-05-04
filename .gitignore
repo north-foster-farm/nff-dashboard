@@ -9,3 +9,6 @@ dist
 .env
 .env.local
 .env.*.local
+
+# Override global config for migration SQL files
+!supabase/migrations/*.sql
