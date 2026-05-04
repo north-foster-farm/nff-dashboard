@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
+import NFF_DATA from "../../data/nff-data.json";
 
 // Loads every migrated reference table in parallel and returns them keyed
 // under the SAME names the UI already uses on the `data` object from
@@ -15,6 +16,7 @@ import { supabase } from "../supabase.js";
 // Keys exposed (growing over batches):
 //   Batch 1 — suppliers, machines, trailers, feeds, spaces
 //   Batch 2 — livestock ({species}), feedSchedules, chores ({definitions})
+//   Batch 3 — events ({kinds}), productKinds, inventory ({eggLots, chickenLots})
 //
 // Later batches will add keys to INITIAL / the final return without
 // touching App.jsx again.
@@ -26,7 +28,10 @@ const INITIAL = {
   spaces: null,
   livestock: null,
   feedSchedules: null,
-  chores: null
+  chores: null,
+  events: null,
+  productKinds: null,
+  inventory: null
 };
 
 export function useReferenceData() {
@@ -45,6 +50,9 @@ export function useReferenceData() {
     loadLivestock().then(v => !cancelled && setState(s => ({ ...s, livestock: v })));
     loadFeedSchedules().then(v => !cancelled && setState(s => ({ ...s, feedSchedules: v })));
     loadChores().then(v => !cancelled && setState(s => ({ ...s, chores: v })));
+    loadEvents().then(v => !cancelled && setState(s => ({ ...s, events: v })));
+    loadProductKinds().then(v => !cancelled && setState(s => ({ ...s, productKinds: v })));
+    loadInventory().then(v => !cancelled && setState(s => ({ ...s, inventory: v })));
     return () => { cancelled = true; };
   }, []);
 
@@ -262,5 +270,118 @@ async function loadChores() {
     })),
     completions: [],
     modelNotes: []
+  };
+}
+
+// Events: kinds + flat instance list, re-nested into kind.instances to
+// match the JSON shape the UI reads from. We preserve the `modelNotes`
+// array by returning it from the static JSON via the merge fallback — it
+// isn't migrated because it's display-only prose.
+async function loadEvents() {
+  const [kindsRes, instancesRes] = await Promise.all([
+    supabase
+      .from("event_kinds")
+      .select("id, label, description, ordinal")
+      .order("ordinal"),
+    supabase
+      .from("event_instances")
+      .select(
+        "id, kind_id, label, subtitle, recurrence, date, start_time, end_time, location, processing, notes"
+      )
+  ]);
+  if (kindsRes.error) { console.error("loadEvents:kinds", kindsRes.error); return null; }
+  if (instancesRes.error) { console.error("loadEvents:instances", instancesRes.error); return null; }
+
+  const instancesByKind = new Map();
+  for (const inst of instancesRes.data) {
+    const arr = instancesByKind.get(inst.kind_id) ?? [];
+    arr.push({
+      id: inst.id,
+      label: inst.label,
+      subtitle: inst.subtitle,
+      recurrence: inst.recurrence,
+      date: inst.date,
+      startTime: inst.start_time,
+      endTime: inst.end_time,
+      location: inst.location,
+      processing: inst.processing,
+      notes: inst.notes
+    });
+    instancesByKind.set(inst.kind_id, arr);
+  }
+
+  return {
+    kinds: kindsRes.data.map(k => ({
+      id: k.id,
+      label: k.label,
+      description: k.description,
+      instances: instancesByKind.get(k.id) ?? []
+    })),
+    // modelNotes is display-only prose; carry it forward from the JSON
+    // so the merge at App.jsx replaces `data.events` wholesale without
+    // losing the notes section on Schedule / AllEvents.
+    modelNotes: NFF_DATA.events?.modelNotes ?? []
+  };
+}
+
+// Product-kind catalog — trivial shape remap.
+async function loadProductKinds() {
+  const { data, error } = await supabase
+    .from("product_kinds")
+    .select(
+      "id, name, category, sale_unit, source_species_id, source_material, yield_share_of_dressed_weight, size_brackets, ordinal"
+    )
+    .order("ordinal");
+  if (error) { console.error("loadProductKinds:", error); return null; }
+  return data.map(p => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    saleUnit: p.sale_unit,
+    sourceSpeciesId: p.source_species_id,
+    sourceMaterial: p.source_material,
+    yieldShareOfDressedWeight: p.yield_share_of_dressed_weight,
+    sizeBrackets: p.size_brackets
+  }));
+}
+
+// Inventory: egg_lots + chicken_lots, empty at launch. Shape matches what
+// Inventory.jsx reads (`data.inventory.eggLots`, `data.inventory.chickenLots`).
+// `modelNotes` stays JSON-only like events.
+async function loadInventory() {
+  const [eggRes, chickenRes] = await Promise.all([
+    supabase
+      .from("egg_lots")
+      .select("id, collection_date, carton_count, eggs_per_carton, location, notes")
+      .order("collection_date", { ascending: false }),
+    supabase
+      .from("chicken_lots")
+      .select("id, product_kind_id, size_bracket_id, processing_date, quantity, location, notes")
+      .order("processing_date", { ascending: false })
+  ]);
+  if (eggRes.error) { console.error("loadInventory:eggs", eggRes.error); return null; }
+  if (chickenRes.error) { console.error("loadInventory:chicken", chickenRes.error); return null; }
+
+  return {
+    eggLots: eggRes.data.map(e => ({
+      id: e.id,
+      collectionDate: e.collection_date,
+      cartonCount: e.carton_count,
+      eggsPerCarton: e.eggs_per_carton,
+      location: e.location,
+      notes: e.notes
+    })),
+    chickenLots: chickenRes.data.map(c => ({
+      id: c.id,
+      productKindId: c.product_kind_id,
+      sizeBracketId: c.size_bracket_id,
+      processingDate: c.processing_date,
+      quantity: c.quantity,
+      location: c.location,
+      notes: c.notes
+    })),
+    // Same pattern as events.modelNotes — carry forward display prose
+    // from the JSON since we didn't migrate it.
+    modelNotes: NFF_DATA.inventory?.modelNotes ?? []
   };
 }
