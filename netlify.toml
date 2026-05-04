@@ -1,0 +1,26 @@
+# Netlify build + routing config for the admin.northfosterfarm.com dashboard.
+# See https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  # Vite outputs a static SPA into ./dist
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  # Scheduled function `heartbeat` lives at netlify/functions/heartbeat.mjs.
+  # The schedule itself is declared inline in that file via `export const
+  # config = { schedule: "@daily" }`. Declaring the directory here is
+  # enough — Netlify auto-discovers function files inside it.
+  directory = "netlify/functions"
+  # Force ESM Node runtime (matches our .mjs functions and lets us use
+  # top-level imports without a build step).
+  node_bundler = "esbuild"
+
+# SPA fallback: any path not matched by a static asset or function is
+# served as index.html so React Router (or our internal section router)
+# can take over. Status 200 — we don't want a 301 because the URL the
+# user actually sees should remain the deep link they navigated to.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
