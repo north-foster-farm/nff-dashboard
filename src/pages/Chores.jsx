@@ -6,6 +6,7 @@ import {
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete
 } from "../lib/chores.js";
+import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 
 // The page renders its own header (title + tabs) in place of the generic
 // SectionHeader, so it can fit a tab bar + inline actions.
@@ -102,6 +103,10 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   // just because one had fewer chores.
   const [setWidthRef, cols] = useColumnCount(960);
 
+  // One subscription for the whole tab. The Set + toggle propagate down to
+  // each TodayChoreRow as props — see PeriodGroup → TodayChoreRow below.
+  const { completedSet, toggle: toggleCompletion } = useChoreCompletions(today);
+
   return (
     <div ref={setWidthRef}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
@@ -120,13 +125,20 @@ function TodayTab({ data, currentUser, onChangeUser }) {
       )}
 
       {orderedKeys.map(period => (
-        <PeriodGroup key={period} period={period} instances={groups[period]} cols={cols} />
+        <PeriodGroup
+          key={period}
+          period={period}
+          instances={groups[period]}
+          cols={cols}
+          completedSet={completedSet}
+          onToggle={toggleCompletion}
+        />
       ))}
     </div>
   );
 }
 
-function PeriodGroup({ period, instances, cols }) {
+function PeriodGroup({ period, instances, cols, completedSet, onToggle }) {
   const meta = CHORE_PERIODS[period];
   return (
     <div style={{ marginBottom: 32 }}>
@@ -146,19 +158,27 @@ function PeriodGroup({ period, instances, cols }) {
         items={instances}
         cols={cols}
         keyFor={inst => inst.choreId}
-        renderItem={inst => <TodayChoreRow inst={inst} />}
+        renderItem={inst => (
+          <TodayChoreRow
+            inst={inst}
+            done={completedSet?.has(inst.chore.id) ?? false}
+            onToggle={onToggle}
+          />
+        )}
       />
     </div>
   );
 }
 
-function TodayChoreRow({ inst }) {
-  const [done, setDone] = useState(false);
+function TodayChoreRow({ inst, done, onToggle }) {
   const { chore, assignee } = inst;
+  // Persistence happens through onToggle (Supabase via useChoreCompletions).
+  // The Set arrives via realtime so re-rendering on success is automatic.
+  const handleClick = () => onToggle?.(chore.id, done);
   return (
     <div style={{ background: T.surface, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
       <button
-        onClick={() => setDone(v => !v)}
+        onClick={handleClick}
         aria-label={done ? "Mark incomplete" : "Mark complete"}
         style={{
           width: 20, height: 20, flexShrink: 0,

@@ -48,7 +48,7 @@ export default function SectionContent({ section, data, onShowDetail, onNavigate
     case "inventory": return <Inventory data={data} />;
     case "schedule": return <Schedule data={data} onShowDetail={onShowDetail} />;
     case "chores": return <Chores data={data} />;
-    case "activity": return <Activity data={data} />;
+    case "activity": return <Activity />;
     case "threads": return <Threads data={data} />;
     default: {
       const items = data[section.id] ?? [];

@@ -1,13 +1,26 @@
 import { T } from "../theme.js";
+import { useActivityLog } from "../lib/data/useActivityLog.js";
 
 // Full activity log. Mirrors the Activity card on the Dashboard but without
-// the 10-row cap and with richer filters once the log-storage thread is
-// resolved (see thread_log_storage). For now the data source is `data.logs`
-// — empty until completion logging is wired.
+// the row cap and with richer filters once the schema picks up more `kind`
+// values. The data source is the live activity_log table — every chore
+// check / batch assignment lands here through DB triggers, with realtime
+// pushes so the page updates as work is logged in another tab.
 
-export default function Activity({ data }) {
-  const logs = data?.logs ?? [];
-  if (logs.length === 0) {
+export default function Activity() {
+  const { entries, loading } = useActivityLog();
+
+  if (loading) {
+    return (
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "36px 24px", textAlign: "center" }}>
+        <div style={{ fontSize: 12, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.18em" }}>
+          Loading activity…
+        </div>
+      </div>
+    );
+  }
+
+  if (entries.length === 0) {
     return (
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "36px 24px", textAlign: "center" }}>
         <div style={{ fontSize: 13, color: T.textMuted, marginBottom: 8, fontWeight: 500 }}>No activity logged yet</div>
@@ -17,11 +30,10 @@ export default function Activity({ data }) {
       </div>
     );
   }
-  // Reverse-chronological by default — most recent first.
-  const sorted = [...logs].sort((a, b) => new Date(b.logTime) - new Date(a.logTime));
+  // useActivityLog already returns rows in reverse-chronological order.
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
-      {sorted.map((l, i) => <LogRow key={l.id ?? i} log={l} />)}
+      {entries.map((l, i) => <LogRow key={l.id ?? i} log={l} />)}
     </div>
   );
 }

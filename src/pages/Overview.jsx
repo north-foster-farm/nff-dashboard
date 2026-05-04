@@ -9,6 +9,7 @@ import { getEventOccurrences } from "../lib/recurrence.js";
 import {
   getChoresForDay, CHORE_CATEGORIES, CHORE_PERIODS, displayDeadlineConcrete
 } from "../lib/chores.js";
+import { useActivityLog } from "../lib/data/useActivityLog.js";
 
 // The Dashboard is the first screen James / Jim see every morning. It
 // surfaces everything happening "right now" without requiring navigation —
@@ -58,13 +59,23 @@ function GridRow({ cols, children }) {
 // ─── Activity (capped + link) ───────────────────────────────────────────────
 
 function ActivitySinceYesterday({ data, today, onNavigate }) {
-  const windowStart = new Date(today);
-  windowStart.setDate(windowStart.getDate() - 1);
-  windowStart.setHours(0, 0, 0, 0);
+  const windowStart = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [today]);
 
-  const all = (data?.logs ?? []).filter(l => new Date(l.logTime) >= windowStart);
+  // Live activity log query, capped server-side at ACTIVITY_LIMIT + 1 so we
+  // can detect overflow ("View all N entries") without pulling everything.
+  // The hook already subscribes to realtime so this card ticks forward as
+  // chores get checked off.
+  const { entries } = useActivityLog({ sinceDate: windowStart, limit: ACTIVITY_LIMIT + 1 });
+  const all = entries ?? [];
   const visible = all.slice(0, ACTIVITY_LIMIT);
-  const overflow = Math.max(0, all.length - ACTIVITY_LIMIT);
+  // We pulled LIMIT+1 specifically so a non-zero diff means "there's more".
+  // The Activity page does the unbounded query when the user clicks through.
+  const hasMore = all.length > ACTIVITY_LIMIT;
 
   return (
     <Card
@@ -77,12 +88,12 @@ function ActivitySinceYesterday({ data, today, onNavigate }) {
       ) : (
         <>
           <ActivityTimeline items={visible} />
-          {overflow > 0 && (
+          {hasMore && (
             <button
               onClick={() => onNavigate?.("activity")}
               style={linkButtonStyle}
             >
-              View all {all.length} activity entries
+              View all activity
               <ArrowUpRight size={12} style={{ marginLeft: 4, transform: "translateY(2px)" }} />
             </button>
           )}
