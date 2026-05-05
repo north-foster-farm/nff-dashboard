@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase.js";
 import { CHORE_SEEDS } from "../../data/choreSeeds.js";
 
@@ -7,10 +7,16 @@ import { CHORE_SEEDS } from "../../data/choreSeeds.js";
 // updates without a refresh when chores get checked off.
 //
 // The returned `entries` are pre-shaped to match the existing UI:
-//   { id, logTime, actor, summary, kind, payload }
+//   { id, logTime, actor, summary, kind, payload, edited, ownerEmail }
 // — `logTime` is a string (UI parses with `new Date()` already) and
 // `actor` / `summary` are the human-readable rendering of the row, so
 // neither Activity.jsx nor Overview's ActivityTimeline needs changes.
+//
+// Returns helpers `edit(entryId, newSummary)` and `remove(entryId)` that
+// invoke the SECURITY DEFINER RPCs added in migration 0007. They throw
+// on failure (RPC errors, ownership mismatch). The realtime subscription
+// reflects the change back into local state automatically; the optimistic
+// update path below is just to keep the UI snappy during the round-trip.
 export function useActivityLog({ sinceDate, limit } = {}) {
   const [rows, setRows] = useState(null); // null = loading
   const [error, setError] = useState(null);
@@ -25,7 +31,7 @@ export function useActivityLog({ sinceDate, limit } = {}) {
     setError(null);
     let q = supabase
       .from("activity_log")
-      .select("id, occurred_at, actor_email, kind, payload")
+      .select("id, occurred_at, actor_email, kind, payload, edited_summary")
       .order("occurred_at", { ascending: false });
     if (sinceISO) q = q.gte("occurred_at", sinceISO);
     if (typeof limit === "number") q = q.limit(limit);
@@ -41,7 +47,7 @@ export function useActivityLog({ sinceDate, limit } = {}) {
     return () => { cancelled = true; };
   }, [sinceISO, limit]);
 
-  // Realtime: prepend new rows as they land.
+  // Realtime: prepend new rows, replace edited rows, remove deleted rows.
   useEffect(() => {
     const channel = supabase
       .channel("activity_log:stream")
@@ -51,16 +57,70 @@ export function useActivityLog({ sinceDate, limit } = {}) {
         (payload) => {
           setRows((prev) => {
             if (!prev) return prev;
-            // Honour the sinceDate window if one was set.
             if (sinceISO && payload.new.occurred_at < sinceISO) return prev;
             const next = [payload.new, ...prev];
             return typeof limit === "number" ? next.slice(0, limit) : next;
           });
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "activity_log" },
+        (payload) => {
+          setRows((prev) => {
+            if (!prev) return prev;
+            return prev.map(r => r.id === payload.new.id ? payload.new : r);
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "activity_log" },
+        (payload) => {
+          setRows((prev) => {
+            if (!prev) return prev;
+            return prev.filter(r => r.id !== payload.old.id);
+          });
+        }
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [sinceISO, limit]);
+
+  // ── Mutators ─────────────────────────────────────────────────────────
+  const edit = useCallback(async (entryId, newSummary) => {
+    // Optimistic local update so the input doesn't snap back during the
+    // round-trip. Realtime UPDATE will overwrite on success / a refetch
+    // restores on failure.
+    setRows((prev) => prev
+      ? prev.map(r => r.id === entryId
+          ? { ...r, edited_summary: newSummary?.trim() || null }
+          : r)
+      : prev);
+    const { error } = await supabase.rpc("edit_activity_entry", {
+      entry_id: entryId,
+      new_summary: newSummary
+    });
+    if (error) throw error;
+  }, []);
+
+  const remove = useCallback(async (entryId) => {
+    // Optimistic remove.
+    let removed = null;
+    setRows((prev) => {
+      if (!prev) return prev;
+      removed = prev.find(r => r.id === entryId) ?? null;
+      return prev.filter(r => r.id !== entryId);
+    });
+    const { error } = await supabase.rpc("delete_activity_entry", {
+      entry_id: entryId
+    });
+    if (error) {
+      // Roll back the optimistic remove.
+      if (removed) setRows((prev) => (prev ? [removed, ...prev] : prev));
+      throw error;
+    }
+  }, []);
 
   // Map raw rows into the shape the existing UI expects. Memoized so the
   // identity is stable across renders for downstream React.memo if any.
@@ -69,7 +129,13 @@ export function useActivityLog({ sinceDate, limit } = {}) {
     [rows]
   );
 
-  return { entries, loading: rows === null, error };
+  return {
+    entries,
+    loading: rows === null,
+    error,
+    edit,
+    remove
+  };
 }
 
 // Render-side translation: row → display tuple. Lives here (not in the UI
@@ -77,11 +143,16 @@ export function useActivityLog({ sinceDate, limit } = {}) {
 // add. When a new `kind` lands without a matching renderer we fall back to
 // a generic "did something" line that still surfaces actor + time.
 function toUIEntry(row) {
+  const generated = summarize(row);
+  const editedSummary = row.edited_summary?.trim() || null;
   return {
     id: row.id,
     logTime: row.occurred_at,
     actor: actorDisplay(row.actor_email),
-    summary: summarize(row),
+    summary: editedSummary ?? generated,
+    generatedSummary: generated,
+    edited: editedSummary != null,
+    ownerEmail: row.actor_email,
     kind: row.kind,
     payload: row.payload
   };

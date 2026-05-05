@@ -15,7 +15,9 @@ import {
 } from "../lib/chores.js";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
+import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import CurrentConditionsCard from "../components/WeatherWidget.jsx";
+import ActivityRow from "../components/ActivityRow.jsx";
 
 // The Dashboard is the first screen James / Jim see every morning. It
 // surfaces everything happening "right now" without requiring navigation —
@@ -87,7 +89,8 @@ function ActivitySinceYesterday({ data, today, onNavigate }) {
   // can detect overflow ("View all N entries") without pulling everything.
   // The hook already subscribes to realtime so this card ticks forward as
   // chores get checked off.
-  const { entries } = useActivityLog({ sinceDate: windowStart, limit: ACTIVITY_LIMIT + 1 });
+  const { entries, edit, remove } = useActivityLog({ sinceDate: windowStart, limit: ACTIVITY_LIMIT + 1 });
+  const userEmail = useCurrentUserEmail();
   const all = entries ?? [];
   const visible = all.slice(0, ACTIVITY_LIMIT);
   const hasMore = all.length > ACTIVITY_LIMIT;
@@ -102,7 +105,19 @@ function ActivitySinceYesterday({ data, today, onNavigate }) {
         <EmptyLine>No activity logged yet. Chore completions, temperature readings, and other log entries will appear here as they're recorded.</EmptyLine>
       ) : (
         <>
-          <ActivityTimeline items={visible} />
+          <ol className="m-0 p-0 list-none flex flex-col gap-2">
+            {visible.map((entry) => (
+              <ActivityRow
+                key={entry.id}
+                entry={entry}
+                ownerEmail={userEmail}
+                onEdit={edit}
+                onDelete={remove}
+                renderTime={renderTimeShort}
+                compact
+              />
+            ))}
+          </ol>
           {hasMore && (
             <button
               onClick={() => onNavigate?.("activity")}
@@ -118,21 +133,9 @@ function ActivitySinceYesterday({ data, today, onNavigate }) {
   );
 }
 
-function ActivityTimeline({ items }) {
-  return (
-    <ol className="m-0 p-0 list-none flex flex-col gap-2">
-      {items.map((l, i) => (
-        <li key={l.id ?? i} className="flex gap-2.5 text-xs">
-          <div className="[font-variant-numeric:tabular-nums] text-dim shrink-0 min-w-[68px]">
-            {new Date(l.logTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-          </div>
-          <div className="text-fg">
-            <span className="text-dim">{l.actor}</span> {l.summary ?? l.type ?? "logged an entry"}
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
+// Compact "10:14 AM" time renderer for the dashboard activity card.
+function renderTimeShort(logTime) {
+  return new Date(logTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
 // ─── Schedule at a glance (unified timeline) ─────────────────────────────────
