@@ -27,8 +27,6 @@ function countUpdatesNeedingAttention(d) {
 export const SECTIONS = [
   { id: "overview", group: null, label: "Dashboard", icon: Home, description: "Single-glance state of the farm", getCount: () => null },
 
-  { kind: "spacer" },
-
   { id: "schedule", group: "Planning", label: "Schedule", icon: Calendar, description: "Calendar and timeline view of everything date-bound", getCount: () => null },
   { id: "chores", group: "Planning", label: "Chores", icon: ListChecks, description: "Recurring scheduled work and the activity log",
     // "Chores left to do today". With no completion log modeled yet, fall back to the
@@ -44,7 +42,7 @@ export const SECTIONS = [
   },
   { id: "processes", group: "Planning", label: "Processes", icon: Workflow, description: "Repeatable workflows and SOPs", comingSoon: true, getCount: () => null },
 
-  { id: "products", group: "Products", label: "All Products", icon: Tag, description: "What NFF sells — SKUs by size bracket, with cost-floor and pricing-recommendation surface", getCount: () => null },
+  { id: "products", group: "Products", label: "All products", icon: Tag, description: "What NFF sells — SKUs by size bracket, with cost-floor and pricing-recommendation surface", getCount: () => null },
   { id: "inventory", group: "Products", label: "Inventory", icon: Boxes, description: "Current stock — egg cartons in the fridge, chicken lots in freezers, FIFO-ordered", getCount: () => null },
   { id: "add_to_inventory", group: "Products", label: "Add to inventory", icon: PackagePlus, kind: "action", description: "Quick form to record new lots — eggs collected, broiler lots after processing day. Placeholder.", getCount: () => null },
 

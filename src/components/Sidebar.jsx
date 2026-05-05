@@ -1,9 +1,6 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronRight, X } from "lucide-react";
-import { T } from "../theme.js";
 import { SECTIONS, findFlyoutParentForChild } from "../sections.jsx";
-
-const SIDEBAR_WIDTH = 240;
 
 // Duration of the flyout enter/exit keyframe — must match the animation
 // declared in index.html (`nff-flyout-in` / `nff-flyout-out`).
@@ -66,18 +63,12 @@ export default function Sidebar({ current, onSelect, data }) {
     <>
       <nav
         ref={navRef}
-        style={{
-          width: SIDEBAR_WIDTH, borderRight: `1px solid ${T.border}`,
-          flexShrink: 0, background: T.surface,
-          // Flex column so the sign-in footer pins to the bottom; the inner
-          // list scrolls independently if the sections overflow vertically.
-          display: "flex", flexDirection: "column"
-        }}
+        className="w-60 border-r border-line shrink-0 bg-surface flex flex-col"
       >
-        <div style={{ padding: "20px 0", flex: 1, overflowY: "auto" }}>
+        <div className="py-5 flex-1 overflow-y-auto no-scrollbar">
         {SECTIONS.map((s, idx) => {
           if (s.kind === "spacer") {
-            return <div key={`spacer-${idx}`} style={{ height: 14 }} />;
+            return <div key={`spacer-${idx}`} className="h-3.5" />;
           }
           if (s.kind === "hidden") return null;
           const showHeader = s.group !== lastGroup && s.group !== null;
@@ -87,11 +78,7 @@ export default function Sidebar({ current, onSelect, data }) {
           const count = typeof s.getCount === "function" ? s.getCount(data) : null;
           return (
             <div key={s.id}>
-              {showHeader && (
-                <div style={{ padding: "20px 24px 6px", fontFamily: T.uiLabel, fontSize: 10, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 600 }}>
-                  {s.group}
-                </div>
-              )}
+              {showHeader && <GroupLabel>{s.group}</GroupLabel>}
               <SidebarItem
                 section={s}
                 active={active}
@@ -128,6 +115,23 @@ export default function Sidebar({ current, onSelect, data }) {
   );
 }
 
+function GroupLabel({ children }) {
+  return (
+    <div className="pt-5 pb-1.5 px-6 font-ui text-[10px] text-muted uppercase tracking-[0.16em] font-semibold">
+      {children}
+    </div>
+  );
+}
+
+// Background tint for a sidebar row given (active, dim-active, hover) state.
+// Returns a Tailwind class.
+function rowBgClass({ isFlyoutOpen, active, dimActive, hover }) {
+  if (isFlyoutOpen) return "bg-row-active";
+  if (active) return dimActive ? "bg-row-active-dim" : "bg-row-active";
+  if (hover) return "bg-row-hover";
+  return "bg-transparent";
+}
+
 function SidebarItem({ section, active, isFlyoutOpen, anyFlyoutOpen, count, onSelect }) {
   const [hover, setHover] = useState(false);
   const Icon = section.icon;
@@ -138,45 +142,40 @@ function SidebarItem({ section, active, isFlyoutOpen, anyFlyoutOpen, count, onSe
   // the flyout owns the "live" visual focus while remaining clear which page
   // the user will return to on close.
   const dimActive = anyFlyoutOpen && active && !isFlyout && !isFlyoutOpen;
-  const bg = isFlyoutOpen
-    ? T.rowActive
-    : active
-      ? (dimActive ? T.rowActiveDim : T.rowActive)
-      : hover
-        ? T.rowHover
-        : "transparent";
+  const bg = rowBgClass({ isFlyoutOpen, active, dimActive, hover });
+  const accentEdge = active ? "border-l-accent" : "border-l-transparent";
+  const textColor = active ? "text-fg font-semibold" : "text-dim font-normal";
 
   return (
     <button
       onClick={() => onSelect(section.id)}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{
-        display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "6px 22px",
-        background: bg,
-        border: "none",
-        borderLeft: `3px solid ${active ? T.accent : "transparent"}`,
-        color: active ? T.text : T.textDim,
-        fontFamily: "inherit", fontSize: 13,
-        fontWeight: active ? 600 : 400,
-        cursor: "pointer", textAlign: "left",
-        transition: "background-color 140ms ease, color 140ms ease"
-      }}
+      className={
+        `flex items-center gap-2.5 w-full py-1 pl-[19px] pr-[22px] border-0 ` +
+        `border-l-[3px] ${accentEdge} ${bg} ${textColor} ` +
+        `font-[inherit] text-[13px] cursor-pointer text-left ` +
+        `transition-[background-color,color] duration-150`
+      }
     >
-      <Icon size={14} color={active ? T.accent : "currentColor"} style={{ flexShrink: 0 }} />
-      <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap" }}>{section.label}</span>
+      <Icon size={14} className={`shrink-0 ${active ? "text-accent" : ""}`} />
+      <span className="flex-1 min-w-0 whitespace-nowrap">{section.label}</span>
       <TrailingSlot hover={hover}>
         {isAction && (
-          <ArrowRight size={14} color={hover || active ? T.accent : T.textMuted} />
+          <ArrowRight size={14} className={hover || active ? "text-accent" : "text-muted"} />
         )}
         {isFlyout && (isFlyoutOpen
-          ? <X size={14} color={T.accent} />
-          : <ChevronRight size={14} color={hover || active ? T.accent : T.textMuted} />)}
+          ? <X size={14} className="text-accent" />
+          : <ChevronRight size={14} className={hover || active ? "text-accent" : "text-muted"} />)}
         {!isAction && !isFlyout && count !== null && (
-          <span style={{
-            fontSize: 11, lineHeight: 1,
-            color: count > 0 ? (active ? T.accent : T.textDim) : T.textFaint
-          }}>{count}</span>
+          <span
+            className={
+              "text-[11px] leading-none " +
+              (count > 0 ? (active ? "text-accent" : "text-dim") : "text-faint")
+            }
+          >
+            {count}
+          </span>
         )}
       </TrailingSlot>
     </button>
@@ -188,20 +187,14 @@ const FlyoutPane = forwardRef(function FlyoutPane({ parent, current, data, onSel
   return (
     <aside
       ref={ref}
+      className="w-60 border-r border-line py-5 shrink-0 overflow-y-auto no-scrollbar bg-surface shadow-[2px_0_12px_rgba(0,0,0,0.15)]"
       style={{
-        width: SIDEBAR_WIDTH,
-        borderRight: `1px solid ${T.border}`,
-        padding: "20px 0",
-        flexShrink: 0,
-        overflowY: "auto",
-        background: T.surface,
-        boxShadow: "2px 0 12px rgba(0, 0, 0, 0.15)",
         animation: closing
           ? `nff-flyout-out ${FLYOUT_ANIM_MS}ms ease forwards`
           : `nff-flyout-in ${FLYOUT_ANIM_MS}ms ease`
       }}
     >
-      <div style={{ padding: "0 24px 12px", fontFamily: T.uiLabel, fontSize: 10, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 600 }}>
+      <div className="px-6 pb-3 font-ui text-[10px] text-muted uppercase tracking-[0.16em] font-semibold">
         {parent.flyoutTitle || parent.label}
       </div>
       {items.map(child => (
@@ -221,48 +214,51 @@ const FlyoutPane = forwardRef(function FlyoutPane({ parent, current, data, onSel
 // against the icon column regardless of which one is rendered.
 function TrailingSlot({ hover, children }) {
   return (
-    <span style={{
-      flexShrink: 0,
-      width: 14, height: 14,
-      display: "inline-flex", alignItems: "center", justifyContent: "flex-end",
-      transition: "color 140ms ease, transform 140ms ease",
-      transform: hover ? "translateX(2px)" : "none"
-    }}>{children}</span>
+    <span
+      className={
+        "shrink-0 w-3.5 h-3.5 inline-flex items-center justify-end " +
+        "transition-[color,transform] duration-150 " +
+        (hover ? "translate-x-0.5" : "")
+      }
+    >
+      {children}
+    </span>
   );
 }
 
 function FlyoutItem({ child, active, count, onSelect }) {
   const [hover, setHover] = useState(false);
   const Icon = child.icon;
-  const bg = active ? T.rowActive : hover ? T.rowHover : "transparent";
+  const bg = active ? "bg-row-active" : hover ? "bg-row-hover" : "bg-transparent";
+  const accentEdge = active ? "border-l-accent" : "border-l-transparent";
+  const textColor = active ? "text-fg font-semibold" : "text-dim font-normal";
+
   return (
     <button
       onClick={() => onSelect(child.id)}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{
-        display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "6px 22px",
-        background: bg,
-        border: "none",
-        borderLeft: `3px solid ${active ? T.accent : "transparent"}`,
-        color: active ? T.text : T.textDim,
-        fontFamily: "inherit", fontSize: 13,
-        fontWeight: active ? 600 : 400,
-        cursor: "pointer", textAlign: "left",
-        transition: "background-color 140ms ease, color 140ms ease"
-      }}
+      className={
+        `flex items-center gap-2.5 w-full py-1 pl-[19px] pr-[22px] border-0 ` +
+        `border-l-[3px] ${accentEdge} ${bg} ${textColor} ` +
+        `font-[inherit] text-[13px] cursor-pointer text-left ` +
+        `transition-[background-color,color] duration-150`
+      }
     >
-      {Icon && <Icon size={14} color={active ? T.accent : "currentColor"} style={{ flexShrink: 0 }} />}
-      <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap" }}>{child.label}</span>
+      {Icon && <Icon size={14} className={`shrink-0 ${active ? "text-accent" : ""}`} />}
+      <span className="flex-1 min-w-0 whitespace-nowrap">{child.label}</span>
       <TrailingSlot hover={hover}>
         {count !== null && (
-          <span style={{
-            fontSize: 11, lineHeight: 1,
-            color: count > 0 ? (active ? T.accent : T.textDim) : T.textFaint
-          }}>{count}</span>
+          <span
+            className={
+              "text-[11px] leading-none " +
+              (count > 0 ? (active ? "text-accent" : "text-dim") : "text-faint")
+            }
+          >
+            {count}
+          </span>
         )}
       </TrailingSlot>
     </button>
   );
 }
-

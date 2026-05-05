@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { T } from "./theme.js";
 import { findSection, findFlyoutParentForChild } from "./sections.jsx";
 import NFF_DATA from "./data/nff-data.json";
 import TopBar from "./components/TopBar.jsx";
@@ -41,15 +40,15 @@ export default function App({ session }) {
     section.comingSoon === true;
 
   return (
-    <div style={{ background: T.bg, color: T.text, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: T.body, fontSize: 13 }}>
+    <div className="bg-bg text-fg h-screen flex flex-col overflow-hidden font-body text-[13px]">
       <TopBar
         data={data}
         session={session}
         onOpenSettings={() => setCurrentSection("settings")}
       />
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      <div className="flex flex-1 min-h-0">
         <Sidebar current={currentSection} onSelect={setCurrentSection} data={data} />
-        <main style={{ flex: 1, padding: "32px 40px", overflowY: "auto", minWidth: 0 }}>
+        <main className="flex-1 px-10 py-8 overflow-y-auto min-w-0">
           {!isSelfHeadered && (
             <SectionHeader
               section={section}

@@ -1,5 +1,4 @@
 import { ArrowLeft } from "lucide-react";
-import { T } from "../theme.js";
 
 // Section subheadings were dropped globally; the header is now just a title.
 // `noBottomBorder` is preserved for pages (e.g. species pages) that render
@@ -12,32 +11,27 @@ import { T } from "../theme.js";
 // hierarchy visible.
 export default function SectionHeader({ section, parent, onNavigate, noBottomBorder }) {
   return (
-    <div style={{
-      marginBottom: noBottomBorder ? 20 : 28,
-      paddingBottom: noBottomBorder ? 0 : 14,
-      borderBottom: noBottomBorder ? "none" : `1px solid ${T.border}`
-    }}>
+    <div className={noBottomBorder ? "mb-5" : "mb-7 pb-3.5 border-b border-line"}>
       {parent && (
         <button
           onClick={() => onNavigate?.(parent.id)}
           disabled={!onNavigate}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            background: "transparent", border: "none",
-            color: T.textDim,
-            fontFamily: T.uiLabel, fontSize: 11, fontWeight: 600,
-            textTransform: "uppercase", letterSpacing: "0.14em",
-            padding: 0, marginBottom: 8,
-            cursor: onNavigate ? "pointer" : "default"
-          }}
+          className={
+            "inline-flex items-center gap-1.5 bg-transparent border-0 text-dim " +
+            "font-ui text-[11px] font-semibold uppercase tracking-[0.14em] " +
+            "p-0 mb-2 " +
+            (onNavigate ? "cursor-pointer" : "cursor-default")
+          }
         >
           <ArrowLeft size={12} />
           {parent.flyoutTitle || parent.label}
         </button>
       )}
-      <h2 style={{ fontFamily: T.heading, fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em", margin: 0, color: T.text }}>{section.label}</h2>
+      <h2 className="font-heading text-[32px] font-bold -tracking-[0.02em] m-0 text-fg">
+        {section.label}
+      </h2>
       {section.description && parent && (
-        <div style={{ fontSize: 13, color: T.textDim, marginTop: 6, lineHeight: 1.5 }}>
+        <div className="text-[13px] text-dim mt-1.5 leading-snug">
           {section.description}
         </div>
       )}

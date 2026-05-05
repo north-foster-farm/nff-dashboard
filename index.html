@@ -133,14 +133,21 @@
       }
     </style>
     <script>
-      // Apply saved theme before React boots to avoid flash of wrong palette.
+      // Apply saved theme + density before React boots to avoid a flash of
+      // the wrong palette / size.
       (function () {
         try {
-          var saved = localStorage.getItem('nff-theme');
-          var t = saved === 'light' || saved === 'dark' ? saved : 'dark';
-          document.documentElement.setAttribute('data-theme', t);
+          var theme = localStorage.getItem('nff-theme');
+          theme = theme === 'light' || theme === 'dark' ? theme : 'dark';
+          document.documentElement.setAttribute('data-theme', theme);
+
+          var density = localStorage.getItem('nff-density');
+          density = (density === 'comfortable' || density === 'spacious')
+            ? density : 'compact';
+          document.documentElement.setAttribute('data-density', density);
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'dark');
+          document.documentElement.setAttribute('data-density', 'compact');
         }
       })();
     </script>

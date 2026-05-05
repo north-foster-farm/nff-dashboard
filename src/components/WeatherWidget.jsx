@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Thermometer, ArrowUp, ArrowDown } from "lucide-react";
-import { T } from "../theme.js";
 
 // Foster, RI.
 const LAT = 41.7948;
@@ -89,25 +88,16 @@ export default function CurrentConditionsCard() {
     []
   );
 
-  // Card icon matches the rest of the dashboard cards (small icon left of an
-  // uppercase title). CloudSun reads as "weather" at small sizes.
   return (
-    <section style={{
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      padding: "18px 20px"
-    }}>
-      <header style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
-        <CloudSun size={15} color={T.textDim} style={{ transform: "translateY(2px)" }} />
-        <div style={{
-          fontFamily: T.uiLabel, fontSize: 12, color: T.text,
-          textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700
-        }}>
+    <section className="bg-surface border border-line py-[18px] px-5">
+      <header className="flex items-baseline gap-2.5 mb-3.5">
+        <CloudSun size={15} className="text-dim translate-y-0.5" />
+        <div className="font-ui text-xs text-fg uppercase tracking-[0.14em] font-bold">
           Current conditions
         </div>
       </header>
       {error || !data ? (
-        <div style={{ fontSize: 12, color: T.textDim, fontStyle: "italic" }}>
+        <div className="text-xs text-dim italic">
           {error ? "Weather offline." : "Loading weather…"}
         </div>
       ) : (
@@ -119,37 +109,29 @@ export default function CurrentConditionsCard() {
 
 function ConditionsRow({ data, dateLabel }) {
   const label = describeCode(data.code);
-  const labelStyle = {
-    fontFamily: T.uiLabel, fontSize: 11, color: T.text,
-    textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 400
-  };
+  const labelClass = "font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-normal";
   return (
     <div
       title={`${label} · ${data.tempCurrent}° (H ${data.tempHigh}° / L ${data.tempLow}°)`}
-      style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        flexWrap: "wrap", gap: "8px 16px",
-        fontVariantNumeric: "tabular-nums",
-        color: T.text
-      }}
+      className="flex items-center justify-between flex-wrap gap-y-2 gap-x-4 [font-variant-numeric:tabular-nums] text-fg"
     >
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <Thermometer size={13} color={T.textDim} />
-          <span style={{ fontWeight: 700, fontSize: 12 }}>{data.tempCurrent}°</span>
+      <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5">
+          <Thermometer size={13} className="text-dim" />
+          <span className="font-bold text-xs">{data.tempCurrent}°</span>
         </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: T.textDim }}>
-          <ArrowUp size={13} color={T.textDim} />
-          <span style={{ fontSize: 12 }}>{data.tempHigh}°</span>
+        <span className="inline-flex items-center gap-1 text-dim">
+          <ArrowUp size={13} className="text-dim" />
+          <span className="text-xs">{data.tempHigh}°</span>
         </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: T.textDim }}>
-          <ArrowDown size={13} color={T.textDim} />
-          <span style={{ fontSize: 12 }}>{data.tempLow}°</span>
+        <span className="inline-flex items-center gap-1 text-dim">
+          <ArrowDown size={13} className="text-dim" />
+          <span className="text-xs">{data.tempLow}°</span>
         </span>
         {" · "}
-        <span style={labelStyle}>{label}</span>
+        <span className={labelClass}>{label}</span>
       </span>
-      <span style={labelStyle}>{dateLabel}</span>
+      <span className={labelClass}>{dateLabel}</span>
     </div>
   );
 }

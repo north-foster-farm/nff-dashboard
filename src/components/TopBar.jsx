@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sprout, Sun, Moon, LogOut } from "lucide-react";
-import { T } from "../theme.js";
+import { Sprout, Sun, Moon, LogOut, ALargeSmall } from "lucide-react";
 import UserAvatarMenu from "./UserAvatarMenu.jsx";
 import { supabase } from "../lib/supabase.js";
 
@@ -9,30 +8,56 @@ function getInitialTheme() {
   return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
 }
 
+const DENSITY_ORDER = ["compact", "comfortable", "spacious"];
+
+function getInitialDensity() {
+  if (typeof document === "undefined") return "compact";
+  const v = document.documentElement.getAttribute("data-density");
+  return DENSITY_ORDER.includes(v) ? v : "compact";
+}
+
+function nextDensity(d) {
+  const i = DENSITY_ORDER.indexOf(d);
+  return DENSITY_ORDER[(i + 1) % DENSITY_ORDER.length];
+}
+
 export default function TopBar({ data, session, onOpenSettings }) {
   const [theme, setTheme] = useState(getInitialTheme);
+  const [density, setDensity] = useState(getInitialDensity);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem("nff-theme", theme); } catch {}
   }, [theme]);
 
+  useEffect(() => {
+    document.documentElement.setAttribute("data-density", density);
+    try { localStorage.setItem("nff-density", density); } catch {}
+  }, [density]);
+
   const toggleTheme = () => setTheme(t => (t === "dark" ? "light" : "dark"));
+  const toggleDensity = () => setDensity(nextDensity);
   const handleSignOut = () => {
     supabase.auth.signOut();
     // LoginGate's onAuthStateChange listener handles the re-render.
   };
 
   return (
-    <header style={{ borderBottom: `1px solid ${T.border}`, padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: T.bg, flexShrink: 0, gap: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+    <header className="border-b border-line py-3 px-6 flex justify-between items-center bg-bg shrink-0 gap-[18px]">
+      <div className="flex items-center gap-3.5 min-w-0">
         <LogoMark />
-        <span style={{ fontFamily: T.uiLabel, fontSize: 11, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600 }}>
+        <span className="font-ui text-[11px] text-dim uppercase tracking-[0.12em] font-semibold">
           Admin · v{data.meta.version}
         </span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+      <div className="flex items-center gap-1 shrink-0">
         <UserAvatarMenu session={session} onClick={onOpenSettings} />
+        <IconButton
+          onClick={toggleDensity}
+          ariaLabel={`Text density: ${density} (click to cycle)`}
+        >
+          <ALargeSmall size={16} />
+        </IconButton>
         <IconButton
           onClick={toggleTheme}
           ariaLabel={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
@@ -53,16 +78,7 @@ function IconButton({ onClick, ariaLabel, children }) {
       onClick={onClick}
       aria-label={ariaLabel}
       title={ariaLabel}
-      style={{
-        background: "transparent",
-        border: "none",
-        color: T.textDim,
-        padding: 6,
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }}
+      className="bg-transparent border-0 text-dim p-1.5 cursor-pointer flex items-center justify-center"
     >
       {children}
     </button>
@@ -100,18 +116,17 @@ function LogoMark() {
     return () => { cancelled = true; };
   }, []);
 
-  if (failed) return <Sprout size={28} color={T.accent} strokeWidth={2} />;
-  if (!resolved) return <span style={{ display: "inline-block", height: LOGO_HEIGHT, width: LOGO_HEIGHT }} aria-hidden />;
+  if (failed) return <Sprout size={28} className="text-accent" strokeWidth={2} />;
+  if (!resolved) return <span className="inline-block h-8 w-8" aria-hidden />;
 
   return (
     <span
       role="img"
       aria-label="North Foster Farm logo"
+      className="inline-block bg-accent"
       style={{
-        display: "inline-block",
         height: LOGO_HEIGHT,
         width: resolved.width,
-        backgroundColor: T.accent,
         WebkitMaskImage: `url("${resolved.src}")`,
         maskImage: `url("${resolved.src}")`,
         WebkitMaskRepeat: "no-repeat",

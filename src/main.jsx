@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import LoginGate from "./components/LoginGate.jsx";
+import "./styles.css";
 
 // LoginGate intercepts every render — nothing below it runs until Supabase
 // confirms the visitor is signed in AND their email is in the admins table.

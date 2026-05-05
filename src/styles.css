@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/*
+  Design tokens. Each token resolves to a CSS custom property defined in
+  index.html, where the [data-theme="dark|light"] selector swaps palettes.
+  This means utilities like `bg-surface` and `text-dim` automatically follow
+  the active theme without needing dark-mode variants in the markup.
+
+  Naming maps the original `T` object in src/theme.js:
+    T.bg          → bg-bg
+    T.surface     → bg-surface
+    T.surfaceAlt  → bg-surface-alt
+    T.text        → text-fg
+    T.textDim     → text-dim
+    T.textMuted   → text-muted
+    T.textFaint   → text-faint
+    T.border      → border-line, etc.
+*/
+@theme {
+  --color-bg:           var(--c-bg);
+  --color-surface:      var(--c-surface);
+  --color-surface-alt:  var(--c-surface-alt);
+  --color-line:         var(--c-border);
+  --color-fg:           var(--c-text);
+  --color-dim:          var(--c-text-dim);
+  --color-muted:        var(--c-text-muted);
+  --color-faint:        var(--c-text-faint);
+  --color-accent:       var(--c-accent);
+  --color-accent-deep:  var(--c-accent-deep);
+  --color-warn:         var(--c-warn);
+  --color-resolved:     var(--c-resolved);
+  --color-on-accent:    var(--c-on-accent);
+  --color-on-cat:       var(--c-on-cat);
+  --color-row-active:     var(--c-row-active);
+  --color-row-active-dim: var(--c-row-active-dim);
+  --color-row-hover:      var(--c-row-hover);
+
+  /* Category dots — surfaced for the schedule + event color-key. */
+  --color-cat-fm:          var(--c-cat-fm);
+  --color-cat-popup:       var(--c-cat-popup);
+  --color-cat-egg:         var(--c-cat-egg);
+  --color-cat-chore:       var(--c-cat-chore);
+  --color-cat-deliveries:  var(--c-cat-deliveries);
+  --color-cat-farm-visits: var(--c-cat-farm-visits);
+  --color-cat-pickups:     var(--c-cat-pickups);
+  --color-cat-processing:  var(--c-cat-processing);
+  --color-cat-default:     var(--c-cat-default);
+
+  /* Typography. Body uses Nacelle (vendored woff2 in /fonts/), headings use
+     Lora, UI labels (uppercase eyebrows + nav group titles) use Inter. */
+  --font-body:    "Nacelle", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Lora", Georgia, "Times New Roman", serif;
+  --font-ui:      "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Spacing, radii kept default; project uses sharp corners
+     (no `rounded-*` on cards). Add custom values here when needed. */
+
+  /* App-specific timings reused from the original CSS keyframes. */
+  --animate-flyout-in:  nff-flyout-in 140ms ease;
+  --animate-flyout-out: nff-flyout-out 140ms ease forwards;
+}
+
+/* Apply the body font globally; Tailwind will pick up `font-body`,
+   `font-heading`, `font-ui` for explicit overrides. */
+body {
+  font-family: var(--font-body);
+}
+
+/* Utility: hide scrollbar visually while keeping the area scrollable.
+   Used on the sidebar nav and flyout pane, where a chrome scrollbar
+   would clash with the dense layout. */
+@utility no-scrollbar {
+  scrollbar-width: none;            /* Firefox */
+  -ms-overflow-style: none;         /* legacy Edge */
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* Text density. `compact` is the design baseline (zoom 1). `comfortable`
+   and `spacious` scale the whole UI up — easier to read for users who'd
+   otherwise need browser zoom. We apply via CSS `zoom` on body so every
+   fixed-px utility (`text-[11px]`, `gap-4`, etc.) scales proportionally
+   without per-component changes. zoom is supported in Chrome, Safari,
+   and Firefox 126+ as of 2024. */
+html[data-density="comfortable"] body { zoom: 1.15; }
+html[data-density="spacious"]    body { zoom: 1.30; }

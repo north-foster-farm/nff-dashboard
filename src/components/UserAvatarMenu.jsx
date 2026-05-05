@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { T } from "../theme.js";
 
 // Header avatar. Starts grayscale, transitions to full color on hover.
 // Sized to match the icon-button cluster next to it (padding 6 around a
 // 16px-square avatar circle ⇒ 28×28 hit area, matching the theme/logout
 // buttons exactly).
 export default function UserAvatarMenu({ session, onClick }) {
-  const [hover, setHover] = useState(false);
   const [pictureFailed, setPictureFailed] = useState(false);
 
   if (!session?.user) return null;
@@ -18,33 +16,12 @@ export default function UserAvatarMenu({ session, onClick }) {
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       title={`${displayName} — settings`}
       aria-label={`Open settings (${displayName})`}
-      style={{
-        background: "transparent",
-        border: "none",
-        padding: 6,
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0
-      }}
+      className="group bg-transparent border-0 p-1.5 cursor-pointer flex items-center justify-center shrink-0"
     >
       <span
-        style={{
-          width: 16,
-          height: 16,
-          borderRadius: "50%",
-          overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          filter: hover ? "grayscale(0)" : "grayscale(1)",
-          transition: "filter 220ms ease"
-        }}
+        className="block w-4 h-4 rounded-full overflow-hidden grayscale transition-[filter] duration-200 group-hover:grayscale-0"
       >
         {picture ? (
           <img
@@ -54,15 +31,10 @@ export default function UserAvatarMenu({ session, onClick }) {
             height={16}
             referrerPolicy="no-referrer"
             onError={() => setPictureFailed(true)}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            className="w-full h-full object-cover"
           />
         ) : (
-          <span style={{
-            width: "100%", height: "100%",
-            background: T.accent, color: T.onAccent,
-            fontSize: 9, fontWeight: 700,
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>
+          <span className="flex items-center justify-center w-full h-full bg-accent text-on-accent text-[9px] font-bold">
             {initial}
           </span>
         )}
