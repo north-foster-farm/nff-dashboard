@@ -37,6 +37,7 @@ export default function App({ session }) {
     section.id === "overview" ||
     section.id === "chores" ||
     section.id === "settings" ||
+    section.id === "roadmap" ||
     section.comingSoon === true;
 
   return (

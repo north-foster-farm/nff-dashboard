@@ -187,6 +187,25 @@ Mid-flight scope changes / hiccups:
   and reserved layout space for the hover buttons so adjacent text
   no longer jostles. Shipped as follow-up commit `01f19fd`.
 
+### Batch 6 — Roadmap on the dashboard · `v0.9.5-alpha` · 2026-05-05
+New "What's coming" page (sidebar: Other → What's coming, lucide
+`Map` icon). Plain-English overview of every upcoming feature from
+the in-repo `ROADMAP.md`, written for a reader who wants to know
+what's on deck without diving into batch numbers, schemas, or
+sequencing notes. The markdown file remains the source of truth for
+implementation; the in-app page is the marketing-style summary.
+
+Page lives at `src/pages/Roadmap.jsx`. New `roadmap` section in
+`sections.jsx`; added to `isSelfHeadered` in `App.jsx` so the page
+owns its own title. Wired in `SectionContent.jsx`. The list of items
+is hardcoded — when an upcoming batch ships, prune the matching
+entry from the page as part of the batch's ROADMAP.md update step.
+
+Mid-flight scope changes:
+- Inserted as a new Batch 6, shifting the originally-numbered
+  Batch 6 (Projects subsystem rewrite) to Batch 7 and bumping every
+  subsequent batch by one.
+
 ### Batch 5 — Settings + chore groups + sticky notes · `v0.9.4-alpha`
 2026-05-05. Commit `f734bb4`. Migration `0008`. All three new domains stream
 cross-device via realtime.
@@ -240,10 +259,11 @@ Mid-flight scope changes:
 
 ## Upcoming
 
-The remainder of the original 22-batch plan, plus items added later.
+The remainder of the plan (originally 22 batches; renumbered to 23
+when Batch 6 was inserted to ship the in-app roadmap page).
 Sequencing is the proposal — locked in only when the batch starts.
 
-### Batch 6 — Projects subsystem rewrite
+### Batch 7 — Projects subsystem rewrite
 Hierarchy Project → Phase → Step → Checklist → Checklist item.
 Schema: `projects`, `project_phases`, `project_steps`,
 `project_checklists`, `project_checklist_items`, `project_links`,
@@ -253,24 +273,24 @@ phases == 1 → steps drive %. Verbatim copy: "x/y steps complete" /
 "x/y milestones reached". Trello-style edit modal with markdown,
 Supabase Storage uploads, assignees, target dates / ranges.
 
-### Batch 7 — Processes
+### Batch 8 — Processes
 Process = template tied to an `event_kind`. Event instance lands on
 schedule → process expands into project(s) / tasks anchored to the
 event date (e.g. "1 week before processing day → check trailer
 hitch and tires"). Schema: `processes`, `process_steps` (with
 `offset_days` from anchor event), `process_event_kind_links`.
 
-### Batch 8 — Customers + Lists
+### Batch 9 — Customers + Lists
 `customers` CRUD (workshop fields together). `customer_lists`
 (title + purpose) and `customer_list_members`.
 
-### Batch 9 — Resources rethink
+### Batch 10 — Resources rethink
 "Resources" is too vague today. Redesign categorization and
 re-home items contextually (brooders inside Animals/Broilers,
 suppliers inside Feed/Inventory, etc.) with a fallback search
 index. Workshop scope at the start of the batch.
 
-### Batch 10 — Animals & Feed UI overhaul
+### Batch 11 — Animals & Feed UI overhaul
 - Feed page redesigned to match Chores; group by animal (animals
   list pulled from DB); drag-drop orderable within group; cards
   feature amount remaining + next order date prominently, last
@@ -280,7 +300,7 @@ index. Workshop scope at the start of the batch.
   feed eaten, feed cost, mortality, cuts ordered) optimized for
   cross-batch comparison.
 
-### Batch 11 — Products + pricing
+### Batch 12 — Products + pricing
 Products CRUD with photos / descriptions / content (research
 Pat's etc. for content patterns first). Group by animal; allow
 "uncategorized / not animal-specific". Sales-over-time
@@ -288,49 +308,49 @@ visualization. **Pricing UI** — workshop together at start of
 batch; reference apps to surface: Shopify admin, Square, Faire,
 GoodEggs vendor portal.
 
-### Batch 12 — Inventory backend + Point of Sale
+### Batch 13 — Inventory backend + Point of Sale
 Inventory schema + CRUD; on-hand by SKU/location. POS marks items
 sold so inventory decrements correctly. Internal "family sale" flow.
 
-### Batch 13 — Orders
+### Batch 14 — Orders
 Manual order creation; edit / interact with customer orders;
 shipment creation from order (integration scoped here).
 
-### Batch 14 — Commerce integrations
+### Batch 15 — Commerce integrations
 Stripe (cards / online payments); Venmo (where API exists);
 QuickBooks (accounting sync). E-comm front-end if needed.
 
-### Batch 15 — Google Calendar integration
+### Batch 16 — Google Calendar integration
 OAuth scope add; two-way vs one-way sync — TBD.
 
-### Batch 16 — Farm updates / Social / Content calendar
+### Batch 17 — Farm updates / Social / Content calendar
 Farm updates: list-targeting, markdown editor, file uploads, email
 sequences (delays + scheduled dates), "needs review" message
 thread, **AI review pipeline** gating "ready to send". Social
 posts: same shell + real social-network integrations + true
 scheduling. Content calendar: calendar UI + auto-add to schedule.
 
-### Batch 17 — App-wide search
+### Batch 18 — App-wide search
 Cross-cutting; lands after most data models exist so the index is
 comprehensive. Likely Postgres `tsvector` + a client palette
 (cmd-K).
 
-### Batch 18 — App-wide bookmarking
+### Batch 19 — App-wide bookmarking
 Per-user bookmarks of arbitrary entities/pages, surfaced in nav.
 Table `user_bookmarks (user_email, target_type, target_id, label,
 sort_order)`.
 
-### Batch 19 — iOS / mobile-responsive pass
+### Batch 20 — iOS / mobile-responsive pass
 Audit every page for iPhone widths. PWA manifest + install prompt
 for Add to Home Screen. Lands after Tailwind so responsive
 utilities are available.
 
-### Batch 20 — Offline tolerance + resync
+### Batch 21 — Offline tolerance + resync
 IndexedDB write queue (idb / Dexie) wrapping the Supabase client;
 outbox pattern for mutations; conflict policy per table. Service
 worker for asset caching. Affects every data hook.
 
-### Batch 21 — Pasture visualization simulator
+### Batch 22 — Pasture visualization simulator
 Standalone subsystem. Map / canvas with land outline; draw + name
 pasture boundaries; tractor pins (dims + capacity drive math);
 assign batch → tractor count needed; hypothetical-batch sandbox;
@@ -340,7 +360,7 @@ occupied / available in Y"); commit a movement plan → scheduled
 chore moves; per-plan distance/location breakdown. Likely libs:
 Leaflet or MapLibre + a geometry layer.
 
-### Batch 22 — Voice / natural-language control
+### Batch 23 — Voice / natural-language control
 Speech-to-text on device; intent → tool-call mapping via Claude;
 confirmation step for state-changing actions. High-priority once
 foundational batches land.
@@ -364,7 +384,7 @@ clearly belongs front-and-center on the dashboard.
 
 Open question: does each batch already carry a `start_date` and a
 target weeks-to-process value, or do we need to add one? Most
-natural pairing is alongside Batch 10 (broiler tracker work) since
+natural pairing is alongside Batch 11 (broiler tracker work) since
 the underlying batch model gets fleshed out there — but if the
 data is already present, this could ship sooner as a small batch
 on its own.

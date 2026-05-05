@@ -17,6 +17,7 @@ import Trailers from "../pages/Trailers.jsx";
 import AllEvents from "../pages/AllEvents.jsx";
 import Activity from "../pages/Activity.jsx";
 import Settings from "../pages/Settings.jsx";
+import Roadmap from "../pages/Roadmap.jsx";
 
 export default function SectionContent({ section, data, onShowDetail, onNavigate }) {
   // Sections explicitly flagged with comingSoon get the full-page placeholder.
@@ -55,6 +56,7 @@ export default function SectionContent({ section, data, onShowDetail, onNavigate
     case "activity": return <Activity />;
     case "threads": return <Threads data={data} />;
     case "settings": return <Settings />;
+    case "roadmap": return <Roadmap />;
     default: {
       const items = data[section.id] ?? [];
       if (items.length === 0) return <ComingSoon featureName={section.label} />;
