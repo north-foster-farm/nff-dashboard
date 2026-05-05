@@ -8,6 +8,9 @@ import {
   getChorePeriodTimeLabel
 } from "../lib/chores.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
+import { useActivityLog } from "../lib/data/useActivityLog.js";
+import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
+import ActivityRow from "../components/ActivityRow.jsx";
 
 // The page renders its own header (title + tabs) in place of the generic
 // SectionHeader, so it can fit a tab bar + inline actions.
@@ -456,12 +459,31 @@ function IconAction({ title, onClick, children }) {
 }
 
 // ─── Activity log ────────────────────────────────────────────────────────────
+// Reads the live activity_log table and filters to chore-related kinds, so
+// this tab is purpose-built for "what got checked off, by whom, when". The
+// global Activity page covers all kinds (chore + batch assignment + future
+// kinds); this one stays focused.
+
+const CHORE_ACTIVITY_KINDS = new Set(["chore_completed", "chore_uncompleted"]);
 
 function ActivityLogTab({ data }) {
   const [query, setQuery] = useState("");
-  // Composable filter state. All currently empty because no completions exist
-  // in prototype data. Once they do, these become the compose inputs.
-  const completions = data?.chores?.completions ?? [];
+  const { entries, loading, edit, remove } = useActivityLog();
+  const userEmail = useCurrentUserEmail();
+
+  const choreEntries = useMemo(
+    () => (entries ?? []).filter(e => CHORE_ACTIVITY_KINDS.has(e.kind)),
+    [entries]
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return choreEntries;
+    return choreEntries.filter(e =>
+      (e.summary ?? "").toLowerCase().includes(q)
+      || (e.actor ?? "").toLowerCase().includes(q)
+    );
+  }, [choreEntries, query]);
 
   return (
     <div>
@@ -475,13 +497,45 @@ function ActivityLogTab({ data }) {
         </ControlsActions>
       </ControlsBar>
 
-      {completions.length === 0 ? (
-        <EmptyCard title="No completions logged yet">
-          Once chores start being checked off, every completion (and the person who did it) lands here with filters to compose across.
+      {loading ? (
+        <EmptyCard title="Loading activity…">
+          Fetching the latest chore-completion log.
+        </EmptyCard>
+      ) : filtered.length === 0 ? (
+        <EmptyCard title={query ? "No matches" : "No completions logged yet"}>
+          {query
+            ? "Try a different search term."
+            : "Once chores start being checked off, every completion (and the person who did it) lands here."}
         </EmptyCard>
       ) : (
-        <div>{/* activity rows — deferred until the log storage thread resolves */}</div>
+        <ol className="m-0 p-0 list-none flex flex-col gap-px bg-line">
+          {filtered.map((entry) => (
+            <ActivityRow
+              key={entry.id}
+              entry={entry}
+              ownerEmail={userEmail}
+              onEdit={edit}
+              onDelete={remove}
+              renderTime={renderChoreActivityTime}
+              wrapperClass="bg-surface px-4 py-3 items-baseline"
+            />
+          ))}
+        </ol>
       )}
+    </div>
+  );
+}
+
+function renderChoreActivityTime(logTime) {
+  const dt = new Date(logTime);
+  return (
+    <div className="min-w-[140px]">
+      <div>
+        {dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+      </div>
+      <div className="text-faint mt-px">
+        {dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+      </div>
     </div>
   );
 }

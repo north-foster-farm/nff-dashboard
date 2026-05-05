@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2, Check, X } from "lucide-react";
 
+// CSS class fragment used by both the always-present action cluster and its
+// edit-mode siblings. Pulled out so the affordance keeps the same hit
+// target whether the row is hovered, focused, or being edited.
+const ACTION_BTN =
+  "p-1 text-muted hover:text-fg cursor-pointer bg-transparent border-0";
+
 // Single activity-feed row with hover-revealed edit + delete affordances.
 // Used by both the dashboard's "Activity" card and the full Activity page;
 // the only thing that varies between consumers is the time-column shape
@@ -23,7 +29,6 @@ export default function ActivityRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(entry.summary);
   const [busy, setBusy] = useState(false);
-  const [hover, setHover] = useState(false);
   const inputRef = useRef(null);
 
   // Reset draft if the underlying entry's summary changes from elsewhere
@@ -40,7 +45,6 @@ export default function ActivityRow({
   }, [editing]);
 
   const isOwner = !!ownerEmail && entry.ownerEmail === ownerEmail;
-  const showActions = isOwner && hover && !editing;
 
   const startEdit = () => { setDraft(entry.summary); setEditing(true); };
   const cancelEdit = () => { setEditing(false); setDraft(entry.summary); };
@@ -78,11 +82,7 @@ export default function ActivityRow({
   const fontSize = compact ? "text-xs" : "text-[13px]";
 
   return (
-    <li
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      className={`flex gap-2.5 ${fontSize} group relative ${wrapperClass}`}
-    >
+    <li className={`flex gap-2.5 ${fontSize} group relative ${wrapperClass}`}>
       <div className="[font-variant-numeric:tabular-nums] text-dim shrink-0 min-w-[68px]">
         {renderTime(entry.logTime)}
       </div>
@@ -107,7 +107,7 @@ export default function ActivityRow({
               disabled={busy}
               title="Save (Enter)"
               aria-label="Save edit"
-              className="p-1 text-muted hover:text-accent cursor-pointer bg-transparent border-0"
+              className={ACTION_BTN}
             >
               <Check size={12} />
             </button>
@@ -118,7 +118,7 @@ export default function ActivityRow({
               disabled={busy}
               title="Cancel (Esc)"
               aria-label="Cancel edit"
-              className="p-1 text-muted hover:text-fg cursor-pointer bg-transparent border-0"
+              className={ACTION_BTN}
             >
               <X size={12} />
             </button>
@@ -138,14 +138,19 @@ export default function ActivityRow({
         )}
       </div>
 
-      {showActions && (
-        <span className="shrink-0 inline-flex items-center gap-0.5">
+      {/* Actions cluster reserves its own slot regardless of hover state, so
+          appearing affordances don't shift the row's layout. Hidden via
+          opacity (0 → 100 on hover) and pointer-events when not engaged. */}
+      {isOwner && !editing && (
+        <span
+          className="shrink-0 inline-flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        >
           <button
             type="button"
             onClick={startEdit}
             title="Edit"
             aria-label="Edit"
-            className="p-1 text-muted hover:text-fg cursor-pointer bg-transparent border-0"
+            className={ACTION_BTN}
           >
             <Pencil size={12} />
           </button>
@@ -154,7 +159,7 @@ export default function ActivityRow({
             onClick={handleDelete}
             title="Delete"
             aria-label="Delete"
-            className="p-1 text-muted hover:text-warn cursor-pointer bg-transparent border-0"
+            className={`${ACTION_BTN} hover:!text-warn`}
           >
             <Trash2 size={12} />
           </button>
