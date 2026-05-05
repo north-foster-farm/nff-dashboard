@@ -72,11 +72,13 @@ const ITEMS = [
   },
   {
     title: "Farm updates, social posts, content calendar",
-    body: "A markdown editor with file uploads, list-based targeting, " +
-      "and email sequences with delays. AI-assisted review before " +
-      "anything goes out. Social posts share the same shell with real " +
-      "network integrations and proper scheduling. A content calendar " +
-      "that can drop items onto the schedule.",
+    body: "Draft an update once — markdown editor, file uploads, " +
+      "AI-assisted review — and on approval it goes out two ways " +
+      "at the same time: published to the public nff website, and " +
+      "emailed via our Fastmail account to a customer list " +
+      "maintained over in CRM → Lists. Social posts share the same " +
+      "shell with real network integrations and proper scheduling. " +
+      "A content calendar that can drop items onto the schedule.",
   },
   {
     title: "Lessons",

@@ -326,8 +326,24 @@ OAuth scope add; two-way vs one-way sync — TBD.
 ### Batch 17 — Farm updates / Social / Content calendar
 Farm updates: list-targeting, markdown editor, file uploads, email
 sequences (delays + scheduled dates), "needs review" message
-thread, **AI review pipeline** gating "ready to send". Social
-posts: same shell + real social-network integrations + true
+thread, **AI review pipeline** gating "ready to send".
+
+**Publishing pipeline** (added 2026-05-05): once an update is
+approved, it should fan out to two places at once: (1) the
+public-facing nff site (front-end publish — exact mechanism TBD,
+likely a webhook into the site's CMS / a build trigger / a
+content-API write); and (2) an email blast sent through our
+Fastmail account, addressed to a customer list maintained in the
+dashboard's CRM → Lists section. Same draft, one approval,
+both surfaces in lockstep. Implementation notes for whoever picks
+this up: the list selection lives on the farm update record so the
+target audience is part of the artifact under review; Fastmail
+integration likely means SMTP auth + per-recipient personalization,
+unless they expose a transactional API by then; site-publish should
+be idempotent so re-publishing an edited update updates the
+already-live page in place.
+
+Social posts: same shell + real social-network integrations + true
 scheduling. Content calendar: calendar UI + auto-add to schedule.
 
 ### Batch 18 — App-wide search
