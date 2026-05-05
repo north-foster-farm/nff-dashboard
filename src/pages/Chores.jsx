@@ -1,5 +1,8 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { Plus, Search, Copy, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Plus, Search, Copy, Pencil, Trash2, ChevronDown, ChevronRight,
+  CheckCheck
+} from "lucide-react";
 import { T } from "../theme.js";
 import {
   CHORE_CATEGORIES, CHORE_PERIODS,
@@ -10,7 +13,11 @@ import {
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
+import { useChoreGroups } from "../lib/data/useChoreGroups.js";
+import { useUserPreferences } from "../lib/data/useUserPreferences.js";
 import ActivityRow from "../components/ActivityRow.jsx";
+import ChoreGroupsTab from "../components/ChoreGroupsTab.jsx";
+import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 
 // The page renders its own header (title + tabs) in place of the generic
 // SectionHeader, so it can fit a tab bar + inline actions.
@@ -18,6 +25,7 @@ import ActivityRow from "../components/ActivityRow.jsx";
 const TABS = [
   { id: "today", label: "Today" },
   { id: "all", label: "All chores" },
+  { id: "groups", label: "Groups" },
   { id: "activity", label: "Activity log" }
 ];
 
@@ -35,6 +43,7 @@ export default function Chores({ data }) {
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === "today" && <TodayTab data={data} currentUser={currentUser} onChangeUser={setCurrentUser} />}
       {tab === "all" && <AllChoresTab data={data} />}
+      {tab === "groups" && <ChoreGroupsTab data={data} />}
       {tab === "activity" && <ActivityLogTab data={data} />}
     </div>
   );
@@ -86,14 +95,44 @@ function TodayTab({ data, currentUser, onChangeUser }) {
     scope === "all" || i.assignee == null || i.assignee === currentUser
   );
 
-  // Group by period for the linear timeline feel.
-  const groups = {};
-  for (const inst of visible) {
+  // Chore-group lookup so we can split chores into group accordions vs.
+  // remaining period buckets.
+  const { groups: choreGroups, groupByChoreId } = useChoreGroups();
+  const userEmail = useCurrentUserEmail();
+  const { autoExpandChoreGroups } = useUserPreferences();
+
+  // Partition instances: anything that lives in a chore group goes into
+  // its accordion; the rest fall through to the period-bucket layout.
+  const { byGroup, ungrouped } = useMemo(() => {
+    const byGroup = new Map();
+    const ungrouped = [];
+    for (const inst of visible) {
+      const g = groupByChoreId.get(inst.chore.id);
+      if (g) {
+        if (!byGroup.has(g.id)) byGroup.set(g.id, { group: g, instances: [] });
+        byGroup.get(g.id).instances.push(inst);
+      } else {
+        ungrouped.push(inst);
+      }
+    }
+    return { byGroup, ungrouped };
+  }, [visible, groupByChoreId]);
+
+  const periodGroups = {};
+  for (const inst of ungrouped) {
     const key = inst.chore.period || "anytime";
-    (groups[key] ??= []).push(inst);
+    (periodGroups[key] ??= []).push(inst);
   }
-  const orderedKeys = Object.keys(groups).sort(
+  const orderedPeriodKeys = Object.keys(periodGroups).sort(
     (a, b) => (CHORE_PERIODS[a]?.order ?? 99) - (CHORE_PERIODS[b]?.order ?? 99)
+  );
+
+  // Order chore-groups by their schema sort_order, then name.
+  const orderedChoreGroups = useMemo(
+    () => choreGroups
+      .filter((g) => byGroup.has(g.id))
+      .map((g) => byGroup.get(g.id)),
+    [choreGroups, byGroup]
   );
 
   const dateLabel = today.toLocaleDateString("en-US", {
@@ -111,6 +150,19 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   // each TodayChoreRow as props — see PeriodGroup → TodayChoreRow below.
   const { completedSet, toggle: toggleCompletion } = useChoreCompletions(today);
 
+  // Bulk-complete a chore-group's instances. Iterates `toggle` per-chore
+  // because the underlying toggle handles optimistic UI + realtime echo.
+  const markGroupComplete = useCallback(async (instancesInGroup) => {
+    for (const inst of instancesInGroup) {
+      if (!completedSet?.has(inst.chore.id)) {
+        // eslint-disable-next-line no-await-in-loop
+        await toggleCompletion(inst.chore.id, false);
+      }
+    }
+  }, [completedSet, toggleCompletion]);
+
+  const isEmpty = orderedChoreGroups.length === 0 && orderedPeriodKeys.length === 0;
+
   return (
     <div ref={setWidthRef}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
@@ -122,27 +174,125 @@ function TodayTab({ data, currentUser, onChangeUser }) {
         </div>
       </div>
 
-      {orderedKeys.length === 0 && (
+      {isEmpty && (
         <EmptyCard title="Nothing to do today">
           {scope === "mine" ? "No chores assigned to you or unassigned today." : "No chores scheduled today."}
         </EmptyCard>
       )}
 
-      {orderedKeys.map(period => (
-        <PeriodGroup
-          key={period}
-          period={period}
-          instances={groups[period]}
+      {/* Chore-group accordions render first — they're the user's preferred
+          grouping. Period buckets below pick up anything that hasn't been
+          assigned to a group yet. */}
+      {orderedChoreGroups.map(({ group, instances: gInstances }) => (
+        <ChoreGroupAccordion
+          key={group.id}
+          group={group}
+          instances={gInstances}
           cols={cols}
           completedSet={completedSet}
           onToggle={toggleCompletion}
+          onMarkAll={() => markGroupComplete(gInstances)}
+          defaultOpen={autoExpandChoreGroups}
+          currentUserEmail={userEmail}
+        />
+      ))}
+
+      {orderedPeriodKeys.map(period => (
+        <PeriodGroup
+          key={period}
+          period={period}
+          instances={periodGroups[period]}
+          cols={cols}
+          completedSet={completedSet}
+          onToggle={toggleCompletion}
+          currentUserEmail={userEmail}
         />
       ))}
     </div>
   );
 }
 
-function PeriodGroup({ period, instances, cols, completedSet, onToggle }) {
+function ChoreGroupAccordion({
+  group, instances, cols, completedSet, onToggle, onMarkAll, defaultOpen,
+  currentUserEmail,
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  const completedCount = useMemo(
+    () => instances.filter(i => completedSet?.has(i.chore.id)).length,
+    [instances, completedSet]
+  );
+  const allDone = instances.length > 0 && completedCount === instances.length;
+
+  // Earliest start time across the group's chores firing today, for the
+  // header time label.
+  const timeLabel = useMemo(() => {
+    let earliest = null;
+    for (const inst of instances) {
+      const t = inst.chore.startTime;
+      if (!t) continue;
+      if (!earliest || t.localeCompare(earliest) < 0) earliest = t;
+    }
+    if (!earliest) return "";
+    const [h, m] = earliest.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = ((h + 11) % 12) + 1;
+    return m === 0 ? `${h12} ${ampm}` : `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+  }, [instances]);
+
+  return (
+    <div className="mb-6 border border-line bg-surface">
+      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
+        <button
+          onClick={() => setOpen(o => !o)}
+          aria-label={open ? "Collapse group" : "Expand group"}
+          className="text-muted hover:text-fg p-1 cursor-pointer bg-transparent border-0"
+        >
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="font-ui text-[13px] text-fg uppercase tracking-[0.14em] font-bold bg-transparent border-0 p-0 cursor-pointer text-left"
+        >
+          {group.name}
+        </button>
+        {timeLabel && (
+          <span className="text-[12px] text-dim">{timeLabel}</span>
+        )}
+        <span className="ml-auto text-[11px] text-muted uppercase tracking-[0.12em] font-semibold">
+          {completedCount}/{instances.length} done
+        </span>
+        <button
+          onClick={onMarkAll}
+          disabled={allDone}
+          title={allDone ? "All done" : "Mark all complete"}
+          className="inline-flex items-center gap-1.5 bg-transparent border border-line text-fg font-[inherit] text-[11px] font-semibold px-2 py-1 cursor-pointer uppercase tracking-[0.12em] hover:bg-row-hover disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <CheckCheck size={12} />
+          Mark all
+        </button>
+      </header>
+      {open && (
+        <div className="p-3">
+          <ColumnList
+            items={instances}
+            cols={cols}
+            keyFor={inst => inst.choreId}
+            renderItem={inst => (
+              <TodayChoreRow
+                inst={inst}
+                done={completedSet?.has(inst.chore.id) ?? false}
+                onToggle={onToggle}
+                currentUserEmail={currentUserEmail}
+              />
+            )}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PeriodGroup({ period, instances, cols, completedSet, onToggle, currentUserEmail }) {
   const meta = CHORE_PERIODS[period];
   const timeLabel = getChorePeriodTimeLabel(instances, period) || meta?.hint || "";
   return (
@@ -168,6 +318,7 @@ function PeriodGroup({ period, instances, cols, completedSet, onToggle }) {
             inst={inst}
             done={completedSet?.has(inst.chore.id) ?? false}
             onToggle={onToggle}
+            currentUserEmail={currentUserEmail}
           />
         )}
       />
@@ -175,11 +326,17 @@ function PeriodGroup({ period, instances, cols, completedSet, onToggle }) {
   );
 }
 
-function TodayChoreRow({ inst, done, onToggle }) {
+function TodayChoreRow({ inst, done, onToggle, currentUserEmail }) {
   const { chore, assignee } = inst;
   // Persistence happens through onToggle (Supabase via useChoreCompletions).
   // The Set arrives via realtime so re-rendering on success is automatic.
   const handleClick = () => onToggle?.(chore.id, done);
+  // Right-column metadata: explicit assignee + deadline. If no assignee,
+  // show only the deadline — no "unassigned" label.
+  const metaParts = [];
+  if (assignee) metaParts.push(assignee);
+  metaParts.push(displayDeadlineConcrete(chore));
+
   return (
     <div style={{ background: T.surface, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
       <button
@@ -203,15 +360,18 @@ function TodayChoreRow({ inst, done, onToggle }) {
           {chore.title}
         </div>
         {chore.description && (
-          <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>{chore.description}</div>
+          <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{chore.description}</div>
         )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-        <div style={{ fontSize: 11, color: T.textDim }}>{CHORE_CATEGORIES[chore.category]?.label ?? chore.category}</div>
-        <div style={{ fontSize: 11, color: T.textFaint }}>
-          {assignee ?? "unassigned"} · {displayDeadlineConcrete(chore)}
-        </div>
+        <div style={{ fontSize: 12, color: T.textDim }}>{CHORE_CATEGORIES[chore.category]?.label ?? chore.category}</div>
+        <div style={{ fontSize: 12, color: T.textFaint }}>{metaParts.join(" · ")}</div>
       </div>
+      <ChoreMessageButton
+        choreId={chore.id}
+        choreTitle={chore.title}
+        currentUserEmail={currentUserEmail}
+      />
     </div>
   );
 }
@@ -319,6 +479,7 @@ function AllChoresTab({ data }) {
 // expand caret) and needs more horizontal room before it's worth splitting.
 function AllChoresList({ filtered, expanded, onToggle }) {
   const [setWidthRef, cols] = useColumnCount(1200);
+  const userEmail = useCurrentUserEmail();
   return (
     <div ref={setWidthRef}>
       <ColumnList
@@ -330,6 +491,7 @@ function AllChoresList({ filtered, expanded, onToggle }) {
             chore={chore}
             expanded={expanded.has(chore.id)}
             onToggle={() => onToggle(chore.id)}
+            currentUserEmail={userEmail}
           />
         )}
       />
@@ -362,7 +524,7 @@ function SortPicker({ value, onChange }) {
   );
 }
 
-function ChoreDefinitionRow({ chore, expanded, onToggle }) {
+function ChoreDefinitionRow({ chore, expanded, onToggle, currentUserEmail }) {
   return (
     <div style={{ background: T.surface }}>
       <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -375,7 +537,7 @@ function ChoreDefinitionRow({ chore, expanded, onToggle }) {
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{chore.title}</div>
-          <div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>
             {CHORE_CATEGORIES[chore.category]?.label ?? chore.category}
             {" · "}
             {displayStartTime(chore)}
@@ -383,6 +545,11 @@ function ChoreDefinitionRow({ chore, expanded, onToggle }) {
             {describeFrequency(chore)}
           </div>
         </div>
+        <ChoreMessageButton
+          choreId={chore.id}
+          choreTitle={chore.title}
+          currentUserEmail={currentUserEmail}
+        />
         <RowActions choreId={chore.id} />
       </div>
       {expanded && <ExpandedChoreDetail chore={chore} />}

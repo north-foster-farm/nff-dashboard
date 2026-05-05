@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { supabase } from "../supabase.js";
 import { CHORE_SEEDS } from "../../data/choreSeeds.js";
 
@@ -18,6 +18,7 @@ import { CHORE_SEEDS } from "../../data/choreSeeds.js";
 // reflects the change back into local state automatically; the optimistic
 // update path below is just to keep the UI snappy during the round-trip.
 export function useActivityLog({ sinceDate, limit } = {}) {
+  const instanceId = useId();
   const [rows, setRows] = useState(null); // null = loading
   const [error, setError] = useState(null);
 
@@ -50,7 +51,7 @@ export function useActivityLog({ sinceDate, limit } = {}) {
   // Realtime: prepend new rows, replace edited rows, remove deleted rows.
   useEffect(() => {
     const channel = supabase
-      .channel("activity_log:stream")
+      .channel(`activity_log:stream:${instanceId}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "activity_log" },
@@ -85,7 +86,7 @@ export function useActivityLog({ sinceDate, limit } = {}) {
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [sinceISO, limit]);
+  }, [sinceISO, limit, instanceId]);
 
   // ── Mutators ─────────────────────────────────────────────────────────
   const edit = useCallback(async (entryId, newSummary) => {

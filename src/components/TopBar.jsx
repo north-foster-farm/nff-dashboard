@@ -2,19 +2,10 @@ import { useEffect, useState } from "react";
 import { Sprout, Sun, Moon, LogOut, ALargeSmall } from "lucide-react";
 import UserAvatarMenu from "./UserAvatarMenu.jsx";
 import { supabase } from "../lib/supabase.js";
-
-function getInitialTheme() {
-  if (typeof document === "undefined") return "dark";
-  return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
-}
+import { useUserPreferences } from "../lib/data/useUserPreferences.js";
+import InboxBell from "./InboxBell.jsx";
 
 const DENSITY_ORDER = ["compact", "comfortable", "spacious"];
-
-function getInitialDensity() {
-  if (typeof document === "undefined") return "compact";
-  const v = document.documentElement.getAttribute("data-density");
-  return DENSITY_ORDER.includes(v) ? v : "compact";
-}
 
 function nextDensity(d) {
   const i = DENSITY_ORDER.indexOf(d);
@@ -22,21 +13,10 @@ function nextDensity(d) {
 }
 
 export default function TopBar({ data, session, onOpenSettings }) {
-  const [theme, setTheme] = useState(getInitialTheme);
-  const [density, setDensity] = useState(getInitialDensity);
+  const { theme, density, setTheme, setDensity } = useUserPreferences();
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    try { localStorage.setItem("nff-theme", theme); } catch {}
-  }, [theme]);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-density", density);
-    try { localStorage.setItem("nff-density", density); } catch {}
-  }, [density]);
-
-  const toggleTheme = () => setTheme(t => (t === "dark" ? "light" : "dark"));
-  const toggleDensity = () => setDensity(nextDensity);
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const toggleDensity = () => setDensity(nextDensity(density));
   const handleSignOut = () => {
     supabase.auth.signOut();
     // LoginGate's onAuthStateChange listener handles the re-render.
@@ -51,6 +31,7 @@ export default function TopBar({ data, session, onOpenSettings }) {
         </span>
       </div>
       <div className="flex items-center gap-1 shrink-0">
+        <InboxBell />
         <UserAvatarMenu session={session} onClick={onOpenSettings} />
         <IconButton
           onClick={toggleDensity}
