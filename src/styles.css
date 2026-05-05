@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Theme switching is driven by `data-theme` on <html> (set by the boot
+   script in index.html). Wire that into Tailwind's dark variant so we can
+   write `dark:bg-foo` etc. and have it activate when data-theme="dark". */
+@custom-variant dark (&:where(html[data-theme="dark"], html[data-theme="dark"] *));
+
 /*
   Design tokens. Each token resolves to a CSS custom property defined in
   index.html, where the [data-theme="dark|light"] selector swaps palettes.
@@ -58,6 +63,129 @@
   /* App-specific timings reused from the original CSS keyframes. */
   --animate-flyout-in:  nff-flyout-in 140ms ease;
   --animate-flyout-out: nff-flyout-out 140ms ease forwards;
+
+  /* Decorative palette. Each ramp goes 50 (lightest) → 950 (darkest).
+     Use these to decorate tables / chips / badges; map to a semantic
+     event-kind color in index.html so theme switching keeps working. */
+  --color-sky-aqua-50:  #e6f8ff;
+  --color-sky-aqua-100: #cdf1fe;
+  --color-sky-aqua-200: #9ae3fe;
+  --color-sky-aqua-300: #68d5fd;
+  --color-sky-aqua-400: #35c8fd;
+  --color-sky-aqua-500: #03bafc;
+  --color-sky-aqua-600: #0295ca;
+  --color-sky-aqua-700: #026f97;
+  --color-sky-aqua-800: #014a65;
+  --color-sky-aqua-900: #012532;
+  --color-sky-aqua-950: #001a23;
+
+  --color-celadon-50:  #ebfaf0;
+  --color-celadon-100: #d6f5e0;
+  --color-celadon-200: #aeeac2;
+  --color-celadon-300: #85e0a3;
+  --color-celadon-400: #5dd585;
+  --color-celadon-500: #34cb66;
+  --color-celadon-600: #2aa252;
+  --color-celadon-700: #1f7a3d;
+  --color-celadon-800: #155129;
+  --color-celadon-900: #0a2914;
+  --color-celadon-950: #071c0e;
+
+  --color-turf-green-50:  #ecf9f3;
+  --color-turf-green-100: #d8f3e8;
+  --color-turf-green-200: #b2e6d0;
+  --color-turf-green-300: #8bdab9;
+  --color-turf-green-400: #65cda2;
+  --color-turf-green-500: #3ec18a;
+  --color-turf-green-600: #329a6f;
+  --color-turf-green-700: #257453;
+  --color-turf-green-800: #194d37;
+  --color-turf-green-900: #0c271c;
+  --color-turf-green-950: #091b13;
+
+  --color-amber-glow-50:  #fff4e5;
+  --color-amber-glow-100: #ffeacc;
+  --color-amber-glow-200: #ffd599;
+  --color-amber-glow-300: #ffbf66;
+  --color-amber-glow-400: #ffaa33;
+  --color-amber-glow-500: #ff9500;
+  --color-amber-glow-600: #cc7700;
+  --color-amber-glow-700: #995900;
+  --color-amber-glow-800: #663c00;
+  --color-amber-glow-900: #331e00;
+  --color-amber-glow-950: #241500;
+
+  --color-hot-fuchsia-50:  #ffe5e8;
+  --color-hot-fuchsia-100: #ffccd1;
+  --color-hot-fuchsia-200: #ff99a3;
+  --color-hot-fuchsia-300: #ff6675;
+  --color-hot-fuchsia-400: #ff3347;
+  --color-hot-fuchsia-500: #ff001a;
+  --color-hot-fuchsia-600: #cc0014;
+  --color-hot-fuchsia-700: #99000f;
+  --color-hot-fuchsia-800: #66000a;
+  --color-hot-fuchsia-900: #330005;
+  --color-hot-fuchsia-950: #240004;
+
+  --color-frozen-lake-50:  #e6f8ff;
+  --color-frozen-lake-100: #cdf1fe;
+  --color-frozen-lake-200: #9ae3fe;
+  --color-frozen-lake-300: #68d5fd;
+  --color-frozen-lake-400: #35c8fd;
+  --color-frozen-lake-500: #03bafc;
+  --color-frozen-lake-600: #0295ca;
+  --color-frozen-lake-700: #026f97;
+  --color-frozen-lake-800: #014a65;
+  --color-frozen-lake-900: #012532;
+  --color-frozen-lake-950: #001a23;
+
+  --color-tea-green-50:  #eafbef;
+  --color-tea-green-100: #d4f7e0;
+  --color-tea-green-200: #a9efc0;
+  --color-tea-green-300: #7ee7a1;
+  --color-tea-green-400: #54de82;
+  --color-tea-green-500: #29d663;
+  --color-tea-green-600: #21ab4f;
+  --color-tea-green-700: #18813b;
+  --color-tea-green-800: #105627;
+  --color-tea-green-900: #082b14;
+  --color-tea-green-950: #061e0e;
+
+  --color-emerald-50:  #eafaf4;
+  --color-emerald-100: #d6f5e8;
+  --color-emerald-200: #adebd1;
+  --color-emerald-300: #84e1ba;
+  --color-emerald-400: #5bd7a3;
+  --color-emerald-500: #32cd8c;
+  --color-emerald-600: #28a470;
+  --color-emerald-700: #1e7b54;
+  --color-emerald-800: #145238;
+  --color-emerald-900: #0a291c;
+  --color-emerald-950: #071d14;
+
+  --color-honey-bronze-50:  #fff4e5;
+  --color-honey-bronze-100: #ffeacc;
+  --color-honey-bronze-200: #ffd599;
+  --color-honey-bronze-300: #ffbf66;
+  --color-honey-bronze-400: #ffaa33;
+  --color-honey-bronze-500: #ff9500;
+  --color-honey-bronze-600: #cc7700;
+  --color-honey-bronze-700: #995900;
+  --color-honey-bronze-800: #663c00;
+  --color-honey-bronze-900: #331e00;
+  --color-honey-bronze-950: #241500;
+
+  --color-grapefruit-pink-50:  #ffe5e8;
+  --color-grapefruit-pink-100: #ffccd1;
+  --color-grapefruit-pink-200: #ff99a3;
+  --color-grapefruit-pink-300: #ff6675;
+  --color-grapefruit-pink-400: #ff3347;
+  --color-grapefruit-pink-500: #ff001a;
+  --color-grapefruit-pink-600: #cc0014;
+  --color-grapefruit-pink-700: #99000f;
+  --color-grapefruit-pink-800: #66000a;
+  --color-grapefruit-pink-900: #330005;
+  --color-grapefruit-pink-950: #240004;
 }
 
 /* Apply the body font globally; Tailwind will pick up `font-body`,

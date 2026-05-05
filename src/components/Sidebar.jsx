@@ -170,7 +170,7 @@ function SidebarItem({ section, active, isFlyoutOpen, anyFlyoutOpen, count, onSe
         {!isAction && !isFlyout && count !== null && (
           <span
             className={
-              "text-[11px] leading-none " +
+              "text-[12px] leading-none " +
               (count > 0 ? (active ? "text-accent" : "text-dim") : "text-faint")
             }
           >
@@ -251,7 +251,7 @@ function FlyoutItem({ child, active, count, onSelect }) {
         {count !== null && (
           <span
             className={
-              "text-[11px] leading-none " +
+              "text-[12px] leading-none " +
               (count > 0 ? (active ? "text-accent" : "text-dim") : "text-faint")
             }
           >

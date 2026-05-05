@@ -189,7 +189,40 @@ export const CHORE_SEEDS = [
     period: "afternoon", startTime: "14:00",
     deadline: DEADLINE_MONTH_FRI,
     assignment: null, tags
-  }))
+  })),
+
+  // ── DEMO: overnight check (3 AM daily) ──────────────────────────────────
+  // Exercises the schedule timeline's pre-morning highlight + the
+  // "Tomorrow" subheading. Treated as an evening-period chore because
+  // anything starting before 5 AM is bucketed there per the time-window
+  // spec.
+  daily({
+    id: "demo_overnight_check",
+    title: "Overnight brooder check",
+    category: "brooders",
+    description: "Demo chore — peek at the brooders before sunrise.",
+    tags: ["demo", "overnight"],
+    period: "evening",
+    startTime: "03:00",
+    deadline: DEADLINE_2H
+  }),
+
+  // ── DEMO: morning chores assigned to Jim ────────────────────────────────
+  // Lets the schedule timeline show Tomorrow's morning chores under the
+  // Tomorrow heading with the assignee's name in the right column.
+  {
+    ...daily({
+      id: "demo_morning_assigned",
+      title: "Walk the layers' coop perimeter",
+      category: "mobile_coops",
+      description: "Demo chore — pretend Jim takes morning today.",
+      tags: ["demo", "assigned"],
+      period: "morning",
+      startTime: "08:00",
+      deadline: DEADLINE_2H
+    }),
+    assignment: { default: "Jim" }
+  }
 ];
 
 // Category display metadata.

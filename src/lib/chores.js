@@ -8,10 +8,17 @@ export { CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS };
 
 // The canonical list of chore definitions the app shows. Once a backend
 // exists, this source flips to whatever is in the DB and the seeds are used
-// only for initial insertion.
+// only for initial insertion. Demo-tagged chores from the seeds are *always*
+// merged in so design fixtures (e.g. the 3 AM "Overnight brooder check"
+// that exercises the pre-dawn / Tomorrow timeline rendering) survive even
+// after DB-backed chores override the seed list.
 export function getAllChoreDefinitions(data) {
   const fromData = data?.chores?.definitions ?? [];
-  if (fromData.length > 0) return fromData;
+  const demoSeeds = CHORE_SEEDS.filter(c => (c.tags ?? []).includes("demo"));
+  if (fromData.length > 0) {
+    const existingIds = new Set(fromData.map(c => c.id));
+    return [...fromData, ...demoSeeds.filter(c => !existingIds.has(c.id))];
+  }
   return CHORE_SEEDS;
 }
 
@@ -177,42 +184,59 @@ export function formatTime12hShort(hhmm) {
   return m === 0 ? `${h12} ${ampm}` : `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+// Convert "HH:MM" to minutes since midnight (0–1439). Treats post-midnight
+// evening times as still-in-the-evening-bucket — i.e. a 3 AM chore returns
+// 180, NOT 1620; period detection happens elsewhere.
+function startMinutes(hhmm) {
+  const [h, m] = (hhmm || "00:00").split(":").map(Number);
+  return h * 60 + m;
+}
+
+// True if `hhmm` falls inside the spec's window for the given period.
+// Period windows:
+//   morning   05:00–11:59
+//   afternoon 12:00–17:59
+//   evening   18:00–04:59  (wraps midnight)
+function inPeriodWindow(hhmm, period) {
+  const min = startMinutes(hhmm);
+  if (period === "morning") return min >= 300 && min <= 719;
+  if (period === "afternoon") return min >= 720 && min <= 1079;
+  if (period === "evening") return min >= 1080 || min <= 299;
+  return false;
+}
+
+// Find the earliest chore instance within a given period for a day. Evening
+// times wrap (so 6 PM precedes 3 AM next morning). Returns null if no chore
+// in the period matches.
+export function getEarliestChoreInPeriod(instances, period) {
+  const candidates = instances.filter(
+    (i) => i.chore.period === period && inPeriodWindow(i.chore.startTime, period)
+  );
+  if (candidates.length === 0) return null;
+  const order = (t) => {
+    const min = startMinutes(t);
+    if (period === "evening") return min < 300 ? min + 24 * 60 : min;
+    return min;
+  };
+  candidates.sort((a, b) => order(a.chore.startTime) - order(b.chore.startTime));
+  return candidates[0];
+}
+
+// Earliest start time for a period as minutes-since-midnight (0–1439). Used
+// to detect "pre-morning" items in the schedule timeline (anything before
+// today's morning-chores start). Returns null if the period has no chores.
+export function getChorePeriodStartMinutes(instances, period) {
+  const earliest = getEarliestChoreInPeriod(instances, period);
+  return earliest ? startMinutes(earliest.chore.startTime) : null;
+}
+
 // Compute the displayed start-time label for a chore period given the chore
 // instances scheduled on a particular day. The label is the earliest start
 // time among that period's chores, formatted via formatTime12hShort. Returns
 // "" if the period has no qualifying chores.
-//
-// Period windows (per spec):
-//   morning   05:00–11:59
-//   afternoon 12:00–17:59
-//   evening   18:00–04:59  (wraps midnight)
-//
-// Evening sort treats post-midnight times (00:00–04:59) as occurring after
-// 23:59, so 6 PM precedes 3 AM.
 export function getChorePeriodTimeLabel(instances, period) {
-  const inWindow = (t) => {
-    const [h, m] = (t || "00:00").split(":").map(Number);
-    const minutes = h * 60 + m;
-    if (period === "morning") return minutes >= 300 && minutes <= 719;
-    if (period === "afternoon") return minutes >= 720 && minutes <= 1079;
-    if (period === "evening") return minutes >= 1080 || minutes <= 299;
-    return false;
-  };
-  const candidates = instances.filter(
-    (i) => i.chore.period === period && inWindow(i.chore.startTime)
-  );
-  if (candidates.length === 0) return "";
-  const eveningOrder = (t) => {
-    const [h, m] = (t || "00:00").split(":").map(Number);
-    return (h < 5 ? h + 24 : h) * 60 + m;
-  };
-  const dayOrder = (t) => {
-    const [h, m] = (t || "00:00").split(":").map(Number);
-    return h * 60 + m;
-  };
-  const ord = period === "evening" ? eveningOrder : dayOrder;
-  candidates.sort((a, b) => ord(a.chore.startTime) - ord(b.chore.startTime));
-  return formatTime12hShort(candidates[0].chore.startTime);
+  const earliest = getEarliestChoreInPeriod(instances, period);
+  return earliest ? formatTime12hShort(earliest.chore.startTime) : "";
 }
 
 // Short display for a chore's start time, respecting evening chores that are

@@ -1,15 +1,19 @@
 import { useMemo, useState } from "react";
 import {
   Clock, CheckCircle2, ArrowUpRight,
-  FolderKanban, Receipt, Newspaper, Activity as ActivityIcon
+  FolderKanban, Receipt, Newspaper, Activity as ActivityIcon,
+  MapPin, User
 } from "lucide-react";
 import { T } from "../theme.js";
 import { formatTime12h } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
 import {
   getChoresForDay, CHORE_CATEGORIES, CHORE_PERIODS,
-  displayDeadlineConcrete, getChorePeriodTimeLabel
+  displayDeadlineConcrete, getChorePeriodTimeLabel,
+  getChorePeriodStartMinutes, getEarliestChoreInPeriod,
+  formatTime12hShort, resolveAssignee
 } from "../lib/chores.js";
+import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import CurrentConditionsCard from "../components/WeatherWidget.jsx";
 
@@ -131,86 +135,392 @@ function ActivityTimeline({ items }) {
   );
 }
 
-// ─── Today's schedule ────────────────────────────────────────────────────────
+// ─── Schedule at a glance (unified timeline) ─────────────────────────────────
+
+function timeToMinutes(hhmm) {
+  if (!hhmm) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function isoFromDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+// Per spec: chores with period === "evening" can fall anywhere in [18:00,
+// 23:59] ∪ [00:00, 04:59]. For the timeline we visually split that wide
+// bucket into "evening" (post-sunset) and "pre_dawn" (early-morning) so a
+// 3 AM chore renders chronologically alongside other early-morning items
+// instead of being hidden inside the 8 PM rollup.
+function bucketForChore(inst) {
+  const p = inst.chore.period;
+  if (p !== "evening") return p;
+  const min = timeToMinutes(inst.chore.startTime) ?? 0;
+  return min < 5 * 60 ? "pre_dawn" : "evening";
+}
+
+const BUCKET_LABEL = {
+  morning: "Morning chores",
+  afternoon: "Afternoon chores",
+  evening: "Evening chores",
+  pre_dawn: "Pre-dawn chores",
+  anytime: "Anytime chores"
+};
+
+// Build the chore-group rollups for a day. One row per bucket containing
+// the earliest start time + member count.
+function rollupChoresForDay(data, dayDate) {
+  const instances = getChoresForDay(data, dayDate);
+  const byBucket = {};
+  for (const inst of instances) {
+    const key = bucketForChore(inst);
+    (byBucket[key] ??= []).push(inst);
+  }
+  return Object.keys(byBucket).map((bucket) => {
+    const items = byBucket[bucket];
+    // Earliest by clock time within the bucket. For evening (post-sunset)
+    // the literal startTime is already monotonic (18:00–23:59) so we don't
+    // need the wrap-aware sort.
+    let earliestMin = Infinity;
+    let earliestHHMM = null;
+    for (const inst of items) {
+      const min = timeToMinutes(inst.chore.startTime);
+      if (min != null && min < earliestMin) {
+        earliestMin = min;
+        earliestHHMM = inst.chore.startTime;
+      }
+    }
+    return { bucket, items, startMin: earliestMin, startHHMM: earliestHHMM };
+  });
+}
+
+function todaysMorningCutoff(data, dayDate) {
+  return getChorePeriodStartMinutes(getChoresForDay(data, dayDate), "morning");
+}
+
+// If every chore in the rollup that has an assignee resolves to the same
+// single person on `dayDate`, return that name. Otherwise null. Loose rule:
+// unassigned chores are ignored — the moment one *named* assignee owns the
+// rollup it counts as "assigned to that person".
+function getRollupAssignee(rollup, dayDate) {
+  const names = new Set();
+  for (const inst of rollup.items) {
+    const a = resolveAssignee(inst.chore, dayDate);
+    if (a) names.add(a);
+  }
+  return names.size === 1 ? [...names][0] : null;
+}
 
 function TodayScheduleCard({ data, today }) {
-  const occurrences = useMemo(() => {
-    const start = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-    const end = new Date(start);
-    return getEventOccurrences(data.events, start, end, null);
-  }, [data, today]);
-  const instances = useMemo(() => getChoresForDay(data, today), [data, today]);
-
-  const choresByPeriod = {};
-  for (const inst of instances) {
-    const p = inst.chore.period;
-    (choresByPeriod[p] ??= []).push(inst);
-  }
-  const orderedPeriods = Object.keys(choresByPeriod).sort(
-    (a, b) => (CHORE_PERIODS[a]?.order ?? 99) - (CHORE_PERIODS[b]?.order ?? 99)
+  const { data: weather } = useCurrentWeather();
+  const todayUTC = useMemo(
+    () => new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())),
+    [today]
   );
+  const todayISO = useMemo(() => isoFromDate(todayUTC), [todayUTC]);
+
+  const tomorrow = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }, [today]);
+  const tomorrowUTC = useMemo(
+    () => new Date(Date.UTC(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())),
+    [tomorrow]
+  );
+
+  const todayMorningCutoff = useMemo(
+    () => todaysMorningCutoff(data, today),
+    [data, today]
+  );
+  const tomorrowMorningCutoff = useMemo(
+    () => todaysMorningCutoff(data, tomorrow),
+    [data, tomorrow]
+  );
+
+  // Round sundown up to the next half-hour so the schedule shows a clean
+  // "7 PM" / "7:30 PM" rather than 6:34 PM. Falls back to the literal word
+  // "Sundown" if the weather payload hasn't arrived (or errored).
+  const sundownLabel = useMemo(() => {
+    if (!weather?.sunsetHHMM) return "Sundown";
+    return formatTime12hShort(roundUpToHalfHour(weather.sunsetHHMM));
+  }, [weather]);
+
+  // ─── Today's items ────────────────────────────────────────────────────
+  const todaysEvents = useMemo(
+    () => getEventOccurrences(data.events, todayUTC, todayUTC, null),
+    [data, todayUTC]
+  );
+  const todaysChoreRollups = useMemo(
+    () => rollupChoresForDay(data, today),
+    [data, today]
+  );
+  const todaysProjects = useMemo(
+    () => (data.projects ?? []).filter(p =>
+      p.status !== "completed"
+      && (!p.start || p.start <= todayISO)
+      && (!p.end || p.end >= todayISO)
+    ),
+    [data, todayISO]
+  );
+
+  const todayItems = useMemo(
+    () => buildTimelineItems({
+      events: todaysEvents,
+      choreRollups: todaysChoreRollups,
+      projects: todaysProjects,
+      morningCutoff: todayMorningCutoff,
+      sundownLabel
+    }),
+    [todaysEvents, todaysChoreRollups, todaysProjects, todayMorningCutoff, sundownLabel]
+  );
+
+  // ─── Tomorrow: pre-morning items + assigned morning rollup ─────────────
+  const tomorrowsEvents = useMemo(
+    () => getEventOccurrences(data.events, tomorrowUTC, tomorrowUTC, null),
+    [data, tomorrowUTC]
+  );
+  const tomorrowsChoreRollups = useMemo(
+    () => rollupChoresForDay(data, tomorrow),
+    [data, tomorrow]
+  );
+
+  const tomorrowItems = useMemo(() => {
+    if (tomorrowMorningCutoff == null) return [];
+    const filteredEvents = tomorrowsEvents.filter(ev => {
+      const min = timeToMinutes(ev.startTime);
+      return min != null && min < tomorrowMorningCutoff;
+    });
+    const filteredRollups = [];
+    for (const r of tomorrowsChoreRollups) {
+      if (r.startMin != null && r.startMin < tomorrowMorningCutoff) {
+        // Pre-morning rollup → always include in Tomorrow.
+        filteredRollups.push(r);
+      } else if (r.bucket === "morning") {
+        // Morning rollup → only include if a single named assignee owns it,
+        // and surface that name in place of the item count.
+        const assignee = getRollupAssignee(r, tomorrow);
+        if (assignee) filteredRollups.push({ ...r, assignee });
+      }
+    }
+    return buildTimelineItems({
+      events: filteredEvents,
+      choreRollups: filteredRollups,
+      projects: [],
+      morningCutoff: tomorrowMorningCutoff,
+      sundownLabel
+    });
+  }, [tomorrowsEvents, tomorrowsChoreRollups, tomorrowMorningCutoff, tomorrow, sundownLabel]);
+
+  // ─── "Upcoming events" — events between (today + 2) and (today + 7) ────
+  const upcomingEvents = useMemo(() => {
+    const start = new Date(todayUTC);
+    start.setUTCDate(start.getUTCDate() + 2);
+    const end = new Date(todayUTC);
+    end.setUTCDate(end.getUTCDate() + 7);
+    return getEventOccurrences(data.events, start, end, null);
+  }, [data, todayUTC]);
+
+  // Render the upcoming events as the same item shape so they share
+  // TimelineRow + the parent grid's column tracks.
+  const upcomingItems = useMemo(
+    () => upcomingEvents.map((ev) => {
+      const d = new Date(ev.date + "T12:00:00Z");
+      return {
+        kind: "event",
+        id: `upcoming:${ev.instanceId}:${ev.date}`,
+        startMin: null,
+        timeLabel: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+        title: ev.instanceLabel,
+        detail: ev.startTime ? formatTime12h(ev.startTime) : null,
+        detailIcon: null,
+        color: T.cat[ev.kindId] || T.cat.default
+      };
+    }),
+    [upcomingEvents]
+  );
+
+  const splitDays = tomorrowItems.length > 0;
+  const nothingToShow =
+    todayItems.length === 0 && tomorrowItems.length === 0 && upcomingItems.length === 0;
 
   return (
     <Card title="Schedule at a glance" icon={Clock}>
-      {occurrences.length === 0 && instances.length === 0 ? (
+      {nothingToShow ? (
         <EmptyLine>Nothing on the calendar today.</EmptyLine>
       ) : (
-        <div className="flex flex-col gap-1.5">
-          {occurrences.map(ev => (
-            <EventScheduleRow
-              key={ev.instanceId + ev.date}
-              time={formatTime12h(ev.startTime)}
-              title={ev.instanceLabel}
-              detail={ev.location?.name}
-              color={T.cat[ev.kindId] || T.cat.default}
-            />
-          ))}
-          {orderedPeriods.length > 0 && (
-            <div className="text-[11px] text-muted uppercase tracking-[0.14em] pt-2.5 pb-1 font-semibold">
-              Chores
-            </div>
+        // Outer grid so every row across Today / Tomorrow / Upcoming events
+        // shares the same column tracks (left = auto-sized to widest label,
+        // middle ≥ 66% of container, right = auto). Each row is a subgrid
+        // with col-span-3 so per-row backgrounds + borders work.
+        // Grid template:
+        //   left  → auto (max-content of widest entry, e.g. "Sat, May 9").
+        //           This column is shared via subgrid so all rows align.
+        //   right → 1fr (everything else). Per-row, that cell holds a flex
+        //           container with title (truncates) + detail (right-aligned,
+        //           shrink-0). This lets the title grow into space the
+        //           detail doesn't use, instead of capping every title at
+        //           the widest detail's width across all rows.
+        <div className="grid grid-cols-[auto_minmax(0,1fr)]">
+          {splitDays && <SubHeading>Today</SubHeading>}
+          {todayItems.length === 0 ? (
+            <SubHeading className="font-normal normal-case tracking-normal text-dim italic">
+              Nothing on the calendar today.
+            </SubHeading>
+          ) : (
+            todayItems.map((it) => <TimelineRow key={it.id} item={it} />)
           )}
-          {orderedPeriods.map(p => {
-            const count = choresByPeriod[p].length;
-            const meta = CHORE_PERIODS[p];
-            const timeLabel = getChorePeriodTimeLabel(instances, p) || meta?.hint || "";
-            return (
-              <ChoreRollupRow
-                key={p}
-                time={timeLabel}
-                title={`${meta?.label ?? p} chores`}
-                count={count}
-              />
-            );
-          })}
+
+          {splitDays && <SubHeading className="mt-3">Tomorrow</SubHeading>}
+          {tomorrowItems.map((it) => (
+            <TimelineRow key={it.id} item={it} />
+          ))}
+
+          {upcomingItems.length > 0 && (
+            <>
+              <SubHeading className="mt-3 pt-3 border-t border-line">
+                Upcoming events
+              </SubHeading>
+              {upcomingItems.map((it) => (
+                <TimelineRow key={it.id} item={it} />
+              ))}
+            </>
+          )}
         </div>
       )}
     </Card>
   );
 }
 
-// Schedule row variant for events (with the small color dot).
-function EventScheduleRow({ time, title, detail, color }) {
+// Compose timeline items from a day's events / chore-rollups / projects.
+// `sundownLabel` is the formatted sundown time used for evening chore
+// rollups (e.g. "7 PM"); falls back to the literal "Sundown" if weather
+// data isn't loaded yet.
+function buildTimelineItems({ events, choreRollups, projects, sundownLabel }) {
+  const out = [];
+  for (const ev of events) {
+    const min = timeToMinutes(ev.startTime);
+    const locationName = ev.location?.name;
+    out.push({
+      kind: "event",
+      id: `event:${ev.instanceId}:${ev.date}`,
+      startMin: min,
+      timeLabel: min != null ? formatTime12h(ev.startTime) : "All day",
+      title: ev.instanceLabel,
+      detail: locationName ?? null,
+      detailIcon: locationName ? "location" : null,
+      color: T.cat[ev.kindId] || T.cat.default
+    });
+  }
+  for (const r of choreRollups) {
+    const count = r.items.length;
+    const isEvening = r.bucket === "evening";
+    // If the rollup carries an explicit assignee (e.g. tomorrow's morning
+    // is owned by Jim), show the name in the right column instead of the
+    // item count.
+    const detail = r.assignee
+      ? r.assignee
+      : `${count} ${count === 1 ? "item" : "items"}`;
+    out.push({
+      kind: "chore-group",
+      id: `chores:${r.bucket}`,
+      bucket: r.bucket,
+      // Sort key for evening uses the rollup's startMin (e.g. 8 PM = 1200).
+      // Pre-dawn already gets its own bucket via bucketForChore.
+      startMin: r.startMin,
+      timeLabel: isEvening
+        ? sundownLabel
+        : (r.startHHMM ? formatTime12hShort(r.startHHMM) : ""),
+      title: BUCKET_LABEL[r.bucket] ?? `${r.bucket} chores`,
+      detail,
+      detailIcon: r.assignee ? "user" : null
+    });
+  }
+  for (const p of projects) {
+    out.push({
+      kind: "project",
+      id: `project:${p.id}`,
+      startMin: null,
+      timeLabel: "All day",
+      title: p.title,
+      detail: "in progress",
+      detailIcon: null
+    });
+  }
+  // Sort chronologically: nulls (all-day) at top, then by startMin.
+  out.sort((a, b) => {
+    const aMin = a.startMin == null ? -1 : a.startMin;
+    const bMin = b.startMin == null ? -1 : b.startMin;
+    return aMin - bMin;
+  });
+  return out;
+}
+
+// Section subheading inside the schedule grid. Spans all 3 columns so it
+// can sit between subgrid rows.
+function SubHeading({ children, className = "" }) {
   return (
-    <div className="flex gap-2.5 items-baseline text-[13px]">
-      <div className="[font-variant-numeric:tabular-nums] text-dim min-w-[78px] shrink-0">{time}</div>
-      <div
-        className="w-1.5 h-1.5 rounded-full shrink-0 -translate-y-px"
-        style={{ background: color }}
-      />
-      <div className="text-fg flex-1 min-w-0">{title}</div>
-      {detail && <div className="text-faint text-[11px]">{detail}</div>}
+    <div className={`col-span-2 text-[11px] text-muted uppercase tracking-[0.14em] font-semibold pb-1 ${className}`}>
+      {children}
     </div>
   );
 }
 
-// Chore rollup row format: "8 AM   Morning chores                20 items"
-function ChoreRollupRow({ time, title, count }) {
+// One row in the timeline. Implemented as a subgrid that inherits the
+// parent's column tracks so every row across Today / Tomorrow / Upcoming
+// shares column widths.
+//
+// Decoration rules:
+//   event  → bright left border in the kind color + tinted bg via
+//            color-mix on the same color (9% mix for dark-mode legibility).
+//   chore  → plain (no border, no tint). Reserved kind-color treatment
+//            for events keeps the visual hierarchy clean.
+//   project → italic title placeholder until the new project model lands.
+function TimelineRow({ item }) {
+  const isEvent = item.kind === "event";
+  // Use an inset box-shadow for the event's left bar instead of a real
+  // border so the row's content stays in the same column-grid positions
+  // as non-event rows. (A real border-left would shift cell contents 2px
+  // and break top-to-bottom column alignment.)
+  const eventStyle = isEvent
+    ? {
+        boxShadow: `inset 2px 0 0 0 ${item.color}`,
+        background: `color-mix(in srgb, ${item.color} 9%, transparent)`
+      }
+    : undefined;
+
+  const titleClass =
+    item.kind === "chore-group" ? "text-fg font-medium" :
+    item.kind === "project" ? "text-fg italic" :
+    "text-fg";
+
   return (
-    <div className="flex gap-2.5 items-baseline text-[13px]">
-      <div className="text-dim min-w-[78px] shrink-0">{time}</div>
-      <div className="text-fg flex-1 min-w-0">{title}</div>
-      <div className="text-faint text-[11px]">{count} {count === 1 ? "item" : "items"}</div>
+    <div
+      className="col-span-2 grid grid-cols-subgrid items-center py-1 text-[13px]"
+      style={eventStyle}
+    >
+      <div className="[font-variant-numeric:tabular-nums] text-dim shrink-0 pl-2 whitespace-nowrap">
+        {item.timeLabel}
+      </div>
+      {/* Title + detail share one fluid cell so the title can grow into
+          space the detail doesn't need, instead of being capped by the
+          widest detail across all rows (e.g. "Pat's Pastured"). */}
+      <div className="flex items-center gap-2 min-w-0 pl-3 pr-2">
+        <div className={`min-w-0 flex-1 truncate ${titleClass}`}>
+          {item.title}
+        </div>
+        {item.detail && (
+          <div className="text-dim text-[12px] flex items-center gap-1 whitespace-nowrap shrink-0">
+            {item.detailIcon === "location" && (
+              <MapPin size={12} className="mb-[1.75px]" />
+            )}
+            {item.detailIcon === "user" && (
+              <User size={12} className="mb-[1.75px]" />
+            )}
+            <span className="text-[12px]">{item.detail}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -278,7 +588,7 @@ function UpcomingChoreRow({ inst }) {
       />
       <div className="flex-1 min-w-0">
         <div className={done ? "text-faint line-through" : "text-fg"}>{chore.title}</div>
-        <div className="text-[11px] text-muted mt-px">
+        <div className="text-[12px] text-muted mt-px">
           {CHORE_CATEGORIES[chore.category]?.label ?? chore.category} · {displayDeadlineConcrete(chore)}
         </div>
       </div>
@@ -361,7 +671,7 @@ function Card({ title, subtitle, icon: Icon, children }) {
         <div className="font-ui text-xs text-fg uppercase tracking-[0.14em] font-bold">
           {title}
         </div>
-        {subtitle && <div className="text-[11px] text-dim ml-auto">{subtitle}</div>}
+        {subtitle && <div className="text-[12px] text-dim ml-auto">{subtitle}</div>}
       </header>
       {children}
     </section>
