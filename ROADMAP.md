@@ -260,10 +260,108 @@ Mid-flight scope changes:
 ## Upcoming
 
 The remainder of the plan (originally 22 batches; renumbered to 23
-when Batch 6 was inserted to ship the in-app roadmap page).
-Sequencing is the proposal — locked in only when the batch starts.
+when Batch 6 was inserted to ship the in-app roadmap page; renumbered
+again to 27 when the Chores overhaul was inserted as Batches 7–10
+on 2026-05-06). Sequencing is the proposal — locked in only when
+the batch starts.
 
-### Batch 7 — Projects subsystem rewrite
+### Chores overhaul (Batches 7–10)
+
+Why these jump the queue: chores + scheduling are the primary
+problem the dashboard exists to solve. The current chores
+implementation became too tangled to keep extending. A four-agent
+design workshop on 2026-05-06 produced a unified model — captured
+in `~/.claude/plans/chores-overhaul-v2.md` — that lands across
+four batches. The full plan, the rejected ontologies, the open
+questions, and the "you'd hate this if…" tradeoff list all live
+in that file. Highlights:
+
+- **Sites become first-class, per-instance, app-wide.** Brooder
+  #1 and Brooder #2 are different rows. Used by chores,
+  observations, the broiler tracker, pasture rotation, and the
+  mortality dashboard. Term is "site," not "stop."
+- **Blocks are user-defined named windows** (Morning, Afternoon,
+  Evening seeded; arbitrary additions allowed). Editing a block
+  propagates to every chore in it.
+- **Chore Doer is a full-screen mobile-first takeover** with a
+  Site Switcher (kind level → instance level), generic ✓ on
+  realtime contention (no per-user attribution), Run-event quick
+  actions written to `activity_log`, and a sundown countdown
+  pill.
+- **Accountability target is time, not per-person split.** Track
+  start-time, run duration, late-start rate, and "overrun"
+  (chores ran past the block window). No DNF state — chores
+  always finish; "overran" is a boolean, not a failure.
+- **Modifiers** are date-bound override rows that ride alongside
+  chores; the table ships in Batch 7 so it's ready for Processes
+  to populate, but the modifier-conflict UI ships with the
+  Processes batch (now Batch 12) since it has nothing to render
+  until then.
+
+### Batch 7 — Chores foundation (schema + sites admin)
+Schema + admin surfaces. New tables: `sites`, `site_residents`,
+`chore_blocks`, `chore_modifiers`, `chore_runs`. Migrate
+`chore_definitions` to add `site_id` / `site_kind` / `block_id` /
+`sort_order` and backfill from existing chore groups. Settings
+gains a "Sites & blocks" admin (CRUD on both, soft-delete
+preserves analytics; `site_residents` mini-CRUD assigns cohorts
+to sites). In-place edit on the All chores tab replaces the
+existing stub. Today tab keeps working from the new model
+read-only — no Doer yet.
+
+Ships value: edit a window once, every chore inherits; in-place
+chore edit; sites + residents schema ready for the Doer, the
+broiler tracker, and the observation log.
+
+### Batch 8 — Chore Doer
+The centerpiece batch. New full-screen route with a sidebar
+state-machine entry that flips between "Do morning chores · 47m"
+/ "Help with chores · 14:23" / "Doing chores · 14:23" via
+realtime. Site Switcher: top-level kinds (Brooders · Mobile coops
+· Chicken tractors · Sheep · Wash & pack), drilling into
+instances when a kind has more than one. Run lifecycle (Start
+chores → per-task realtime locks → All done → Resume) writes to
+`chore_runs`; per-task contention shows generic ✓ + disabled, no
+initials, no toast.
+
+Quick-action tray (Observation / Dead layer / Dead broiler / Chick
+→ MASH / Moved coops / Moved chicken tractors) is site-aware:
+"Dead chicken at Mobile coop 1" prompts to pick from cohorts
+assigned to that site via `site_residents`. Quick actions write
+typed Run Events to `activity_log` with a `run_id` FK — they are
+*not* chore completions. Sundown countdown pill renders in
+Schedule-at-a-glance and in the Doer top bar when the evening run
+is open.
+
+May split into 8.1 (lifecycle + Switcher) and 8.2 (realtime + quick
+actions + Run Events) if scope creeps.
+
+### Batch 9 — Observation Log
+Lands right after the Doer so the observation events the Doer
+writes have a browsable home. New page (likely under "Other")
+with filters by site, kind, date range, and author. Reads from
+`activity_log` rows tagged as observations — no new table —
+inheriting Batch 4's edit/delete affordances. Out of scope for
+v1: structured forms, photo attachments, AI summarization.
+
+Ships value: "what did we notice last week at Brooder #2" becomes
+one click. Closes the loop on the quick-action observations the
+Doer captures.
+
+### Batch 10 — Chores notifications + Performance
+Web push (PWA + service worker — may need to pull forward from
+the previously-Batch-21 mobile-responsive work) on transition to
+`done`, with on-time and overran payload variants. New
+Performance sub-tab on the Chores page: start-time histogram per
+block (last 30 days, vertical line at nominal block start),
+duration trend (median + spread), late-start rate, and overrun
+rate. No per-user splits, no predictive nudges, no reason
+prompts — just data.
+
+Ships value: the accountability loop without the leaderboard.
+Closes the Chores overhaul umbrella.
+
+### Batch 11 — Projects subsystem rewrite
 Hierarchy Project → Phase → Step → Checklist → Checklist item.
 Schema: `projects`, `project_phases`, `project_steps`,
 `project_checklists`, `project_checklist_items`, `project_links`,
@@ -273,24 +371,32 @@ phases == 1 → steps drive %. Verbatim copy: "x/y steps complete" /
 "x/y milestones reached". Trello-style edit modal with markdown,
 Supabase Storage uploads, assignees, target dates / ranges.
 
-### Batch 8 — Processes
+### Batch 12 — Processes
 Process = template tied to an `event_kind`. Event instance lands on
 schedule → process expands into project(s) / tasks anchored to the
 event date (e.g. "1 week before processing day → check trailer
 hitch and tires"). Schema: `processes`, `process_steps` (with
 `offset_days` from anchor event), `process_event_kind_links`.
 
-### Batch 9 — Customers + Lists
+**Modifier UI ships with this batch** (deferred from the chores
+overhaul). When a process step targets a chore on a date, it
+writes a `chore_modifiers` row (table created in Batch 7).
+Stacked-badge UI in the Doer + Today tab + Schedule-at-a-glance:
+winner solid, loser ghosted, tap-to-explain shows winner + loser
++ source. v1 conflict resolution is priority-based and
+deterministic; no manual-resolver modal.
+
+### Batch 13 — Customers + Lists
 `customers` CRUD (workshop fields together). `customer_lists`
 (title + purpose) and `customer_list_members`.
 
-### Batch 10 — Resources rethink
+### Batch 14 — Resources rethink
 "Resources" is too vague today. Redesign categorization and
 re-home items contextually (brooders inside Animals/Broilers,
 suppliers inside Feed/Inventory, etc.) with a fallback search
 index. Workshop scope at the start of the batch.
 
-### Batch 11 — Animals & Feed UI overhaul
+### Batch 15 — Animals & Feed UI overhaul
 - Feed page redesigned to match Chores; group by animal (animals
   list pulled from DB); drag-drop orderable within group; cards
   feature amount remaining + next order date prominently, last
@@ -300,7 +406,7 @@ index. Workshop scope at the start of the batch.
   feed eaten, feed cost, mortality, cuts ordered) optimized for
   cross-batch comparison.
 
-### Batch 12 — Products + pricing
+### Batch 16 — Products + pricing
 Products CRUD with photos / descriptions / content (research
 Pat's etc. for content patterns first). Group by animal; allow
 "uncategorized / not animal-specific". Sales-over-time
@@ -308,22 +414,22 @@ visualization. **Pricing UI** — workshop together at start of
 batch; reference apps to surface: Shopify admin, Square, Faire,
 GoodEggs vendor portal.
 
-### Batch 13 — Inventory backend + Point of Sale
+### Batch 17 — Inventory backend + Point of Sale
 Inventory schema + CRUD; on-hand by SKU/location. POS marks items
 sold so inventory decrements correctly. Internal "family sale" flow.
 
-### Batch 14 — Orders
+### Batch 18 — Orders
 Manual order creation; edit / interact with customer orders;
 shipment creation from order (integration scoped here).
 
-### Batch 15 — Commerce integrations
+### Batch 19 — Commerce integrations
 Stripe (cards / online payments); Venmo (where API exists);
 QuickBooks (accounting sync). E-comm front-end if needed.
 
-### Batch 16 — Google Calendar integration
+### Batch 20 — Google Calendar integration
 OAuth scope add; two-way vs one-way sync — TBD.
 
-### Batch 17 — Farm updates / Social / Content calendar
+### Batch 21 — Farm updates / Social / Content calendar
 Farm updates: list-targeting, markdown editor, file uploads, email
 sequences (delays + scheduled dates), "needs review" message
 thread, **AI review pipeline** gating "ready to send".
@@ -346,27 +452,27 @@ already-live page in place.
 Social posts: same shell + real social-network integrations + true
 scheduling. Content calendar: calendar UI + auto-add to schedule.
 
-### Batch 18 — App-wide search
+### Batch 22 — App-wide search
 Cross-cutting; lands after most data models exist so the index is
 comprehensive. Likely Postgres `tsvector` + a client palette
 (cmd-K).
 
-### Batch 19 — App-wide bookmarking
+### Batch 23 — App-wide bookmarking
 Per-user bookmarks of arbitrary entities/pages, surfaced in nav.
 Table `user_bookmarks (user_email, target_type, target_id, label,
 sort_order)`.
 
-### Batch 20 — iOS / mobile-responsive pass
+### Batch 24 — iOS / mobile-responsive pass
 Audit every page for iPhone widths. PWA manifest + install prompt
 for Add to Home Screen. Lands after Tailwind so responsive
 utilities are available.
 
-### Batch 21 — Offline tolerance + resync
+### Batch 25 — Offline tolerance + resync
 IndexedDB write queue (idb / Dexie) wrapping the Supabase client;
 outbox pattern for mutations; conflict policy per table. Service
 worker for asset caching. Affects every data hook.
 
-### Batch 22 — Pasture visualization simulator
+### Batch 26 — Pasture visualization simulator
 Standalone subsystem. Map / canvas with land outline; draw + name
 pasture boundaries; tractor pins (dims + capacity drive math);
 assign batch → tractor count needed; hypothetical-batch sandbox;
@@ -376,7 +482,7 @@ occupied / available in Y"); commit a movement plan → scheduled
 chore moves; per-plan distance/location breakdown. Likely libs:
 Leaflet or MapLibre + a geometry layer.
 
-### Batch 23 — Voice / natural-language control
+### Batch 27 — Voice / natural-language control
 Speech-to-text on device; intent → tool-call mapping via Claude;
 confirmation step for state-changing actions. High-priority once
 foundational batches land.
@@ -400,7 +506,7 @@ clearly belongs front-and-center on the dashboard.
 
 Open question: does each batch already carry a `start_date` and a
 target weeks-to-process value, or do we need to add one? Most
-natural pairing is alongside Batch 11 (broiler tracker work) since
+natural pairing is alongside Batch 15 (broiler tracker work) since
 the underlying batch model gets fleshed out there — but if the
 data is already present, this could ship sooner as a small batch
 on its own.

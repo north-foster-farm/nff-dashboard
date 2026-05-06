@@ -5,6 +5,43 @@
 
 const ITEMS = [
   {
+    title: "Chores, rebuilt",
+    body: "Sites become first-class — Brooder #1 and Brooder #2 are " +
+      "different places, used across chores, observations, and the " +
+      "broiler tracker. Time blocks (Morning / Afternoon / Evening, " +
+      "or whatever you name them) are CRUD-able; edit a window once " +
+      "and every chore in it inherits. Chore definitions get in-place " +
+      "edit. The schema lays the rails for everything that follows.",
+  },
+  {
+    title: "The Chore Doer",
+    body: "A mobile-first full-screen surface for actually doing " +
+      "chores. Tap \"Start chores\" — the sidebar everywhere flips to " +
+      "\"Help with chores\" with a live counter, your dad's phone " +
+      "stays in sync, ticking a box on one phone disables the same " +
+      "box on the other (no bickering). A persistent Site Switcher " +
+      "lets you jump from Brooders to Mobile coops to Sheep without " +
+      "drilling back up. Quick actions for dead birds, observations, " +
+      "and \"moved coops\" are site-aware — at Mobile coop 1, " +
+      "\"dead chicken\" already knows which cohort lives there.",
+  },
+  {
+    title: "Observation log",
+    body: "Every \"observed where\" tap from the Doer lands in a " +
+      "browsable log filterable by site, date, and author. The " +
+      "answer to \"what did we notice last week at Brooder #2\" is " +
+      "one click instead of scrolling activity.",
+  },
+  {
+    title: "Chores telemetry + push",
+    body: "Push notifications when chores finish (\"AM chores done · " +
+      "1h 12m\" or \"AM chores done · 1h 47m, overran 22m\"). A new " +
+      "Performance tab plots start times, durations, late-start " +
+      "rate, and overrun rate per block. No leaderboards, no " +
+      "guilt-trips — chores are team work. The point is to spot " +
+      "when our routines are slipping, not to score either of us.",
+  },
+  {
     title: "Projects, rebuilt",
     body: "Every project breaks down into phases, steps, and checklists, " +
       "with progress that adds up on its own. Editing supports markdown, " +
