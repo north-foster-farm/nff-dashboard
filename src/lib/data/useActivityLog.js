@@ -184,6 +184,24 @@ function summarize(row) {
       return `assigned batch ${p.batch_id} to processing day ${p.event_instance_id}`;
     case "batch_reassigned":
       return `re-assigned processing day ${p.event_instance_id} to batch ${p.batch_id} (was ${p.previous_batch_id})`;
+    case "note_observed": {
+      const text = (p.text ?? "").trim();
+      if (!text) return "noted something";
+      const trimmed = text.length > 80 ? text.slice(0, 77) + "…" : text;
+      return `noted: ${trimmed}`;
+    }
+    case "condition_observed": {
+      const states = Array.isArray(p.states) && p.states.length > 0
+        ? p.states.join(", ").toLowerCase()
+        : "a condition";
+      return `flagged ${states}`;
+    }
+    case "mortality_observed": {
+      const count = Number(p.count) || 1;
+      const label = p.group_label || p.livestock_group_id || "a cohort";
+      const noun = count === 1 ? "loss" : "losses";
+      return `logged ${count} ${noun} on ${label}`;
+    }
     default:
       return `logged a ${row.kind} entry`;
   }

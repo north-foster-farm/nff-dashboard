@@ -7,7 +7,9 @@ import { useSites } from "../lib/data/useSites.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useChoreRuns, formatElapsed } from "../lib/data/useChoreRuns.js";
+import { useRunEvents } from "../lib/data/useRunEvents.js";
 import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
+import QuickActionsTray from "../components/QuickActionsTray.jsx";
 
 // Full-screen takeover for actually doing chores. Bypasses the
 // normal layout (no TopBar, no Sidebar, no SectionHeader).
@@ -24,9 +26,12 @@ import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
 export default function Rounds({ data, onClose }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const {
-    sites, locations, locationsBySiteId,
+    sites, locations, locationsBySiteId, residents,
     loading: sitesLoading,
   } = useSites();
+  const {
+    logRunEvent, recentConditionsByLocation, repeatWindowDays,
+  } = useRunEvents();
   const {
     definitions, loading: defsLoading,
   } = useChoreDefinitions();
@@ -129,8 +134,12 @@ export default function Rounds({ data, onClose }) {
       switcherSites={switcherSites}
       locations={locations}
       locationsBySiteId={locationsBySiteId}
+      residents={residents}
       definitions={definitions}
       completions={completions}
+      logRunEvent={logRunEvent}
+      recentConditionsByLocation={recentConditionsByLocation}
+      repeatWindowDays={repeatWindowDays}
       selectedSiteId={selectedSiteId}
       onSelectSite={(id) => {
         setSelectedSiteId(id);
@@ -239,7 +248,8 @@ function isOverran(block, run) {
 // ── Doing surface (active run) ────────────────────────────────────────
 function DoingSurface({
   run, block, sites, switcherSites, locations, locationsBySiteId,
-  definitions, completions,
+  residents, definitions, completions,
+  logRunEvent, recentConditionsByLocation, repeatWindowDays,
   selectedSiteId, onSelectSite,
   selectedLocationId, onSelectLocation,
   onAutoDone, onAutoUndone, onClose,
@@ -398,6 +408,19 @@ function DoingSurface({
           />
         )}
       </main>
+
+      {/* Quick actions tray (Run Events) */}
+      <QuickActionsTray
+        runId={run.id}
+        selectedSiteId={selectedSiteId}
+        selectedLocationId={selectedLocationId}
+        sites={sites}
+        locations={locations}
+        residents={residents}
+        recentConditionsByLocation={recentConditionsByLocation}
+        repeatWindowDays={repeatWindowDays}
+        onLogRunEvent={logRunEvent}
+      />
     </div>
   );
 }

@@ -421,6 +421,54 @@ sunset is in the future today.
 - Push notifications on Run done with overran callout — that's
   Batch 10 (Chores telemetry + push).
 
+### Batch 8.2 — Quick actions tray (Run Events) · `v0.9.8-alpha`
+2026-05-07. The other half of Rounds — bottom-pinned tray that
+writes typed Run Events to `activity_log` with `run_id` +
+site/location FKs. Three actions ship in 8.2; `Chick → MASH`,
+`Moved coops`, and `Moved chicken tractors` are deferred to a
+follow-up (8.3) so this batch can land without a five-sheet
+explosion.
+
+**Schema** (migration 0010): `activity_log` gains `run_id`,
+`site_id`, `location_id` (all nullable, FKs with `set null` on
+delete). New child table `activity_log_condition_states` for the
+multi-select Condition chips (cascades on parent delete). New
+RPC `log_run_event(p_kind, p_payload, p_run_id, p_site_id,
+p_location_id, p_conditions)` is the single client-callable
+entry point — direct INSERT to `activity_log` stays denied by
+RLS, so the audit-trail invariant is preserved. Realtime
+publication picks up the new child table.
+
+**`useRunEvents` hook.** Wraps the RPC and loads a rolling
+7-day window of `condition_observed` rows + their chip child
+rows for the repeat-detection banner ("Brooder #1: 2 off-feed
+calls in the last 7 days"). Realtime refresh on either table
+inserting / deleting.
+
+**`QuickActionsTray.jsx`** docks at the bottom of the doing
+surface with three buttons:
+- **Note** — site/location picker + free-text textarea.
+- **Condition** — site/location picker + 6-chip multi-select
+  (Listless / Unthrifty / Off-feed / Off-water / Damaged /
+  Sick) with the repeat-detection banner inside the sheet.
+- **Mortality** — site/location picker → cohort list resolved
+  via `site_residents` (residents currently at that location)
+  → numeric count with ± stepper. Auto-decrements
+  `livestock_groups.count` on save, best-effort.
+
+Activity feed renderer learns three new kinds (`note_observed`,
+`condition_observed`, `mortality_observed`) so the existing
+Activity page and Overview ticker display sensible lines without
+further changes.
+
+**Out of scope for 8.2 (lands in 8.3):**
+- Chick → MASH cohort fast-path.
+- Moved coops / Moved chicken tractors kind-level sweep with
+  per-task sub-checklist (fences, feeders, waterers, grit,
+  shell).
+- Per-cohort attribution + automatic `site_residents` move-out
+  when a cohort empties to zero.
+
 ---
 
 ## Upcoming
@@ -465,21 +513,17 @@ in that file. Highlights:
   Processes batch (now Batch 16) since it has nothing to render
   until then.
 
-### Batch 8.2 — Quick actions tray (Run Events)
-The other half of Rounds — bottom action tray that writes typed
-Run Events to `activity_log` with a `run_id` FK and the location
-context auto-populated.
-- **Note** — free-text + site picker.
-- **Condition** — multi-select chip sheet (Listless / Unthrifty
-  / Off-feed / Off-water / Damaged / Sick) with a repeat-
-  detection banner ("Brooder #2: 2 off-feed calls in the last 7
-  days") inside the sheet.
-- **Mortality** — cohort fast-path with auto-decrement.
-- **Chick → MASH**.
-- **Moved coops** / **Moved chicken tractors**.
-
-New `activity_log_condition_states` child table for the
-multi-select chips.
+### Batch 8.3 — Remaining quick actions
+Carries the three quick actions deferred from 8.2:
+- **Chick → MASH** — cohort fast-path that moves chicks from a
+  brooder cohort into the MASH ward (held in `site_residents` as
+  a destination location).
+- **Moved coops** / **Moved chicken tractors** — kind-level
+  sweep with per-instance sub-checklist (fences, feeders,
+  waterers, grit, shell). "All taken care of" sweep at the kind
+  level closes everything in one tap.
+- Auto move-out of `site_residents` when a cohort empties via
+  Mortality.
 
 ### Batch 9 — Observation Log
 Lands right after Rounds so the observation events Rounds writes
