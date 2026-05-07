@@ -1,0 +1,704 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  X, Check, Sunrise, Sunset, ChevronLeft,
+} from "lucide-react";
+import { useChoreBlocks, formatMinutesOfDay } from "../lib/data/useChoreBlocks.js";
+import { useSites } from "../lib/data/useSites.js";
+import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
+import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
+import { useChoreRuns, formatElapsed } from "../lib/data/useChoreRuns.js";
+import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
+
+// Full-screen takeover for actually doing chores. Bypasses the
+// normal layout (no TopBar, no Sidebar, no SectionHeader).
+//
+// Three states:
+//   - cold:      no run for the active block today → show Start rounds
+//   - active:    run.state === 'in_progress' → show the doing surface
+//   - done:      run.state === 'done'        → show the wrap card
+//
+// 8.1 ships the lifecycle, the Site Switcher (kind → location), and
+// per-task checkboxes that read/write chore_completions with
+// realtime contention. Quick actions tray + Run Events land in 8.2.
+
+export default function Rounds({ data, onClose }) {
+  const { blocks, loading: blocksLoading } = useChoreBlocks();
+  const {
+    sites, locations, locationsBySiteId,
+    loading: sitesLoading,
+  } = useSites();
+  const {
+    definitions, loading: defsLoading,
+  } = useChoreDefinitions();
+  const {
+    activeRun, nextBlock, runByBlockId, loading: runsLoading,
+    startRun, endRun, resumeRun,
+  } = useChoreRuns({ blocks });
+
+  // The block this Rounds session is targeting. Active run wins over
+  // the inferred next block, so reopening Rounds while a run is going
+  // always lands on that run's block.
+  const targetBlock = useMemo(() => {
+    if (activeRun) {
+      return blocks.find(b => b.id === activeRun.blockId) ?? null;
+    }
+    return nextBlock?.block ?? null;
+  }, [activeRun, nextBlock, blocks]);
+
+  const today = useMemo(() => new Date(), []);
+  const completions = useChoreCompletions(today);
+
+  // Selected site / location for the Switcher. Null = "show everything"
+  // for this block, grouped by site.
+  const [selectedSiteId, setSelectedSiteId] = useState(null);
+  const [selectedLocationId, setSelectedLocationId] = useState(null);
+
+  // Derive sites that have chores in this block (parent site-scoped
+  // or any location-scoped under them). We render Switcher buttons
+  // only for sites that are actually relevant.
+  const relevantSiteIds = useMemo(() => {
+    if (!targetBlock) return new Set();
+    const ids = new Set();
+    for (const def of definitions) {
+      if (def.blockId !== targetBlock.id) continue;
+      if (def.siteId) ids.add(def.siteId);
+      if (def.locationId) {
+        const loc = locations.find(l => l.id === def.locationId);
+        if (loc) ids.add(loc.siteId);
+      }
+    }
+    return ids;
+  }, [definitions, locations, targetBlock]);
+
+  const switcherSites = useMemo(
+    () => sites.filter(s => s.isActive && relevantSiteIds.has(s.id)),
+    [sites, relevantSiteIds]
+  );
+
+  // Loading guard. Show a skeleton until enough data is ready to
+  // make sensible decisions.
+  if (blocksLoading || sitesLoading || defsLoading || runsLoading) {
+    return (
+      <div className="bg-bg text-fg h-screen flex items-center justify-center font-body">
+        <div className="text-[12px] text-muted uppercase tracking-[0.16em]">
+          Loading rounds…
+        </div>
+      </div>
+    );
+  }
+
+  // Wrap card when the run is in the 'done' state. Auto-derive
+  // flips state from the completion count, so reaching this surface
+  // means every chore in the block is checked. If the user un-checks
+  // a chore (from Today / Upcoming / wherever), the run flips back
+  // and Rounds will re-render the doing surface.
+  const targetRun = targetBlock ? runByBlockId.get(targetBlock.id) : null;
+  if (targetRun?.state === "done") {
+    return (
+      <WrapCard
+        block={targetBlock}
+        run={targetRun}
+        onClose={onClose}
+      />
+    );
+  }
+
+  // Cold open: no active run for the next block yet.
+  if (!activeRun) {
+    return (
+      <ColdOpen
+        block={targetBlock}
+        onStart={async () => {
+          if (!targetBlock) return;
+          await startRun(targetBlock.id);
+        }}
+        onClose={onClose}
+      />
+    );
+  }
+
+  // Active run — the main doing surface. The run state derives from
+  // completions: when every chore in the block is checked, we
+  // auto-flip chore_runs.state to 'done'; un-checking flips it back.
+  return (
+    <DoingSurface
+      data={data}
+      run={activeRun}
+      block={targetBlock}
+      sites={sites}
+      switcherSites={switcherSites}
+      locations={locations}
+      locationsBySiteId={locationsBySiteId}
+      definitions={definitions}
+      completions={completions}
+      selectedSiteId={selectedSiteId}
+      onSelectSite={(id) => {
+        setSelectedSiteId(id);
+        setSelectedLocationId(null);
+      }}
+      selectedLocationId={selectedLocationId}
+      onSelectLocation={setSelectedLocationId}
+      onAutoDone={async () => {
+        if (!activeRun) return;
+        await endRun(activeRun.id);
+      }}
+      onAutoUndone={async () => {
+        if (!activeRun) return;
+        await resumeRun(activeRun.id);
+      }}
+      onClose={onClose}
+    />
+  );
+}
+
+// ── Cold open ─────────────────────────────────────────────────────────
+function ColdOpen({ block, onStart, onClose }) {
+  return (
+    <div className="bg-bg text-fg h-screen flex flex-col items-center justify-center font-body p-6 relative">
+      <CloseButton onClose={onClose} />
+      <div className="flex flex-col items-center gap-6 max-w-[420px] text-center">
+        <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+          Rounds
+        </div>
+        <h1 className="font-heading text-[36px] font-bold -tracking-[0.02em] m-0">
+          {block ? `${block.name} rounds` : "No block scheduled"}
+        </h1>
+        {block && (
+          <p className="text-[14px] text-dim m-0 leading-relaxed">
+            {displayBlockSide(block.startKind, block.startMinutes)}
+            {" – "}
+            {displayBlockSide(block.endKind, block.endMinutes)}
+          </p>
+        )}
+        {block ? (
+          <button
+            onClick={onStart}
+            className="mt-4 inline-flex items-center justify-center gap-2 bg-accent text-on-accent border-0 font-[inherit] text-[14px] font-bold uppercase tracking-[0.12em] px-8 py-4 cursor-pointer w-full"
+          >
+            Start rounds
+          </button>
+        ) : (
+          <p className="text-[12px] text-faint m-0">
+            Add at least one time block in Chores → Blocks before
+            you can start a run.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Wrap card ─────────────────────────────────────────────────────────
+function WrapCard({ block, run, onClose }) {
+  const elapsed = (run.endedAt && run.startedAt)
+    ? run.endedAt.getTime() - run.startedAt.getTime()
+    : 0;
+  const overran = isOverran(block, run);
+  return (
+    <div className="bg-bg text-fg h-screen flex flex-col items-center justify-center font-body p-6 relative">
+      <CloseButton onClose={onClose} />
+      <div className="flex flex-col items-center gap-5 max-w-[420px] text-center">
+        <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+          {block?.name ?? "Rounds"} done
+        </div>
+        <h1 className="font-heading text-[44px] font-bold -tracking-[0.02em] m-0 text-fg">
+          {formatElapsed(elapsed)}
+        </h1>
+        {overran && (
+          <div className="text-[13px] text-warn">
+            Ran {overran} past the window.
+          </div>
+        )}
+        <p className="text-[12px] text-muted m-0 leading-relaxed">
+          Un-checking any chore in this block will reopen the run.
+        </p>
+        <button
+          onClick={onClose}
+          className="mt-4 inline-flex items-center gap-1.5 bg-accent text-on-accent border-0 font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-4 py-2 cursor-pointer"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function isOverran(block, run) {
+  if (!block || !run?.endedAt || !run?.startedAt) return null;
+  const endMin = resolveBlockMinutes(run.endedAt, block.endKind, block.endMinutes);
+  if (endMin === null) return null;
+  const endedMin = run.endedAt.getHours() * 60 + run.endedAt.getMinutes();
+  if (endedMin <= endMin) return null;
+  const overMin = endedMin - endMin;
+  if (overMin < 60) return `${overMin}m`;
+  const h = Math.floor(overMin / 60);
+  const m = overMin % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+// ── Doing surface (active run) ────────────────────────────────────────
+function DoingSurface({
+  run, block, sites, switcherSites, locations, locationsBySiteId,
+  definitions, completions,
+  selectedSiteId, onSelectSite,
+  selectedLocationId, onSelectLocation,
+  onAutoDone, onAutoUndone, onClose,
+}) {
+  // Live elapsed time tick.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const elapsed = run.startedAt ? now - run.startedAt.getTime() : 0;
+
+  // Sundown / sunup countdown — only render when the run's block has
+  // a sun-event end (e.g. Evening rounds end at sunset).
+  const sundownInfo = useMemo(() => {
+    if (!block) return null;
+    const today = new Date();
+    if (block.endKind !== "sunset" && block.endKind !== "sunrise") return null;
+    const targetMin = resolveBlockMinutes(today, block.endKind, null);
+    if (targetMin === null) return null;
+    const nowMin = today.getHours() * 60 + today.getMinutes() + today.getSeconds() / 60;
+    const delta = targetMin - nowMin;
+    return { kind: block.endKind, delta };
+  }, [block, now]);
+
+  // Filter chores to this run's block.
+  const blockChores = useMemo(
+    () => definitions.filter(d => d.blockId === block?.id),
+    [definitions, block]
+  );
+
+  // Auto-derive run completion: every chore checked → done; any
+  // un-checked while done → resume. Guard against the trivial 0/0
+  // case (no chores in the block) — never auto-flip then.
+  // useRef ensures we don't fire writes during the same render that
+  // saw the transition (would double-flip). Only fires on local
+  // edits; remote echoes go through the same path harmlessly thanks
+  // to the no-op guard.
+  const writingRef = useRef(false);
+  useEffect(() => {
+    if (writingRef.current) return;
+    if (!run) return;
+    if (blockChores.length === 0) return;
+    if (!completions.completedSet) return;
+    const completed = blockChores.filter(c =>
+      completions.completedSet.has(c.id)
+    ).length;
+    const allDone = completed === blockChores.length;
+    if (allDone && run.state === "in_progress") {
+      writingRef.current = true;
+      Promise.resolve(onAutoDone()).finally(() => {
+        writingRef.current = false;
+      });
+    } else if (!allDone && run.state === "done") {
+      writingRef.current = true;
+      Promise.resolve(onAutoUndone()).finally(() => {
+        writingRef.current = false;
+      });
+    }
+  }, [
+    blockChores, completions.completedSet, run, onAutoDone, onAutoUndone,
+  ]);
+
+  // Group chores by site for rendering. site_id chores group under
+  // that site; location_id chores group under their location's site.
+  // Chores with neither go into a "general" bucket.
+  const choresBySiteId = useMemo(() => {
+    const out = new Map();
+    const general = [];
+    for (const def of blockChores) {
+      let siteId = def.siteId;
+      if (!siteId && def.locationId) {
+        const loc = locations.find(l => l.id === def.locationId);
+        siteId = loc?.siteId ?? null;
+      }
+      if (siteId) {
+        if (!out.has(siteId)) out.set(siteId, []);
+        out.get(siteId).push(def);
+      } else {
+        general.push(def);
+      }
+    }
+    return { out, general };
+  }, [blockChores, locations]);
+
+  // Visible chores = either the selected site's, or all if no site
+  // is selected.
+  const visibleChores = selectedSiteId
+    ? (choresBySiteId.out.get(selectedSiteId) ?? [])
+    : blockChores;
+
+  // Within selected site, group by location for clarity.
+  const groupedForSelected = useMemo(() => {
+    if (!selectedSiteId) return null;
+    const groups = new Map(); // locationId|null → chores[]
+    const siteScopedAll = [];
+    for (const def of choresBySiteId.out.get(selectedSiteId) ?? []) {
+      if (def.locationId) {
+        if (!groups.has(def.locationId)) groups.set(def.locationId, []);
+        groups.get(def.locationId).push(def);
+      } else {
+        siteScopedAll.push(def);
+      }
+    }
+    return { groups, siteScopedAll };
+  }, [selectedSiteId, choresBySiteId]);
+
+  return (
+    <div className="bg-bg text-fg h-screen flex flex-col font-body">
+      {/* Status bar */}
+      <header className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-line bg-surface">
+        <div className="flex flex-col">
+          <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+            {block?.name ?? "Rounds"}
+          </div>
+          <div className="font-heading text-[20px] font-bold -tracking-[0.02em] text-fg leading-tight">
+            {formatElapsed(elapsed)}
+          </div>
+        </div>
+        {sundownInfo && <SundownPill info={sundownInfo} />}
+        <button
+          onClick={onClose}
+          className="ml-auto text-muted hover:text-fg p-2 cursor-pointer bg-transparent border-0"
+          title="Exit (run keeps going — rejoin from the sidebar)"
+        >
+          <X size={16} />
+        </button>
+      </header>
+
+      {/* Site Switcher */}
+      <SiteSwitcher
+        sites={switcherSites}
+        selectedSiteId={selectedSiteId}
+        onSelect={onSelectSite}
+      />
+
+      {/* Body */}
+      <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+        {!selectedSiteId ? (
+          <AllSitesView
+            sites={sites}
+            chores={blockChores}
+            choresBySiteId={choresBySiteId}
+            locations={locations}
+            completions={completions}
+            onSelectSite={onSelectSite}
+          />
+        ) : (
+          <SelectedSiteView
+            site={sites.find(s => s.id === selectedSiteId)}
+            grouped={groupedForSelected}
+            locationsBySiteId={locationsBySiteId}
+            completions={completions}
+            selectedLocationId={selectedLocationId}
+            onSelectLocation={onSelectLocation}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+// ── Site Switcher ─────────────────────────────────────────────────────
+function SiteSwitcher({ sites, selectedSiteId, onSelect }) {
+  return (
+    <nav className="flex items-center gap-1 px-4 sm:px-6 py-2 border-b border-line bg-surface-alt overflow-x-auto no-scrollbar">
+      <SwitcherChip
+        active={selectedSiteId === null}
+        onClick={() => onSelect(null)}
+      >
+        All sites
+      </SwitcherChip>
+      {sites.map(s => (
+        <SwitcherChip
+          key={s.id}
+          active={selectedSiteId === s.id}
+          onClick={() => onSelect(s.id)}
+        >
+          {s.name}
+        </SwitcherChip>
+      ))}
+    </nav>
+  );
+}
+
+function SwitcherChip({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "inline-flex items-center gap-1.5 font-[inherit] text-[11px] " +
+        "font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer " +
+        "border leading-none transition-colors duration-100 shrink-0 " +
+        (active
+          ? "bg-row-active border-line text-fg"
+          : "bg-transparent border-line text-dim hover:bg-row-hover hover:text-fg")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── All-sites view ────────────────────────────────────────────────────
+function AllSitesView({
+  sites, chores, choresBySiteId, locations, completions, onSelectSite,
+}) {
+  if (chores.length === 0) {
+    return (
+      <div className="bg-surface border border-line py-10 px-6 text-center max-w-[520px] mx-auto">
+        <div className="text-[13px] text-muted font-medium mb-1">
+          No chores in this block
+        </div>
+        <div className="text-[12px] text-faint leading-relaxed max-w-[420px] mx-auto">
+          Assign chores to this block in Chores → All chores or
+          add new ones.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-4 max-w-[680px] mx-auto">
+      {sites
+        .filter(s => choresBySiteId.out.has(s.id) && s.isActive)
+        .map(s => (
+          <SiteSection
+            key={s.id}
+            site={s}
+            chores={choresBySiteId.out.get(s.id)}
+            locations={locations}
+            completions={completions}
+            onTitleClick={() => onSelectSite(s.id)}
+          />
+        ))}
+      {choresBySiteId.general.length > 0 && (
+        <SiteSection
+          site={{ id: null, name: "Other" }}
+          chores={choresBySiteId.general}
+          locations={locations}
+          completions={completions}
+        />
+      )}
+    </div>
+  );
+}
+
+function SiteSection({ site, chores, locations, completions, onTitleClick }) {
+  const completed = chores.filter(c => completions.completedSet?.has(c.id)).length;
+  return (
+    <section className="bg-surface border border-line">
+      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
+        {onTitleClick ? (
+          <button
+            onClick={onTitleClick}
+            className="text-[14px] font-semibold text-fg border-0 bg-transparent cursor-pointer hover:underline"
+          >
+            {site.name}
+          </button>
+        ) : (
+          <span className="text-[14px] font-semibold text-fg">{site.name}</span>
+        )}
+        <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
+          {completed}/{chores.length} done
+        </span>
+      </header>
+      <ul className="m-0 p-0 list-none">
+        {chores.map(c => (
+          <ChoreCheckRow
+            key={c.id}
+            chore={c}
+            location={c.locationId ? locations.find(l => l.id === c.locationId) : null}
+            completions={completions}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+// ── Selected-site view (with optional location drill) ────────────────
+function SelectedSiteView({
+  site, grouped, locationsBySiteId, completions,
+  selectedLocationId, onSelectLocation,
+}) {
+  const siteLocations = (locationsBySiteId.get(site?.id) ?? []).filter(l => l.isActive);
+  const showLocationStrip = siteLocations.length > 1;
+
+  return (
+    <div className="flex flex-col gap-4 max-w-[680px] mx-auto">
+      {/* Back to "all sites" affordance */}
+      <button
+        onClick={() => onSelectLocation(null)}
+        className="self-start inline-flex items-center gap-1 text-[11px] text-dim hover:text-fg uppercase tracking-[0.12em] font-semibold border-0 bg-transparent cursor-pointer"
+      >
+        <ChevronLeft size={12} className="shrink-0" />
+        {site?.name ?? "Site"}
+      </button>
+
+      {showLocationStrip && (
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+          <SwitcherChip
+            active={selectedLocationId === null}
+            onClick={() => onSelectLocation(null)}
+          >
+            All locations
+          </SwitcherChip>
+          {siteLocations.map(l => (
+            <SwitcherChip
+              key={l.id}
+              active={selectedLocationId === l.id}
+              onClick={() => onSelectLocation(l.id)}
+            >
+              {l.name}
+            </SwitcherChip>
+          ))}
+        </div>
+      )}
+
+      {grouped?.siteScopedAll?.length > 0 && (
+        <section className="bg-surface border border-line">
+          <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
+            <span className="text-[12px] font-semibold text-fg uppercase tracking-[0.12em]">
+              Anywhere in {site?.name?.toLowerCase()}
+            </span>
+            <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
+              {grouped.siteScopedAll.filter(c => completions.completedSet?.has(c.id)).length}
+              /
+              {grouped.siteScopedAll.length} done
+            </span>
+          </header>
+          <ul className="m-0 p-0 list-none">
+            {grouped.siteScopedAll.map(c => (
+              <ChoreCheckRow key={c.id} chore={c} completions={completions} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {siteLocations
+        .filter(l => selectedLocationId === null || selectedLocationId === l.id)
+        .map(l => {
+          const chores = grouped?.groups?.get(l.id) ?? [];
+          if (chores.length === 0 && selectedLocationId !== l.id) return null;
+          const completed = chores.filter(c => completions.completedSet?.has(c.id)).length;
+          return (
+            <section key={l.id} className="bg-surface border border-line">
+              <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
+                <span className="text-[14px] font-semibold text-fg">{l.name}</span>
+                <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
+                  {completed}/{chores.length} done
+                </span>
+              </header>
+              {chores.length === 0 ? (
+                <div className="text-faint text-[11px] italic px-4 py-3">
+                  No chores assigned to this location.
+                </div>
+              ) : (
+                <ul className="m-0 p-0 list-none">
+                  {chores.map(c => (
+                    <ChoreCheckRow key={c.id} chore={c} location={l} completions={completions} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+    </div>
+  );
+}
+
+// ── Chore checkbox row ────────────────────────────────────────────────
+// Wraps an existing chore_completions toggle with fat tap targets and
+// the realtime-contention "✓ + disabled" treatment. The completedSet
+// updates from the realtime channel within ~80ms of any other user's
+// click; that flips the disabled state automatically.
+function ChoreCheckRow({ chore, location, completions }) {
+  const done = completions.completedSet?.has(chore.id) ?? false;
+  const [pending, setPending] = useState(false);
+
+  const onToggle = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await completions.toggle(chore.id, done);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <li
+      className={
+        "flex items-center gap-3 px-4 py-3 border-b border-line last:border-b-0 " +
+        (done ? "bg-row-active-dim" : "bg-transparent")
+      }
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={pending}
+        className={
+          "shrink-0 w-7 h-7 border-2 inline-flex items-center justify-center " +
+          "cursor-pointer transition-colors duration-100 " +
+          (done
+            ? "bg-resolved border-resolved text-on-accent"
+            : "bg-bg border-line text-transparent hover:border-fg")
+        }
+        aria-pressed={done}
+        aria-label={done ? "Mark not done" : "Mark done"}
+      >
+        <Check size={16} strokeWidth={3} />
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className={
+          "text-[14px] " +
+          (done ? "text-muted line-through" : "text-fg font-medium")
+        }>
+          {chore.title}
+        </div>
+        {location && (
+          <div className="text-[11px] text-faint mt-0.5">{location.name}</div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+// ── Pieces ────────────────────────────────────────────────────────────
+function SundownPill({ info }) {
+  const Icon = info.kind === "sunset" ? Sunset : Sunrise;
+  const verb = info.kind === "sunset" ? "sunset" : "sunup";
+  let label;
+  if (info.delta <= 0) {
+    label = `${verb}`;
+  } else if (info.delta < 60) {
+    label = `${verb} in ${Math.round(info.delta)}m`;
+  } else {
+    const h = Math.floor(info.delta / 60);
+    const m = Math.round(info.delta % 60);
+    label = m === 0
+      ? `${verb} in ${h}h`
+      : `${verb} in ${h}h ${m}m`;
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 bg-surface-alt border border-line px-2 py-1 text-[11px] text-dim font-semibold uppercase tracking-[0.08em] leading-none">
+      <Icon size={12} className="shrink-0" />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function CloseButton({ onClose }) {
+  return (
+    <button
+      onClick={onClose}
+      className="absolute top-4 right-4 text-muted hover:text-fg bg-transparent border-0 p-2 cursor-pointer"
+      title="Close"
+    >
+      <X size={18} />
+    </button>
+  );
+}

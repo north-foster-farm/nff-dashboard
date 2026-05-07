@@ -1,12 +1,13 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronRight, X } from "lucide-react";
 import { SECTIONS, findFlyoutParentForChild } from "../sections.jsx";
+import RoundsSidebarItem from "./RoundsSidebarItem.jsx";
 
 // Duration of the flyout enter/exit keyframe — must match the animation
 // declared in index.html (`nff-flyout-in` / `nff-flyout-out`).
 const FLYOUT_ANIM_MS = 140;
 
-export default function Sidebar({ current, onSelect, data }) {
+export default function Sidebar({ current, onSelect, onOpenRounds, data }) {
   const [openFlyoutId, setOpenFlyoutId] = useState(null);
   const [closing, setClosing] = useState(false);
   const flyoutRef = useRef(null);
@@ -73,6 +74,14 @@ export default function Sidebar({ current, onSelect, data }) {
           if (s.kind === "hidden") return null;
           const showHeader = s.group !== lastGroup && s.group !== null;
           lastGroup = s.group;
+          if (s.kind === "takeover" && s.id === "rounds") {
+            return (
+              <div key={s.id}>
+                {showHeader && <GroupLabel>{s.group}</GroupLabel>}
+                <RoundsSidebarItem onOpen={onOpenRounds} />
+              </div>
+            );
+          }
           // A flyout-parent counts as "active" when one of its children is current.
           const active = s.id === current || (s.kind === "flyout" && flyoutParent?.id === s.id);
           const count = typeof s.getCount === "function" ? s.getCount(data) : null;

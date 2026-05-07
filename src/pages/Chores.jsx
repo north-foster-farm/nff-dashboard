@@ -8,7 +8,6 @@ import {
   CHORE_CATEGORIES, CHORE_PERIODS,
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete,
-  getBlockTimeLabelForPeriod
 } from "../lib/chores.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
@@ -20,7 +19,7 @@ import { useSites } from "../lib/data/useSites.js";
 import {
   useChoreBlocks, formatMinutesOfDay,
 } from "../lib/data/useChoreBlocks.js";
-import { displayBlockSide } from "../lib/sunTimes.js";
+import { displayBlockSide, resolveBlockMinutes } from "../lib/sunTimes.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 import ChoreGroupsTab from "../components/ChoreGroupsTab.jsx";
 import ChoresBlocksTab from "../components/ChoresBlocksTab.jsx";
@@ -132,14 +131,26 @@ function TodayTab({ data, currentUser, onChangeUser }) {
     return { byGroup, ungrouped };
   }, [visible, groupByChoreId]);
 
-  const periodGroups = {};
+  // Group ungrouped chores by their block_id (the new schema), with
+  // a single "" bucket for chores that have no block (anytime).
+  // Order blocks by today's resolved start time so sun-event blocks
+  // land where they actually fall on the clock.
+  const blockGroups = new Map();
   for (const inst of ungrouped) {
-    const key = inst.chore.period || "anytime";
-    (periodGroups[key] ??= []).push(inst);
+    const key = inst.chore.blockId ?? "";
+    if (!blockGroups.has(key)) blockGroups.set(key, []);
+    blockGroups.get(key).push(inst);
   }
-  const orderedPeriodKeys = Object.keys(periodGroups).sort(
-    (a, b) => (CHORE_PERIODS[a]?.order ?? 99) - (CHORE_PERIODS[b]?.order ?? 99)
-  );
+  const orderedBlockKeys = [...blockGroups.keys()].sort((a, b) => {
+    if (a === "" && b === "") return 0;
+    if (a === "") return 1;
+    if (b === "") return -1;
+    const ba = blocks.find(x => x.id === a);
+    const bb = blocks.find(x => x.id === b);
+    const sa = ba ? (resolveBlockMinutes(today, ba.startKind, ba.startMinutes) ?? 9999) : 9999;
+    const sb = bb ? (resolveBlockMinutes(today, bb.startKind, bb.startMinutes) ?? 9999) : 9999;
+    return sa - sb;
+  });
 
   // Order chore-groups by their schema sort_order, then name.
   const orderedChoreGroups = useMemo(
@@ -175,7 +186,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
     }
   }, [completedSet, toggleCompletion]);
 
-  const isEmpty = orderedChoreGroups.length === 0 && orderedPeriodKeys.length === 0;
+  const isEmpty = orderedChoreGroups.length === 0 && orderedBlockKeys.length === 0;
 
   return (
     <div ref={setWidthRef}>
@@ -211,18 +222,20 @@ function TodayTab({ data, currentUser, onChangeUser }) {
         />
       ))}
 
-      {orderedPeriodKeys.map(period => (
-        <PeriodGroup
-          key={period}
-          period={period}
-          instances={periodGroups[period]}
-          blocks={blocks}
-          cols={cols}
-          completedSet={completedSet}
-          onToggle={toggleCompletion}
-          currentUserEmail={userEmail}
-        />
-      ))}
+      {orderedBlockKeys.map(blockKey => {
+        const block = blockKey ? blocks.find(b => b.id === blockKey) : null;
+        return (
+          <BlockGroup
+            key={blockKey || "anytime"}
+            block={block}
+            instances={blockGroups.get(blockKey)}
+            cols={cols}
+            completedSet={completedSet}
+            onToggle={toggleCompletion}
+            currentUserEmail={userEmail}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -307,9 +320,11 @@ function ChoreGroupAccordion({
   );
 }
 
-function PeriodGroup({ period, instances, blocks, cols, completedSet, onToggle, currentUserEmail }) {
-  const meta = CHORE_PERIODS[period];
-  const timeLabel = getBlockTimeLabelForPeriod(instances, period, blocks) || meta?.hint || "";
+function BlockGroup({ block, instances, cols, completedSet, onToggle, currentUserEmail }) {
+  const headerLabel = block ? block.name : "Anytime";
+  const timeLabel = block
+    ? displayBlockSide(block.startKind, block.startMinutes)
+    : "";
   return (
     <div style={{ marginBottom: 32 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
@@ -317,7 +332,7 @@ function PeriodGroup({ period, instances, blocks, cols, completedSet, onToggle, 
           fontFamily: T.uiLabel, fontSize: 14, color: T.text,
           textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700
         }}>
-          {meta?.label ?? period}
+          {headerLabel}
         </div>
         {timeLabel && <div style={{ fontSize: 12, color: T.textDim }}>{timeLabel}</div>}
         <div style={{ fontSize: 11, color: T.textMuted, marginLeft: "auto" }}>
@@ -425,7 +440,7 @@ function Toggle({ active, onClick, children }) {
 
 function AllChoresTab({ data }) {
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("alpha"); // alpha | time | category
+  const [sort, setSort] = useState("time"); // alpha | time | category
   const [expanded, setExpanded] = useState(() => new Set());
   const [editing, setEditing] = useState(null); // chore_id currently in edit mode
   const {
@@ -467,11 +482,37 @@ function AllChoresTab({ data }) {
     if (sort === "alpha") {
       out.sort((a, b) => a.title.localeCompare(b.title));
     } else if (sort === "time") {
+      // Sort by today's resolved block start time (ascending — chores
+      // with no block sort last), then by site name (alphabetical),
+      // then by title.
+      const today = new Date();
+      const blockMap = new Map(blocks.map(b => [b.id, b]));
+      const startMin = (chore) => {
+        const b = chore.blockId ? blockMap.get(chore.blockId) : null;
+        if (!b) return 9999;
+        return resolveBlockMinutes(today, b.startKind, b.startMinutes) ?? 9999;
+      };
+      const siteName = (chore) => {
+        if (chore.locationId) {
+          const loc = locations.find(l => l.id === chore.locationId);
+          if (loc) {
+            const s = sites.find(x => x.id === loc.siteId);
+            return s?.name ?? "";
+          }
+        }
+        if (chore.siteId) {
+          const s = sites.find(x => x.id === chore.siteId);
+          return s?.name ?? "";
+        }
+        return "";
+      };
       out.sort((a, b) => {
-        const ap = CHORE_PERIODS[a.period]?.order ?? 99;
-        const bp = CHORE_PERIODS[b.period]?.order ?? 99;
-        if (ap !== bp) return ap - bp;
-        if (a.startTime !== b.startTime) return a.startTime.localeCompare(b.startTime);
+        const sa = startMin(a);
+        const sb = startMin(b);
+        if (sa !== sb) return sa - sb;
+        const na = siteName(a).toLowerCase();
+        const nb = siteName(b).toLowerCase();
+        if (na !== nb) return na.localeCompare(nb);
         return a.title.localeCompare(b.title);
       });
     } else if (sort === "category") {
@@ -483,7 +524,7 @@ function AllChoresTab({ data }) {
       });
     }
     return out;
-  }, [defs, query, sort]);
+  }, [defs, query, sort, blocks, sites, locations]);
 
   return (
     <div>
@@ -511,6 +552,7 @@ function AllChoresTab({ data }) {
             await updateDefinition(id, patch);
             setEditing(null);
           }}
+          onQuickSave={updateDefinition}
           onDeleteChore={async (id) => {
             const ok = window.confirm("Delete this chore? This can't be undone.");
             if (!ok) return;
@@ -531,7 +573,7 @@ function AllChoresTab({ data }) {
 // expand caret) and needs more horizontal room before it's worth splitting.
 function AllChoresList({
   filtered, expanded, onToggle,
-  editing, onStartEdit, onCancelEdit, onSaveEdit, onDeleteChore,
+  editing, onStartEdit, onCancelEdit, onSaveEdit, onQuickSave, onDeleteChore,
   sites, locations, blocks, blockById,
 }) {
   const [setWidthRef, cols] = useColumnCount(1200);
@@ -552,6 +594,7 @@ function AllChoresList({
             onStartEdit={() => onStartEdit(chore.id)}
             onCancelEdit={onCancelEdit}
             onSaveEdit={(patch) => onSaveEdit(chore.id, patch)}
+            onQuickSave={(patch) => onQuickSave(chore.id, patch)}
             onDeleteChore={() => onDeleteChore(chore.id)}
             sites={sites}
             locations={locations}
@@ -591,7 +634,7 @@ function SortPicker({ value, onChange }) {
 
 function ChoreDefinitionRow({
   chore, expanded, onToggle, currentUserEmail,
-  editing, onStartEdit, onCancelEdit, onSaveEdit, onDeleteChore,
+  editing, onStartEdit, onCancelEdit, onSaveEdit, onQuickSave, onDeleteChore,
   sites, locations, blocks, blockById,
 }) {
   return (
@@ -606,13 +649,14 @@ function ChoreDefinitionRow({
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{chore.title}</div>
-          <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>
-            {describeChoreLocation(chore, sites, locations)}
-            {" · "}
-            {describeChoreSchedule(chore, blockById)}
-            {" · "}
-            {describeFrequency(chore)}
-          </div>
+          <SecondaryRow
+            chore={chore}
+            sites={sites}
+            locations={locations}
+            blocks={blocks}
+            blockById={blockById}
+            onQuickSave={onQuickSave}
+          />
         </div>
         <ChoreMessageButton
           choreId={chore.id}
@@ -641,6 +685,289 @@ function ChoreDefinitionRow({
   );
 }
 
+// Three quick-edit chips on the row's secondary line. Double-click
+// any of them to swap in an inline editor for that field; saving
+// commits via onQuickSave (chore_definitions update) without
+// expanding the full row editor.
+function SecondaryRow({ chore, sites, locations, blocks, blockById, onQuickSave }) {
+  const [editing, setEditing] = useState(null); // 'site' | 'schedule' | 'frequency' | null
+
+  const close = () => setEditing(null);
+  const save = async (patch) => {
+    await onQuickSave(patch);
+    close();
+  };
+
+  return (
+    <div
+      style={{
+        fontSize: 12, color: T.textDim, marginTop: 2,
+        display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
+      }}
+    >
+      {editing === "site" ? (
+        <SiteQuickEdit
+          chore={chore}
+          sites={sites}
+          locations={locations}
+          onSave={save}
+          onCancel={close}
+        />
+      ) : (
+        <Chip onDoubleClick={() => setEditing("site")} title="Double-click to edit site">
+          {describeChoreLocation(chore, sites, locations)}
+        </Chip>
+      )}
+      <ChipSep />
+      {editing === "schedule" ? (
+        <ScheduleQuickEdit
+          chore={chore}
+          blocks={blocks}
+          onSave={save}
+          onCancel={close}
+        />
+      ) : (
+        <Chip onDoubleClick={() => setEditing("schedule")} title="Double-click to edit schedule">
+          {describeChoreSchedule(chore, blockById)}
+        </Chip>
+      )}
+      <ChipSep />
+      {editing === "frequency" ? (
+        <FrequencyQuickEdit
+          chore={chore}
+          onSave={save}
+          onCancel={close}
+        />
+      ) : (
+        <Chip onDoubleClick={() => setEditing("frequency")} title="Double-click to edit frequency">
+          {describeFrequency(chore)}
+        </Chip>
+      )}
+    </div>
+  );
+}
+
+function Chip({ onDoubleClick, title, children }) {
+  return (
+    <button
+      onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick?.(); }}
+      onClick={(e) => e.stopPropagation()}
+      title={title}
+      style={{
+        background: "transparent",
+        border: "none",
+        color: "inherit",
+        font: "inherit",
+        padding: 0,
+        cursor: "default",
+        textAlign: "left",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ChipSep() {
+  return <span aria-hidden style={{ color: T.textFaint, userSelect: "none" }}>·</span>;
+}
+
+// ── Site quick-edit ─────────────────────────────────────────────────
+// Single select with optgroups: each site offers a "Whole site"
+// option (= site_id, location_id null) plus its locations.
+function SiteQuickEdit({ chore, sites, locations, onSave, onCancel }) {
+  const initial =
+    chore.locationId ? `loc:${chore.locationId}`
+      : chore.siteId ? `site:${chore.siteId}`
+      : "";
+  const [val, setVal] = useState(initial);
+  const activeSites = sites.filter(s => s.isActive);
+  const activeLocations = locations.filter(l => l.isActive);
+
+  const submit = async (newVal) => {
+    if (newVal === initial) { onCancel(); return; }
+    if (!newVal) {
+      await onSave({ siteId: null, locationId: null });
+      return;
+    }
+    if (newVal.startsWith("site:")) {
+      await onSave({ siteId: newVal.slice(5), locationId: null });
+      return;
+    }
+    if (newVal.startsWith("loc:")) {
+      await onSave({ locationId: newVal.slice(4), siteId: null });
+      return;
+    }
+  };
+
+  return (
+    <select
+      autoFocus
+      value={val}
+      onChange={(e) => { setVal(e.target.value); submit(e.target.value); }}
+      onBlur={() => submit(val)}
+      onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
+      onClick={(e) => e.stopPropagation()}
+      style={editChipInputStyle}
+    >
+      <option value="">— no site —</option>
+      {activeSites.map(s => {
+        const inSite = activeLocations.filter(l => l.siteId === s.id);
+        return (
+          <optgroup key={s.id} label={s.name}>
+            <option value={`site:${s.id}`}>Whole site</option>
+            {inSite.map(l => (
+              <option key={l.id} value={`loc:${l.id}`}>{l.name}</option>
+            ))}
+          </optgroup>
+        );
+      })}
+    </select>
+  );
+}
+
+// ── Schedule (block) quick-edit ────────────────────────────────────
+function ScheduleQuickEdit({ chore, blocks, onSave, onCancel }) {
+  const initial = chore.blockId ?? "";
+  const [val, setVal] = useState(initial);
+  const activeBlocks = blocks.filter(b => b.isActive);
+
+  const submit = async (newVal) => {
+    if (newVal === initial) { onCancel(); return; }
+    await onSave({ blockId: newVal || null });
+  };
+
+  return (
+    <select
+      autoFocus
+      value={val}
+      onChange={(e) => { setVal(e.target.value); submit(e.target.value); }}
+      onBlur={() => submit(val)}
+      onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
+      onClick={(e) => e.stopPropagation()}
+      style={editChipInputStyle}
+    >
+      <option value="">— anytime —</option>
+      {activeBlocks.map(b => (
+        <option key={b.id} value={b.id}>{b.name}</option>
+      ))}
+    </select>
+  );
+}
+
+// ── Frequency quick-edit ───────────────────────────────────────────
+// Type select; "specific_days" expands inline 7-day toggles.
+// weekly_window / monthly_last_week_window types are preserved when
+// already present (read-only label here); converting to daily or
+// specific-days commits via the type select.
+function FrequencyQuickEdit({ chore, onSave, onCancel }) {
+  const initial = chore.frequency ?? { type: "daily" };
+  const [type, setType] = useState(initial.type ?? "daily");
+  const [days, setDays] = useState(
+    Array.isArray(initial.days) ? initial.days : []
+  );
+
+  const submit = async (nextType, nextDays) => {
+    let freq;
+    if (nextType === "daily") {
+      freq = { type: "daily" };
+    } else if (nextType === "specific_days") {
+      freq = { type: "specific_days", days: nextDays };
+    } else {
+      // Preserve the original payload for window types (we don't
+      // surface their sub-fields in quick-edit yet).
+      freq = initial.type === nextType ? initial : { type: nextType };
+    }
+    await onSave({ frequency: freq });
+  };
+
+  const toggleDay = async (d) => {
+    const next = days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort();
+    setDays(next);
+    if (type === "specific_days" && next.length > 0) {
+      await onSave({ frequency: { type: "specific_days", days: next } });
+    }
+  };
+
+  const onTypeChange = (newType) => {
+    setType(newType);
+    if (newType === "daily") {
+      submit("daily", []);
+    } else if (newType === "specific_days") {
+      // Wait for at least one day to be picked before saving.
+      if (days.length > 0) submit("specific_days", days);
+    } else {
+      submit(newType, []);
+    }
+  };
+
+  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <span
+      onClick={(e) => e.stopPropagation()}
+      style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}
+    >
+      <select
+        autoFocus
+        value={type}
+        onChange={(e) => onTypeChange(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
+        style={editChipInputStyle}
+      >
+        <option value="daily">Every day</option>
+        <option value="specific_days">Specific days</option>
+        <option value="weekly_window">Weekly window</option>
+        <option value="monthly_last_week_window">Monthly window</option>
+      </select>
+      {type === "specific_days" && (
+        <span style={{ display: "inline-flex", gap: 2 }}>
+          {DOW.map((label, idx) => {
+            const on = days.includes(idx);
+            return (
+              <button
+                key={idx}
+                onClick={() => toggleDay(idx)}
+                aria-pressed={on}
+                style={{
+                  border: `1px solid ${T.border}`,
+                  background: on ? T.rowActive : "transparent",
+                  color: on ? T.text : T.textDim,
+                  font: "inherit", fontSize: 11, fontWeight: 600,
+                  padding: "2px 6px", cursor: "pointer",
+                  textTransform: "uppercase", letterSpacing: "0.06em",
+                }}
+                title={`${on ? "Remove" : "Add"} ${label}`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </span>
+      )}
+      <button
+        onClick={onCancel}
+        style={{
+          background: "transparent", border: "none", color: T.textMuted,
+          cursor: "pointer", font: "inherit", fontSize: 11, padding: "2px 6px",
+        }}
+        title="Done editing"
+      >
+        Done
+      </button>
+    </span>
+  );
+}
+
+const editChipInputStyle = {
+  background: T.surface,
+  border: `1px solid ${T.border}`,
+  color: T.text,
+  fontSize: 12,
+  padding: "2px 6px",
+  fontFamily: "inherit",
+};
+
 // Site / location label for the row's secondary line.
 function describeChoreLocation(chore, sites, locations) {
   if (chore.locationId) {
@@ -651,7 +978,7 @@ function describeChoreLocation(chore, sites, locations) {
   }
   if (chore.siteId) {
     const s = sites.find(x => x.id === chore.siteId);
-    return s ? `${s.name} (all)` : "(removed site)";
+    return s ? s.name : "(removed site)";
   }
   // Fall back to the legacy category text (pre-migration).
   return CHORE_CATEGORIES[chore.category]?.label ?? chore.category ?? "No site";

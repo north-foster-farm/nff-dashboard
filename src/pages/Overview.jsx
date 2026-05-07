@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Clock, CheckCircle2, ArrowUpRight,
   FolderKanban, Receipt, Newspaper, Activity as ActivityIcon,
@@ -18,6 +18,9 @@ import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
+import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
+import { sunMinutesOfDay } from "../lib/sunTimes.js";
+import { Sunrise, Sunset } from "lucide-react";
 import CurrentConditionsCard from "../components/WeatherWidget.jsx";
 import ActivityRow from "../components/ActivityRow.jsx";
 
@@ -359,6 +362,7 @@ function TodayScheduleCard({ data, today, blocks }) {
 
   return (
     <Card title="Schedule at a glance" icon={Clock}>
+      <SunCountdownPill />
       {nothingToShow ? (
         <EmptyLine>Nothing on the calendar today.</EmptyLine>
       ) : (
@@ -542,9 +546,15 @@ function TimelineRow({ item }) {
 
 function UpcomingChoresCard({ data, today, blocks }) {
   const instances = useMemo(() => getChoresForDay(data, today), [data, today]);
+  // Live completion subscription: realtime checkbox flips on the
+  // dashboard mirror what's happening in Rounds + the Today tab.
+  const completions = useChoreCompletions(today);
   const now = today.getTime();
+  // Drop completed chores from the upcoming list — once the user
+  // has ticked them off, they shouldn't crowd the dashboard.
   const upcoming = instances
     .filter(i => i.deadlineAt.getTime() >= now)
+    .filter(i => !completions.completedSet?.has(i.chore.id))
     .slice(0, UPCOMING_LIMIT);
 
   const byPeriod = {};
@@ -567,6 +577,7 @@ function UpcomingChoresCard({ data, today, blocks }) {
               period={p}
               instances={byPeriod[p]}
               blocks={blocks}
+              completions={completions}
             />
           ))}
         </div>
@@ -575,7 +586,7 @@ function UpcomingChoresCard({ data, today, blocks }) {
   );
 }
 
-function UpcomingPeriodGroup({ period, instances, blocks }) {
+function UpcomingPeriodGroup({ period, instances, blocks, completions }) {
   const meta = CHORE_PERIODS[period];
   const timeLabel = getBlockTimeLabelForPeriod(instances, period, blocks) || meta?.hint || "";
   return (
@@ -585,19 +596,36 @@ function UpcomingPeriodGroup({ period, instances, blocks }) {
         {timeLabel && <span className="text-muted font-medium ml-2">{timeLabel}</span>}
       </div>
       <div className="flex flex-col gap-0.5">
-        {instances.map(inst => <UpcomingChoreRow key={inst.choreId} inst={inst} />)}
+        {instances.map(inst => (
+          <UpcomingChoreRow
+            key={inst.choreId}
+            inst={inst}
+            completions={completions}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
-function UpcomingChoreRow({ inst }) {
-  const [done, setDone] = useState(false);
+function UpcomingChoreRow({ inst, completions }) {
   const { chore } = inst;
+  const done = completions.completedSet?.has(chore.id) ?? false;
+  const [pending, setPending] = useState(false);
+  const onToggle = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await completions.toggle(chore.id, done);
+    } finally {
+      setPending(false);
+    }
+  };
   return (
     <div className="flex gap-2.5 items-center py-1 text-xs">
       <button
-        onClick={() => setDone(v => !v)}
+        onClick={onToggle}
+        disabled={pending}
         aria-label={done ? "Mark incomplete" : "Mark complete"}
         className={
           "w-4 h-4 shrink-0 cursor-pointer p-0 border-[1.5px] " +
@@ -698,4 +726,44 @@ function Card({ title, subtitle, icon: Icon, children }) {
 
 function EmptyLine({ children }) {
   return <div className="text-xs text-dim italic leading-relaxed">{children}</div>;
+}
+
+
+// Live-ticking sun countdown — sits at the top of Schedule-at-a-glance.
+// Renders the next sunrise / sunset with how long until it lands. Updates
+// once a minute; falls back to silence if SunCalc cant compute.
+function SunCountdownPill() {
+  const [tick, setTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setTick(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+  const now = new Date(tick);
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const sunriseMin = sunMinutesOfDay(now, "sunrise");
+  const sunsetMin = sunMinutesOfDay(now, "sunset");
+  const candidates = [];
+  if (sunriseMin !== null && sunriseMin > nowMin) candidates.push({ kind: "sunrise", min: sunriseMin });
+  if (sunsetMin !== null && sunsetMin > nowMin) candidates.push({ kind: "sunset", min: sunsetMin });
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => a.min - b.min);
+  const next = candidates[0];
+  const delta = next.min - nowMin;
+  let label;
+  if (delta < 1) label = "now";
+  else if (delta < 60) label = `${Math.round(delta)}m`;
+  else {
+    const h = Math.floor(delta / 60);
+    const m = Math.round(delta % 60);
+    label = m === 0 ? `${h}h` : `${h}h ${m}m`;
+  }
+  const Icon = next.kind === "sunrise" ? Sunrise : Sunset;
+  return (
+    <div className="flex items-center gap-1.5 mb-3 -mt-1.5">
+      <Icon size={12} className="text-dim shrink-0" />
+      <span className="text-[11px] text-dim font-semibold uppercase tracking-[0.08em]">
+        {next.kind} in {label}
+      </span>
+    </div>
+  );
 }

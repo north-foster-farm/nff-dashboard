@@ -363,6 +363,64 @@ existing reorder-within-a-group surface still works against
 inline editor's number input; drag-reorder against it lands when
 the Site Switcher ships in Batch 8.
 
+### Batch 8.1 — Rounds lifecycle + Site Switcher · `v0.9.7-alpha`
+2026-05-07. The doing-surface foundation, scoped down from the
+full Batch 8 spec. Full plan at
+`~/.claude/plans/chores-overhaul-v2.md`.
+
+**Top-level takeover.** App.jsx gains a `roundsOpen` state; when
+true, the normal layout (TopBar / Sidebar / SectionHeader)
+disappears entirely and `<Rounds />` renders edge-to-edge.
+
+**Sidebar dynamic label** (`RoundsSidebarItem.jsx`). Custom entry
+inside the Planning group with `kind: "takeover"`. Label flips
+between three states with a live tick:
+- "Do morning rounds · 47m" — no run open; countdown to next
+  block start (or 0 if a block window is currently open).
+- "Help with rounds · 14:23" — a run is in progress on another
+  client; elapsed counter ticks every second.
+- "Do rounds" — fallback when no blocks are configured.
+
+**`useChoreRuns` hook.** Loads today's chore_runs (one row per
+`(block_id, run_date)`). Computes `nextBlock` (in-progress > now-
+in-window > soonest-future > soonest-remaining). Mutations:
+`startRun(blockId)` materializes / resumes a run, `endRun(runId)`
+flips state to `done`, `resumeRun(runId)` pulls a done run back
+to `in_progress`. Realtime subscription; optimistic + revert.
+
+**Rounds takeover** (`Rounds.jsx`). Three states:
+- *Cold open* — no in-progress run; centered "Start rounds"
+  button + block name + window times. Locked-name title.
+- *Doing surface* — top status bar (block name, live elapsed,
+  sundown / sunup pill when the block has a sun-event end, All
+  done button, Close X), Site Switcher chip strip (kind-level
+  filter), main body listing chores grouped by site or — when a
+  site is selected — by location with an optional secondary
+  location strip when a site has multiple locations.
+  Per-task fat checkboxes (44px target) read/write the existing
+  `chore_completions` table; realtime echo flips contended rows
+  to ✓ + disabled within ~80ms. No per-user attribution surfaced
+  (generic ✓, no initials, no toast).
+- *Wrap card* — total elapsed in display type, "Ran Xm past the
+  window" when overran, Resume + Close buttons.
+
+**Sundown pill on Schedule-at-a-glance.** Live-ticking
+`SunCountdownPill` at the top of the dashboard's
+Schedule-at-a-glance card. Shows the next sun-event (sunrise or
+sunset) and how long until it lands; updates every minute. Uses
+SunCalc directly (Foster, RI). Hidden if neither sunrise nor
+sunset is in the future today.
+
+**Out of scope for 8.1 (lands in 8.2):**
+- Quick-action tray (Note / Condition multi-select chip sheet /
+  Mortality fast-path / Chick → MASH / Moved coops / Moved
+  chicken tractors). Run Events writing to `activity_log` with
+  the `run_id` FK ships with that.
+- Cohort-aware quick action prompts (read site_residents at the
+  current location).
+- Push notifications on Run done with overran callout — that's
+  Batch 10 (Chores telemetry + push).
+
 ---
 
 ## Upcoming
@@ -407,28 +465,21 @@ in that file. Highlights:
   Processes batch (now Batch 16) since it has nothing to render
   until then.
 
-### Batch 8 — Rounds (the full-screen chore surface)
-The centerpiece batch. New full-screen route with a sidebar
-state-machine entry that flips between "Do morning rounds · 47m"
-/ "Help with rounds · 14:23" / "Doing rounds · 14:23" via
-realtime. Site Switcher: top-level kinds (Brooders · Mobile coops
-· Chicken tractors · Sheep · Wash & pack), drilling into
-instances when a kind has more than one. Run lifecycle (Start
-rounds → per-task realtime locks → All done → Resume) writes to
-`chore_runs`; per-task contention shows generic ✓ + disabled, no
-initials, no toast.
+### Batch 8.2 — Quick actions tray (Run Events)
+The other half of Rounds — bottom action tray that writes typed
+Run Events to `activity_log` with a `run_id` FK and the location
+context auto-populated.
+- **Note** — free-text + site picker.
+- **Condition** — multi-select chip sheet (Listless / Unthrifty
+  / Off-feed / Off-water / Damaged / Sick) with a repeat-
+  detection banner ("Brooder #2: 2 off-feed calls in the last 7
+  days") inside the sheet.
+- **Mortality** — cohort fast-path with auto-decrement.
+- **Chick → MASH**.
+- **Moved coops** / **Moved chicken tractors**.
 
-Quick-action tray (Observation / Layer mort / Broiler mort / Chick
-→ MASH / Moved coops / Moved chicken tractors) is site-aware:
-logging a layer mort at Mobile coop 1 prompts to pick from cohorts
-assigned to that site via `site_residents`. Quick actions write
-typed Run Events to `activity_log` with a `run_id` FK — they are
-*not* chore completions. Sundown countdown pill renders in
-Schedule-at-a-glance and in the Rounds top bar when the evening
-run is open.
-
-May split into 8.1 (lifecycle + Switcher) and 8.2 (realtime + quick
-actions + Run Events) if scope creeps.
+New `activity_log_condition_states` child table for the
+multi-select chips.
 
 ### Batch 9 — Observation Log
 Lands right after Rounds so the observation events Rounds writes

@@ -33,6 +33,10 @@ export const SECTIONS = [
     // total count of chore definitions (i.e. nothing has been logged as done yet).
     // 0 when there are no chores at all.
     getCount: (d) => d.chores.definitions.length },
+  // Custom takeover entry: clicking this opens the full-screen Rounds
+  // surface, bypassing the normal layout. Sidebar.jsx detects
+  // `kind: "takeover"` and renders a custom item with a live label.
+  { id: "rounds", group: "Planning", label: "Do rounds", icon: ListChecks, description: "Full-screen surface for actually doing chores.", kind: "takeover", getCount: () => null },
   { id: "projects", group: "Planning", label: "Projects", icon: FolderKanban, description: "Discrete, time-bound work",
     // Projects active today and not yet complete.
     getCount: (d) => {

@@ -6,6 +6,7 @@ import Sidebar from "./components/Sidebar.jsx";
 import SectionHeader from "./components/SectionHeader.jsx";
 import SectionContent from "./components/SectionContent.jsx";
 import DetailModal from "./components/DetailModal.jsx";
+import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
 
 // `session` is always non-null here — LoginGate only renders <App /> after
@@ -13,6 +14,9 @@ import { useReferenceData } from "./lib/data/useReferenceData.js";
 export default function App({ session }) {
   const [currentSection, setCurrentSection] = useState("overview");
   const [scheduleDetail, setScheduleDetail] = useState(null);
+  // Rounds is a full-screen takeover — when open, the rest of the
+  // app (TopBar / Sidebar / SectionHeader) gets out of the way.
+  const [roundsOpen, setRoundsOpen] = useState(false);
 
   // Live reference data from Postgres. Keys that haven't loaded yet come
   // back as `null`; the merge below only overrides JSON for keys that HAVE
@@ -40,6 +44,10 @@ export default function App({ session }) {
     section.id === "roadmap" ||
     section.comingSoon === true;
 
+  if (roundsOpen) {
+    return <Rounds data={data} onClose={() => setRoundsOpen(false)} />;
+  }
+
   return (
     <div className="bg-bg text-fg h-screen flex flex-col overflow-hidden font-body text-[13px]">
       <TopBar
@@ -48,7 +56,12 @@ export default function App({ session }) {
         onOpenSettings={() => setCurrentSection("settings")}
       />
       <div className="flex flex-1 min-h-0">
-        <Sidebar current={currentSection} onSelect={setCurrentSection} data={data} />
+        <Sidebar
+          current={currentSection}
+          onSelect={setCurrentSection}
+          onOpenRounds={() => setRoundsOpen(true)}
+          data={data}
+        />
         <main className="flex-1 px-10 py-8 overflow-y-auto min-w-0">
           {!isSelfHeadered && (
             <SectionHeader
