@@ -157,6 +157,11 @@ const ITEMS = [
     body: "Talk to the app — \"log Saturday's farmers market, six dozen " +
       "eggs sold\" — and have it interpret, confirm, then record.",
   },
+  {
+    title: "A small daily something",
+    body: "A rotating bit of polish on the login screen and dashboard. " +
+      "Saving the rest for the reveal.",
+  },
 ];
 
 export default function Roadmap() {

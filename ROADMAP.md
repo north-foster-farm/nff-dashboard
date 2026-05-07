@@ -511,6 +511,48 @@ the underlying batch model gets fleshed out there — but if the
 data is already present, this could ship sooner as a small batch
 on its own.
 
+### Daily quote / artwork rotation + unlock gallery
+Added 2026-05-06. Spec + dataset already drafted; assets sit at
+`.ignored/quotes-and-artwork/` (44 quotes, 54 artwork candidates
+awaiting curation, 48 people records, plus an `artwork_curator.jsx`
+tool for pruning the artwork list down). Full handoff doc lives at
+`.ignored/quotes-and-artwork/handoff.md`.
+
+**v1 (whenever it slots in):**
+- Login screen surfaces a daily-rotating piece of content
+  alternating quotes (typographic display) and artworks
+  (full-bleed background, dark overlay so the login form stays
+  readable). Attribution block is the constant across both
+  treatments — name · lifespan · role · 1–2 sentence bio.
+- Dashboard widget on the Today tab shows the same item that
+  day. Compact card. Same source of truth.
+- Daily rotation is deterministic (`(epoch_day_index % N)`) so
+  every device shows the same item the same day.
+- Curation is a one-time pruning of the 54 artwork candidates
+  down to ~50–60; final rotation should clear the "no repeat
+  for 2+ months" target.
+- ~4 hours of focused work once curation is done.
+
+**Rainy-day v2 — the unlock game (this is the part James asked
+for on 2026-05-06):**
+- Quotes and artwork are *unlocked* for a user's account only
+  when that user has actually viewed them (login screen view or
+  dashboard-widget click both count).
+- A new per-account page (nested under the user's avatar / their
+  Settings area) shows the full collection: every quote and
+  every artwork in the rotation. Items the user has viewed
+  appear in full; items they haven't appear as a "?" tile or
+  similar locked-state placeholder.
+- Mechanic is Pokédex-style — a quiet incentive to actually
+  pause on the login screen instead of skipping past it, and
+  a way for the rotation to stop being purely ephemeral.
+- New table: `user_content_unlocks (user_email, content_id,
+  unlocked_at)`.
+- The unlock surface is account-scoped, not global — James and
+  his dad maintain independent collections.
+- Out of scope even for v2: trading, leaderboards, achievements,
+  search-the-collection. Just unlock-on-view + a gallery.
+
 ### Lessons module ("Lessons" page)
 Added 2026-05-05. Dedicated page with its own sidebar link, plus
 the surfacing infrastructure to make the lessons actually useful.
