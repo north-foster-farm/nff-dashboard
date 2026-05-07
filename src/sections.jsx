@@ -5,7 +5,7 @@ import {
   Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
   CalendarRange, Layers, Tractor, Container, Caravan, TreePine,
   Store, Cog, Box,
-  UserPlus, ClipboardList, CalendarDays, Newspaper, Map, MapPin
+  UserPlus, ClipboardList, CalendarDays, Newspaper, Map, MapPin, Eye
 } from "lucide-react";
 
 // Updates flagged as needing attention — anything sitting in or past review.
@@ -106,6 +106,7 @@ export const SECTIONS = [
 
   { id: "roadmap", group: "Other", label: "What's coming", icon: Map, description: "Features on deck for upcoming releases.", getCount: () => null },
   { id: "activity", group: "Other", label: "Activity", icon: Activity, description: "Every action logged across the farm — chore completions, temperature readings, weight logs, sales, and more.", getCount: () => null },
+  { id: "observations", group: "Other", label: "Observations", icon: Eye, description: "Notes, condition flags, mortality, cohort moves, and infra sweeps logged from Rounds — filterable by site, kind, date, and author.", getCount: () => null },
   { id: "notes", group: "Other", label: "Notes", icon: NotebookPen, description: "Uncategorized brain dumps", getCount: () => null },
   { id: "threads", group: "Other", label: "Threads", icon: MessageCircleQuestion, description: "Open questions and resolved decisions", getCount: (d) => d.threads.filter(t => t.status === "open").length },
 

@@ -26,13 +26,6 @@ const ITEMS = [
       "coop 1, those buttons already know which cohort lives there.",
   },
   {
-    title: "Observation log",
-    body: "Every \"observed where\" tap from Rounds lands in a " +
-      "browsable log filterable by site, date, and author. The " +
-      "answer to \"what did we notice last week at Brooder #2\" is " +
-      "one click instead of scrolling activity.",
-  },
-  {
     title: "Chores telemetry + push",
     body: "Push notifications when chores finish (\"AM rounds done · " +
       "1h 12m\" or \"AM rounds done · 1h 47m, overran 22m\"). A new " +

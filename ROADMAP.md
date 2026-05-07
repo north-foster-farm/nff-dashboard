@@ -469,6 +469,32 @@ further changes.
 - Per-cohort attribution + automatic `site_residents` move-out
   when a cohort empties to zero.
 
+### Batch 9 — Observation Log · `v0.10.0-alpha`
+2026-05-07. New "Observations" page under the Other sidebar group
+(lucide `Eye`). Reads `activity_log` rows for the five Rounds-emitted
+observation kinds (`note_observed`, `condition_observed`,
+`mortality_observed`, `cohort_moved`, `infra_swept`) — no new table.
+Filter bar: kind chips (All / Notes / Conditions / Mortality / Moves
+/ Sweeps), site dropdown (resolves rows tagged with only a
+`location_id` via the parent site lookup), author dropdown (populated
+from the rows actually present), and a date-range preset pill (Last
+7 days / Last 30 days / All time). Realtime subscription scoped to
+the observation kinds; row edit + delete affordances inherited from
+Batch 4 (same `ActivityRow`).
+
+**`useActivityLog` hook generalized** to support the new shape:
+optional `untilDate` (paired with the existing `sinceDate`) and
+optional `kinds` array. The select now pulls `site_id`, `location_id`,
+and `run_id` from `activity_log`; UIEntry exposes them as
+`siteId` / `locationId` / `runId` for site-aware filtering. Realtime
+INSERT path filters by the same kinds + window so Activity, Overview,
+and Observations don't cross-contaminate each other's streams.
+
+**Out of scope** (intentional, per the original Batch 9 spec):
+structured forms, photo attachments, AI summarization. Sequencing
+keeps the feature small so Batch 10 (chores telemetry + push) lands
+next without backlog.
+
 ### Batch 8.3 — Remaining quick actions · `v0.9.9-alpha`
 2026-05-07. Picks up the three actions deferred from 8.2 — Move,
 Sweep, and the auto move-out — without any schema changes (kinds
@@ -551,18 +577,6 @@ in that file. Highlights:
   to populate, but the modifier-conflict UI ships with the
   Processes batch (now Batch 16) since it has nothing to render
   until then.
-
-### Batch 9 — Observation Log
-Lands right after Rounds so the observation events Rounds writes
-have a browsable home. New page (likely under "Other") with
-filters by site, kind, date range, and author. Reads from
-`activity_log` rows tagged as observations — no new table —
-inheriting Batch 4's edit/delete affordances. Out of scope for
-v1: structured forms, photo attachments, AI summarization.
-
-Ships value: "what did we notice last week at Brooder #2" becomes
-one click. Closes the loop on the quick-action observations Rounds
-captures.
 
 ### Batch 10 — Chores notifications + Performance
 Web push (PWA + service worker — may need to pull forward from

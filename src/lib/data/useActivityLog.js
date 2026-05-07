@@ -17,14 +17,20 @@ import { CHORE_SEEDS } from "../../data/choreSeeds.js";
 // on failure (RPC errors, ownership mismatch). The realtime subscription
 // reflects the change back into local state automatically; the optimistic
 // update path below is just to keep the UI snappy during the round-trip.
-export function useActivityLog({ sinceDate, limit } = {}) {
+export function useActivityLog({
+  sinceDate, untilDate, limit, kinds
+} = {}) {
   const instanceId = useId();
   const [rows, setRows] = useState(null); // null = loading
   const [error, setError] = useState(null);
 
-  // We freeze sinceDate's wall-clock value into the query key so the
+  // We freeze the wall-clock values + kind list into stable strings so the
   // effect's dependency array is stable.
   const sinceISO = sinceDate ? sinceDate.toISOString() : null;
+  const untilISO = untilDate ? untilDate.toISOString() : null;
+  const kindsKey = Array.isArray(kinds) && kinds.length > 0
+    ? [...kinds].sort().join(",")
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -32,9 +38,14 @@ export function useActivityLog({ sinceDate, limit } = {}) {
     setError(null);
     let q = supabase
       .from("activity_log")
-      .select("id, occurred_at, actor_email, kind, payload, edited_summary")
+      .select(
+        "id, occurred_at, actor_email, kind, payload, edited_summary, " +
+        "site_id, location_id, run_id"
+      )
       .order("occurred_at", { ascending: false });
     if (sinceISO) q = q.gte("occurred_at", sinceISO);
+    if (untilISO) q = q.lt("occurred_at", untilISO);
+    if (kindsKey) q = q.in("kind", kindsKey.split(","));
     if (typeof limit === "number") q = q.limit(limit);
     q.then(({ data, error }) => {
       if (cancelled) return;
@@ -46,7 +57,7 @@ export function useActivityLog({ sinceDate, limit } = {}) {
       setRows(data);
     });
     return () => { cancelled = true; };
-  }, [sinceISO, limit]);
+  }, [sinceISO, untilISO, limit, kindsKey]);
 
   // Realtime: prepend new rows, replace edited rows, remove deleted rows.
   useEffect(() => {
@@ -59,6 +70,10 @@ export function useActivityLog({ sinceDate, limit } = {}) {
           setRows((prev) => {
             if (!prev) return prev;
             if (sinceISO && payload.new.occurred_at < sinceISO) return prev;
+            if (untilISO && payload.new.occurred_at >= untilISO) return prev;
+            if (kindsKey && !kindsKey.split(",").includes(payload.new.kind)) {
+              return prev;
+            }
             const next = [payload.new, ...prev];
             return typeof limit === "number" ? next.slice(0, limit) : next;
           });
@@ -86,7 +101,7 @@ export function useActivityLog({ sinceDate, limit } = {}) {
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [sinceISO, limit, instanceId]);
+  }, [sinceISO, untilISO, limit, kindsKey, instanceId]);
 
   // ── Mutators ─────────────────────────────────────────────────────────
   const edit = useCallback(async (entryId, newSummary) => {
@@ -155,7 +170,10 @@ function toUIEntry(row) {
     edited: editedSummary != null,
     ownerEmail: row.actor_email,
     kind: row.kind,
-    payload: row.payload
+    payload: row.payload,
+    siteId: row.site_id ?? null,
+    locationId: row.location_id ?? null,
+    runId: row.run_id ?? null
   };
 }
 

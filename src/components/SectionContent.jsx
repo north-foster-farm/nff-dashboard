@@ -16,6 +16,7 @@ import Inventory from "../pages/Inventory.jsx";
 import Trailers from "../pages/Trailers.jsx";
 import AllEvents from "../pages/AllEvents.jsx";
 import Activity from "../pages/Activity.jsx";
+import Observations from "../pages/Observations.jsx";
 import Settings from "../pages/Settings.jsx";
 import Roadmap from "../pages/Roadmap.jsx";
 import SitesPage from "../pages/SitesPage.jsx";
@@ -55,6 +56,7 @@ export default function SectionContent({ section, data, onShowDetail, onNavigate
     case "schedule": return <Schedule data={data} onShowDetail={onShowDetail} />;
     case "chores": return <Chores data={data} />;
     case "activity": return <Activity />;
+    case "observations": return <Observations />;
     case "threads": return <Threads data={data} />;
     case "settings": return <Settings />;
     case "roadmap": return <Roadmap />;
