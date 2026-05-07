@@ -24,3 +24,13 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Belt-and-braces de-indexing: an HTTP-header noindex applies to every
+# response (HTML, JSON, assets) and is the directive Google honors
+# above any per-page meta. Pair with /robots.txt + the index.html meta
+# tag — robots.txt blocks well-behaved crawlers, the header stops
+# anything that fetches the page anyway from indexing what it gets.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive, nosnippet"
