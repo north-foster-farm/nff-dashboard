@@ -3,6 +3,7 @@
 // and resolved assignee.
 
 import { CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS } from "../data/choreSeeds.js";
+import { sunMinutesOfDay } from "./sunTimes.js";
 
 export { CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS };
 
@@ -237,6 +238,41 @@ export function getChorePeriodStartMinutes(instances, period) {
 export function getChorePeriodTimeLabel(instances, period) {
   const earliest = getEarliestChoreInPeriod(instances, period);
   return earliest ? formatTime12hShort(earliest.chore.startTime) : "";
+}
+
+// Block-aware variant: prefers chore_blocks data over the legacy
+// period helpers when a matching block is available. Lookup is by
+// lower-cased block name. Sunrise / sunset blocks resolve to today's
+// actual times via SunCalc; fixed blocks use their stored minutes.
+//
+// `blocks` is the list returned by useChoreBlocks (camelCase shape).
+export function getBlockTimeLabelForPeriod(instances, period, blocks) {
+  const block = blocks?.find((b) => b.isActive && b.name.toLowerCase() === period);
+  if (block) {
+    if (block.startKind === "sunrise") return "sunrise";
+    if (block.startKind === "sunset") return "sunset";
+    const m = ((block.startMinutes % 1440) + 1440) % 1440;
+    const h24 = Math.floor(m / 60);
+    const minutes = m % 60;
+    const ampm = h24 < 12 ? "AM" : "PM";
+    const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+    return minutes === 0
+      ? `${h12} ${ampm}`
+      : `${h12}:${String(minutes).padStart(2, "0")} ${ampm}`;
+  }
+  return getChorePeriodTimeLabel(instances, period);
+}
+
+// Block-aware start-minutes for the timeline pre-morning detection.
+// Sunrise / sunset blocks resolve via SunCalc; fixed blocks return
+// their stored minutes.
+export function getBlockStartMinutesForPeriod(instances, period, blocks) {
+  const block = blocks?.find((b) => b.isActive && b.name.toLowerCase() === period);
+  if (block) {
+    if (block.startKind === "fixed") return block.startMinutes;
+    return sunMinutesOfDay(new Date(), block.startKind);
+  }
+  return getChorePeriodStartMinutes(instances, period);
 }
 
 // Short display for a chore's start time, respecting evening chores that are

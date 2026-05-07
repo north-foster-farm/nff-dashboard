@@ -3,6 +3,8 @@ dist
 .DS_Store
 .vite
 *.log
+.branches
+.temp
 
 # Env files with secrets. .env.example is committed as a setup reference;
 # every real .env / .env.local stays local.

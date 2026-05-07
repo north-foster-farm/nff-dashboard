@@ -262,7 +262,11 @@ async function loadFeedSchedules() {
 async function loadChores() {
   const { data, error } = await supabase
     .from("chore_definitions")
-    .select("id, title, category, description, frequency, period, start_time, deadline, assignment, tags")
+    .select(
+      "id, title, category, description, frequency, period, start_time, " +
+      "deadline, assignment, tags, site_id, location_id, block_id, sort_order"
+    )
+    .order("sort_order")
     .order("category");
   if (error) { console.error("loadChores:", error); return null; }
   return {
@@ -276,7 +280,11 @@ async function loadChores() {
       startTime: c.start_time,
       deadline: c.deadline,
       assignment: c.assignment,
-      tags: c.tags
+      tags: c.tags,
+      siteId: c.site_id,
+      locationId: c.location_id,
+      blockId: c.block_id,
+      sortOrder: c.sort_order ?? 0,
     })),
     completions: [],
     modelNotes: []

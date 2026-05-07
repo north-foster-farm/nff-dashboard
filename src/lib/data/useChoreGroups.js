@@ -231,6 +231,28 @@ export function useChoreGroups() {
     }
   }, []);
 
+  // Reorder the chores inside a single group. `choreIdsInOrder` must list
+  // every member chore exactly once.
+  const reorderMembers = useCallback(async (groupId, choreIdsInOrder) => {
+    setMembers((prev) => {
+      if (!prev) return prev;
+      const orderIdx = new Map(choreIdsInOrder.map((id, i) => [id, i + 1]));
+      return prev.map(m =>
+        m.group_id === groupId && orderIdx.has(m.chore_id)
+          ? { ...m, sort_order: orderIdx.get(m.chore_id) }
+          : m
+      );
+    });
+    for (let i = 0; i < choreIdsInOrder.length; i++) {
+      const choreId = choreIdsInOrder[i];
+      // eslint-disable-next-line no-await-in-loop
+      await supabase.from("chore_group_members")
+        .update({ sort_order: i + 1 })
+        .eq("group_id", groupId)
+        .eq("chore_id", choreId);
+    }
+  }, []);
+
   return {
     groups: shaped.list,
     groupByChoreId: shaped.groupByChoreId,
@@ -243,6 +265,7 @@ export function useChoreGroups() {
     removeMember,
     setGroupMembers,
     reorderGroups,
+    reorderMembers,
   };
 }
 

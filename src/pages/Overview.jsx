@@ -9,13 +9,15 @@ import { formatTime12h } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
 import {
   getChoresForDay, CHORE_CATEGORIES, CHORE_PERIODS,
-  displayDeadlineConcrete, getChorePeriodTimeLabel,
-  getChorePeriodStartMinutes, getEarliestChoreInPeriod,
+  displayDeadlineConcrete,
+  getBlockTimeLabelForPeriod, getBlockStartMinutesForPeriod,
+  getEarliestChoreInPeriod,
   formatTime12hShort, resolveAssignee
 } from "../lib/chores.js";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
+import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import CurrentConditionsCard from "../components/WeatherWidget.jsx";
 import ActivityRow from "../components/ActivityRow.jsx";
 
@@ -34,16 +36,20 @@ const UPCOMING_LIMIT = 5;
 
 export default function Overview({ data, onNavigate }) {
   const today = useMemo(() => new Date(), []);
+  // Used by UpcomingChoresCard's labels and by the schedule-at-a-glance
+  // pre-morning cutoff. Editing a block in Settings → Sites & blocks
+  // propagates to both surfaces in real time.
+  const { blocks } = useChoreBlocks();
 
   return (
     <div className="flex flex-col gap-4">
       {/* Row 1: chores on the left; conditions stacked above the day's
           schedule on the right. */}
       <GridRow cols={2}>
-        <UpcomingChoresCard data={data} today={today} />
+        <UpcomingChoresCard data={data} today={today} blocks={blocks} />
         <Stack>
           <CurrentConditionsCard />
-          <TodayScheduleCard data={data} today={today} />
+          <TodayScheduleCard data={data} today={today} blocks={blocks} />
         </Stack>
       </GridRow>
       {/* Row 2: three status cards, each taking a third of the row. */}
@@ -197,8 +203,12 @@ function rollupChoresForDay(data, dayDate) {
   });
 }
 
-function todaysMorningCutoff(data, dayDate) {
-  return getChorePeriodStartMinutes(getChoresForDay(data, dayDate), "morning");
+function todaysMorningCutoff(data, dayDate, blocks) {
+  return getBlockStartMinutesForPeriod(
+    getChoresForDay(data, dayDate),
+    "morning",
+    blocks
+  );
 }
 
 // If every chore in the rollup that has an assignee resolves to the same
@@ -214,7 +224,7 @@ function getRollupAssignee(rollup, dayDate) {
   return names.size === 1 ? [...names][0] : null;
 }
 
-function TodayScheduleCard({ data, today }) {
+function TodayScheduleCard({ data, today, blocks }) {
   const { data: weather } = useCurrentWeather();
   const todayUTC = useMemo(
     () => new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())),
@@ -233,12 +243,12 @@ function TodayScheduleCard({ data, today }) {
   );
 
   const todayMorningCutoff = useMemo(
-    () => todaysMorningCutoff(data, today),
-    [data, today]
+    () => todaysMorningCutoff(data, today, blocks),
+    [data, today, blocks]
   );
   const tomorrowMorningCutoff = useMemo(
-    () => todaysMorningCutoff(data, tomorrow),
-    [data, tomorrow]
+    () => todaysMorningCutoff(data, tomorrow, blocks),
+    [data, tomorrow, blocks]
   );
 
   // Round sundown up to the next half-hour so the schedule shows a clean
@@ -530,7 +540,7 @@ function TimelineRow({ item }) {
 
 // ─── Upcoming chores (next N, grouped by period, in seed order) ──────────────
 
-function UpcomingChoresCard({ data, today }) {
+function UpcomingChoresCard({ data, today, blocks }) {
   const instances = useMemo(() => getChoresForDay(data, today), [data, today]);
   const now = today.getTime();
   const upcoming = instances
@@ -552,7 +562,12 @@ function UpcomingChoresCard({ data, today }) {
       ) : (
         <div className="flex flex-col gap-3">
           {orderedPeriods.map(p => (
-            <UpcomingPeriodGroup key={p} period={p} instances={byPeriod[p]} />
+            <UpcomingPeriodGroup
+              key={p}
+              period={p}
+              instances={byPeriod[p]}
+              blocks={blocks}
+            />
           ))}
         </div>
       )}
@@ -560,9 +575,9 @@ function UpcomingChoresCard({ data, today }) {
   );
 }
 
-function UpcomingPeriodGroup({ period, instances }) {
+function UpcomingPeriodGroup({ period, instances, blocks }) {
   const meta = CHORE_PERIODS[period];
-  const timeLabel = getChorePeriodTimeLabel(instances, period) || meta?.hint || "";
+  const timeLabel = getBlockTimeLabelForPeriod(instances, period, blocks) || meta?.hint || "";
   return (
     <div>
       <div className="text-[11px] text-fg uppercase tracking-[0.14em] font-bold mb-1.5">

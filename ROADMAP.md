@@ -255,6 +255,114 @@ Mid-flight scope changes:
   - Drag-and-drop reordering inside groups.
 - `.temp/` directory added to `.gitignore`.
 
+### Batch 7 — Chores foundation (schema + sites admin) · `v0.9.6-alpha`
+2026-05-06. Migration `0009`. The schema foundation for the chores
+overhaul. Source-of-truth plan at
+`~/.claude/plans/chores-overhaul-v2.md`.
+
+**Two-level site model:**
+- `sites` — user-creatable parent categories (Brooders, Mobile
+  coops, Barn, Wash & pack…). Five seeded; CRUD-able; carries a
+  `default_has_residents` flag inherited by new locations.
+- `site_locations` — specific named instances inside a site
+  (Brooder #1, Hay room, Egg station). Each has its own
+  `has_residents` flag (overrides the parent default). Locations
+  are where chores actually happen and where residents live.
+  Soft-delete preserves history.
+- `site_residents` — which `livestock_groups` (cohorts/batches)
+  live at which **location** with `moved_in` / `moved_out`
+  dates. Unique partial index enforces "one current location per
+  cohort." Editable moved-in date per row.
+
+**Time-block model with sun events:**
+- `chore_blocks` — named windows. Each side (start, end) is
+  either `fixed` (a clock time stored as minutes-of-day),
+  `sunrise`, or `sunset`. Sunrise / sunset resolve to today's
+  actual local times via SunCalc (lat/lon hardcoded to Foster,
+  RI; same coordinates as the weather widget). Validation
+  rejects overlapping windows; the Blocks tab orders by today's
+  resolved start time ascending.
+- `chore_modifiers` — date-bound overrides; targets either a
+  location, a parent site, or just a chore. Schema ready for
+  Processes (Batch 16); UI ships there.
+- `chore_runs` — one row per `(block_id, run_date)`. Mostly
+  unused until Rounds (Batch 8); schema lands here.
+
+**`chore_definitions` migration:** added `site_id` (nullable FK
+to sites — applies to every active location under that site),
+`location_id` (nullable FK to site_locations — instance-scoped),
+`block_id` (nullable FK to chore_blocks), `sort_order` (int
+default 0). XOR check ensures at most one of site_id /
+location_id is set. Backfill populated site_id from the legacy
+`category` text and block_id by matching `period` to seed block
+names. Legacy `category` / `period` columns remain for now.
+
+**New data hooks:**
+- `useSites` — sites + locations + residents with CRUD,
+  soft-delete, reorder, cohort assign/move-out, edit moved-in
+  date, realtime. All mutations apply optimistically and revert
+  on persistence failure.
+- `useChoreBlocks` — blocks with CRUD, soft-delete, sun-event
+  resolution via SunCalc, overlap validation, realtime. Plus
+  `formatMinutesOfDay` / `parseMinutesOfDay` /
+  `minutesOfDayToTimeInput` / `nowAsTimeInput` /
+  `displayBlockSide` / `validateBlockWindow` helpers.
+- `useChoreDefinitions` — live read with `updateDefinition` /
+  `deleteDefinition` actions, realtime; used by the in-place
+  edit affordance on the All chores tab. Optimistic + revert.
+
+**Resources → Sites** (`SitesPage.jsx`, `SitesAdmin.jsx`):
+- Sites are user-creatable parents; each renders a card with
+  the site name (editable inline), a "Hosts cohorts by default"
+  checkbox, an archive button, and the locations inside.
+- Each location has up/down reorder, inline rename, a "Hosts
+  cohorts" checkbox, and (when the checkbox is on) an
+  always-visible residents pane below: list of currently-
+  assigned cohorts with editable moved-in date and a
+  "Move out" action, plus an "Assign cohort" affordance.
+- "Add &lt;singular&gt;" buttons use `pluralize.singular()` so
+  "Brooders" → "Brooder", "Sheep paddocks" → "Sheep paddock",
+  "Wash & pack" → "Wash & pack" (already singular).
+- Light surface backgrounds + clean inputs in the chore-groups
+  add-form style; no dark gray fills; checkboxes (not
+  chip-style toggles).
+
+**Chores → Blocks tab** (`ChoresBlocksTab.jsx`):
+- Lives on the Chores page now (split from sites). Each block
+  card shows name + the two sides (clock-time / Sunrise pill
+  / Sunset pill). Edit opens an inline form: name input, plus
+  per-side segmented control (Time / Sunrise / Sunset) with a
+  native `<input type="time">` when Time is selected.
+- Validation rejects overlapping windows and end-before-start.
+- New blocks default the time inputs to the current clock time
+  if empty.
+
+**In-place chore edit** on the All chores tab:
+- Pencil icon now opens an inline editor in the expanded panel
+  (no modal). Editable fields: title, description, where (radio
+  between Specific site / Site kind / No site, with appropriate
+  picker), when (block picker including "anytime"), sort order.
+- Trash icon prompts for confirm and hard-deletes.
+
+**Today + Schedule-at-a-glance** read from the new schema. New
+helpers `getBlockTimeLabelForPeriod` and
+`getBlockStartMinutesForPeriod` in `lib/chores.js` prefer
+`chore_blocks` data when a matching block exists, falling back to
+the legacy instance-derived helpers when not. Editing a block's
+window in Settings propagates to the period header time labels on
+both the dashboard's Upcoming chores card and the Today tab in
+real time. Frequency / deadline / per-day-of-week assignment
+editing remain out of scope (those JSON shapes deserve dedicated
+editors later).
+
+Pre-workshop dnd-kit reorder work in `ChoreGroupsTab.jsx` +
+`useChoreGroups.js` ships with this batch unchanged — the
+existing reorder-within-a-group surface still works against
+`chore_group_members.sort_order`. The new canonical
+`chore_definitions.sort_order` is currently editable via the
+inline editor's number input; drag-reorder against it lands when
+the Site Switcher ships in Batch 8.
+
 ---
 
 ## Upcoming
@@ -298,21 +406,6 @@ in that file. Highlights:
   to populate, but the modifier-conflict UI ships with the
   Processes batch (now Batch 16) since it has nothing to render
   until then.
-
-### Batch 7 — Chores foundation (schema + sites admin)
-Schema + admin surfaces. New tables: `sites`, `site_residents`,
-`chore_blocks`, `chore_modifiers`, `chore_runs`. Migrate
-`chore_definitions` to add `site_id` / `site_kind` / `block_id` /
-`sort_order` and backfill from existing chore groups. Settings
-gains a "Sites & blocks" admin (CRUD on both, soft-delete
-preserves analytics; `site_residents` mini-CRUD assigns cohorts
-to sites). In-place edit on the All chores tab replaces the
-existing stub. Today tab keeps working from the new model
-read-only — Rounds doesn't ship until Batch 8.
-
-Ships value: edit a window once, every chore inherits; in-place
-chore edit; sites + residents schema ready for Rounds, the
-broiler tracker, and the observation log.
 
 ### Batch 8 — Rounds (the full-screen chore surface)
 The centerpiece batch. New full-screen route with a sidebar

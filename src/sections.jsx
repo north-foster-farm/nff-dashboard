@@ -5,7 +5,7 @@ import {
   Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
   CalendarRange, Layers, Tractor, Container, Caravan, TreePine,
   Store, Cog, Box,
-  UserPlus, ClipboardList, CalendarDays, Newspaper, Map
+  UserPlus, ClipboardList, CalendarDays, Newspaper, Map, MapPin
 } from "lucide-react";
 
 // Updates flagged as needing attention — anything sitting in or past review.
@@ -94,6 +94,7 @@ export const SECTIONS = [
       { id: "resources_machinery", label: "Machinery", icon: Cog, description: "Powered equipment owned by the farm." },
       { id: "resources_mobile_coops", label: "Mobile coops", icon: Caravan, description: "Wheeled hen coops moved across paddocks. Placeholder." },
       { id: "resources_pastures", label: "Pastures", icon: TreePine, description: "Paddocks and grazing areas. Placeholder." },
+      { id: "resources_sites", label: "Sites", icon: MapPin, description: "Places on the farm where chores happen, animals live, or other work occurs. Each site is a parent location, and has one or more named child locations within it." },
       { id: "resources_suppliers", label: "Suppliers", icon: Store, description: "Vendors and sources NFF buys from." },
       { id: "resources_trailers", label: "Trailers", icon: Truck, description: "Towable trailers used for transport." }
     ]

@@ -8,15 +8,22 @@ import {
   CHORE_CATEGORIES, CHORE_PERIODS,
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete,
-  getChorePeriodTimeLabel
+  getBlockTimeLabelForPeriod
 } from "../lib/chores.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreGroups } from "../lib/data/useChoreGroups.js";
 import { useUserPreferences } from "../lib/data/useUserPreferences.js";
+import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
+import { useSites } from "../lib/data/useSites.js";
+import {
+  useChoreBlocks, formatMinutesOfDay,
+} from "../lib/data/useChoreBlocks.js";
+import { displayBlockSide } from "../lib/sunTimes.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 import ChoreGroupsTab from "../components/ChoreGroupsTab.jsx";
+import ChoresBlocksTab from "../components/ChoresBlocksTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 
 // The page renders its own header (title + tabs) in place of the generic
@@ -26,6 +33,7 @@ const TABS = [
   { id: "today", label: "Today" },
   { id: "all", label: "All chores" },
   { id: "groups", label: "Groups" },
+  { id: "blocks", label: "Blocks" },
   { id: "activity", label: "Activity log" }
 ];
 
@@ -44,6 +52,7 @@ export default function Chores({ data }) {
       {tab === "today" && <TodayTab data={data} currentUser={currentUser} onChangeUser={setCurrentUser} />}
       {tab === "all" && <AllChoresTab data={data} />}
       {tab === "groups" && <ChoreGroupsTab data={data} />}
+      {tab === "blocks" && <ChoresBlocksTab />}
       {tab === "activity" && <ActivityLogTab data={data} />}
     </div>
   );
@@ -100,6 +109,11 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   const { groups: choreGroups, groupByChoreId } = useChoreGroups();
   const userEmail = useCurrentUserEmail();
   const { autoExpandChoreGroups } = useUserPreferences();
+  // Block-aware period labels: "Morning · 6 AM" comes from the
+  // configured Morning block, so editing the block window in
+  // Settings → Sites & blocks updates every chore display in one
+  // shot. Falls back to instance-derived times when no block matches.
+  const { blocks } = useChoreBlocks();
 
   // Partition instances: anything that lives in a chore group goes into
   // its accordion; the rest fall through to the period-bucket layout.
@@ -202,6 +216,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
           key={period}
           period={period}
           instances={periodGroups[period]}
+          blocks={blocks}
           cols={cols}
           completedSet={completedSet}
           onToggle={toggleCompletion}
@@ -292,9 +307,9 @@ function ChoreGroupAccordion({
   );
 }
 
-function PeriodGroup({ period, instances, cols, completedSet, onToggle, currentUserEmail }) {
+function PeriodGroup({ period, instances, blocks, cols, completedSet, onToggle, currentUserEmail }) {
   const meta = CHORE_PERIODS[period];
-  const timeLabel = getChorePeriodTimeLabel(instances, period) || meta?.hint || "";
+  const timeLabel = getBlockTimeLabelForPeriod(instances, period, blocks) || meta?.hint || "";
   return (
     <div style={{ marginBottom: 32 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
@@ -412,13 +427,34 @@ function AllChoresTab({ data }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("alpha"); // alpha | time | category
   const [expanded, setExpanded] = useState(() => new Set());
-  const defs = getAllChoreDefinitions(data);
+  const [editing, setEditing] = useState(null); // chore_id currently in edit mode
+  const {
+    definitions: liveDefs, loading: defsLoading,
+    updateDefinition, deleteDefinition,
+  } = useChoreDefinitions();
+  const { sites, locations } = useSites();
+  const { blocks, blockById } = useChoreBlocks();
+
+  // Until live data lands, fall back to the static definitions from the
+  // boot-time data prop so the UI doesn't flash empty.
+  const defs = liveDefs.length > 0 || !defsLoading
+    ? liveDefs
+    : getAllChoreDefinitions(data);
 
   const toggleExpand = id => setExpanded(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
+
+  const startEdit = id => {
+    setEditing(id);
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -468,6 +504,22 @@ function AllChoresTab({ data }) {
           filtered={filtered}
           expanded={expanded}
           onToggle={toggleExpand}
+          editing={editing}
+          onStartEdit={startEdit}
+          onCancelEdit={() => setEditing(null)}
+          onSaveEdit={async (id, patch) => {
+            await updateDefinition(id, patch);
+            setEditing(null);
+          }}
+          onDeleteChore={async (id) => {
+            const ok = window.confirm("Delete this chore? This can't be undone.");
+            if (!ok) return;
+            await deleteDefinition(id);
+          }}
+          sites={sites}
+          locations={locations}
+          blocks={blocks}
+          blockById={blockById}
         />
       )}
     </div>
@@ -477,7 +529,11 @@ function AllChoresTab({ data }) {
 // Same newspaper-split layout as Today, but the width threshold is higher
 // (1200px) because each chore-definition row is denser (inline actions +
 // expand caret) and needs more horizontal room before it's worth splitting.
-function AllChoresList({ filtered, expanded, onToggle }) {
+function AllChoresList({
+  filtered, expanded, onToggle,
+  editing, onStartEdit, onCancelEdit, onSaveEdit, onDeleteChore,
+  sites, locations, blocks, blockById,
+}) {
   const [setWidthRef, cols] = useColumnCount(1200);
   const userEmail = useCurrentUserEmail();
   return (
@@ -492,6 +548,15 @@ function AllChoresList({ filtered, expanded, onToggle }) {
             expanded={expanded.has(chore.id)}
             onToggle={() => onToggle(chore.id)}
             currentUserEmail={userEmail}
+            editing={editing === chore.id}
+            onStartEdit={() => onStartEdit(chore.id)}
+            onCancelEdit={onCancelEdit}
+            onSaveEdit={(patch) => onSaveEdit(chore.id, patch)}
+            onDeleteChore={() => onDeleteChore(chore.id)}
+            sites={sites}
+            locations={locations}
+            blocks={blocks}
+            blockById={blockById}
           />
         )}
       />
@@ -524,7 +589,11 @@ function SortPicker({ value, onChange }) {
   );
 }
 
-function ChoreDefinitionRow({ chore, expanded, onToggle, currentUserEmail }) {
+function ChoreDefinitionRow({
+  chore, expanded, onToggle, currentUserEmail,
+  editing, onStartEdit, onCancelEdit, onSaveEdit, onDeleteChore,
+  sites, locations, blocks, blockById,
+}) {
   return (
     <div style={{ background: T.surface }}>
       <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -538,9 +607,9 @@ function ChoreDefinitionRow({ chore, expanded, onToggle, currentUserEmail }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{chore.title}</div>
           <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>
-            {CHORE_CATEGORIES[chore.category]?.label ?? chore.category}
+            {describeChoreLocation(chore, sites, locations)}
             {" · "}
-            {displayStartTime(chore)}
+            {describeChoreSchedule(chore, blockById)}
             {" · "}
             {describeFrequency(chore)}
           </div>
@@ -550,11 +619,54 @@ function ChoreDefinitionRow({ chore, expanded, onToggle, currentUserEmail }) {
           choreTitle={chore.title}
           currentUserEmail={currentUserEmail}
         />
-        <RowActions choreId={chore.id} />
+        <RowActions
+          editing={editing}
+          onEdit={onStartEdit}
+          onDelete={onDeleteChore}
+        />
       </div>
-      {expanded && <ExpandedChoreDetail chore={chore} />}
+      {expanded && (
+        editing
+          ? <ChoreInlineEditor
+              chore={chore}
+              sites={sites}
+              locations={locations}
+              blocks={blocks}
+              onCancel={onCancelEdit}
+              onSave={onSaveEdit}
+            />
+          : <ExpandedChoreDetail chore={chore} />
+      )}
     </div>
   );
+}
+
+// Site / location label for the row's secondary line.
+function describeChoreLocation(chore, sites, locations) {
+  if (chore.locationId) {
+    const l = locations.find(x => x.id === chore.locationId);
+    if (!l) return "(removed location)";
+    const s = sites.find(x => x.id === l.siteId);
+    return s ? `${s.name} · ${l.name}` : l.name;
+  }
+  if (chore.siteId) {
+    const s = sites.find(x => x.id === chore.siteId);
+    return s ? `${s.name} (all)` : "(removed site)";
+  }
+  // Fall back to the legacy category text (pre-migration).
+  return CHORE_CATEGORIES[chore.category]?.label ?? chore.category ?? "No site";
+}
+
+// Block label for the row's secondary line.
+function describeChoreSchedule(chore, blockById) {
+  if (chore.blockId) {
+    const b = blockById.get(chore.blockId);
+    if (b) {
+      const startLabel = displayBlockSide(b.startKind, b.startMinutes);
+      return `${b.name} (${startLabel})`;
+    }
+  }
+  return displayStartTime(chore);
 }
 
 function ExpandedChoreDetail({ chore }) {
@@ -598,29 +710,260 @@ function Field({ label, value }) {
   );
 }
 
-function RowActions({ choreId }) {
-  const notImpl = (action) => () => alert(`${action} chore — not implemented in the prototype.`);
+function RowActions({ editing, onEdit, onDelete }) {
   return (
     <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-      <IconAction title="Edit" onClick={notImpl("Edit")}><Pencil size={13} /></IconAction>
-      <IconAction title="Duplicate" onClick={notImpl("Duplicate")}><Copy size={13} /></IconAction>
-      <IconAction title="Delete" onClick={notImpl("Delete")}><Trash2 size={13} /></IconAction>
+      <IconAction
+        title={editing ? "Editing…" : "Edit"}
+        onClick={onEdit}
+        active={editing}
+      >
+        <Pencil size={13} />
+      </IconAction>
+      <IconAction title="Delete" onClick={onDelete}>
+        <Trash2 size={13} />
+      </IconAction>
     </div>
   );
 }
 
-function IconAction({ title, onClick, children }) {
+// Inline editor body — lives where ExpandedChoreDetail normally renders.
+// Editable fields: title, description, site assignment (specific
+// location / parent site / none), block, sort_order. Frequency,
+// deadline, and per-day-of-week assignment editing are out of scope
+// for v1 — those JSON shapes deserve dedicated editors later.
+function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }) {
+  const [title, setTitle] = useState(chore.title);
+  const [description, setDescription] = useState(chore.description ?? "");
+  const [siteMode, setSiteMode] = useState(
+    chore.locationId ? "location" : chore.siteId ? "site" : "none"
+  );
+  const [siteId, setSiteId] = useState(chore.siteId ?? "");
+  const [locationId, setLocationId] = useState(chore.locationId ?? "");
+  const [blockId, setBlockId] = useState(chore.blockId ?? "");
+  const [sortOrder, setSortOrder] = useState(chore.sortOrder ?? 0);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const activeSites = sites.filter(s => s.isActive);
+  const activeLocations = locations.filter(l => l.isActive);
+  const activeBlocks = blocks.filter(b => b.isActive);
+
+  const submit = async () => {
+    if (!title.trim()) {
+      setErrorMsg("Title can't be empty.");
+      return;
+    }
+    setErrorMsg(null);
+    setSaving(true);
+    try {
+      const patch = {
+        title: title.trim(),
+        description: description,
+        sortOrder: Number(sortOrder) || 0,
+        blockId: blockId || null,
+      };
+      if (siteMode === "location") {
+        patch.locationId = locationId || null;
+        patch.siteId = null;
+      } else if (siteMode === "site") {
+        patch.siteId = siteId || null;
+        patch.locationId = null;
+      } else {
+        patch.siteId = null;
+        patch.locationId = null;
+      }
+      await onSave(patch);
+    } catch (err) {
+      console.error("save chore:", err);
+      setErrorMsg(err?.message ?? "Save failed.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{
+      padding: "12px 16px 16px 42px",
+      borderTop: `1px solid ${T.border}`,
+      background: T.surfaceAlt,
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+    }}>
+      <EditField label="Title">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          style={editInputStyle}
+        />
+      </EditField>
+      <EditField label="Description">
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+          style={{ ...editInputStyle, resize: "vertical", fontFamily: "inherit" }}
+        />
+      </EditField>
+      <EditField label="Where">
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <SiteModeRadios value={siteMode} onChange={setSiteMode} />
+          {siteMode === "location" && (
+            <select
+              value={locationId}
+              onChange={(e) => setLocationId(e.target.value)}
+              style={editInputStyle}
+            >
+              <option value="">— pick a specific location —</option>
+              {activeSites.map(s => {
+                const inSite = activeLocations.filter(l => l.siteId === s.id);
+                if (inSite.length === 0) return null;
+                return (
+                  <optgroup key={s.id} label={s.name}>
+                    {inSite.map(l => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+            </select>
+          )}
+          {siteMode === "site" && (
+            <select
+              value={siteId}
+              onChange={(e) => setSiteId(e.target.value)}
+              style={editInputStyle}
+            >
+              <option value="">— pick a site —</option>
+              {activeSites.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      </EditField>
+      <EditField label="When">
+        <select
+          value={blockId}
+          onChange={(e) => setBlockId(e.target.value)}
+          style={editInputStyle}
+        >
+          <option value="">— anytime —</option>
+          {activeBlocks.map(b => (
+            <option key={b.id} value={b.id}>
+              {b.name} · {displayBlockSide(b.startKind, b.startMinutes)}–{displayBlockSide(b.endKind, b.endMinutes)}
+            </option>
+          ))}
+        </select>
+      </EditField>
+      <EditField label="Sort order">
+        <input
+          type="number"
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value)}
+          style={{ ...editInputStyle, width: 90 }}
+        />
+      </EditField>
+
+      {errorMsg && (
+        <div style={{ fontSize: 11, color: "#e25c4a" }}>{errorMsg}</div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button
+          onClick={onCancel}
+          disabled={saving}
+          style={{
+            background: "transparent",
+            border: `1px solid ${T.border}`,
+            color: T.textDim,
+            padding: "6px 12px",
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            cursor: saving ? "default" : "pointer",
+          }}
+        >Cancel</button>
+        <button
+          onClick={submit}
+          disabled={saving}
+          style={{
+            ...primaryButtonStyle,
+            opacity: saving ? 0.5 : 1,
+            cursor: saving ? "default" : "pointer",
+          }}
+        >{saving ? "Saving…" : "Save"}</button>
+      </div>
+    </div>
+  );
+}
+
+function SiteModeRadios({ value, onChange }) {
+  const options = [
+    { id: "location", label: "Specific location" },
+    { id: "site", label: "Whole site" },
+    { id: "none", label: "No site" },
+  ];
+  return (
+    <div style={{ display: "flex", gap: 12 }}>
+      {options.map(o => (
+        <label key={o.id} style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          fontSize: 12,
+          color: value === o.id ? T.text : T.textDim,
+          cursor: "pointer",
+        }}>
+          <input
+            type="radio"
+            checked={value === o.id}
+            onChange={() => onChange(o.id)}
+          />
+          {o.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function EditField({ label, children }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <label style={{
+        fontSize: 9,
+        color: T.textFaint,
+        textTransform: "uppercase",
+        letterSpacing: "0.12em",
+      }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const editInputStyle = {
+  background: T.surface,
+  border: `1px solid ${T.border}`,
+  color: T.text,
+  fontSize: 12,
+  padding: "6px 8px",
+  fontFamily: "inherit",
+};
+
+function IconAction({ title, onClick, active, children }) {
   return (
     <button
       onClick={onClick}
       title={title}
       style={{
-        background: "transparent", border: "none", color: T.textMuted,
+        background: "transparent", border: "none",
+        color: active ? T.accent : T.textMuted,
         padding: 4, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
         transition: "color 120ms ease"
       }}
-      onMouseEnter={e => (e.currentTarget.style.color = T.text)}
-      onMouseLeave={e => (e.currentTarget.style.color = T.textMuted)}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.color = T.text; }}
+      onMouseLeave={e => { if (!active) e.currentTarget.style.color = T.textMuted; }}
     >{children}</button>
   );
 }
