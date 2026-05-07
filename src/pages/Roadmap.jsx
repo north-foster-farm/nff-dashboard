@@ -14,32 +14,68 @@ const ITEMS = [
       "edit. The schema lays the rails for everything that follows.",
   },
   {
-    title: "The Chore Doer",
+    title: "Rounds",
     body: "A mobile-first full-screen surface for actually doing " +
-      "chores. Tap \"Start chores\" — the sidebar everywhere flips to " +
-      "\"Help with chores\" with a live counter, your dad's phone " +
+      "chores. Tap \"Start rounds\" — the sidebar everywhere flips to " +
+      "\"Help with rounds\" with a live counter, your dad's phone " +
       "stays in sync, ticking a box on one phone disables the same " +
       "box on the other (no bickering). A persistent Site Switcher " +
       "lets you jump from Brooders to Mobile coops to Sheep without " +
-      "drilling back up. Quick actions for dead birds, observations, " +
-      "and \"moved coops\" are site-aware — at Mobile coop 1, " +
-      "\"dead chicken\" already knows which cohort lives there.",
+      "drilling back up. Quick actions for notes, condition checks, " +
+      "mortality, and \"moved coops\" are site-aware — at Mobile " +
+      "coop 1, those buttons already know which cohort lives there.",
   },
   {
     title: "Observation log",
-    body: "Every \"observed where\" tap from the Doer lands in a " +
+    body: "Every \"observed where\" tap from Rounds lands in a " +
       "browsable log filterable by site, date, and author. The " +
       "answer to \"what did we notice last week at Brooder #2\" is " +
       "one click instead of scrolling activity.",
   },
   {
     title: "Chores telemetry + push",
-    body: "Push notifications when chores finish (\"AM chores done · " +
-      "1h 12m\" or \"AM chores done · 1h 47m, overran 22m\"). A new " +
+    body: "Push notifications when chores finish (\"AM rounds done · " +
+      "1h 12m\" or \"AM rounds done · 1h 47m, overran 22m\"). A new " +
       "Performance tab plots start times, durations, late-start " +
-      "rate, and overrun rate per block. No leaderboards, no " +
-      "guilt-trips — chores are team work. The point is to spot " +
-      "when our routines are slipping, not to score either of us.",
+      "rate, and overrun rate per block — the data we need to keep " +
+      "our daily routines on track.",
+  },
+  {
+    title: "Events + Schedule, rebuilt",
+    body: "Event creation, editing, and the full recurrence picker " +
+      "(\"first and third Sunday May 14 to September 21 every year\" " +
+      "is one rule, not a workaround). The schema splits a series " +
+      "from its occurrences so per-instance edits — \"this Saturday's " +
+      "market is at a different address\" — have a real home. The " +
+      "old timeline view goes away; an Agenda view replaces it.",
+  },
+  {
+    title: "A working calendar",
+    body: "Day, Week, Month, and Agenda views on one page. Click the " +
+      "month/year header to type where you want to land. Drag events " +
+      "to reschedule. Chore-block windows show as faint amber bands " +
+      "behind the day grid — when a market lands on top of a band, " +
+      "you see the conflict at a glance instead of finding out at 7:55 " +
+      "AM the day of.",
+  },
+  {
+    title: "Farm events on your phone",
+    body: "A one-way push to Google Calendar puts every market, " +
+      "delivery, and processing day in the calendar app on your phone " +
+      "(and watch, and laptop notification center, and anywhere else " +
+      "Google Calendar reaches). The dashboard stays the source of " +
+      "truth for edits — the phone copy is intentionally read-only so " +
+      "there's no risk of two clocks disagreeing.",
+  },
+  {
+    title: "Triggers + animal-batch lifecycles",
+    body: "Two seed automations to start: feed dropping to its reorder " +
+      "point creates an order chore plus a \"receive delivery\" event, " +
+      "and creating a new broiler batch stamps its arrival, " +
+      "pasture-move, processing, and brooder-cleanout dates onto the " +
+      "calendar. Click any of those dates from the batch detail page " +
+      "to edit them in place. Auto-generated rows are flagged so you " +
+      "can sanity-check before the day arrives.",
   },
   {
     title: "Projects, rebuilt",
@@ -68,17 +104,16 @@ const ITEMS = [
   },
   {
     title: "Animals & feed, overhauled",
-    body: "The Feed page restructures to look and behave like Chores: " +
-      "grouped by animal, drag-orderable, with amount remaining and " +
-      "next order date front-and-center. Broiler pages get persistence " +
-      "and a per-batch tracker so batches are easy to compare side by " +
-      "side.",
+    body: "The Feed page becomes a group-cards layout: grouped by " +
+      "animal, drag-orderable, with amount remaining and next order " +
+      "date front-and-center and last price paid as a secondary line. " +
+      "Broiler pages get persistence and a per-batch tracker so " +
+      "batches are easy to compare side by side.",
   },
   {
     title: "Broiler weeks-remaining widget",
     body: "Front-and-center on the dashboard: every active broiler " +
-      "batch with current week and weeks left. Replaces the " +
-      "office-whiteboard scrawl.",
+      "batch with current week and weeks left.",
   },
   {
     title: "Products and pricing",
@@ -103,11 +138,6 @@ const ITEMS = [
       "it, and accounting sync into QuickBooks.",
   },
   {
-    title: "Google Calendar sync",
-    body: "Sync between the farm schedule and Google Calendar. " +
-      "One-way or two-way is still being worked out.",
-  },
-  {
     title: "Farm updates, social posts, content calendar",
     body: "Draft an update once — markdown editor, file uploads, " +
       "AI-assisted review — and on approval it goes out two ways " +
@@ -119,10 +149,9 @@ const ITEMS = [
   },
   {
     title: "Lessons",
-    body: "Capture what we learn from the farm's repeating events — " +
-      "\"rushed processing day, birds came in too small for the first " +
-      "market\" — and have those lessons resurface automatically the " +
-      "next time the schedule heads toward the same kind of event.",
+    body: "Capture what we learn from the farm's repeating events " +
+      "and have those lessons resurface automatically the next time " +
+      "the schedule heads toward the same kind of event.",
   },
   {
     title: "App-wide search",
@@ -156,6 +185,14 @@ const ITEMS = [
     title: "Voice control",
     body: "Talk to the app — \"log Saturday's farmers market, six dozen " +
       "eggs sold\" — and have it interpret, confirm, then record.",
+  },
+  {
+    title: "Mileage tracker",
+    body: "A record of miles driven for farm trips — markets, " +
+      "deliveries, supply runs, vet visits — totalled per year for " +
+      "tax season and per trip so we can see whether a particular " +
+      "market is actually worth the drive. Where it lives in the UI " +
+      "is still being worked out.",
   },
   {
     title: "A small daily something",
