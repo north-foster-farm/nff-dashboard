@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   X, MessageSquare, AlertTriangle, Skull, ChevronDown,
+  ArrowRightLeft, Wrench,
 } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 
-// Bottom-pinned tray for the Rounds doing surface. Three quick
-// actions in v1 — Note, Condition, Mortality — each opens a sheet
-// that writes a typed Run Event via `logRunEvent` (RPC log_run_event).
+// Bottom-pinned tray for the Rounds doing surface. Five quick
+// actions — Note, Condition, Mortality, Move, Sweep — each opens a
+// sheet that writes a typed Run Event via `logRunEvent` (RPC
+// log_run_event).
 //
 // Site/location context defaults from Rounds:
 //   - selectedLocationId, if set, scopes the event to that location.
@@ -22,6 +24,14 @@ const CONDITION_STATES = [
   "Off-water", "Damaged", "Sick",
 ];
 
+// 8.3 — Sweep checklist items for the kind-level "moved coops /
+// chicken tractors" action. Per-instance toggles + an "all taken
+// care of" mass-toggle fan these out across every location under
+// the selected site.
+const SWEEP_ITEMS = [
+  "Fences", "Feeders", "Waterers", "Grit", "Shell",
+];
+
 export default function QuickActionsTray({
   runId,
   selectedSiteId,
@@ -32,8 +42,11 @@ export default function QuickActionsTray({
   recentConditionsByLocation,
   repeatWindowDays,
   onLogRunEvent,
+  onAssignResident,
+  onMoveOutResident,
 }) {
-  const [open, setOpen] = useState(null); // 'note' | 'condition' | 'mortality'
+  const [open, setOpen] = useState(null);
+  // 'note' | 'condition' | 'mortality' | 'move' | 'sweep'
 
   // Derived: the location_id we'll seed the sheet with. When the user
   // picked a site without drilling into a location, we'll leave the
@@ -66,6 +79,16 @@ export default function QuickActionsTray({
           icon={Skull}
           label="Mortality"
           onClick={() => setOpen("mortality")}
+        />
+        <TrayButton
+          icon={ArrowRightLeft}
+          label="Move"
+          onClick={() => setOpen("move")}
+        />
+        <TrayButton
+          icon={Wrench}
+          label="Sweep"
+          onClick={() => setOpen("sweep")}
         />
       </nav>
 
@@ -101,6 +124,30 @@ export default function QuickActionsTray({
           sites={sites}
           locations={locations}
           residents={residents}
+          onLogRunEvent={onLogRunEvent}
+          onMoveOutResident={onMoveOutResident}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      {open === "move" && (
+        <MoveSheet
+          runId={runId}
+          seedSiteId={seedSiteId}
+          seedLocationId={seedLocationId}
+          sites={sites}
+          locations={locations}
+          residents={residents}
+          onLogRunEvent={onLogRunEvent}
+          onAssignResident={onAssignResident}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      {open === "sweep" && (
+        <SweepSheet
+          runId={runId}
+          seedSiteId={seedSiteId}
+          sites={sites}
+          locations={locations}
           onLogRunEvent={onLogRunEvent}
           onClose={() => setOpen(null)}
         />
@@ -455,7 +502,7 @@ function ConditionSheet({
 // ── Mortality sheet ───────────────────────────────────────────────────
 function MortalitySheet({
   runId, seedSiteId, seedLocationId, sites, locations, residents,
-  onLogRunEvent, onClose,
+  onLogRunEvent, onMoveOutResident, onClose,
 }) {
   const [siteId, setSiteId] = useState(seedSiteId);
   const [locationId, setLocationId] = useState(seedLocationId);
@@ -517,11 +564,24 @@ function MortalitySheet({
       // Auto-decrement the cohort count. Best-effort: ignore errors so
       // a count-out-of-sync doesn't lose the activity_log entry.
       const current = groupLabels.get(groupId)?.count;
+      let nextCount = null;
       if (typeof current === "number") {
+        nextCount = Math.max(0, current - count);
         await supabase
           .from("livestock_groups")
-          .update({ count: Math.max(0, current - count) })
+          .update({ count: nextCount })
           .eq("id", groupId);
+      }
+      // 8.3 — auto move-out: when a cohort empties to zero, mark its
+      // open site_residents row(s) moved-out today so the location no
+      // longer surfaces it in cohort pickers.
+      if (nextCount === 0 && onMoveOutResident) {
+        const open = (residents ?? []).filter(
+          r => r.livestockGroupId === groupId && !r.movedOut
+        );
+        await Promise.all(
+          open.map(r => onMoveOutResident(r.id).catch(() => {}))
+        );
       }
       onClose();
     } catch (e) {
@@ -640,6 +700,387 @@ function MortalitySheet({
               </button>
             </div>
           </div>
+        )}
+        {error && <div className="text-[12px] text-warn">{error}</div>}
+      </div>
+    </Sheet>
+  );
+}
+
+// ── Move sheet (cohort fast-path) ─────────────────────────────────────
+// Generic cohort relocation. Source: any location currently hosting
+// residents (typical case: Brooder #1). Destination: any active
+// location. Logs `cohort_moved` and updates site_residents in a single
+// `assignResident` call — that helper closes the open row and inserts
+// a new one at the destination. Use case: chicks graduating from a
+// brooder into the MASH ward (both rows in `site_locations`).
+function MoveSheet({
+  runId, seedSiteId, seedLocationId, sites, locations, residents,
+  onLogRunEvent, onAssignResident, onClose,
+}) {
+  const [fromSiteId, setFromSiteId] = useState(seedSiteId);
+  const [fromLocationId, setFromLocationId] = useState(seedLocationId);
+  const [toLocationId, setToLocationId] = useState(null);
+  const [groupId, setGroupId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const [groupLabels, setGroupLabels] = useState(() => new Map());
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("livestock_groups")
+      .select("id, label, count")
+      .then(({ data, error: e }) => {
+        if (cancelled || e || !data) return;
+        const m = new Map();
+        for (const g of data) m.set(g.id, g);
+        setGroupLabels(m);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const candidates = useMemo(() => {
+    if (!fromLocationId) return [];
+    return residents
+      .filter(r => r.locationId === fromLocationId && !r.movedOut)
+      .map(r => ({
+        id: r.livestockGroupId,
+        label: groupLabels.get(r.livestockGroupId)?.label
+          ?? r.livestockGroupId,
+        count: groupLabels.get(r.livestockGroupId)?.count,
+      }));
+  }, [fromLocationId, residents, groupLabels]);
+
+  useEffect(() => { setGroupId(null); }, [fromLocationId]);
+
+  const destLocations = useMemo(
+    () => locations.filter(
+      l => l.isActive && l.hasResidents && l.id !== fromLocationId
+    ),
+    [locations, fromLocationId]
+  );
+
+  const submit = async () => {
+    if (!groupId || !toLocationId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const groupLabel = groupLabels.get(groupId)?.label ?? groupId;
+      const fromLoc = locations.find(l => l.id === fromLocationId);
+      const toLoc = locations.find(l => l.id === toLocationId);
+      await onLogRunEvent({
+        kind: "cohort_moved",
+        payload: {
+          livestock_group_id: groupId,
+          group_label: groupLabel,
+          from_location_id: fromLocationId,
+          from_location_name: fromLoc?.name ?? null,
+          to_location_id: toLocationId,
+          to_location_name: toLoc?.name ?? null,
+        },
+        runId,
+        siteId: fromSiteId ?? null,
+        locationId: fromLocationId ?? null,
+      });
+      if (onAssignResident) {
+        await onAssignResident(toLocationId, groupId);
+      }
+      onClose();
+    } catch (e) {
+      setError(e.message ?? "Couldn't move cohort.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Sheet
+      title="Move cohort"
+      onClose={onClose}
+      footer={
+        <PrimaryButton
+          onClick={submit}
+          disabled={saving || !groupId || !toLocationId}
+        >
+          {saving ? "Saving…" : "Move cohort"}
+        </PrimaryButton>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <SitePicker
+          siteId={fromSiteId}
+          locationId={fromLocationId}
+          sites={sites}
+          locations={locations}
+          onChange={(v) => {
+            setFromSiteId(v.siteId);
+            setFromLocationId(v.locationId);
+          }}
+        />
+        {!fromLocationId && (
+          <div className="text-[12px] text-faint leading-relaxed">
+            Pick the source location to see which cohorts live there.
+          </div>
+        )}
+        {fromLocationId && candidates.length === 0 && (
+          <div className="text-[12px] text-faint leading-relaxed">
+            No cohorts currently at this location.
+          </div>
+        )}
+        {candidates.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+              Cohort
+            </label>
+            <div className="flex flex-col gap-1">
+              {candidates.map(c => {
+                const active = groupId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setGroupId(c.id)}
+                    className={
+                      "flex items-center gap-3 px-3 py-2.5 border " +
+                      "cursor-pointer text-left transition-colors " +
+                      (active
+                        ? "bg-row-active border-fg"
+                        : "bg-transparent border-line hover:bg-row-hover")
+                    }
+                  >
+                    <span className="text-[13px] font-medium text-fg flex-1">
+                      {c.label}
+                    </span>
+                    {typeof c.count === "number" && (
+                      <span className="text-[11px] text-muted">
+                        {c.count} alive
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {groupId && (
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+              Move to
+            </label>
+            <SelectField
+              value={toLocationId ?? ""}
+              onChange={(v) => setToLocationId(v || null)}
+              placeholder="Pick a destination"
+            >
+              {destLocations.map(l => {
+                const site = sites.find(s => s.id === l.siteId);
+                return (
+                  <option key={l.id} value={l.id}>
+                    {site ? `${site.name} — ${l.name}` : l.name}
+                  </option>
+                );
+              })}
+            </SelectField>
+          </div>
+        )}
+        {error && <div className="text-[12px] text-warn">{error}</div>}
+      </div>
+    </Sheet>
+  );
+}
+
+// ── Sweep sheet (kind-level sub-checklist) ────────────────────────────
+// "Moved coops / Moved chicken tractors" — pick a site (typically
+// Mobile coops or Chicken tractors), then per-instance toggles for
+// the five sub-tasks. The "All taken care of" mass-toggle flips every
+// chip on every active location at once. Logs a single `infra_swept`
+// event with the full per-instance payload.
+function SweepSheet({
+  runId, seedSiteId, sites, locations,
+  onLogRunEvent, onClose,
+}) {
+  const [siteId, setSiteId] = useState(seedSiteId);
+  const [picked, setPicked] = useState(() => new Map());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const siteLocations = useMemo(
+    () => locations.filter(l => l.siteId === siteId && l.isActive),
+    [locations, siteId]
+  );
+
+  useEffect(() => { setPicked(new Map()); }, [siteId]);
+
+  const togglePick = (locationId, item) => {
+    setPicked(prev => {
+      const next = new Map(prev);
+      const cur = new Set(next.get(locationId) ?? []);
+      if (cur.has(item)) cur.delete(item);
+      else cur.add(item);
+      next.set(locationId, cur);
+      return next;
+    });
+  };
+
+  const allTakenCareOf = useMemo(() => {
+    if (siteLocations.length === 0) return false;
+    for (const l of siteLocations) {
+      const cur = picked.get(l.id);
+      if (!cur || cur.size !== SWEEP_ITEMS.length) return false;
+    }
+    return true;
+  }, [siteLocations, picked]);
+
+  const sweepAll = () => {
+    setPicked(() => {
+      const next = new Map();
+      if (!allTakenCareOf) {
+        for (const l of siteLocations) {
+          next.set(l.id, new Set(SWEEP_ITEMS));
+        }
+      }
+      return next;
+    });
+  };
+
+  const totalPicked = useMemo(() => {
+    let n = 0;
+    for (const set of picked.values()) n += set.size;
+    return n;
+  }, [picked]);
+
+  const submit = async () => {
+    if (!siteId || totalPicked === 0) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const site = sites.find(s => s.id === siteId);
+      const instances = [];
+      for (const l of siteLocations) {
+        const items = Array.from(picked.get(l.id) ?? []);
+        if (items.length === 0) continue;
+        instances.push({
+          location_id: l.id,
+          location_name: l.name,
+          items,
+        });
+      }
+      await onLogRunEvent({
+        kind: "infra_swept",
+        payload: {
+          site_id: siteId,
+          site_name: site?.name ?? null,
+          instances,
+          all_taken_care_of: allTakenCareOf,
+        },
+        runId,
+        siteId,
+        locationId: null,
+      });
+      onClose();
+    } catch (e) {
+      setError(e.message ?? "Couldn't log sweep.");
+      setSaving(false);
+    }
+  };
+
+  const activeSites = sites.filter(s => s.isActive);
+
+  return (
+    <Sheet
+      title="Sweep"
+      onClose={onClose}
+      footer={
+        <PrimaryButton
+          onClick={submit}
+          disabled={saving || !siteId || totalPicked === 0}
+        >
+          {saving
+            ? "Saving…"
+            : totalPicked === 0
+              ? "Tick what's done"
+              : `Log sweep (${totalPicked})`}
+        </PrimaryButton>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+            Site
+          </label>
+          <SelectField
+            value={siteId ?? ""}
+            onChange={(v) => setSiteId(v || null)}
+            placeholder="Pick a site"
+          >
+            {activeSites.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </SelectField>
+        </div>
+        {siteId && siteLocations.length === 0 && (
+          <div className="text-[12px] text-faint leading-relaxed">
+            No active locations under this site yet. Add one in
+            Settings → Sites first.
+          </div>
+        )}
+        {siteId && siteLocations.length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={sweepAll}
+              className={
+                "self-start inline-flex items-center font-[inherit] " +
+                "text-[11px] font-semibold uppercase tracking-[0.12em] " +
+                "px-3 py-2 cursor-pointer border leading-none " +
+                "transition-colors duration-100 " +
+                (allTakenCareOf
+                  ? "bg-row-active border-fg text-fg"
+                  : "bg-transparent border-line text-dim hover:border-fg hover:text-fg")
+              }
+            >
+              {allTakenCareOf ? "Clear all" : "All taken care of"}
+            </button>
+            <div className="flex flex-col gap-3">
+              {siteLocations.map(l => {
+                const cur = picked.get(l.id) ?? new Set();
+                return (
+                  <div key={l.id} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-fg">
+                        {l.name}
+                      </span>
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-muted font-semibold ml-auto">
+                        {cur.size}/{SWEEP_ITEMS.length}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SWEEP_ITEMS.map(item => {
+                        const active = cur.has(item);
+                        return (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => togglePick(l.id, item)}
+                            className={
+                              "inline-flex items-center font-[inherit] text-[12px] " +
+                              "font-semibold px-3 py-2 cursor-pointer border " +
+                              "leading-none transition-colors duration-100 " +
+                              (active
+                                ? "bg-row-active border-fg text-fg"
+                                : "bg-transparent border-line text-dim hover:border-fg hover:text-fg")
+                            }
+                          >
+                            {item}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
         {error && <div className="text-[12px] text-warn">{error}</div>}
       </div>

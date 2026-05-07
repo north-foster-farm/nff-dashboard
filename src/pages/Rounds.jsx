@@ -27,6 +27,7 @@ export default function Rounds({ data, onClose }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const {
     sites, locations, locationsBySiteId, residents,
+    assignResident, moveOutResident,
     loading: sitesLoading,
   } = useSites();
   const {
@@ -138,6 +139,8 @@ export default function Rounds({ data, onClose }) {
       definitions={definitions}
       completions={completions}
       logRunEvent={logRunEvent}
+      assignResident={assignResident}
+      moveOutResident={moveOutResident}
       recentConditionsByLocation={recentConditionsByLocation}
       repeatWindowDays={repeatWindowDays}
       selectedSiteId={selectedSiteId}
@@ -249,7 +252,8 @@ function isOverran(block, run) {
 function DoingSurface({
   run, block, sites, switcherSites, locations, locationsBySiteId,
   residents, definitions, completions,
-  logRunEvent, recentConditionsByLocation, repeatWindowDays,
+  logRunEvent, assignResident, moveOutResident,
+  recentConditionsByLocation, repeatWindowDays,
   selectedSiteId, onSelectSite,
   selectedLocationId, onSelectLocation,
   onAutoDone, onAutoUndone, onClose,
@@ -420,6 +424,8 @@ function DoingSurface({
         recentConditionsByLocation={recentConditionsByLocation}
         repeatWindowDays={repeatWindowDays}
         onLogRunEvent={logRunEvent}
+        onAssignResident={assignResident}
+        onMoveOutResident={moveOutResident}
       />
     </div>
   );

@@ -202,6 +202,26 @@ function summarize(row) {
       const noun = count === 1 ? "loss" : "losses";
       return `logged ${count} ${noun} on ${label}`;
     }
+    case "cohort_moved": {
+      const label = p.group_label || p.livestock_group_id || "a cohort";
+      const from = p.from_location_name || "elsewhere";
+      const to = p.to_location_name || "a new location";
+      return `moved ${label}: ${from} → ${to}`;
+    }
+    case "infra_swept": {
+      const site = p.site_name || "a site";
+      const instances = Array.isArray(p.instances) ? p.instances : [];
+      if (p.all_taken_care_of) {
+        return `swept ${site} — all taken care of`;
+      }
+      const total = instances.reduce(
+        (n, i) => n + (Array.isArray(i.items) ? i.items.length : 0),
+        0
+      );
+      const noun = instances.length === 1 ? "location" : "locations";
+      return `swept ${site}: ${total} item${total === 1 ? "" : "s"} ` +
+        `across ${instances.length} ${noun}`;
+    }
     default:
       return `logged a ${row.kind} entry`;
   }

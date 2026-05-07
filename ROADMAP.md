@@ -469,6 +469,45 @@ further changes.
 - Per-cohort attribution + automatic `site_residents` move-out
   when a cohort empties to zero.
 
+### Batch 8.3 — Remaining quick actions · `v0.9.9-alpha`
+2026-05-07. Picks up the three actions deferred from 8.2 — Move,
+Sweep, and the auto move-out — without any schema changes (kinds
+are just strings; payloads carry the structured per-instance data).
+
+**Move sheet (cohort fast-path).** Generalises "Chick → MASH" to
+arbitrary cohort relocations. Pick a source location, pick the
+cohort currently living there (resolved via `site_residents`),
+pick a destination location, submit. Logs `cohort_moved` with
+the from/to location names + cohort id, then calls
+`assignResident(toLocationId, groupId)` — that helper closes the
+open row and inserts a new one in a single transaction, exactly
+the right semantics for a move. Use case: chicks graduating from
+a brooder into a MASH ward (the ward is just another active
+`site_locations` row).
+
+**Sweep sheet (kind-level sub-checklist).** Replaces the original
+"Moved coops" / "Moved chicken tractors" pair with one site-driven
+action. Pick a site (typically Mobile coops or Chicken tractors),
+get a per-instance card per active location with five chips
+(Fences, Feeders, Waterers, Grit, Shell). The "All taken care of"
+button mass-toggles every chip on every location at once and
+flips to "Clear all" once everything is filled. Submit logs a
+single `infra_swept` row carrying the per-instance breakdown so
+the upcoming Performance sub-tab + Observation Log can render
+which items were checked at which location.
+
+**Auto move-out via Mortality.** When the Mortality sheet
+decrements a cohort to zero, every open `site_residents` row for
+that group is closed today. The location stops surfacing the
+cohort in pickers immediately, no manual cleanup needed. Failures
+are swallowed so a misaligned count never loses the activity_log
+row.
+
+**Activity feed renderer** learns `cohort_moved` ("moved Brooder
+batch: Brooder #1 → MASH ward") and `infra_swept` ("swept Mobile
+coops — all taken care of" or per-item count). The tray now has
+five buttons: Note, Condition, Mortality, Move, Sweep.
+
 ---
 
 ## Upcoming
@@ -512,18 +551,6 @@ in that file. Highlights:
   to populate, but the modifier-conflict UI ships with the
   Processes batch (now Batch 16) since it has nothing to render
   until then.
-
-### Batch 8.3 — Remaining quick actions
-Carries the three quick actions deferred from 8.2:
-- **Chick → MASH** — cohort fast-path that moves chicks from a
-  brooder cohort into the MASH ward (held in `site_residents` as
-  a destination location).
-- **Moved coops** / **Moved chicken tractors** — kind-level
-  sweep with per-instance sub-checklist (fences, feeders,
-  waterers, grit, shell). "All taken care of" sweep at the kind
-  level closes everything in one tap.
-- Auto move-out of `site_residents` when a cohort empties via
-  Mortality.
 
 ### Batch 9 — Observation Log
 Lands right after Rounds so the observation events Rounds writes
