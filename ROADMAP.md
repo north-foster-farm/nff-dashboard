@@ -663,6 +663,64 @@ trend, late-start rate, overrun rate) and web push notifications on
 chore_run state transitions. They build on the deadline math 11.1
 ships.
 
+### Batch 11.2 — Performance sub-tab · `v0.10.3-alpha`
+2026-05-08. Second slice of Batch 11. New "Performance" tab on the
+Chores page (between Blocks and Activity log), reading run history
+straight from `chore_runs` so no schema work was required. Built
+on the run-metrics math that Batch 11.3 (web push) will reuse for
+its on-time / overran payload variants.
+
+**`useRunHistory` hook.** Read-only loader for the last 30 calendar
+days of `chore_runs`, sharing the realtime channel approach with
+`useChoreRuns` but without any mutations. Pulls `block_id`,
+`run_date`, `state`, `started_at`, `ended_at` only.
+
+**`lib/runMetrics.js`.** Pure helpers operating on the camelCase
+run + block shapes. Sun-event blocks resolve their nominal window
+against each run's `run_date` (parsed as local-noon to dodge DST
+edges) so a run from three weeks ago is compared to THAT day's
+sunrise / sunset, not today's. Surface API:
+`runStartMinutes` / `runEndMinutes` / `runDurationMinutes`,
+`nominalStartMinutes` / `nominalEndMinutes`, `runIsLate`,
+`runOverrunMinutes` / `runOverran`, `summarizeRuns(runs, block)`
+returning count + late-start rate + overrun rate + median /
+IQR duration + median start delta, and `histogramBins` with a
+configurable bin width and pad-before / pad-after on the time
+domain.
+
+**`<ChoresPerformanceTab>`** renders one card per active block,
+ordered by `sortOrder`. Each card shows:
+- **Stats row** — Late-start rate %, Overrun rate %, Median
+  duration with IQR sub-line (`p25 – p75`), and Median start as
+  "+8m late" / "3m early" / "on time".
+- **Start-time histogram** — inline-SVG bars over absolute
+  time-of-day, 10-minute bins, with a dashed accent vertical line
+  at the median nominal start and a fainter warn line at the
+  median nominal end. Bars left of nominal start render in
+  muted text colour; in-window bars use the body text colour;
+  past-nominal-end bars use the warn colour. Hour ticks under
+  the X-axis baseline.
+- **Duration trend** — chronological dot/line chart with a
+  faint accent IQR band, dashed median line, and a dashed warn
+  line at the block's nominal duration. Points that exceeded
+  nominal duration render in warn so over-window runs read at a
+  glance.
+
+Empty / sparse-data states are explicit: blocks with zero
+completed runs in the window get an italic "No completed runs in
+the last 30 days" line; the whole tab returns a single "Add a
+block and run a few rounds…" card if no active blocks exist.
+
+Per the chores-accountability rule (no per-person splits, no
+"DNF" framing), the tab surfaces only block-level aggregates and
+treats every run as `done` with an `overran` flag — no comparison
+between James and his dad anywhere.
+
+**Out of scope — deferred to Batch 11.3.** Web push notifications
+on chore_run state transitions. The on-time / overran payload
+variants are computed via the run-metrics helpers landing here, so
+11.3 is the service-worker + push-subscription plumbing only.
+
 ---
 
 ## Upcoming
@@ -724,16 +782,6 @@ Highlights:
   to populate, but the modifier-conflict UI ships with the
   Processes batch (now Batch 19) since it has nothing to render
   until then.
-
-### Batch 11.2 — Performance sub-tab
-New Performance sub-tab on the Chores page: start-time histogram
-per block (last 30 days, vertical line at nominal block start),
-duration trend (median + spread), late-start rate, and overrun
-rate. No per-user splits, no predictive nudges, no reason
-prompts — just data. Reads `chore_runs` history (already there
-since Batch 8.1) and the last-chance-block math from 11.1 to
-compute overrun. Ships the accountability loop without the
-leaderboard.
 
 ### Batch 11.3 — Web push notifications
 Web push (PWA + service worker — may need to pull forward from

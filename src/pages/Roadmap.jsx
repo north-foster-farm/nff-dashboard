@@ -27,13 +27,13 @@ const ITEMS = [
       "coop 1, those buttons already know which cohort lives there.",
   },
   {
-    title: "Chores telemetry + push",
-    body: "Push notifications when chores finish (\"AM rounds done · " +
-      "1h 12m\" or \"AM rounds done · 1h 47m, overran 22m\"). A new " +
-      "Performance tab plots start times, durations, late-start " +
-      "rate, and overrun rate per block — no per-person splits, just " +
-      "the data. (The chore-window deadline math + \"(N days left)\" " +
-      "pill that drives the overrun column already shipped.)",
+    title: "Push notifications when rounds finish",
+    body: "When a round finishes the dashboard fires a push to your " +
+      "phone — \"AM rounds done · 1h 12m\" on time, \"AM rounds done · " +
+      "1h 47m, overran 22m\" when the run ran past the block. The " +
+      "Performance tab + chore-window deadline pill that surface the " +
+      "same numbers in-app already shipped; this is the layer that " +
+      "tells you about it without you having to open the page.",
   },
   {
     title: "Chore assignments",

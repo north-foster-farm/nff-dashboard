@@ -19,6 +19,7 @@ import {
 import { displayBlockSide, resolveBlockMinutes } from "../lib/sunTimes.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 import ChoresBlocksTab from "../components/ChoresBlocksTab.jsx";
+import ChoresPerformanceTab from "../components/ChoresPerformanceTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 
@@ -29,6 +30,7 @@ const TABS = [
   { id: "today", label: "Today" },
   { id: "all", label: "All chores" },
   { id: "blocks", label: "Blocks" },
+  { id: "performance", label: "Performance" },
   { id: "activity", label: "Activity log" }
 ];
 
@@ -47,6 +49,7 @@ export default function Chores({ data }) {
       {tab === "today" && <TodayTab data={data} currentUser={currentUser} onChangeUser={setCurrentUser} />}
       {tab === "all" && <AllChoresTab data={data} />}
       {tab === "blocks" && <ChoresBlocksTab />}
+      {tab === "performance" && <ChoresPerformanceTab />}
       {tab === "activity" && <ActivityLogTab data={data} />}
     </div>
   );
