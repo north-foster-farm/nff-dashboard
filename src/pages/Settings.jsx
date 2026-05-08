@@ -1,5 +1,6 @@
 import { useUserPreferences } from "../lib/data/useUserPreferences.js";
-import { Sun, Moon, ALargeSmall } from "lucide-react";
+import { usePushNotifications } from "../lib/data/usePushNotifications.js";
+import { Sun, Moon, ALargeSmall, Bell, BellOff } from "lucide-react";
 
 // User settings page. Stays focused — three settings, each with a tight
 // segmented-control style picker so the affordance is consistent.
@@ -64,8 +65,80 @@ export default function Settings() {
         </Field>
       </Section>
 
+      <NotificationsSection />
     </div>
   );
+}
+
+// ── Notifications section ────────────────────────────────────────────
+function NotificationsSection() {
+  const {
+    support, permission, subscribed, pending, error,
+    needsInstall, missingVapid,
+    enable, disable,
+  } = usePushNotifications();
+
+  const status = describeStatus({
+    support, permission, subscribed, needsInstall, missingVapid,
+  });
+
+  return (
+    <Section title="Notifications" subtitle={pending ? "Working…" : null}>
+      <Field
+        label={<span className="inline-flex items-center gap-2">
+          <Bell size={14} /> Round-done push
+        </span>}
+        description="When a round flips to done on this device or any other, we'll push a notification with the duration and overrun (if any) to every device that's enabled them."
+      >
+        <div className="flex items-center gap-3 flex-wrap">
+          {subscribed ? (
+            <button
+              onClick={disable}
+              disabled={pending}
+              className="inline-flex items-center gap-1.5 bg-surface-alt border border-line text-fg font-[inherit] text-[12px] font-semibold px-3 py-1.5 cursor-pointer uppercase tracking-[0.12em] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <BellOff size={13} className="shrink-0" /> Disable on this device
+            </button>
+          ) : (
+            <button
+              onClick={enable}
+              disabled={pending || support !== "ok" || permission === "denied"
+                || needsInstall || missingVapid}
+              className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[12px] font-semibold px-3 py-1.5 cursor-pointer uppercase tracking-[0.12em] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Bell size={13} className="shrink-0" /> Enable on this device
+            </button>
+          )}
+          <span className="text-[11px] text-dim">{status}</span>
+        </div>
+        {error && (
+          <div className="text-[11px] text-warn mt-2">
+            {error.message ?? String(error)}
+          </div>
+        )}
+      </Field>
+    </Section>
+  );
+}
+
+function describeStatus({
+  support, permission, subscribed, needsInstall, missingVapid,
+}) {
+  if (support !== "ok") {
+    return "This browser doesn't support web push.";
+  }
+  if (missingVapid) {
+    return "Set VITE_VAPID_PUBLIC_KEY (and the function's private key) in env to use push.";
+  }
+  if (needsInstall) {
+    return "iOS only delivers push to installed PWAs — Add to Home Screen first, then re-open from the home-screen icon.";
+  }
+  if (permission === "denied") {
+    return "Notifications are blocked for this site. Re-enable them in your browser's site settings, then come back.";
+  }
+  if (subscribed) return "Push enabled on this device.";
+  if (permission === "granted") return "Permission granted — tap to subscribe.";
+  return "No push subscription on this device yet.";
 }
 
 function Section({ title, subtitle, children }) {

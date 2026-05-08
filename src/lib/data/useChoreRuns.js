@@ -204,6 +204,11 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
       setRuns(prev);
       throw err;
     }
+    // Fire the push trigger (Batch 11.3). Best-effort — the function
+    // is idempotent on its own (notified_at lock), so a missed call
+    // here just means nobody got notified for this run; the run
+    // itself is already persisted.
+    fireRunDoneNotification(runId);
   }, [runs]);
 
   const resumeRun = useCallback(async (runId) => {
@@ -277,6 +282,23 @@ async function getCurrentEmail() {
     return data?.user?.email ?? null;
   } catch {
     return null;
+  }
+}
+
+// Fire-and-forget POST to the Netlify function that fans out the push.
+// Called from endRun; failures are logged but never re-thrown — the
+// run-state UPDATE already succeeded by the time we get here, so the
+// user-facing flow shouldn't break on a notification miss.
+function fireRunDoneNotification(runId) {
+  try {
+    void fetch("/.netlify/functions/notify-run-done", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ runId }),
+      keepalive: true,
+    }).catch((e) => console.warn("[notify-run-done] post failed", e));
+  } catch (e) {
+    console.warn("[notify-run-done] fetch threw", e);
   }
 }
 

@@ -721,6 +721,75 @@ on chore_run state transitions. The on-time / overran payload
 variants are computed via the run-metrics helpers landing here, so
 11.3 is the service-worker + push-subscription plumbing only.
 
+### Batch 11.3 — Web push notifications · `v0.10.4-alpha`
+2026-05-08. Closes the Batch 11 umbrella (and the chores overhaul
+through Batch 12). New migration `0011_push_notifications.sql`,
+PWA manifest + service worker, a new Settings section, a
+notification trigger wired into `endRun`, a Netlify function that
+fans out the push, and a one-shot VAPID generator script.
+
+**Schema** (`migration 0011`). `push_subscriptions` table: one row
+per (user, device), keyed by endpoint, with the AES128GCM keys
+(`p256dh`, `auth`) the server side needs to encrypt payloads. RLS
+locks reads + writes to the row's own `user_email`; the Netlify
+function reads cross-user with the secret key (RLS bypass).
+`chore_runs.notified_at` is a nullable timestamptz idempotency
+marker — the function claims a run with a single
+`UPDATE ... WHERE notified_at IS NULL`, so concurrent end-clicks
+only ever produce one push.
+
+**PWA shell.** `public/manifest.webmanifest` (standalone display,
+brand-anchor theme color, the existing logo as the icon),
+`public/sw.js` service worker handling `push` events with
+`showNotification` and a click-to-focus / open-window flow that
+lands the user on `/chores`. `index.html` references the manifest
+and a `theme-color` meta. The SW deliberately doesn't cache app
+shell yet — that's offline-tolerance work in Batch 33.
+
+**`usePushNotifications` hook.** State surfaces feature-detection
+(`support`), permission state, current subscription presence,
+pending mutation flag, error, plus two derived flags:
+`needsInstall` (true on iOS Safari outside the installed-PWA
+context, since iOS only delivers push to home-screen-installed
+PWAs) and `missingVapid` (true when `VITE_VAPID_PUBLIC_KEY` is
+unset). Actions: `enable()` requests permission + registers SW +
+subscribes via PushManager + upserts the row;
+`disable()` deletes the row + unsubscribes.
+
+**Settings page** gains a Notifications section with a single
+Enable / Disable button per device, status copy that explains
+each disabled-state, denied-state error reporting, and an iOS
+"add to home screen first" hint when applicable.
+
+**Trigger.** `useChoreRuns.endRun` fires a fire-and-forget POST
+to `/.netlify/functions/notify-run-done` after the DB UPDATE
+succeeds. The function is idempotent on its own, so a missed
+client-side post just means nobody got notified for that one run
+— the run state itself is unaffected.
+
+**Netlify function** (`notify-run-done.mjs`). Receives `{ runId }`,
+atomically claims the run via the notified_at lock, fetches the
+block, computes the on-time / overran payload (sun-event blocks
+resolve their nominal end against the run's run_date — same math
+the Performance tab uses), then iterates `push_subscriptions` and
+sends a VAPID-signed push to each. Stale subscriptions
+(HTTP 410 Gone, 404 Not Found) get deleted in the same pass.
+Uses the existing `web-push` npm package (added to deps), bundled
+via Netlify's esbuild runtime.
+
+**One-shot setup.** `scripts/generate-vapid-keys.mjs` prints the
+env-var lines to drop into `.env.local`
+(`VITE_VAPID_PUBLIC_KEY=…`) and the Netlify dashboard
+(`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`).
+`.env.example` updated to document the new vars.
+
+**Payload format** (sent through the push pipeline as JSON):
+`{ title, body, runId, blockName, durationMinutes, overranMinutes, kind }`
+where `kind` is `"on_time"` or `"overran"`. Title reads
+"Morning rounds done"; body is `"1h 12m"` on time or
+`"1h 47m, overran 22m"` when over the window — matches the
+in-app Performance numbers exactly.
+
 ---
 
 ## Upcoming
@@ -782,12 +851,6 @@ Highlights:
   to populate, but the modifier-conflict UI ships with the
   Processes batch (now Batch 19) since it has nothing to render
   until then.
-
-### Batch 11.3 — Web push notifications
-Web push (PWA + service worker — may need to pull forward from
-the iOS / mobile-responsive work, now Batch 32) on transition
-to `done`, with on-time and overran payload variants. Closes
-the Chores overhaul umbrella except for assignments.
 
 ### Batch 12 — Chore assignment rules engine
 Default assignments for chores, expressed as a small day-of-week

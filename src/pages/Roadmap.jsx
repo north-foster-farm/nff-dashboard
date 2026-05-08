@@ -27,15 +27,6 @@ const ITEMS = [
       "coop 1, those buttons already know which cohort lives there.",
   },
   {
-    title: "Push notifications when rounds finish",
-    body: "When a round finishes the dashboard fires a push to your " +
-      "phone — \"AM rounds done · 1h 12m\" on time, \"AM rounds done · " +
-      "1h 47m, overran 22m\" when the run ran past the block. The " +
-      "Performance tab + chore-window deadline pill that surface the " +
-      "same numbers in-app already shipped; this is the layer that " +
-      "tells you about it without you having to open the page.",
-  },
-  {
     title: "Chore assignments",
     body: "Default assignments expressed as a small day-of-week DSL: " +
       "\"on Mondays and Fridays James washes and packs eggs; on " +

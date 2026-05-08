@@ -1,0 +1,25 @@
+{
+  "name": "North Foster Farm — Admin",
+  "short_name": "NFF Admin",
+  "description": "Admin dashboard for North Foster Farm.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101614",
+  "theme_color": "#101614",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
