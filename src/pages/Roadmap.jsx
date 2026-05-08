@@ -2,30 +2,12 @@
 // to give a reader a feel for where the app is going without diving into
 // implementation detail. The source-of-truth — with batch numbers,
 // schemas, and execution rules — lives in `ROADMAP.md` at the repo root.
+//
+// Items are deleted from this list as they ship. Recently retired:
+// "Chores, rebuilt", "Rounds", "Chore telemetry + push", "Chore
+// assignments", "Events + Schedule, rebuilt", "A working calendar".
 
 const ITEMS = [
-  {
-    title: "Chores, rebuilt",
-    body: "Sites become first-class — Brooder #1 and Brooder #2 are " +
-      "different places, used across chores, observations, and the " +
-      "metrics & analytics subsystem. Time blocks (Morning / " +
-      "Afternoon / Evening, or whatever you name them) are CRUD-able; " +
-      "edit a window once and every chore in it inherits. Chore " +
-      "definitions get in-place edit. The schema lays the rails for " +
-      "everything that follows.",
-  },
-  {
-    title: "Rounds",
-    body: "A mobile-first full-screen surface for actually doing " +
-      "chores. Tap \"Start rounds\" — the sidebar everywhere flips to " +
-      "\"Help with rounds\" with a live counter, your dad's phone " +
-      "stays in sync, ticking a box on one phone disables the same " +
-      "box on the other (no bickering). A persistent Site Switcher " +
-      "lets you jump from Brooders to Mobile coops to Sheep without " +
-      "drilling back up. Quick actions for notes, condition checks, " +
-      "mortality, and \"moved coops\" are site-aware — at Mobile " +
-      "coop 1, those buttons already know which cohort lives there.",
-  },
   {
     title: "Farm events on your phone",
     body: "A one-way push to Google Calendar puts every market, " +

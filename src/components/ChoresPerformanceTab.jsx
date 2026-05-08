@@ -82,8 +82,7 @@ function PerformanceHeader({ days, totalRuns }) {
       <p className="text-[12px] text-dim m-0 max-w-[560px] leading-relaxed">
         Run history aggregated over the last {days} days. Late-start =
         round started after the block's nominal start time. Overrun =
-        round ended after the block's nominal window. No per-person
-        breakdown — accountability here is about time, not who did what.
+        round ended after the block's nominal window.
       </p>
       <div className="text-[10px] text-faint uppercase tracking-[0.16em] font-semibold">
         {totalRuns} {totalRuns === 1 ? "run" : "runs"}
