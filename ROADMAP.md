@@ -990,6 +990,62 @@ only GCal sync ships in Batch 15).
 GCal push trigger materialization (Batch 15). The two
 remaining lazy-materialization triggers from the events plan.
 
+### Batch 14.1 — Calendar rework (views) · `v0.10.8-alpha`
+2026-05-08. First slice of the calendar UI rework. Schedule
+becomes a single page hosting four view modes; `AllEvents.jsx`
+folds in as the Agenda view. Drag-to-reschedule, processing-day
+workspace, and the per-kind flyout collapse stay in 14.2.
+
+**View toggle.** Day / Week / Month / Agenda. Mobile defaults
+to Day; desktop to Month. The picker is sticky after the first
+tap so we don't auto-flip on resize.
+
+**Time-of-day rail (Day + Week).** Banded chore-block
+backgrounds — option C from the workshop mockup. The window
+spans 5 AM → 10 PM (17 hours) at 0.9px / minute (54px per hour).
+Sun-event blocks resolve their nominal window per-day so the
+"Evening rounds" amber band lands at today's actual sunset, not
+yesterday's. Half-hour ticks under hour grid lines, a live
+"now" indicator on today's column (red-line + dot, ticks once a
+minute via re-render), and a greedy left-to-right column packer
+spreads overlapping events into side-by-side mini-columns.
+
+**Date-typer header** (`<DateTyperPopover>`). Clicking the
+month/week/day label opens an input that parses "today" /
+"tomorrow", "Aug 2027", "Sep 14, 2026", "9/14", and ISO
+"2026-09-14". Bare "Sep 14" jumps forward a year if today is
+already past it, mirroring Notion Calendar's "next match" logic.
+
+**Calendar math** (`lib/calendarMath.js`). Pure helpers reused
+across views: `blockToBand` (chore_block → rail rectangle, sun-
+event aware per-date), `eventToBlock` (occurrence → top/height
+inside the rail), `layoutOverlappingEvents` (greedy column
+packer for side-by-side rendering), `advanceDate` (prev/next by
+view unit), `formatViewLabel` (month / week-range / "Thursday,
+May 8, 2026" — consistent header across views), plus
+`startOfWeek`, `isSameDate`, `isoDateLocal`, `hhmmToMinutes`.
+
+**`<CalendarViews>`** holds `<DayView>`, `<WeekView>`,
+`<MonthView>`, and `<AgendaView>`. MonthView is the existing
+six-week grid, evolved with Tailwind classes and the new event-
+kind colour mapping; WeekView is a 7-column rail with the same
+banded backgrounds; AgendaView is the chronological list that
+used to live in `AllEvents.jsx`.
+
+**`AllEvents.jsx` deleted.** The `events_all` section now mounts
+`<Schedule initialView="agenda" />` from `SectionContent`, so the
+deep link survives — clicking "All events" in the sidebar lands
+on Schedule with the Agenda view selected and a today→+12-month
+date range. The standalone Timeline view that lived in the old
+Schedule is retired (Agenda subsumes it).
+
+**Out of scope — deferred to Batch 14.2.** Drag-to-reschedule +
+drag-to-resize on Day / Week views. Click-empty-space → new
+event seeded with that time slot. Per-kind flyout collapse +
+nav restructure to the single "Event types" entry. Processing-
+day workspace at `/events/processing/:id`. Visual conflict-dot
+lint on event-over-block overlap.
+
 ---
 
 ## Upcoming
@@ -1096,22 +1152,19 @@ chosen calendar rail at
   + cleanout chore on batch creation). Auto rows visually
   flagged with a sparkle icon, dismissable.
 
-### Batch 14 — Calendar UI rework
-Schedule page gets the Day / Week / Month / Agenda toggle.
-Clickable date header with typer popover (Notion Calendar
-pattern). Time-of-day rail on Day + Week views uses the banded-
-background approach (option C): chore-block windows render as
-faint amber bands behind the grid; events sit on top. Conflict
-surfaces visually as event-on-band, with a small amber dot for
-emphasis. Drag-to-reschedule writes overrides; drag-to-resize on
-Day view. AllEvents.jsx folds into Agenda view (route deep-links
-preserved). Per-kind flyout pages demote to saved filter chips on
-Schedule (the two flyouts in `sections.jsx` collapse to one
-"Event types" entry). Standalone Timeline view dies. Processing-
-day kind page survives separately as a batch-close workspace at
+### Batch 14.2 — Drag interactions + processing workspace
+Drag-to-reschedule on Day / Week / Month views writes new
+`event_occurrences` overrides (uses the upsertOverride hook from
+13.2). Drag-to-resize on Day view. Click empty time-rail space →
+new event seeded with that hour. Visual conflict-dot lint when
+an event sits on top of a chore-block band. Processing-day kind
+page morphs into a separate workspace at
 `/events/processing/:id` (cut sheet upload, packed-crates
 counter, final-count entry, batch resolution); reachable from
-the EventEditor's "Open processing details →" link.
+the EventEditor via an "Open processing details →" link. The
+two events flyouts in `sections.jsx` collapse to one "Event
+types" entry whose children are saved-filter chip presets on
+Schedule.
 
 Ships value: the calendar you actually use day-to-day.
 

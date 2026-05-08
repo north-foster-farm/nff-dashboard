@@ -14,7 +14,6 @@ import EventKindPage from "../pages/EventKindPage.jsx";
 import Products from "../pages/Products.jsx";
 import Inventory from "../pages/Inventory.jsx";
 import Trailers from "../pages/Trailers.jsx";
-import AllEvents from "../pages/AllEvents.jsx";
 import Activity from "../pages/Activity.jsx";
 import Observations from "../pages/Observations.jsx";
 import Settings from "../pages/Settings.jsx";
@@ -31,7 +30,10 @@ export default function SectionContent({ section, data, onOpenEvent, onNavigate 
     return <SpeciesPage species={sp} data={data} />;
   }
   if (section.id === "events_all") {
-    return <AllEvents data={data} />;
+    // Folded into Schedule's Agenda view (Batch 14.1). Deep links
+    // to /events/all keep landing here; the page just opens with a
+    // different default view.
+    return <Schedule data={data} onOpenEvent={onOpenEvent} initialView="agenda" />;
   }
   if (section.id.startsWith("events_")) {
     const ek = getEventKindFromSectionId(section.id, data);

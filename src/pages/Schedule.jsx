@@ -1,45 +1,81 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { T } from "../theme.js";
-import {
-  formatISODate, formatLongDate, formatTime12h,
-  isSameDay, parseISODate, todayUTC
-} from "../lib/dates.js";
+import { formatISODate, formatLongDate } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
+import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
+import {
+  startOfWeek, advanceDate, formatViewLabel, isoDateLocal,
+} from "../lib/calendarMath.js";
+import {
+  DayView, WeekView, MonthView, AgendaView,
+} from "../components/CalendarViews.jsx";
+import DateTyperPopover from "../components/DateTyperPopover.jsx";
 
-export default function Schedule({ data, onOpenEvent }) {
-  const [view, setView] = useState("calendar");
-  const today = useMemo(() => todayUTC(), []);
-  const [viewDate, setViewDate] = useState(() => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
-  // Initialise filters from the data: every event kind starts visible. Adding a
-  // new kind to data flows through automatically as a new chip + filter.
+// Schedule (Batch 14.1). Single page hosting the four-up Day / Week
+// / Month / Agenda view toggle, the clickable date-typer header,
+// the kind filter chips, and the "+ New event" button. Delegates
+// rendering to CalendarViews.
+//
+// `initialView` is what the parent passes when the user lands here
+// from the events_all section (which now folds into Agenda) — see
+// SectionContent.jsx.
+
+const VIEWS = ["day", "week", "month", "agenda"];
+
+export default function Schedule({ data, onOpenEvent, initialView }) {
+  const today = useMemo(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }, []);
+  // Default view is mobile-aware: Day on narrow screens, Month
+  // otherwise. The toggle is sticky after the first user interaction
+  // — we don't auto-flip on resize to avoid jumping mid-task.
+  const [view, setView] = useState(() => initialView ?? defaultView());
+  const [date, setDate] = useState(today);
+  // Filters: every kind starts on. Adding a new kind to data flows
+  // through automatically as a new chip + filter.
   const [filters, setFilters] = useState(() =>
-    Object.fromEntries(data.events.kinds.map(k => [k.id, true]))
+    Object.fromEntries((data.events?.kinds ?? []).map(k => [k.id, true]))
   );
 
+  // Chore-block windows for the banded background on Day + Week.
+  const { blocks } = useChoreBlocks();
+
+  // Compute the visible date range based on view. Recurring series
+  // expand inside this range; one-offs filter to it.
   const { fromDate, toDate } = useMemo(() => {
-    if (view === "calendar") {
-      const y = viewDate.getUTCFullYear(), m = viewDate.getUTCMonth();
+    if (view === "day") {
+      const start = new Date(date); start.setUTCHours(0, 0, 0, 0);
+      const end = new Date(date); end.setUTCHours(23, 59, 59, 999);
+      return { fromDate: start, toDate: end };
+    }
+    if (view === "week") {
+      const start = startOfWeek(date);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return { fromDate: toUtcMidnight(start), toDate: toUtcEod(end) };
+    }
+    if (view === "month") {
+      const y = date.getFullYear(); const m = date.getMonth();
       const start = new Date(Date.UTC(y, m, 1));
       start.setUTCDate(start.getUTCDate() - start.getUTCDay());
       const end = new Date(start);
       end.setUTCDate(end.getUTCDate() + 41);
+      end.setUTCHours(23, 59, 59, 999);
       return { fromDate: start, toDate: end };
     }
-    const start = today;
-    const end = new Date(today);
-    end.setUTCDate(end.getUTCDate() + 60);
-    return { fromDate: start, toDate: end };
-  }, [view, viewDate, today]);
+    // Agenda: today → +12 months.
+    const start = new Date(today);
+    const end = new Date(today); end.setFullYear(end.getFullYear() + 1);
+    return { fromDate: toUtcMidnight(start), toDate: toUtcEod(end) };
+  }, [view, date, today]);
 
   const occurrences = useMemo(
     () => getEventOccurrences(data.events, fromDate, toDate, filters),
     [data.events, fromDate, toDate, filters]
   );
-
-  const goToPrevMonth = () => setViewDate(d => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)));
-  const goToNextMonth = () => setViewDate(d => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)));
-  const goToToday = () => setViewDate(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
 
   const onClickItem = (item) => {
     onOpenEvent?.({
@@ -54,138 +90,249 @@ export default function Schedule({ data, onOpenEvent }) {
   const onNewEvent = () => {
     onOpenEvent?.({
       mode: "new",
-      occursOn: formatISODate(today),
+      occursOn: isoDateLocal(view === "day" ? date : today),
     });
   };
 
   return (
-    <div>
-      <ScheduleControls
-        view={view} onViewChange={setView}
-        viewDate={viewDate}
-        onPrev={goToPrevMonth} onNext={goToNextMonth} onToday={goToToday}
-        filters={filters} onFiltersChange={setFilters}
-        kinds={data.events.kinds}
+    <div className="flex flex-col gap-4">
+      <Controls
+        view={view}
+        onViewChange={setView}
+        date={date}
+        onDateChange={setDate}
+        today={today}
+        kinds={data.events?.kinds ?? []}
+        filters={filters}
+        onFiltersChange={setFilters}
         onNewEvent={onNewEvent}
       />
-      {view === "calendar" ? (
-        <CalendarView
-          year={viewDate.getUTCFullYear()} month={viewDate.getUTCMonth()}
-          occurrences={occurrences} today={today} onClickItem={onClickItem}
+      {view === "day" && (
+        <DayView
+          date={date}
+          occurrences={occurrences}
+          blocks={blocks}
+          today={today}
+          onClickItem={onClickItem}
         />
-      ) : (
-        <TimelineView occurrences={occurrences} today={today} onClickItem={onClickItem} />
+      )}
+      {view === "week" && (
+        <WeekView
+          date={date}
+          occurrences={occurrences}
+          blocks={blocks}
+          today={today}
+          onClickItem={onClickItem}
+        />
+      )}
+      {view === "month" && (
+        <MonthView
+          date={date}
+          occurrences={occurrences}
+          today={today}
+          onClickItem={onClickItem}
+        />
+      )}
+      {view === "agenda" && (
+        <AgendaView
+          occurrences={occurrences}
+          today={today}
+          onClickItem={onClickItem}
+          range={{
+            fromLabel: formatLongDate(formatISODate(fromDate)),
+            toLabel: formatLongDate(formatISODate(toDate)),
+          }}
+        />
       )}
     </div>
   );
 }
 
-function ScheduleControls({ view, onViewChange, viewDate, onPrev, onNext, onToday, filters, onFiltersChange, kinds, onNewEvent }) {
-  const monthLabel = viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+function defaultView() {
+  if (typeof window === "undefined") return "month";
+  return window.innerWidth < 768 ? "day" : "month";
+}
+
+function toUtcMidnight(d) {
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0));
+}
+
+function toUtcEod(d) {
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999));
+}
+
+// ── Controls ────────────────────────────────────────────────────────
+function Controls({
+  view, onViewChange,
+  date, onDateChange, today,
+  kinds, filters, onFiltersChange,
+  onNewEvent,
+}) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ display: "flex", border: `1px solid ${T.border}`, background: T.surface }}>
-            <ToggleBtn active={view === "calendar"} onClick={() => onViewChange("calendar")}>Calendar</ToggleBtn>
-            <ToggleBtn active={view === "timeline"} onClick={() => onViewChange("timeline")}>Timeline</ToggleBtn>
-          </div>
-          {view === "calendar" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <IconBtn onClick={onPrev}><ChevronLeft size={14} /></IconBtn>
-              <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600, minWidth: 160, textAlign: "center" }}>{monthLabel}</div>
-              <IconBtn onClick={onNext}><ChevronRight size={14} /></IconBtn>
-              <button onClick={onToday} style={{ marginLeft: 4, background: "transparent", border: `1px solid ${T.border}`, color: T.textDim, fontFamily: "inherit", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", padding: "5px 10px", cursor: "pointer" }}>Today</button>
-            </div>
-          )}
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <ViewToggle view={view} onChange={onViewChange} />
+          <Nav
+            view={view}
+            date={date}
+            onDateChange={onDateChange}
+            today={today}
+          />
         </div>
-        {onNewEvent && (
-          <button
-            onClick={onNewEvent}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              background: T.accent, border: `1px solid ${T.accent}`,
-              color: T.onAccent, fontFamily: "inherit", fontSize: 11,
-              fontWeight: 600, padding: "6px 12px", cursor: "pointer",
-              textTransform: "uppercase", letterSpacing: "0.12em",
-            }}
-          >
-            <Plus size={13} /> New event
-          </button>
-        )}
+        <button
+          onClick={onNewEvent}
+          className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
+        >
+          <Plus size={13} className="shrink-0" /> New event
+        </button>
       </div>
-      <FilterChips filters={filters} onChange={onFiltersChange} kinds={kinds} />
+      <FilterChips kinds={kinds} filters={filters} onChange={onFiltersChange} />
     </div>
   );
 }
 
-function ToggleBtn({ active, onClick, children }) {
+function ViewToggle({ view, onChange }) {
   return (
-    <button onClick={onClick} style={{
-      background: active ? T.surfaceAlt : "transparent", border: "none",
-      color: active ? T.text : T.textDim, fontFamily: "inherit", fontSize: 11,
-      padding: "8px 14px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.12em"
-    }}>{children}</button>
+    <div className="inline-flex border border-line bg-surface">
+      {VIEWS.map((v, i) => {
+        const active = v === view;
+        return (
+          <button
+            key={v}
+            onClick={() => onChange(v)}
+            className={
+              "px-3 py-1.5 font-[inherit] text-[11px] font-semibold uppercase " +
+              "tracking-[0.12em] cursor-pointer border-0 leading-none " +
+              (active
+                ? "bg-surface-alt text-fg"
+                : "bg-transparent text-dim hover:text-fg") +
+              (i > 0 ? " border-l border-line" : "")
+            }
+            aria-pressed={active}
+          >
+            {v}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
-function IconBtn({ onClick, children }) {
+function Nav({ view, date, onDateChange, today }) {
+  const labelRef = useRef(null);
+  const [typerOpen, setTyperOpen] = useState(false);
+  const isAgenda = view === "agenda";
+  const label = isAgenda
+    ? "Next 12 months"
+    : formatViewLabel(view, date);
+
+  const goPrev = () => onDateChange(advanceDate(date, view, -1));
+  const goNext = () => onDateChange(advanceDate(date, view, 1));
+  const goToday = () => onDateChange(today);
+
   return (
-    <button onClick={onClick} style={{
-      background: T.surface, border: `1px solid ${T.border}`, color: T.textDim,
-      padding: "5px 8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
-    }}>{children}</button>
+    <div className="flex items-center gap-2">
+      {!isAgenda && (
+        <>
+          <NavBtn onClick={goPrev} ariaLabel="Previous">
+            <ChevronLeft size={14} />
+          </NavBtn>
+          <button
+            ref={labelRef}
+            onClick={() => setTyperOpen(true)}
+            className="font-heading text-[16px] font-semibold min-w-[180px] text-center bg-transparent border-0 cursor-pointer hover:underline px-1"
+            title="Click to type a date"
+          >
+            {label}
+          </button>
+          <NavBtn onClick={goNext} ariaLabel="Next">
+            <ChevronRight size={14} />
+          </NavBtn>
+          <button
+            onClick={goToday}
+            className="ml-1 bg-transparent border border-line text-dim font-[inherit] text-[10px] font-semibold uppercase tracking-[0.12em] px-2.5 py-1 cursor-pointer"
+          >
+            Today
+          </button>
+          {typerOpen && (
+            <DateTyperPopover
+              initial={date}
+              anchorRef={labelRef}
+              onCancel={() => setTyperOpen(false)}
+              onPick={(d) => { onDateChange(d); setTyperOpen(false); }}
+            />
+          )}
+        </>
+      )}
+      {isAgenda && (
+        <span className="font-heading text-[16px] font-semibold text-fg px-1">
+          {label}
+        </span>
+      )}
+    </div>
   );
 }
 
-function FilterChips({ filters, onChange, kinds }) {
-  // Build one chip per event kind in the data, sorted alphabetically by label.
-  // Empty kinds remain toggleable so the user can pre-stage filters before any
-  // instances exist; they're just rendered with reduced visual weight.
-  const chipDefs = kinds
+function NavBtn({ onClick, ariaLabel, children }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className="bg-surface border border-line text-dim hover:text-fg font-[inherit] px-2 py-1.5 cursor-pointer flex items-center justify-center"
+    >
+      {children}
+    </button>
+  );
+}
+
+function FilterChips({ kinds, filters, onChange }) {
+  const chipDefs = (kinds ?? [])
     .map(k => ({
       id: k.id,
       label: k.label,
       color: T.cat[k.id] || T.cat.default,
-      count: k.instances?.length ?? 0
+      count: k.instances?.length ?? 0,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
-  const toggle = id => onChange({ ...filters, [id]: !filters[id] });
+  const toggle = (id) => onChange({ ...filters, [id]: !filters[id] });
   const allOn = chipDefs.every(c => filters[c.id]);
-  const setAll = (val) => onChange(Object.fromEntries(chipDefs.map(c => [c.id, val])));
+  const setAll = (val) =>
+    onChange(Object.fromEntries(chipDefs.map(c => [c.id, val])));
+
   return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+    <div className="flex items-center gap-1.5 flex-wrap">
       <button
         onClick={() => setAll(!allOn)}
-        style={{
-          background: "transparent", border: `1px solid ${T.border}`,
-          color: T.textDim, fontFamily: "inherit", fontSize: 10, fontWeight: 600,
-          padding: "5px 9px", cursor: "pointer",
-          textTransform: "uppercase", letterSpacing: "0.12em"
-        }}
-        title={allOn ? "Hide all" : "Show all"}
+        className="bg-transparent border border-line text-dim hover:text-fg font-[inherit] text-[10px] font-semibold uppercase tracking-[0.12em] px-2.5 py-1 cursor-pointer"
+        title={allOn ? "Hide all kinds" : "Show all kinds"}
       >
         {allOn ? "None" : "All"}
       </button>
       {chipDefs.map(c => {
         const active = !!filters[c.id];
-        const empty = c.count === 0;
+        const dim = c.count === 0;
         return (
-          <button key={c.id} onClick={() => toggle(c.id)} style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            background: active ? T.surface : "transparent",
-            border: `1px solid ${active ? c.color : T.border}`,
-            color: active ? T.text : T.textDim,
-            fontFamily: "inherit", fontSize: 10, fontWeight: 600,
-            padding: "5px 9px", cursor: "pointer",
-            textTransform: "uppercase", letterSpacing: "0.12em",
-            opacity: empty && !active ? 0.55 : 1,
-            transition: "background-color 120ms ease, border-color 120ms ease, opacity 120ms ease"
-          }}>
-            <span style={{
-              width: 8, height: 8, background: c.color, borderRadius: "50%",
-              opacity: active ? 1 : 0.7
-            }} />
+          <button
+            key={c.id}
+            onClick={() => toggle(c.id)}
+            className={
+              "inline-flex items-center gap-1.5 font-[inherit] text-[10px] " +
+              "font-semibold uppercase tracking-[0.12em] px-2.5 py-1 " +
+              "cursor-pointer border " +
+              (active
+                ? "bg-surface text-fg"
+                : "bg-transparent text-dim")
+            }
+            style={{
+              borderColor: active ? c.color : undefined,
+              opacity: dim && !active ? 0.55 : 1,
+            }}
+          >
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ background: c.color }}
+            />
             {c.label}
           </button>
         );
@@ -193,103 +340,3 @@ function FilterChips({ filters, onChange, kinds }) {
     </div>
   );
 }
-
-function CalendarView({ year, month, occurrences, today, onClickItem }) {
-  const start = new Date(Date.UTC(year, month, 1));
-  start.setUTCDate(start.getUTCDate() - start.getUTCDay());
-  const cells = [];
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(start);
-    d.setUTCDate(start.getUTCDate() + i);
-    const dateStr = formatISODate(d);
-    cells.push({ date: d, inMonth: d.getUTCMonth() === month, dateStr, items: occurrences.filter(o => o.date === dateStr), isToday: isSameDay(d, today) });
-  }
-  return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}` }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: `1px solid ${T.border}`, background: T.surfaceAlt }}>
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-          <div key={d} style={{ padding: "10px 8px", fontSize: 9, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.12em", textAlign: "center" }}>{d}</div>
-        ))}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
-        {cells.map((c, i) => <DayCell key={i} {...c} onClickItem={onClickItem} />)}
-      </div>
-    </div>
-  );
-}
-
-function DayCell({ date, inMonth, items, isToday, onClickItem }) {
-  return (
-    <div style={{
-      minHeight: 96, padding: "6px 6px 4px",
-      borderRight: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}`,
-      background: isToday ? T.surfaceAlt : T.surface,
-      opacity: inMonth ? 1 : 0.4, overflow: "hidden"
-    }}>
-      <div style={{ fontSize: 11, fontWeight: isToday ? 600 : 400, color: isToday ? T.accent : T.text, marginBottom: 4 }}>{date.getUTCDate()}</div>
-      {items.slice(0, 2).map((it, idx) => (
-        <button key={idx} onClick={() => onClickItem(it)} style={{
-          display: "block", width: "100%", textAlign: "left", marginBottom: 2,
-          background: T.cat[it.kindId] || T.textDim, border: "none", color: T.onCat,
-          fontFamily: "inherit", fontSize: 9, fontWeight: 600,
-          padding: "2px 5px", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
-        }}>{formatTime12h(it.startTime).replace(" ", "")} {it.instanceLabel}</button>
-      ))}
-      {items.length > 2 && <div style={{ fontSize: 9, color: T.textDim, marginTop: 2 }}>+{items.length - 2} more</div>}
-    </div>
-  );
-}
-
-function TimelineView({ occurrences, today, onClickItem }) {
-  if (occurrences.length === 0) {
-    return (
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "48px 24px", textAlign: "center" }}>
-        <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 4 }}>Nothing scheduled in the next 60 days.</div>
-        <div style={{ fontSize: 11, color: T.textFaint }}>Try toggling a different filter or check back when more chores have specific times.</div>
-      </div>
-    );
-  }
-  const byDate = {};
-  for (const o of occurrences) {
-    if (!byDate[o.date]) byDate[o.date] = [];
-    byDate[o.date].push(o);
-  }
-  const dates = Object.keys(byDate).sort();
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      {dates.map(d => {
-        const dDate = parseISODate(d);
-        const isTodayRow = isSameDay(dDate, today);
-        return (
-          <div key={d}>
-            <div style={{ fontSize: 11, color: isTodayRow ? T.accent : T.textDim, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8, fontWeight: isTodayRow ? 600 : 400 }}>
-              {formatLongDate(d)}{isTodayRow && " · today"}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
-              {byDate[d].map((it, idx) => <TimelineRow key={idx} item={it} onClick={() => onClickItem(it)} />)}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function TimelineRow({ item, onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      background: T.surface, padding: "12px 16px", border: "none", textAlign: "left",
-      cursor: "pointer", fontFamily: "inherit", display: "grid",
-      gridTemplateColumns: "100px 4px 1fr auto", gap: 12, alignItems: "center"
-    }}>
-      <div style={{ fontSize: 11, color: T.textDim }}>{formatTime12h(item.startTime)}{item.endTime && ` – ${formatTime12h(item.endTime)}`}</div>
-      <div style={{ width: 4, height: 28, background: T.cat[item.kindId] || T.textDim }} />
-      <div>
-        <div style={{ fontSize: 13, color: T.text, fontFamily: T.serif, fontWeight: 600 }}>{item.instanceLabel}</div>
-        {item.subtitle && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{item.subtitle}</div>}
-      </div>
-      <div style={{ fontSize: 11, color: T.textDim, textAlign: "right" }}>{item.location.name}</div>
-    </button>
-  );
-}
-
