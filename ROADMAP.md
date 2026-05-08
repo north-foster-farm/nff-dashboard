@@ -855,6 +855,76 @@ rulesByBlockId }` through. Today's "Mine" filter widens to
 include any chore whose assignees array contains the current
 user — matches the semantics of "Wed/Sat/Sun = both."
 
+### Batch 13.1 — Events foundation (data layer) · `v0.10.6-alpha`
+2026-05-08. First slice of the Events + Schedule overhaul, scoped
+to the data layer only. Existing surfaces (Schedule, AllEvents,
+EventKindPage, dashboard rollup) keep rendering unchanged — the
+schema swap is invisible to them. EventEditor + the override-
+trigger half of lazy materialization land in 13.2.
+
+**Schema** (`migration 0013`). Five new tables plus a view:
+- `event_series` — the rule. RFC 5545 RRULE string in `rrule`,
+  with `dtstart` / `until`, optional `season_window` jsonb (e.g.
+  `{ start: "05-14", end: "09-21" }` for "every Saturday May 14
+  → Sept 21"), `duration_minutes`, status, payload jsonb, plus a
+  `legacy_instance_id` linking back to the pre-migration row for
+  audit.
+- `event_occurrences` — materialized rows for any series that has
+  been touched (override / skip / drag-reschedule / GCal push).
+  Lazy: pure recurring series with no overrides materialize zero
+  rows; read-time RRULE expansion handles them.
+- `event_links` — polymorphic glue between events and batches /
+  projects / chores / inventory items / automations, with a `role`
+  discriminator (arrival / pasture_move / processing / cleanout /
+  delivery / milestone / phase_span / triggered_by). Exactly one
+  of `series_id` / `occurrence_id` is set.
+- `automations` — schema only; seed rules ship in Batch 15.
+- `gcal_pushes` — schema only; the push job ships in Batch 15.
+
+**`timeline_items` view.** Unions `event_occurrences` +
+`chore_runs` with a `kind` discriminator so the calendar UI in
+Batch 14 consumes one source. The view is the materialized half;
+recurring-with-no-override series expand client-side.
+
+**Migration of `event_instances`.** Each row becomes one
+`event_series`. Recurring (legacy weekly-only JSONB) converts to
+RRULE: `FREQ=WEEKLY;BYDAY=<DOW>;UNTIL=<season-end>` with
+`dtstart` at season-start + start_time, `season_window` mirroring
+the start/end MM-DD pair. One-off rows materialize a single
+pre-populated `event_occurrences` row at their date — so one-offs
+already live in the materialized half, matching the lazy-for-
+recurring contract. Re-runnable: the loop skips rows whose
+`legacy_instance_id` already has a series.
+
+**`recurrence.js` rewritten.** Now an `rrule` (~30KB gz) wrapper.
+Same `getEventOccurrences(eventsData, fromDate, toDate, filters)`
+signature as before, so every existing caller keeps working.
+Behaviour: recurring → rrule.js `between()` expansion + season-
+window MM-DD filter + override merge (override times / location /
+status win, `skipped` rows are dropped, off-rule override dates
+pull in too — covers drag-rescheduled rows). One-off → straight
+read of the pre-materialized occurrence. Per-series RRule cache
+via WeakMap so repeated calls don't re-parse.
+
+**`useReferenceData.loadEvents` rewritten** to read `event_series`
++ `event_occurrences` and shape one UI-facing instance per series.
+One-offs surface their occurrence's date / start / end at the top
+level so the legacy UI shape stays intact. Recurring instances
+carry `rrule` / `dtstart` / `until` / `seasonWindow` /
+`durationMinutes` / `occurrences[]` for the new wrapper to consume.
+
+**`useTimelineItems` hook** (read-only). Loads the
+`timeline_items` view between two ISO dates with a realtime
+subscription on both underlying tables. Default range is the
+current calendar month. The Calendar UI rework in Batch 14 is the
+first consumer.
+
+**Out of scope — deferred to 13.2.** EventEditor side panel /
+sheet, two-tier recurrence editor, the universal three-button
+"This / This and following / All" prompt, override-trigger
+materialization. The schema, expansion, and read paths land here
+so 13.2 only adds the editor + write paths.
+
 ---
 
 ## Upcoming
@@ -961,22 +1031,15 @@ chosen calendar rail at
   + cleanout chore on batch creation). Auto rows visually
   flagged with a sparkle icon, dismissable.
 
-### Batch 13 — Events foundation (schema + RRULE + EventEditor)
-New tables: `event_series`, `event_occurrences`, `event_links`,
-`automations`, `gcal_pushes`. Migrate `event_instances` to the
-new shape (recurring rows materialize zero occurrences; single-
-dated rows get one pre-materialized row). Replace `recurrence.js`
-with an `rrule.js` wrapper. New `timeline_items` query view that
-unions `event_occurrences` + `chore_runs` with a `kind`
-discriminator. EventEditor side panel (desktop) / sheet (mobile)
-with full CRUD, two-tier recurrence editor (Apple Calendar's
-macOS dialog pattern), and the universal three-button "This event
-/ This and following / All events" prompt. Lazy materialization
-with three triggers (first override, GCal push, drag-to-
-reschedule).
-
-Ships value: event CRUD finally exists; complex recurrence
-("first and third Sunday May 14 → Sept 21 every year") works.
+### Batch 13.2 — EventEditor (interactive layer)
+Side-panel (desktop) / sheet (mobile) EventEditor with full CRUD.
+Two-tier recurrence editor (preset dropdown → Apple Calendar
+macOS dialog pattern for Custom). Universal three-button "This
+event / This and following / All events" prompt on per-occurrence
+edits. First-override materialization trigger wires up here —
+the schema, expansion, and read paths already shipped in 13.1.
+Drag-trigger and GCal-push triggers land alongside Calendar UI
+rework (Batch 14) and GCal push (Batch 15).
 
 ### Batch 14 — Calendar UI rework
 Schedule page gets the Day / Week / Month / Agenda toggle.

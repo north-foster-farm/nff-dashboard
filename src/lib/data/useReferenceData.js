@@ -295,37 +295,100 @@ async function loadChores() {
 // match the JSON shape the UI reads from. We preserve the `modelNotes`
 // array by returning it from the static JSON via the merge fallback — it
 // isn't migrated because it's display-only prose.
+// Read events through the new event_series + event_occurrences shape
+// (Batch 13.1). The migration in 0013 backfills every legacy
+// event_instances row into a series with either an RRULE string
+// (recurring) or a pre-materialized occurrence (one-off). The UI-
+// facing shape this function emits is back-compat with the pre-13.1
+// callers, so Schedule.jsx / AllEvents.jsx / EventKindPage / Overview
+// keep rendering unchanged. The new fields (`rrule`, `dtstart`,
+// `until`, `seasonWindow`, `durationMinutes`, `occurrences`) are
+// surfaced for the rrule-based recurrence wrapper to consume.
 async function loadEvents() {
-  const [kindsRes, instancesRes] = await Promise.all([
+  const [kindsRes, seriesRes, occurrencesRes] = await Promise.all([
     supabase
       .from("event_kinds")
       .select("id, label, description, ordinal")
       .order("ordinal"),
     supabase
-      .from("event_instances")
+      .from("event_series")
       .select(
-        "id, kind_id, label, subtitle, recurrence, date, start_time, end_time, location, processing, notes"
+        "id, legacy_instance_id, kind_id, label, subtitle, location, " +
+        "rrule, dtstart, until, duration_minutes, season_window, " +
+        "status, payload, notes"
+      )
+      .eq("status", "active"),
+    supabase
+      .from("event_occurrences")
+      .select(
+        "id, series_id, occurs_on, start_time, end_time, " +
+        "location_override, notes_override, status, " +
+        "gcal_event_id, payload_override"
       )
   ]);
   if (kindsRes.error) { console.error("loadEvents:kinds", kindsRes.error); return null; }
-  if (instancesRes.error) { console.error("loadEvents:instances", instancesRes.error); return null; }
+  if (seriesRes.error) { console.error("loadEvents:series", seriesRes.error); return null; }
+  if (occurrencesRes.error) { console.error("loadEvents:occurrences", occurrencesRes.error); return null; }
 
-  const instancesByKind = new Map();
-  for (const inst of instancesRes.data) {
-    const arr = instancesByKind.get(inst.kind_id) ?? [];
+  // Group occurrences under their series, sorted by occurs_on so the
+  // first entry is the earliest — important for one-off series whose
+  // sole occurrence carries the canonical date.
+  const occurrencesBySeries = new Map();
+  for (const o of occurrencesRes.data ?? []) {
+    const arr = occurrencesBySeries.get(o.series_id) ?? [];
     arr.push({
-      id: inst.id,
-      label: inst.label,
-      subtitle: inst.subtitle,
-      recurrence: inst.recurrence,
-      date: inst.date,
-      startTime: inst.start_time,
-      endTime: inst.end_time,
-      location: inst.location,
-      processing: inst.processing,
-      notes: inst.notes
+      id: o.id,
+      occursOn: o.occurs_on,
+      startTime: o.start_time,
+      endTime: o.end_time,
+      locationOverride: o.location_override,
+      notesOverride: o.notes_override,
+      status: o.status,
+      gcalEventId: o.gcal_event_id,
+      payloadOverride: o.payload_override,
     });
-    instancesByKind.set(inst.kind_id, arr);
+    occurrencesBySeries.set(o.series_id, arr);
+  }
+  for (const arr of occurrencesBySeries.values()) {
+    arr.sort((a, b) => (a.occursOn ?? "").localeCompare(b.occursOn ?? ""));
+  }
+
+  // Map series → UI-facing instance shape. One-off series surface
+  // their pre-materialized occurrence's date / times in the legacy
+  // top-level fields so existing list / kind-page rendering stays
+  // identical. Recurring series carry rrule + dtstart + duration so
+  // the rrule.js wrapper can expand them.
+  const instancesByKind = new Map();
+  for (const s of seriesRes.data ?? []) {
+    const occurrences = occurrencesBySeries.get(s.id) ?? [];
+    const isRecurring = !!s.rrule;
+    const oneOff = !isRecurring ? occurrences[0] : null;
+    const inst = {
+      id: s.id,
+      legacyInstanceId: s.legacy_instance_id,
+      label: s.label,
+      subtitle: s.subtitle,
+      location: s.location,
+      rrule: s.rrule,
+      dtstart: s.dtstart,
+      until: s.until,
+      durationMinutes: s.duration_minutes,
+      seasonWindow: s.season_window,
+      payload: s.payload,
+      notes: s.notes,
+      occurrences,
+      // Back-compat: pre-13.1 callers read `date` / `startTime` /
+      // `endTime` / `processing` directly off the instance.
+      date: oneOff?.occursOn ?? null,
+      startTime: oneOff?.startTime
+        ?? extractStartTime(s.dtstart),
+      endTime: oneOff?.endTime
+        ?? extractEndTime(s.dtstart, s.duration_minutes),
+      processing: s.payload ?? null,
+    };
+    const arr = instancesByKind.get(s.kind_id) ?? [];
+    arr.push(inst);
+    instancesByKind.set(s.kind_id, arr);
   }
 
   return {
@@ -340,6 +403,29 @@ async function loadEvents() {
     // losing the notes section on Schedule / AllEvents.
     modelNotes: NFF_DATA.events?.modelNotes ?? []
   };
+}
+
+// "2026-05-09T08:00:00+00:00" → "08:00" (UTC components — the migration
+// stored series dtstart in the same TZ the legacy date column lived in,
+// so reading UTC components gives the wall-clock time the user
+// originally saved).
+function extractStartTime(dtstart) {
+  if (!dtstart) return null;
+  const d = new Date(dtstart);
+  if (Number.isNaN(d.getTime())) return null;
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function extractEndTime(dtstart, durationMin) {
+  const start = extractStartTime(dtstart);
+  if (!start || typeof durationMin !== "number") return null;
+  const [h, m] = start.split(":").map(Number);
+  const total = h * 60 + m + durationMin;
+  const hh = Math.floor((total % 1440) / 60);
+  const mm = total % 60;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
 // Product-kind catalog — trivial shape remap.
