@@ -10,6 +10,7 @@ import { useChoreRuns, formatElapsed } from "../lib/data/useChoreRuns.js";
 import { useRunEvents } from "../lib/data/useRunEvents.js";
 import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
 import QuickActionsTray from "../components/QuickActionsTray.jsx";
+import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 
 // Full-screen takeover for actually doing chores. Bypasses the
 // normal layout (no TopBar, no Sidebar, no SectionHeader).
@@ -143,6 +144,7 @@ export default function Rounds({ data, onClose }) {
       data={data}
       run={activeRun}
       block={targetBlock}
+      blocks={blocks}
       sites={sites}
       switcherSites={switcherSites}
       locations={locations}
@@ -398,7 +400,7 @@ function formatBlockDuration(minutes) {
 
 // ── Doing surface (active run) ────────────────────────────────────────
 function DoingSurface({
-  run, block, sites, switcherSites, locations, locationsBySiteId,
+  run, block, blocks, sites, switcherSites, locations, locationsBySiteId,
   residents, definitions, completions,
   logRunEvent, moveOutResident, onCancelRun,
   recentConditionsByLocation, repeatWindowDays,
@@ -548,6 +550,7 @@ function DoingSurface({
             chores={blockChores}
             choresBySiteId={choresBySiteId}
             locations={locations}
+            blocks={blocks}
             completions={completions}
             onSelectSite={onSelectSite}
           />
@@ -556,6 +559,7 @@ function DoingSurface({
             site={sites.find(s => s.id === selectedSiteId)}
             grouped={groupedForSelected}
             locationsBySiteId={locationsBySiteId}
+            blocks={blocks}
             completions={completions}
             selectedLocationId={selectedLocationId}
             onSelectLocation={onSelectLocation}
@@ -623,7 +627,7 @@ function SwitcherChip({ active, onClick, children }) {
 
 // ── All-sites view ────────────────────────────────────────────────────
 function AllSitesView({
-  sites, chores, choresBySiteId, locations, completions, onSelectSite,
+  sites, chores, choresBySiteId, locations, blocks, completions, onSelectSite,
 }) {
   if (chores.length === 0) {
     return (
@@ -648,6 +652,7 @@ function AllSitesView({
             site={s}
             chores={choresBySiteId.out.get(s.id)}
             locations={locations}
+            blocks={blocks}
             completions={completions}
             onTitleClick={() => onSelectSite(s.id)}
           />
@@ -657,6 +662,7 @@ function AllSitesView({
           site={{ id: null, name: "Other" }}
           chores={choresBySiteId.general}
           locations={locations}
+          blocks={blocks}
           completions={completions}
         />
       )}
@@ -664,7 +670,7 @@ function AllSitesView({
   );
 }
 
-function SiteSection({ site, chores, locations, completions, onTitleClick }) {
+function SiteSection({ site, chores, locations, blocks, completions, onTitleClick }) {
   const completed = chores.filter(c => completions.completedSet?.has(c.id)).length;
   return (
     <section className="bg-surface border border-line">
@@ -690,6 +696,7 @@ function SiteSection({ site, chores, locations, completions, onTitleClick }) {
             key={c.id}
             chore={c}
             location={c.locationId ? locations.find(l => l.id === c.locationId) : null}
+            blocks={blocks}
             completions={completions}
           />
         ))}
@@ -740,7 +747,7 @@ function AllDoneButton({ chores, completions }) {
 
 // ── Selected-site view (with optional location drill) ────────────────
 function SelectedSiteView({
-  site, grouped, locationsBySiteId, completions,
+  site, grouped, locationsBySiteId, blocks, completions,
   selectedLocationId, onSelectLocation,
 }) {
   const siteLocations = (locationsBySiteId.get(site?.id) ?? []).filter(l => l.isActive);
@@ -792,7 +799,7 @@ function SelectedSiteView({
           </header>
           <ul className="m-0 p-0 list-none">
             {grouped.siteScopedAll.map(c => (
-              <ChoreCheckRow key={c.id} chore={c} completions={completions} />
+              <ChoreCheckRow key={c.id} chore={c} blocks={blocks} completions={completions} />
             ))}
           </ul>
         </section>
@@ -820,7 +827,7 @@ function SelectedSiteView({
               ) : (
                 <ul className="m-0 p-0 list-none">
                   {chores.map(c => (
-                    <ChoreCheckRow key={c.id} chore={c} location={l} completions={completions} />
+                    <ChoreCheckRow key={c.id} chore={c} location={l} blocks={blocks} completions={completions} />
                   ))}
                 </ul>
               )}
@@ -836,7 +843,7 @@ function SelectedSiteView({
 // the realtime-contention "✓ + disabled" treatment. The completedSet
 // updates from the realtime channel within ~80ms of any other user's
 // click; that flips the disabled state automatically.
-function ChoreCheckRow({ chore, location, completions }) {
+function ChoreCheckRow({ chore, location, blocks, completions }) {
   const done = completions.completedSet?.has(chore.id) ?? false;
   const [pending, setPending] = useState(false);
 
@@ -875,10 +882,11 @@ function ChoreCheckRow({ chore, location, completions }) {
       </button>
       <div className="flex-1 min-w-0">
         <div className={
-          "text-[14px] " +
+          "text-[14px] flex items-center gap-2 " +
           (done ? "text-muted line-through" : "text-fg font-medium")
         }>
-          {chore.title}
+          <span className="truncate">{chore.title}</span>
+          <ChoreRemainingPill chore={chore} blocks={blocks} />
         </div>
         {location && (
           <div className="text-[11px] text-faint mt-0.5">{location.name}</div>

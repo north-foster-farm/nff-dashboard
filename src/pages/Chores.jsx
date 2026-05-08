@@ -20,6 +20,7 @@ import { displayBlockSide, resolveBlockMinutes } from "../lib/sunTimes.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 import ChoresBlocksTab from "../components/ChoresBlocksTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
+import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 
 // The page renders its own header (title + tabs) in place of the generic
 // SectionHeader, so it can fit a tab bar + inline actions.
@@ -108,11 +109,19 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   // "" bucket for chores that have no block (anytime). Order blocks by
   // today's resolved start time so sun-event blocks land where they
   // actually fall on the clock.
+  //
+  // Within each bucket, multi-day window chores (weekly_window /
+  // monthly_last_week_window) sort to the bottom so the strict
+  // "do this now" daily chores read first; the (N days remaining)
+  // pill carries the urgency for the window chores.
   const blockGroups = new Map();
   for (const inst of visible) {
     const key = inst.chore.blockId ?? "";
     if (!blockGroups.has(key)) blockGroups.set(key, []);
     blockGroups.get(key).push(inst);
+  }
+  for (const list of blockGroups.values()) {
+    list.sort((a, b) => isWindowy(a.chore) - isWindowy(b.chore));
   }
   const orderedBlockKeys = [...blockGroups.keys()].sort((a, b) => {
     if (a === "" && b === "") return 0;
@@ -170,6 +179,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
             completedSet={completedSet}
             onToggle={toggleCompletion}
             currentUserEmail={userEmail}
+            blocks={blocks}
           />
         );
       })}
@@ -177,7 +187,14 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   );
 }
 
-function BlockGroup({ block, instances, cols, completedSet, onToggle, currentUserEmail }) {
+// True for chores whose deadline spans multiple blocks / days, so we
+// can sort them to the bottom of their bucket on the Today tab.
+function isWindowy(chore) {
+  const t = chore?.frequency?.type;
+  return (t === "weekly_window" || t === "monthly_last_week_window") ? 1 : 0;
+}
+
+function BlockGroup({ block, instances, cols, completedSet, onToggle, currentUserEmail, blocks }) {
   const headerLabel = block ? block.name : "Anytime";
   const timeLabel = block
     ? displayBlockSide(block.startKind, block.startMinutes)
@@ -206,6 +223,7 @@ function BlockGroup({ block, instances, cols, completedSet, onToggle, currentUse
             done={completedSet?.has(inst.chore.id) ?? false}
             onToggle={onToggle}
             currentUserEmail={currentUserEmail}
+            blocks={blocks}
           />
         )}
       />
@@ -213,7 +231,7 @@ function BlockGroup({ block, instances, cols, completedSet, onToggle, currentUse
   );
 }
 
-function TodayChoreRow({ inst, done, onToggle, currentUserEmail }) {
+function TodayChoreRow({ inst, done, onToggle, currentUserEmail, blocks }) {
   const { chore, assignee } = inst;
   // Persistence happens through onToggle (Supabase via useChoreCompletions).
   // The Set arrives via realtime so re-rendering on success is automatic.
@@ -252,7 +270,10 @@ function TodayChoreRow({ inst, done, onToggle, currentUserEmail }) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
         <div style={{ fontSize: 12, color: T.textDim }}>{CHORE_CATEGORIES[chore.category]?.label ?? chore.category}</div>
-        <div style={{ fontSize: 12, color: T.textFaint }}>{metaParts.join(" · ")}</div>
+        <div style={{ fontSize: 12, color: T.textFaint, display: "flex", alignItems: "center", gap: 6 }}>
+          <ChoreRemainingPill chore={chore} blocks={blocks} />
+          <span>{metaParts.join(" · ")}</span>
+        </div>
       </div>
       <ChoreMessageButton
         choreId={chore.id}
@@ -547,6 +568,9 @@ function ChoreDefinitionRow({
 // commits via onQuickSave (chore_definitions update) without
 // expanding the full row editor.
 function SecondaryRow({ chore, sites, locations, blocks, blockById, onQuickSave }) {
+  // Pill is conditional — appears only when the helper resolves
+  // (window or anytime chores). Render at the end so the layout
+  // stays calm for the simple-daily-chore majority.
   const [editing, setEditing] = useState(null); // 'site' | 'schedule' | 'frequency' | null
 
   const close = () => setEditing(null);
@@ -600,6 +624,7 @@ function SecondaryRow({ chore, sites, locations, blocks, blockById, onQuickSave 
           {describeFrequency(chore)}
         </Chip>
       )}
+      <ChoreRemainingPill chore={chore} blocks={blocks} className="ml-1" />
     </div>
   );
 }
@@ -925,6 +950,9 @@ function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }
   const [siteId, setSiteId] = useState(chore.siteId ?? "");
   const [locationId, setLocationId] = useState(chore.locationId ?? "");
   const [blockId, setBlockId] = useState(chore.blockId ?? "");
+  const [lastChanceBlockId, setLastChanceBlockId] = useState(
+    chore.lastChanceBlockId ?? ""
+  );
   const [sortOrder, setSortOrder] = useState(chore.sortOrder ?? 0);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -946,6 +974,7 @@ function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }
         description: description,
         sortOrder: Number(sortOrder) || 0,
         blockId: blockId || null,
+        lastChanceBlockId: lastChanceBlockId || null,
       };
       if (siteMode === "location") {
         patch.locationId = locationId || null;
@@ -1039,6 +1068,25 @@ function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }
             </option>
           ))}
         </select>
+      </EditField>
+      <EditField label="Deadline block">
+        <select
+          value={lastChanceBlockId}
+          onChange={(e) => setLastChanceBlockId(e.target.value)}
+          style={editInputStyle}
+        >
+          <option value="">— no specific deadline —</option>
+          {activeBlocks.map(b => (
+            <option key={b.id} value={b.id}>
+              {b.name} · {displayBlockSide(b.startKind, b.startMinutes)}
+            </option>
+          ))}
+        </select>
+        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
+          The last block on the deadline day before the chore counts as
+          overrun. Drives the "(N days remaining)" pill on multi-day
+          and anytime chores.
+        </div>
       </EditField>
       <EditField label="Sort order">
         <input

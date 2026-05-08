@@ -31,11 +31,9 @@ const ITEMS = [
     body: "Push notifications when chores finish (\"AM rounds done · " +
       "1h 12m\" or \"AM rounds done · 1h 47m, overran 22m\"). A new " +
       "Performance tab plots start times, durations, late-start " +
-      "rate, and overrun rate per block. Chores with a window " +
-      "spanning multiple blocks (\"wash nest boxes by end of week\") " +
-      "get a last-chance-block setting so the deadline is the " +
-      "Friday afternoon rounds, not the Sunday-evening rounds — " +
-      "evening isn't the time to start power-washing.",
+      "rate, and overrun rate per block — no per-person splits, just " +
+      "the data. (The chore-window deadline math + \"(N days left)\" " +
+      "pill that drives the overrun column already shipped.)",
   },
   {
     title: "Chore assignments",

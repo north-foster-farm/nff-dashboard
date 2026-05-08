@@ -345,10 +345,18 @@ create trigger chore_runs_updated_at
   for each row execute function public.touch_chore_runs_updated_at();
 
 
--- ── chore_definitions: add site_id, location_id, block_id, sort_order
+-- ── chore_definitions: add site_id, location_id, block_id,
+--    last_chance_block_id, sort_order
 -- A chore can target a parent site (fans out to every active
 -- location under it) or a specific location (instance-scoped).
 -- Exactly at most one of those two should be set.
+--
+-- last_chance_block_id (Batch 11.1) is the deadline-block for chores
+-- whose window spans multiple blocks or days — e.g. an "anytime" or
+-- weekly_window chore that has to be done before the end of, say,
+-- Friday afternoon block. Drives the "(N days remaining)" pill and
+-- the overrun math. NULL means the chore's normal block window is
+-- the deadline (matches pre-11.1 behavior).
 alter table public.chore_definitions
   add column if not exists site_id uuid
     references public.sites(id) on delete set null;
@@ -357,6 +365,9 @@ alter table public.chore_definitions
     references public.site_locations(id) on delete set null;
 alter table public.chore_definitions
   add column if not exists block_id uuid
+    references public.chore_blocks(id) on delete set null;
+alter table public.chore_definitions
+  add column if not exists last_chance_block_id uuid
     references public.chore_blocks(id) on delete set null;
 alter table public.chore_definitions
   add column if not exists sort_order int not null default 0;
@@ -374,6 +385,9 @@ create index if not exists chore_definitions_location_id_idx
 create index if not exists chore_definitions_block_idx
   on public.chore_definitions (block_id, sort_order)
   where block_id is not null;
+create index if not exists chore_definitions_last_chance_block_idx
+  on public.chore_definitions (last_chance_block_id)
+  where last_chance_block_id is not null;
 
 
 -- ── seed: chore_blocks ────────────────────────────────────────────────

@@ -608,6 +608,61 @@ depends on the last-chance-block setting that ships in Batch 11
 alongside the Performance sub-tab and chore-window deadlines, so
 this rides with that batch.
 
+### Batch 11.1 — Last-chance block + days-remaining pill · `v0.10.2-alpha`
+2026-05-07. First slice of the Batch 11 umbrella, scoped down to the
+foundation that the Performance sub-tab + web push (still upcoming
+as 11.2 / 11.3) consume. Picks up the pill work deferred from Batch
+10.
+
+**Schema** (migration 0009 amended in place per the pre-production
+rule). `chore_definitions` gains `last_chance_block_id` — a nullable
+FK to `chore_blocks` that names the deadline block for chores whose
+window spans multiple blocks or days. NULL means the chore's normal
+block window is the deadline (matches pre-11.1 behavior). Indexed
+where set.
+
+**Days-remaining helper** (`lib/chores.js`). New `choreDaysRemaining`
+walks a chore's frequency window — `weekly_window` /
+`monthly_last_week_window` resolve their `latestDay` against today;
+"anytime" daily chores collapse to "due today". Returns one of
+`{ kind: 'days', days: N }`, `{ kind: 'today' }`,
+`{ kind: 'overran' }`, or `null` (single-block daily chores). The
+"overran" branch fires once today's resolved last-chance-block
+window has ended, so the pill flips automatically without a
+refresh.
+
+**`<ChoreRemainingPill>`** (new shared component). Tinted glanceable
+pill rendered next to chore titles wherever the helper resolves.
+Re-ticks once a minute so "due today" can flip to "overran" at the
+deadline-block end. Three tones: neutral (days), accent (today),
+warn (overran).
+
+**Surfaces:**
+- **Today tab** — every `TodayChoreRow` shows the pill next to the
+  category / deadline meta line. Window chores within a block sort
+  to the bottom of the block bucket so the strict "do this now"
+  daily chores read first; the pill carries the urgency for the
+  rest.
+- **All chores tab** — the pill appears on `SecondaryRow` (next to
+  the frequency chip) so the chore list at a glance answers "which
+  of these have a deadline pressing?".
+- **Rounds doing surface** — `ChoreCheckRow` shows the pill inline
+  with the chore title, so picking up a window chore mid-rounds
+  surfaces its remaining-window context.
+
+**Editor.** `ChoreInlineEditor` gains a "Deadline block" picker
+under "When", with helper text explaining when the field matters.
+Picker is always visible (inert for non-window single-block chores),
+matching the simplicity of the existing block picker. The
+`useChoreDefinitions` hook maps `last_chance_block_id` ↔
+`lastChanceBlockId` on read + write.
+
+**Out of scope — deferred to Batch 11.2 / 11.3.** Performance
+sub-tab on the Chores page (start-time histogram per block, duration
+trend, late-start rate, overrun rate) and web push notifications on
+chore_run state transitions. They build on the deadline math 11.1
+ships.
+
 ---
 
 ## Upcoming
@@ -670,29 +725,21 @@ Highlights:
   Processes batch (now Batch 19) since it has nothing to render
   until then.
 
-### Batch 11 — Chores notifications + Performance + chore-window deadlines
-Web push (PWA + service worker — may need to pull forward from
-the iOS / mobile-responsive work, now Batch 32) on transition to
-`done`, with on-time and overran payload variants. New
-Performance sub-tab on the Chores page: start-time histogram per
-block (last 30 days, vertical line at nominal block start),
+### Batch 11.2 — Performance sub-tab
+New Performance sub-tab on the Chores page: start-time histogram
+per block (last 30 days, vertical line at nominal block start),
 duration trend (median + spread), late-start rate, and overrun
 rate. No per-user splits, no predictive nudges, no reason
-prompts — just data.
+prompts — just data. Reads `chore_runs` history (already there
+since Batch 8.1) and the last-chance-block math from 11.1 to
+compute overrun. Ships the accountability loop without the
+leaderboard.
 
-**Last-chance-block setting on chores.** A chore with a window
-spanning multiple blocks (e.g. "wash nest boxes — by end of
-week") gets a "last-chance block" radio in the Blocks edit UI:
-the block during which the chore actually has to be done before
-it counts as overrun. Default for end-of-week chores becomes
-the final afternoon block of the week — the evening rounds
-aren't the right time to start power-washing nest boxes. The
-chore's recurrence still reads as "by the end of the week" in
-plain English. Drives the overrun math + the "(N days
-remaining)" pill from Batch 10.
-
-Ships value: the accountability loop without the leaderboard.
-Closes the Chores overhaul umbrella except for assignments.
+### Batch 11.3 — Web push notifications
+Web push (PWA + service worker — may need to pull forward from
+the iOS / mobile-responsive work, now Batch 32) on transition
+to `done`, with on-time and overran payload variants. Closes
+the Chores overhaul umbrella except for assignments.
 
 ### Batch 12 — Chore assignment rules engine
 Default assignments for chores, expressed as a small day-of-week

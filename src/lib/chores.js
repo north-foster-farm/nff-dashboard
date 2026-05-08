@@ -285,6 +285,130 @@ export function displayStartTime(chore) {
   return m === 0 ? `${h12} ${ampm}` : `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+// ── Days-remaining + last-chance-block (Batch 11.1) ──────────────────
+//
+// A chore with a window spanning multiple blocks or days can carry a
+// `lastChanceBlockId` — the block beyond which it counts as overrun.
+// "Anytime" chores (no `blockId`) treat their last-chance block as
+// the only block they have, so the pill collapses to "due today".
+// Window chores (weekly_window / monthly_last_week_window) walk the
+// frequency window's latestDay forward to find the deadline date.
+//
+// Returns one of:
+//   null                     — pill doesn't apply to this chore.
+//   { kind: 'overran' }      — deadline has passed.
+//   { kind: 'today' }        — deadline lands today, in the future.
+//   { kind: 'days', days: N }— N full days until the deadline (≥1).
+//
+// `now` is the current Date (defaults to new Date()). `blocks` is the
+// active block list from useChoreBlocks (camelCase shape).
+export function choreDaysRemaining(chore, now = new Date(), blocks = []) {
+  if (!chore) return null;
+  const f = chore.frequency;
+  const hasWindow =
+    f?.type === "weekly_window" || f?.type === "monthly_last_week_window";
+  const isAnytime = !chore.blockId;
+  // Daily / specific_days chores with a fixed block aren't "windowy" —
+  // they fire on a specific day in a specific block, so no pill.
+  if (!hasWindow && !isAnytime) return null;
+
+  const deadlineBlock = chore.lastChanceBlockId
+    ? (blocks ?? []).find(b => b.id === chore.lastChanceBlockId)
+    : null;
+
+  const today = startOfDay(now);
+  let deadlineDate;
+  if (hasWindow) {
+    deadlineDate = windowDeadlineDate(f, today);
+    if (!deadlineDate) return null;
+  } else {
+    // Anytime daily / anytime specific_days: deadline is today.
+    deadlineDate = today;
+  }
+
+  // If the deadline is in the future, count whole days.
+  if (deadlineDate.getTime() > today.getTime()) {
+    const days = Math.round(
+      (deadlineDate.getTime() - today.getTime()) / 86400000
+    );
+    return { kind: "days", days };
+  }
+
+  // Deadline day == today. The pill flips to "overran" once the
+  // deadline block's window has passed; otherwise it reads "today".
+  if (deadlineBlock) {
+    const endMin = blockEndMinutesNow(deadlineBlock, now);
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    if (endMin !== null && nowMin > endMin) {
+      return { kind: "overran" };
+    }
+  }
+  // Deadline is in the past entirely (shouldn't happen for today, but
+  // covers the case where the window passed without a last-chance).
+  if (deadlineDate.getTime() < today.getTime()) {
+    return { kind: "overran" };
+  }
+  return { kind: "today" };
+}
+
+// Short label for the days-remaining pill, e.g. "due today" /
+// "3 days left" / "overran". Returns "" when no pill applies.
+export function displayDaysRemaining(chore, now, blocks) {
+  const r = choreDaysRemaining(chore, now, blocks);
+  if (!r) return "";
+  if (r.kind === "today") return "due today";
+  if (r.kind === "overran") return "overran";
+  if (r.kind === "days") {
+    if (r.days === 1) return "1 day left";
+    return `${r.days} days left`;
+  }
+  return "";
+}
+
+// Resolve a chore's window deadline date given today. Returns a Date
+// pointing at the latest day of the chore's window (start-of-day),
+// or null if today isn't inside the window.
+function windowDeadlineDate(frequency, today) {
+  const dow = today.getDay();
+  if (frequency.type === "weekly_window") {
+    const latest = frequency.latestDay ?? 5; // default Fri
+    if (dow > latest) return null; // today is past this week's window
+    const out = new Date(today);
+    out.setDate(today.getDate() + (latest - dow));
+    return out;
+  }
+  if (frequency.type === "monthly_last_week_window") {
+    if (!isInLastWeekOfMonth(today)) return null;
+    const latest = frequency.latestDay ?? 5;
+    if (dow > latest) return null;
+    const out = new Date(today);
+    out.setDate(today.getDate() + (latest - dow));
+    return out;
+  }
+  return null;
+}
+
+// End-minutes of a block resolved against `now` (sun-event blocks
+// resolve to today's actual times). Returns null if a sunrise/sunset
+// can't be computed for this date.
+function blockEndMinutesNow(block, now) {
+  if (!block) return null;
+  let start;
+  if (block.startKind === "fixed") {
+    start = block.startMinutes;
+  } else {
+    start = sunMinutesOfDay(now, block.startKind);
+  }
+  if (typeof start !== "number") return null;
+  return start + (block.durationMinutes ?? 0);
+}
+
+function startOfDay(d) {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
 // Short display for a chore's deadline (relative to its start).
 export function displayDeadline(chore) {
   const d = chore.deadline;

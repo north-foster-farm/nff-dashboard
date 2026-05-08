@@ -21,7 +21,8 @@ export function useChoreDefinitions() {
     supabase.from("chore_definitions")
       .select(
         "id, title, description, frequency, period, start_time, deadline, " +
-        "assignment, tags, category, site_id, location_id, block_id, sort_order"
+        "assignment, tags, category, site_id, location_id, block_id, " +
+        "last_chance_block_id, sort_order"
       )
       .order("sort_order", { ascending: true })
       .order("title", { ascending: true })
@@ -47,7 +48,8 @@ export function useChoreDefinitions() {
         const res = await supabase.from("chore_definitions")
           .select(
             "id, title, description, frequency, period, start_time, deadline, " +
-            "assignment, tags, category, site_id, location_id, block_id, sort_order"
+            "assignment, tags, category, site_id, location_id, block_id, " +
+            "last_chance_block_id, sort_order"
           )
           .order("sort_order", { ascending: true })
           .order("title", { ascending: true });
@@ -75,6 +77,7 @@ export function useChoreDefinitions() {
     siteId: c.site_id,
     locationId: c.location_id,
     blockId: c.block_id,
+    lastChanceBlockId: c.last_chance_block_id,
     sortOrder: c.sort_order ?? 0,
   })), [defs]);
 
@@ -119,6 +122,9 @@ function camelToDb(patch) {
   if ("siteId" in patch) out.site_id = patch.siteId || null;
   if ("locationId" in patch) out.location_id = patch.locationId || null;
   if ("blockId" in patch) out.block_id = patch.blockId || null;
+  if ("lastChanceBlockId" in patch) {
+    out.last_chance_block_id = patch.lastChanceBlockId || null;
+  }
   if (typeof patch.sortOrder === "number") out.sort_order = patch.sortOrder;
   if (typeof patch.startTime === "string") out.start_time = patch.startTime;
   // Mutually-exclusive site_id vs location_id: clear the other side
