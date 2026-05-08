@@ -17,8 +17,8 @@ const DENSITY_OPTIONS = [
 
 export default function Settings() {
   const {
-    theme, density, autoExpandChoreGroups,
-    setTheme, setDensity, setAutoExpandChoreGroups,
+    theme, density,
+    setTheme, setDensity,
     loading,
   } = useUserPreferences();
 
@@ -64,17 +64,6 @@ export default function Settings() {
         </Field>
       </Section>
 
-      <Section title="Chores">
-        <Field
-          label="Auto-expand chore groups"
-          description="When on, chore-group accordions render expanded by default everywhere chores appear. Turn off to start them collapsed."
-        >
-          <ToggleSwitch
-            checked={autoExpandChoreGroups}
-            onChange={setAutoExpandChoreGroups}
-          />
-        </Field>
-      </Section>
     </div>
   );
 }
@@ -131,24 +120,3 @@ function SegmentedControl({ value, onChange, options }) {
   );
 }
 
-function ToggleSwitch({ checked, onChange }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={
-        "relative inline-block w-10 h-6 rounded-full transition-colors " +
-        "border-0 cursor-pointer p-0 " +
-        (checked ? "bg-accent" : "bg-surface-alt border border-line")
-      }
-    >
-      <span
-        className={
-          "absolute top-0.5 w-5 h-5 rounded-full bg-bg transition-[left] duration-150 " +
-          (checked ? "left-[18px]" : "left-0.5")
-        }
-      />
-    </button>
-  );
-}

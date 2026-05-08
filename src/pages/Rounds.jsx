@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  X, Check, Sunrise, Sunset, ChevronLeft,
+  X, Check, ChevronLeft,
 } from "lucide-react";
 import { useChoreBlocks, formatMinutesOfDay } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
@@ -27,7 +27,7 @@ export default function Rounds({ data, onClose }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const {
     sites, locations, locationsBySiteId, residents,
-    assignResident, moveOutResident,
+    moveOutResident,
     loading: sitesLoading,
   } = useSites();
   const {
@@ -37,8 +37,9 @@ export default function Rounds({ data, onClose }) {
     definitions, loading: defsLoading,
   } = useChoreDefinitions();
   const {
-    activeRun, nextBlock, runByBlockId, loading: runsLoading,
-    startRun, endRun, resumeRun,
+    activeRun, nextBlock, runByBlockId, historicalRuns, runs: todayRuns,
+    loading: runsLoading,
+    startRun, endRun, resumeRun, cancelRun,
   } = useChoreRuns({ blocks });
 
   // The block this Rounds session is targeting. Active run wins over
@@ -114,9 +115,20 @@ export default function Rounds({ data, onClose }) {
     return (
       <ColdOpen
         block={targetBlock}
+        blocks={blocks}
+        todayRuns={todayRuns}
+        historicalRuns={historicalRuns}
+        runByBlockId={runByBlockId}
         onStart={async () => {
           if (!targetBlock) return;
           await startRun(targetBlock.id);
+        }}
+        onStartBlock={async (blockId) => {
+          if (!blockId) return;
+          await startRun(blockId);
+        }}
+        onResumeRun={async (runId) => {
+          await resumeRun(runId);
         }}
         onClose={onClose}
       />
@@ -139,7 +151,10 @@ export default function Rounds({ data, onClose }) {
       definitions={definitions}
       completions={completions}
       logRunEvent={logRunEvent}
-      assignResident={assignResident}
+      onCancelRun={async () => {
+        if (!activeRun) return;
+        await cancelRun(activeRun.id);
+      }}
       moveOutResident={moveOutResident}
       recentConditionsByLocation={recentConditionsByLocation}
       repeatWindowDays={repeatWindowDays}
@@ -164,38 +179,161 @@ export default function Rounds({ data, onClose }) {
 }
 
 // ── Cold open ─────────────────────────────────────────────────────────
-function ColdOpen({ block, onStart, onClose }) {
+function ColdOpen({
+  block, blocks, todayRuns, historicalRuns, runByBlockId,
+  onStart, onStartBlock, onResumeRun, onClose,
+}) {
+  // Other blocks the user can launch out of natural sequence —
+  // everything other than the suggested "next" block, ordered by
+  // today's resolved start time.
+  const otherBlocks = useMemo(() => {
+    const today = new Date();
+    return (blocks ?? [])
+      .filter(b => b.isActive && b.id !== block?.id)
+      .map(b => ({
+        block: b,
+        start: resolveBlockMinutes(today, b.startKind, b.startMinutes),
+      }))
+      .sort((a, b) => (a.start ?? 0) - (b.start ?? 0));
+  }, [blocks, block]);
+
+  // History: today's done/canceled runs, then yesterday-and-back.
+  const todayHistory = (todayRuns ?? [])
+    .filter(r => r.state === "done" || r.state === "canceled");
+  const recentHistory = [...todayHistory, ...(historicalRuns ?? [])]
+    .slice(0, 8);
+
   return (
-    <div className="bg-bg text-fg h-screen flex flex-col items-center justify-center font-body p-6 relative">
+    <div className="bg-bg text-fg min-h-screen flex flex-col font-body relative overflow-y-auto">
       <CloseButton onClose={onClose} />
-      <div className="flex flex-col items-center gap-6 max-w-[420px] text-center">
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6 pt-16 max-w-[480px] mx-auto w-full">
         <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
           Rounds
         </div>
-        <h1 className="font-heading text-[36px] font-bold -tracking-[0.02em] m-0">
+        <h1 className="font-heading text-[36px] font-bold -tracking-[0.02em] m-0 text-center">
           {block ? `${block.name} rounds` : "No block scheduled"}
         </h1>
         {block && (
-          <p className="text-[14px] text-dim m-0 leading-relaxed">
+          <p className="text-[14px] text-dim m-0 leading-relaxed text-center">
             {displayBlockSide(block.startKind, block.startMinutes)}
-            {" – "}
-            {displayBlockSide(block.endKind, block.endMinutes)}
+            {" · "}
+            {formatBlockDuration(block.durationMinutes)}
           </p>
         )}
         {block ? (
           <button
             onClick={onStart}
-            className="mt-4 inline-flex items-center justify-center gap-2 bg-accent text-on-accent border-0 font-[inherit] text-[14px] font-bold uppercase tracking-[0.12em] px-8 py-4 cursor-pointer w-full"
+            className="mt-2 inline-flex items-center justify-center gap-2 bg-accent text-on-accent border-0 font-[inherit] text-[14px] font-bold uppercase tracking-[0.12em] px-8 py-4 cursor-pointer w-full"
           >
             Start rounds
           </button>
         ) : (
-          <p className="text-[12px] text-faint m-0">
+          <p className="text-[12px] text-faint m-0 text-center">
             Add at least one time block in Chores → Blocks before
             you can start a run.
           </p>
         )}
+
+        {otherBlocks.length > 0 && (
+          <div className="w-full flex flex-col gap-2 mt-2">
+            <div className="text-[10px] text-muted uppercase tracking-[0.16em] font-semibold text-center">
+              Or pick a different block
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {otherBlocks.map(({ block: b }) => {
+                const r = runByBlockId.get(b.id);
+                const stateLabel = r?.state === "done"
+                  ? "done today"
+                  : r?.state === "canceled"
+                    ? "canceled today"
+                    : null;
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => onStartBlock(b.id)}
+                    className={
+                      "flex items-center gap-3 w-full px-3 py-2.5 " +
+                      "bg-surface border border-line cursor-pointer " +
+                      "text-left hover:border-fg transition-colors duration-100"
+                    }
+                  >
+                    <span className="text-[13px] font-semibold text-fg flex-1">
+                      {b.name}
+                    </span>
+                    <span className="text-[11px] text-dim">
+                      {displayBlockSide(b.startKind, b.startMinutes)}
+                      {" · "}
+                      {formatBlockDuration(b.durationMinutes)}
+                    </span>
+                    {stateLabel && (
+                      <span className="text-[10px] text-faint uppercase tracking-[0.12em] font-semibold">
+                        {stateLabel}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {recentHistory.length > 0 && (
+          <RecentRuns
+            runs={recentHistory}
+            blocks={blocks}
+            onResumeRun={onResumeRun}
+          />
+        )}
       </div>
+    </div>
+  );
+}
+
+function RecentRuns({ runs, blocks, onResumeRun }) {
+  const blockById = useMemo(() => {
+    const m = new Map();
+    for (const b of blocks ?? []) m.set(b.id, b);
+    return m;
+  }, [blocks]);
+  return (
+    <div className="w-full flex flex-col gap-2 mt-2">
+      <div className="text-[10px] text-muted uppercase tracking-[0.16em] font-semibold text-center">
+        Recent rounds
+      </div>
+      <ul className="flex flex-col gap-1 list-none m-0 p-0">
+        {runs.map(r => {
+          const b = blockById.get(r.blockId);
+          const elapsed = r.startedAt && r.endedAt
+            ? r.endedAt.getTime() - r.startedAt.getTime()
+            : 0;
+          return (
+            <li
+              key={r.id}
+              className="flex items-center gap-2 px-3 py-2 bg-surface border border-line"
+            >
+              <span className="text-[12px] font-semibold text-fg flex-1">
+                {b?.name ?? "Block"}
+              </span>
+              <span className="text-[10px] text-faint uppercase tracking-[0.12em]">
+                {r.runDate}
+              </span>
+              <span className="text-[11px] text-dim">
+                {r.state === "canceled"
+                  ? "canceled"
+                  : formatElapsed(elapsed)}
+              </span>
+              {r.state === "done" && (
+                <button
+                  onClick={() => onResumeRun(r.id)}
+                  className="text-[10px] text-dim hover:text-fg uppercase tracking-[0.12em] font-semibold border-0 bg-transparent cursor-pointer"
+                >
+                  Resume
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -237,8 +375,9 @@ function WrapCard({ block, run, onClose }) {
 
 function isOverran(block, run) {
   if (!block || !run?.endedAt || !run?.startedAt) return null;
-  const endMin = resolveBlockMinutes(run.endedAt, block.endKind, block.endMinutes);
-  if (endMin === null) return null;
+  const startMin = resolveBlockMinutes(run.endedAt, block.startKind, block.startMinutes);
+  if (startMin === null) return null;
+  const endMin = startMin + (block.durationMinutes ?? 0);
   const endedMin = run.endedAt.getHours() * 60 + run.endedAt.getMinutes();
   if (endedMin <= endMin) return null;
   const overMin = endedMin - endMin;
@@ -248,11 +387,20 @@ function isOverran(block, run) {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+function formatBlockDuration(minutes) {
+  if (typeof minutes !== "number" || minutes <= 0) return "";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 // ── Doing surface (active run) ────────────────────────────────────────
 function DoingSurface({
   run, block, sites, switcherSites, locations, locationsBySiteId,
   residents, definitions, completions,
-  logRunEvent, assignResident, moveOutResident,
+  logRunEvent, moveOutResident, onCancelRun,
   recentConditionsByLocation, repeatWindowDays,
   selectedSiteId, onSelectSite,
   selectedLocationId, onSelectLocation,
@@ -265,19 +413,6 @@ function DoingSurface({
     return () => clearInterval(id);
   }, []);
   const elapsed = run.startedAt ? now - run.startedAt.getTime() : 0;
-
-  // Sundown / sunup countdown — only render when the run's block has
-  // a sun-event end (e.g. Evening rounds end at sunset).
-  const sundownInfo = useMemo(() => {
-    if (!block) return null;
-    const today = new Date();
-    if (block.endKind !== "sunset" && block.endKind !== "sunrise") return null;
-    const targetMin = resolveBlockMinutes(today, block.endKind, null);
-    if (targetMin === null) return null;
-    const nowMin = today.getHours() * 60 + today.getMinutes() + today.getSeconds() / 60;
-    const delta = targetMin - nowMin;
-    return { kind: block.endKind, delta };
-  }, [block, now]);
 
   // Filter chores to this run's block.
   const blockChores = useMemo(
@@ -373,14 +508,29 @@ function DoingSurface({
             {formatElapsed(elapsed)}
           </div>
         </div>
-        {sundownInfo && <SundownPill info={sundownInfo} />}
-        <button
-          onClick={onClose}
-          className="ml-auto text-muted hover:text-fg p-2 cursor-pointer bg-transparent border-0"
-          title="Exit (run keeps going — rejoin from the sidebar)"
-        >
-          <X size={16} />
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={async () => {
+              const ok = window.confirm(
+                "Cancel this run? Chores stay as ticked but the run is " +
+                "marked canceled instead of done."
+              );
+              if (!ok) return;
+              await onCancelRun();
+            }}
+            className="text-muted hover:text-warn p-2 cursor-pointer bg-transparent border-0 text-[10px] uppercase tracking-[0.12em] font-semibold"
+            title="Cancel this run"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onClose}
+            className="text-muted hover:text-fg p-2 cursor-pointer bg-transparent border-0"
+            title="Exit (run keeps going — rejoin from the sidebar)"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </header>
 
       {/* Site Switcher */}
@@ -424,7 +574,6 @@ function DoingSurface({
         recentConditionsByLocation={recentConditionsByLocation}
         repeatWindowDays={repeatWindowDays}
         onLogRunEvent={logRunEvent}
-        onAssignResident={assignResident}
         onMoveOutResident={moveOutResident}
       />
     </div>
@@ -533,6 +682,7 @@ function SiteSection({ site, chores, locations, completions, onTitleClick }) {
         <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
           {completed}/{chores.length} done
         </span>
+        <AllDoneButton chores={chores} completions={completions} />
       </header>
       <ul className="m-0 p-0 list-none">
         {chores.map(c => (
@@ -545,6 +695,46 @@ function SiteSection({ site, chores, locations, completions, onTitleClick }) {
         ))}
       </ul>
     </section>
+  );
+}
+
+// Bulk-tick affordance for a section. Folds in what the old Sweep
+// quick-action did: per-site "all taken care of" → mark every chore
+// in this section done in one tap. Disabled while a tick is in
+// flight so back-to-back taps don't double-fire on contention.
+function AllDoneButton({ chores, completions }) {
+  const [pending, setPending] = useState(false);
+  const undone = chores.filter(c => !completions.completedSet?.has(c.id));
+  if (undone.length === 0 || chores.length === 0) return null;
+  const onClick = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      // toggle takes the current done state; pass false because every
+      // chore in `undone` is currently not-done.
+      for (const c of undone) {
+        // eslint-disable-next-line no-await-in-loop
+        await completions.toggle(c.id, false);
+      }
+    } finally {
+      setPending(false);
+    }
+  };
+  return (
+    <button
+      onClick={onClick}
+      disabled={pending}
+      className={
+        "inline-flex items-center font-[inherit] text-[10px] " +
+        "font-semibold uppercase tracking-[0.12em] px-2 py-1 cursor-pointer " +
+        "border border-line bg-transparent text-dim leading-none " +
+        "hover:border-fg hover:text-fg transition-colors duration-100 " +
+        "disabled:opacity-50 disabled:cursor-not-allowed"
+      }
+      title="Mark every chore in this group done"
+    >
+      All taken care of
+    </button>
   );
 }
 
@@ -598,6 +788,7 @@ function SelectedSiteView({
               /
               {grouped.siteScopedAll.length} done
             </span>
+            <AllDoneButton chores={grouped.siteScopedAll} completions={completions} />
           </header>
           <ul className="m-0 p-0 list-none">
             {grouped.siteScopedAll.map(c => (
@@ -620,6 +811,7 @@ function SelectedSiteView({
                 <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
                   {completed}/{chores.length} done
                 </span>
+                <AllDoneButton chores={chores} completions={completions} />
               </header>
               {chores.length === 0 ? (
                 <div className="text-faint text-[11px] italic px-4 py-3">
@@ -697,29 +889,6 @@ function ChoreCheckRow({ chore, location, completions }) {
 }
 
 // ── Pieces ────────────────────────────────────────────────────────────
-function SundownPill({ info }) {
-  const Icon = info.kind === "sunset" ? Sunset : Sunrise;
-  const verb = info.kind === "sunset" ? "sunset" : "sunup";
-  let label;
-  if (info.delta <= 0) {
-    label = `${verb}`;
-  } else if (info.delta < 60) {
-    label = `${verb} in ${Math.round(info.delta)}m`;
-  } else {
-    const h = Math.floor(info.delta / 60);
-    const m = Math.round(info.delta % 60);
-    label = m === 0
-      ? `${verb} in ${h}h`
-      : `${verb} in ${h}h ${m}m`;
-  }
-  return (
-    <span className="inline-flex items-center gap-1.5 bg-surface-alt border border-line px-2 py-1 text-[11px] text-dim font-semibold uppercase tracking-[0.08em] leading-none">
-      <Icon size={12} className="shrink-0" />
-      <span>{label}</span>
-    </span>
-  );
-}
-
 function CloseButton({ onClose }) {
   return (
     <button

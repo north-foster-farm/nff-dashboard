@@ -7,8 +7,10 @@
 --     null and keep working unchanged.
 --
 --   * activity_log_condition_states — child rows for the multi-select
---     Condition quick action. One activity_log row per "condition
---     observation," N child rows for the chips picked.
+--     MASH-intake quick action. One activity_log row per intake,
+--     N child rows for the chips picked. (Originally named for the
+--     pre-Batch-10 "Condition" framing; kept the same physical table
+--     so the data migration is just a kind-name change.)
 --
 --   * log_run_event RPC — security definer wrapper that inserts into
 --     activity_log + the optional child table in a single transaction.
@@ -36,9 +38,9 @@ create index if not exists activity_log_location_idx
 
 
 -- ── activity_log_condition_states ────────────────────────────────────
--- One row per condition chip selected on a `condition_observed` entry.
--- Cascades on parent delete so removing the activity_log row cleans up
--- its chips automatically.
+-- One row per chip selected on a `mash_intake` entry. Cascades on
+-- parent delete so removing the activity_log row cleans up its chips
+-- automatically.
 create table if not exists public.activity_log_condition_states (
   id uuid primary key default gen_random_uuid(),
   activity_log_id uuid not null
@@ -68,7 +70,7 @@ create policy alcs_read on public.activity_log_condition_states
 -- transaction. Returns the new activity_log id so the UI can do
 -- optimistic-style follow-ups if it wants to.
 --
--- Conditions array is only meaningful when kind = 'condition_observed';
+-- Conditions array is only meaningful when kind = 'mash_intake';
 -- for any other kind it's ignored.
 create or replace function public.log_run_event(
   p_kind text,
@@ -106,7 +108,7 @@ begin
      p_run_id, p_site_id, p_location_id)
   returning id into new_id;
 
-  if p_kind = 'condition_observed' and p_conditions is not null then
+  if p_kind = 'mash_intake' and p_conditions is not null then
     foreach c in array p_conditions loop
       if c is not null and btrim(c) <> '' then
         insert into public.activity_log_condition_states

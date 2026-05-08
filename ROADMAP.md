@@ -534,6 +534,80 @@ batch: Brooder #1 → MASH ward") and `infra_swept` ("swept Mobile
 coops — all taken care of" or per-item count). The tray now has
 five buttons: Note, Condition, Mortality, Move, Sweep.
 
+### Batch 10 — Chores polish · `v0.10.1-alpha`
+2026-05-07. Cleanup pass on the chores layer landed across migrations
+0008–0010 (amended in place per the pre-production rule — DB resets
+expected) plus React-side rewrites of Rounds, the Today tab, the
+Blocks editor, and the quick-actions tray.
+
+**Block model: start + duration.** Dropped `end_kind` /
+`end_minutes`; added `duration_minutes` (default 120). Editor
+collapses to one start picker (Time / Sunrise / Sunset segmented
+control) plus a number-of-minutes input. End is derived as start +
+duration everywhere it gets rendered or compared. `validateBlockWindow`
++ `isOverran` + `nextBlock` all updated to the new shape. Rounds
+status-bar pill now reads "Morning · 2h" rather than "6 AM – 8 AM."
+The Rounds-internal sundown / sunup pill goes away — the
+dashboard's existing `SunCountdownPill` already covers that need.
+
+**`chore_groups` retired.** Dropped the `chore_groups` /
+`chore_group_members` tables, the `auto_expand_chore_groups`
+preference column, the Groups tab on the Chores page, the
+`useChoreGroups` hook, and the dnd-kit reorder UI that was specific
+to the groups surface. Today-tab partitions by block only now —
+site- and block-driven groupings already cover the use case the
+manual groups served. ~70KB drop in client JS as dnd-kit went with
+it.
+
+**MASH rename + Other field.** Activity-log kind `condition_observed`
+→ `mash_intake` everywhere (RPC, useRunEvents, useActivityLog
+renderer, Observations filter chip). Tray button reads "MASH"; chip
+sheet header reads "Why move to MASH"; renderer line reads
+"moved to MASH — listless, off-feed" instead of "flagged listless,
+off-feed." New chip "Other" appended to the chip set; ticking it
+reveals a textarea, and the trimmed text rides in `payload.other_text`.
+Submit button reads "Move to MASH (N)" with the picked-chip count.
+
+**Mortality: any cohort under General.** When the SitePicker is in
+its General state (no site, no location), the cohort dropdown
+widens from "residents at this location" to every active
+`livestock_groups` row. The empty-state copy switches to match.
+
+**Move + Sweep retired from the bottom rail.** MoveSheet and
+SweepSheet deleted from `QuickActionsTray`; cohort moves resurface
+as planned events when the Events overhaul lands (Batch 13). The
+tray drops to three buttons: Note, MASH, Mortality. The
+`onAssignResident` prop and `ArrowRightLeft` / `Wrench` lucide
+imports go with them.
+
+**Sweep folded into Rounds main UI.** New `AllDoneButton` on every
+section header in the doing surface (per-site in AllSitesView, the
+"Anywhere in <site>" header in SelectedSiteView, and per-location
+in SelectedSiteView). Tap = bulk-tick every undone chore in that
+section through the existing `chore_completions.toggle` path so the
+realtime contention + auto-derive-done flow stays intact. No new
+RPCs; the `infra_swept` activity_log kind stops being emitted.
+
+**Previous rounds + launch-out-of-block + cancel-current.**
+`useChoreRuns` now pulls a 7-day rolling window (today + history),
+exposes `historicalRuns` separately from today's `runs`, and gains
+a `cancelRun(runId)` mutation. The chore_runs state check
+constraint added a `'canceled'` value. Cold-open screen restructured
+into a scrollable column: the natural-next-block CTA at the top, an
+"Or pick a different block" picker below (every active block other
+than the suggested one, ordered by today's start time, tagged
+"done today" / "canceled today" where applicable), then a
+"Recent rounds" list of today's done/canceled + recent days with a
+Resume action on done runs. DoingSurface header gets a Cancel
+affordance with a confirm prompt — flips state to `canceled`,
+preserves `ended_at`, lands the user back on cold open.
+
+**Out of scope — deferred to Batch 11.** The "(N days remaining)"
+pill + bottom-grouping for anytime / multi-day chores. The math
+depends on the last-chance-block setting that ships in Batch 11
+alongside the Performance sub-tab and chore-window deadlines, so
+this rides with that batch.
+
 ---
 
 ## Upcoming
@@ -595,50 +669,6 @@ Highlights:
   to populate, but the modifier-conflict UI ships with the
   Processes batch (now Batch 19) since it has nothing to render
   until then.
-
-### Batch 10 — Chores polish (Rounds tweaks + block model)
-Cleanup batch absorbing the deferred 8.x scope from the
-2026-05-07 roadmap-updates review. No new tables, one migration
-amendment to `0009`. Pre-production phase — DB resets are
-expected, so the existing migration gets edited in place rather
-than chained.
-
-- **Block model: start + duration.** Drop `end_kind` /
-  `end_minutes`. Each block becomes a sun-or-clock start plus a
-  `duration_minutes` int; end is derived. Editor collapses to
-  one start picker + a duration input.
-- **MASH rename.** "Condition" everywhere becomes "MASH" — the
-  chip sheet on Rounds, the activity-feed renderer, the
-  Observation Log filter chip. The conceptual shift: ticking a
-  chip means "I moved this bird to the MASH unit because X,"
-  not just "I observed X." Free-text "Other" field added to the
-  chip sheet for arbitrary descriptors.
-- **Mortality: any cohort under General.** When General is the
-  scope, the cohort dropdown widens from "residents at this
-  location" to every active `livestock_groups` row.
-- **Move button removed from Rounds bottom rail.** Cohort moves
-  are planned events, not run-time quick actions; the
-  functionality survives via the upcoming Events overhaul.
-- **Sweep folded into main Rounds UI.** Drop the sweep button;
-  add per-site "All taken care of" affordances on the doing
-  surface so a kind-level sweep is just a bulk-tick over its
-  per-instance chips. Still emits `infra_swept` to
-  `activity_log`.
-- **Anytime / multi-day chores grouped at bottom.** Chores not
-  yet within their last-chance window get a "(N days remaining)"
-  pill and sink to the bottom of the chore list, ordered
-  soonest-first then alphabetical inside each subgroup. Pairs
-  with the last-chance-block setting that ships in Batch 11.
-- **Previous rounds + launch-out-of-block + cancel-current.**
-  Rounds gains a "Previous rounds" affordance to view past
-  runs, the ability to start a run for a block that isn't its
-  natural firing window, and a cancel-current action for a run
-  that should be torn down rather than completed.
-- **`chore_groups` retired.** The Today-tab group accordions
-  are redundant with site- and block-driven partitioning. Drop
-  the table, drop the UI partition, drop the Settings toggle.
-  Any spans-sites-and-blocks intent gets revisited via
-  search/filters later if it actually surfaces.
 
 ### Batch 11 — Chores notifications + Performance + chore-window deadlines
 Web push (PWA + service worker — may need to pull forward from

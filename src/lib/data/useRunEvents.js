@@ -3,12 +3,12 @@ import { supabase } from "../supabase.js";
 
 // Run Events live in `activity_log` (typed rows tagged with run_id +
 // site/location context) plus the `activity_log_condition_states`
-// child table for the multi-select Condition action. Quick actions in
-// Rounds write through `logRunEvent` which calls the SECURITY DEFINER
-// RPC `log_run_event`. The activity feed picks them up via the same
-// realtime subscription that powers `useActivityLog`.
+// child table for the multi-select MASH-intake action. Quick actions
+// in Rounds write through `logRunEvent` which calls the SECURITY
+// DEFINER RPC `log_run_event`. The activity feed picks them up via
+// the same realtime subscription that powers `useActivityLog`.
 //
-// `recentConditionsByLocation` lets the Condition sheet flag repeat
+// `recentConditionsByLocation` lets the MASH sheet flag repeat
 // observations ("Brooder #1: 2 off-feed calls in the last 7 days").
 // It's a small lookup keyed by location_id over the last 7 days.
 
@@ -19,8 +19,8 @@ export function useRunEvents() {
   const [recent, setRecent] = useState(null); // condition rows w/ chips
   const [error, setError] = useState(null);
 
-  // Load the rolling 7-day window of condition_observed rows + their
-  // chip child rows. Small enough that we hand-stitch in JS.
+  // Load the rolling 7-day window of mash_intake rows + their chip
+  // child rows. Small enough that we hand-stitch in JS.
   useEffect(() => {
     let cancelled = false;
     const since = new Date(
@@ -31,7 +31,7 @@ export function useRunEvents() {
       supabase
         .from("activity_log")
         .select("id, occurred_at, location_id, site_id")
-        .eq("kind", "condition_observed")
+        .eq("kind", "mash_intake")
         .gte("occurred_at", since),
       supabase
         .from("activity_log_condition_states")
@@ -75,7 +75,7 @@ export function useRunEvents() {
           supabase
             .from("activity_log")
             .select("id, occurred_at, location_id, site_id")
-            .eq("kind", "condition_observed")
+            .eq("kind", "mash_intake")
             .gte("occurred_at", since),
           supabase
             .from("activity_log_condition_states")
@@ -107,7 +107,7 @@ export function useRunEvents() {
         { event: "*", schema: "public", table: "activity_log" },
         (payload) => {
           const row = payload.new ?? payload.old;
-          if (row?.kind === "condition_observed") refresh();
+          if (row?.kind === "mash_intake") refresh();
         }
       )
       .on(

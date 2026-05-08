@@ -208,11 +208,19 @@ function summarize(row) {
       const trimmed = text.length > 80 ? text.slice(0, 77) + "…" : text;
       return `noted: ${trimmed}`;
     }
-    case "condition_observed": {
-      const states = Array.isArray(p.states) && p.states.length > 0
-        ? p.states.join(", ").toLowerCase()
-        : "a condition";
-      return `flagged ${states}`;
+    case "mash_intake": {
+      const otherText = typeof p.other_text === "string"
+        ? p.other_text.trim()
+        : "";
+      const chipStates = Array.isArray(p.states)
+        ? p.states.filter((s) => s !== "Other")
+        : [];
+      const reasons = [
+        ...chipStates.map((s) => s.toLowerCase()),
+        ...(otherText ? [otherText] : []),
+      ];
+      const why = reasons.length > 0 ? reasons.join(", ") : "a condition";
+      return `moved to MASH — ${why}`;
     }
     case "mortality_observed": {
       const count = Number(p.count) || 1;

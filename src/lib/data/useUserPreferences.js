@@ -11,9 +11,7 @@ import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 //     whenever the user toggles a setting.
 //
 // Returned shape:
-//   { theme, density, autoExpandChoreGroups,
-//     setTheme, setDensity, setAutoExpandChoreGroups,
-//     loading, error }
+//   { theme, density, setTheme, setDensity, loading, error }
 //
 // Setters are optimistic — they update React state + localStorage + the
 // `data-theme` / `data-density` attributes synchronously, then fire an
@@ -22,10 +20,6 @@ import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 const DEFAULT_PREFS = {
   theme: "dark",
   density: "compact",
-  // Chore groups stay collapsed by default — the schedule reads cleaner
-  // with one row per group. Users who want them expanded by default can
-  // flip it in Settings.
-  autoExpandChoreGroups: false,
 };
 
 const VALID_THEMES = new Set(["dark", "light"]);
@@ -35,11 +29,9 @@ function readLocalPrefs() {
   if (typeof localStorage === "undefined") return DEFAULT_PREFS;
   const theme = localStorage.getItem("nff-theme");
   const density = localStorage.getItem("nff-density");
-  const autoRaw = localStorage.getItem("nff-auto-expand-chore-groups");
   return {
     theme: VALID_THEMES.has(theme) ? theme : DEFAULT_PREFS.theme,
     density: VALID_DENSITIES.has(density) ? density : DEFAULT_PREFS.density,
-    autoExpandChoreGroups: autoRaw == null ? DEFAULT_PREFS.autoExpandChoreGroups : autoRaw === "true",
   };
 }
 
@@ -47,10 +39,6 @@ function writeLocalPrefs(prefs) {
   try {
     localStorage.setItem("nff-theme", prefs.theme);
     localStorage.setItem("nff-density", prefs.density);
-    localStorage.setItem(
-      "nff-auto-expand-chore-groups",
-      String(prefs.autoExpandChoreGroups)
-    );
   } catch {}
 }
 
@@ -64,7 +52,6 @@ function rowToPrefs(row) {
   return {
     theme: VALID_THEMES.has(row.theme) ? row.theme : DEFAULT_PREFS.theme,
     density: VALID_DENSITIES.has(row.density) ? row.density : DEFAULT_PREFS.density,
-    autoExpandChoreGroups: row.auto_expand_chore_groups === false ? false : true,
   };
 }
 
@@ -73,7 +60,6 @@ function prefsToRow(email, prefs) {
     user_email: email,
     theme: prefs.theme,
     density: prefs.density,
-    auto_expand_chore_groups: prefs.autoExpandChoreGroups,
   };
 }
 
@@ -106,7 +92,7 @@ export function useUserPreferences() {
     (async () => {
       const { data, error: selectErr } = await supabase
         .from("user_preferences")
-        .select("theme, density, auto_expand_chore_groups")
+        .select("theme, density")
         .eq("user_email", email)
         .maybeSingle();
       if (cancelled) return;
@@ -185,16 +171,11 @@ export function useUserPreferences() {
 
   const setTheme = useCallback((theme) => update({ theme }), [update]);
   const setDensity = useCallback((density) => update({ density }), [update]);
-  const setAutoExpandChoreGroups = useCallback(
-    (autoExpandChoreGroups) => update({ autoExpandChoreGroups }),
-    [update]
-  );
 
   return {
     ...prefs,
     setTheme,
     setDensity,
-    setAutoExpandChoreGroups,
     loading,
     error,
   };

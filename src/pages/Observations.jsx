@@ -5,17 +5,16 @@ import { useSites } from "../lib/data/useSites.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 
 // The Observation Log. A focused window into the activity_log rows that
-// originate from Rounds quick-actions: notes, conditions, mortality,
-// cohort moves, and infrastructure sweeps. Filterable by kind, site,
-// date range, and author. No new table — the source of truth is the
-// activity_log, with the same edit/delete affordances Activity has.
+// originate from Rounds quick-actions: notes, MASH intakes, mortality,
+// and cohort moves. Filterable by kind, site, date range, and author.
+// No new table — the source of truth is the activity_log, with the
+// same edit/delete affordances Activity has.
 
 const OBSERVATION_KINDS = [
   { id: "note_observed", label: "Notes" },
-  { id: "condition_observed", label: "Conditions" },
+  { id: "mash_intake", label: "MASH" },
   { id: "mortality_observed", label: "Mortality" },
   { id: "cohort_moved", label: "Moves" },
-  { id: "infra_swept", label: "Sweeps" },
 ];
 
 const OBSERVATION_KIND_IDS = OBSERVATION_KINDS.map(k => k.id);

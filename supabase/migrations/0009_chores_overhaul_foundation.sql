@@ -19,10 +19,10 @@
 --                        quick actions in Rounds (Batch 8).
 --
 --   chore_blocks       — named time windows (Morning, Afternoon,
---                        Evening, Mid-day…). Start and end can each
---                        be a fixed clock time, sunrise, or sunset.
---                        Editing a block propagates to every chore
---                        in it.
+--                        Evening, Mid-day…). Each block has a start
+--                        (a fixed clock time, sunrise, or sunset)
+--                        and a duration; end is derived. Editing a
+--                        block propagates to every chore in it.
 --
 --   chore_modifiers    — date-bound overrides on a chore. Schema
 --                        ships now so Processes (Batch 16) can
@@ -34,9 +34,8 @@
 --
 -- Plus chore_definitions gains site_id, location_id, block_id,
 -- sort_order. Backfill maps the legacy `category` text values to
--- seeded site rows, the legacy `period` text values to block_id, and
--- pulls sort_order from chore_group_members. The old `category` and
--- `period` columns stay in place for now.
+-- seeded site rows and the legacy `period` text values to block_id.
+-- The old `category` and `period` columns stay in place for now.
 
 -- ── sites ─────────────────────────────────────────────────────────────
 create table if not exists public.sites (
@@ -180,11 +179,12 @@ create trigger site_residents_updated_at
 
 
 -- ── chore_blocks ──────────────────────────────────────────────────────
--- Named time windows. start_minutes / end_minutes are minutes-of-day
--- (0..1439) only meaningful when the corresponding *_kind = 'fixed'.
--- start_kind / end_kind = 'sunrise' or 'sunset' resolves to the
--- actual sunrise / sunset for the date at runtime (computed on the
--- client via suncalc).
+-- Named time windows. The block has a single start (clock time or
+-- sun event) and a duration. End is derived as start + duration at
+-- render time. start_minutes is minutes-of-day (0..1439) only
+-- meaningful when start_kind = 'fixed'; sunrise / sunset resolve to
+-- actual sunrise / sunset for the date at runtime (client-side via
+-- suncalc).
 create table if not exists public.chore_blocks (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -192,18 +192,15 @@ create table if not exists public.chore_blocks (
     check (start_kind in ('fixed', 'sunrise', 'sunset')),
   start_minutes int
     check (start_minutes is null or (start_minutes >= 0 and start_minutes <= 1439)),
-  end_kind text not null default 'fixed'
-    check (end_kind in ('fixed', 'sunrise', 'sunset')),
-  end_minutes int
-    check (end_minutes is null or (end_minutes >= 0 and end_minutes <= 1439)),
+  duration_minutes int not null default 120
+    check (duration_minutes > 0 and duration_minutes <= 1440),
   sort_order int not null default 0,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   -- Fixed kinds need their minutes; sunrise/sunset can leave them null.
   constraint chore_blocks_fixed_needs_minutes check (
-    (start_kind <> 'fixed' or start_minutes is not null) and
-    (end_kind <> 'fixed' or end_minutes is not null)
+    start_kind <> 'fixed' or start_minutes is not null
   )
 );
 
@@ -306,7 +303,7 @@ create table if not exists public.chore_runs (
     references public.chore_blocks(id) on delete cascade,
   run_date date not null,
   state text not null default 'scheduled'
-    check (state in ('scheduled', 'in_progress', 'done')),
+    check (state in ('scheduled', 'in_progress', 'done', 'canceled')),
   started_at timestamptz,
   ended_at timestamptz,
   started_by_email text,
@@ -384,11 +381,11 @@ create index if not exists chore_definitions_block_idx
 -- the Chores page. Seed values don't matter much — what matters is
 -- having something here so the existing `period` column has a target
 -- to backfill against.
-insert into public.chore_blocks (id, name, start_kind, start_minutes, end_kind, end_minutes, sort_order)
+insert into public.chore_blocks (id, name, start_kind, start_minutes, duration_minutes, sort_order)
 values
-  (gen_random_uuid(), 'Morning',   'fixed', 360,  'fixed', 480,  1),  -- 06:00 – 08:00
-  (gen_random_uuid(), 'Afternoon', 'fixed', 780,  'fixed', 900,  2),  -- 13:00 – 15:00
-  (gen_random_uuid(), 'Evening',   'fixed', 1020, 'fixed', 1140, 3)   -- 17:00 – 19:00
+  (gen_random_uuid(), 'Morning',   'fixed', 360,  120, 1),  -- 06:00, 2h
+  (gen_random_uuid(), 'Afternoon', 'fixed', 780,  120, 2),  -- 13:00, 2h
+  (gen_random_uuid(), 'Evening',   'fixed', 1020, 120, 3)   -- 17:00, 2h
 on conflict do nothing;
 
 
@@ -448,14 +445,6 @@ set block_id = b.id
 from public.chore_blocks b
 where cd.block_id is null
   and lower(cd.period) = lower(b.name);
-
-
--- ── backfill: chore_definitions.sort_order from chore_group_members ───
-update public.chore_definitions cd
-set sort_order = m.sort_order
-from public.chore_group_members m
-where m.chore_id = cd.id
-  and cd.sort_order = 0;
 
 
 -- ── Realtime ──────────────────────────────────────────────────────────

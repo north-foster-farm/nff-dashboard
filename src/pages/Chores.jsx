@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   Plus, Search, Copy, Pencil, Trash2, ChevronDown, ChevronRight,
-  CheckCheck
 } from "lucide-react";
 import { T } from "../theme.js";
 import {
@@ -12,8 +11,6 @@ import {
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
-import { useChoreGroups } from "../lib/data/useChoreGroups.js";
-import { useUserPreferences } from "../lib/data/useUserPreferences.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useSites } from "../lib/data/useSites.js";
 import {
@@ -21,7 +18,6 @@ import {
 } from "../lib/data/useChoreBlocks.js";
 import { displayBlockSide, resolveBlockMinutes } from "../lib/sunTimes.js";
 import ActivityRow from "../components/ActivityRow.jsx";
-import ChoreGroupsTab from "../components/ChoreGroupsTab.jsx";
 import ChoresBlocksTab from "../components/ChoresBlocksTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 
@@ -31,7 +27,6 @@ import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 const TABS = [
   { id: "today", label: "Today" },
   { id: "all", label: "All chores" },
-  { id: "groups", label: "Groups" },
   { id: "blocks", label: "Blocks" },
   { id: "activity", label: "Activity log" }
 ];
@@ -50,7 +45,6 @@ export default function Chores({ data }) {
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === "today" && <TodayTab data={data} currentUser={currentUser} onChangeUser={setCurrentUser} />}
       {tab === "all" && <AllChoresTab data={data} />}
-      {tab === "groups" && <ChoreGroupsTab data={data} />}
       {tab === "blocks" && <ChoresBlocksTab />}
       {tab === "activity" && <ActivityLogTab data={data} />}
     </div>
@@ -103,40 +97,19 @@ function TodayTab({ data, currentUser, onChangeUser }) {
     scope === "all" || i.assignee == null || i.assignee === currentUser
   );
 
-  // Chore-group lookup so we can split chores into group accordions vs.
-  // remaining period buckets.
-  const { groups: choreGroups, groupByChoreId } = useChoreGroups();
   const userEmail = useCurrentUserEmail();
-  const { autoExpandChoreGroups } = useUserPreferences();
   // Block-aware period labels: "Morning · 6 AM" comes from the
   // configured Morning block, so editing the block window in
   // Settings → Sites & blocks updates every chore display in one
   // shot. Falls back to instance-derived times when no block matches.
   const { blocks } = useChoreBlocks();
 
-  // Partition instances: anything that lives in a chore group goes into
-  // its accordion; the rest fall through to the period-bucket layout.
-  const { byGroup, ungrouped } = useMemo(() => {
-    const byGroup = new Map();
-    const ungrouped = [];
-    for (const inst of visible) {
-      const g = groupByChoreId.get(inst.chore.id);
-      if (g) {
-        if (!byGroup.has(g.id)) byGroup.set(g.id, { group: g, instances: [] });
-        byGroup.get(g.id).instances.push(inst);
-      } else {
-        ungrouped.push(inst);
-      }
-    }
-    return { byGroup, ungrouped };
-  }, [visible, groupByChoreId]);
-
-  // Group ungrouped chores by their block_id (the new schema), with
-  // a single "" bucket for chores that have no block (anytime).
-  // Order blocks by today's resolved start time so sun-event blocks
-  // land where they actually fall on the clock.
+  // Group instances by their block_id (the new schema), with a single
+  // "" bucket for chores that have no block (anytime). Order blocks by
+  // today's resolved start time so sun-event blocks land where they
+  // actually fall on the clock.
   const blockGroups = new Map();
-  for (const inst of ungrouped) {
+  for (const inst of visible) {
     const key = inst.chore.blockId ?? "";
     if (!blockGroups.has(key)) blockGroups.set(key, []);
     blockGroups.get(key).push(inst);
@@ -151,14 +124,6 @@ function TodayTab({ data, currentUser, onChangeUser }) {
     const sb = bb ? (resolveBlockMinutes(today, bb.startKind, bb.startMinutes) ?? 9999) : 9999;
     return sa - sb;
   });
-
-  // Order chore-groups by their schema sort_order, then name.
-  const orderedChoreGroups = useMemo(
-    () => choreGroups
-      .filter((g) => byGroup.has(g.id))
-      .map((g) => byGroup.get(g.id)),
-    [choreGroups, byGroup]
-  );
 
   const dateLabel = today.toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric"
@@ -175,18 +140,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   // each TodayChoreRow as props — see PeriodGroup → TodayChoreRow below.
   const { completedSet, toggle: toggleCompletion } = useChoreCompletions(today);
 
-  // Bulk-complete a chore-group's instances. Iterates `toggle` per-chore
-  // because the underlying toggle handles optimistic UI + realtime echo.
-  const markGroupComplete = useCallback(async (instancesInGroup) => {
-    for (const inst of instancesInGroup) {
-      if (!completedSet?.has(inst.chore.id)) {
-        // eslint-disable-next-line no-await-in-loop
-        await toggleCompletion(inst.chore.id, false);
-      }
-    }
-  }, [completedSet, toggleCompletion]);
-
-  const isEmpty = orderedChoreGroups.length === 0 && orderedBlockKeys.length === 0;
+  const isEmpty = orderedBlockKeys.length === 0;
 
   return (
     <div ref={setWidthRef}>
@@ -205,23 +159,6 @@ function TodayTab({ data, currentUser, onChangeUser }) {
         </EmptyCard>
       )}
 
-      {/* Chore-group accordions render first — they're the user's preferred
-          grouping. Period buckets below pick up anything that hasn't been
-          assigned to a group yet. */}
-      {orderedChoreGroups.map(({ group, instances: gInstances }) => (
-        <ChoreGroupAccordion
-          key={group.id}
-          group={group}
-          instances={gInstances}
-          cols={cols}
-          completedSet={completedSet}
-          onToggle={toggleCompletion}
-          onMarkAll={() => markGroupComplete(gInstances)}
-          defaultOpen={autoExpandChoreGroups}
-          currentUserEmail={userEmail}
-        />
-      ))}
-
       {orderedBlockKeys.map(blockKey => {
         const block = blockKey ? blocks.find(b => b.id === blockKey) : null;
         return (
@@ -236,86 +173,6 @@ function TodayTab({ data, currentUser, onChangeUser }) {
           />
         );
       })}
-    </div>
-  );
-}
-
-function ChoreGroupAccordion({
-  group, instances, cols, completedSet, onToggle, onMarkAll, defaultOpen,
-  currentUserEmail,
-}) {
-  const [open, setOpen] = useState(!!defaultOpen);
-  const completedCount = useMemo(
-    () => instances.filter(i => completedSet?.has(i.chore.id)).length,
-    [instances, completedSet]
-  );
-  const allDone = instances.length > 0 && completedCount === instances.length;
-
-  // Earliest start time across the group's chores firing today, for the
-  // header time label.
-  const timeLabel = useMemo(() => {
-    let earliest = null;
-    for (const inst of instances) {
-      const t = inst.chore.startTime;
-      if (!t) continue;
-      if (!earliest || t.localeCompare(earliest) < 0) earliest = t;
-    }
-    if (!earliest) return "";
-    const [h, m] = earliest.split(":").map(Number);
-    const ampm = h >= 12 ? "PM" : "AM";
-    const h12 = ((h + 11) % 12) + 1;
-    return m === 0 ? `${h12} ${ampm}` : `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
-  }, [instances]);
-
-  return (
-    <div className="mb-6 border border-line bg-surface">
-      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
-        <button
-          onClick={() => setOpen(o => !o)}
-          aria-label={open ? "Collapse group" : "Expand group"}
-          className="text-muted hover:text-fg p-1 cursor-pointer bg-transparent border-0"
-        >
-          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </button>
-        <button
-          onClick={() => setOpen(o => !o)}
-          className="font-ui text-[13px] text-fg uppercase tracking-[0.14em] font-bold bg-transparent border-0 p-0 cursor-pointer text-left"
-        >
-          {group.name}
-        </button>
-        {timeLabel && (
-          <span className="text-[12px] text-dim">{timeLabel}</span>
-        )}
-        <span className="ml-auto text-[11px] text-muted uppercase tracking-[0.12em] font-semibold">
-          {completedCount}/{instances.length} done
-        </span>
-        <button
-          onClick={onMarkAll}
-          disabled={allDone}
-          title={allDone ? "All done" : "Mark all complete"}
-          className="inline-flex items-center gap-1.5 bg-transparent border border-line text-fg font-[inherit] text-[11px] font-semibold px-2 py-1 cursor-pointer uppercase tracking-[0.12em] hover:bg-row-hover disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <CheckCheck size={12} />
-          Mark all
-        </button>
-      </header>
-      {open && (
-        <div className="p-3">
-          <ColumnList
-            items={instances}
-            cols={cols}
-            keyFor={inst => inst.choreId}
-            renderItem={inst => (
-              <TodayChoreRow
-                inst={inst}
-                done={completedSet?.has(inst.chore.id) ?? false}
-                onToggle={onToggle}
-                currentUserEmail={currentUserEmail}
-              />
-            )}
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -1178,7 +1035,7 @@ function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }
           <option value="">— anytime —</option>
           {activeBlocks.map(b => (
             <option key={b.id} value={b.id}>
-              {b.name} · {displayBlockSide(b.startKind, b.startMinutes)}–{displayBlockSide(b.endKind, b.endMinutes)}
+              {b.name} · {displayBlockSide(b.startKind, b.startMinutes)}
             </option>
           ))}
         </select>

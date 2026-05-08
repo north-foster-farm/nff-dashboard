@@ -3,27 +3,30 @@ import { supabase } from "../supabase.js";
 import { resolveBlockMinutes } from "../sunTimes.js";
 
 // Loads chore_blocks and exposes CRUD for the Blocks tab on the
-// Chores page. A block's start and end can each be 'fixed' (a clock
-// time stored as minutes-of-day), 'sunrise', or 'sunset'. Sunrise /
-// sunset are resolved per-day at render time.
+// Chores page. A block has a start (fixed clock time, sunrise, or
+// sunset) and a duration; end is derived as start + duration. The
+// start-side sun events are resolved per-day at render time.
 //
 // Returned shape:
 //   {
-//     blocks: [{ id, name, startKind, startMinutes, endKind,
-//                endMinutes, sortOrder, isActive }],
+//     blocks: [{ id, name, startKind, startMinutes,
+//                durationMinutes, sortOrder, isActive }],
 //     blocksOrdered: blocks sorted ascending by today's resolved
 //                    start minutes — what the UI should render,
 //                    rather than the raw sort_order list.
 //     blockById: Map<id, block>,
 //     blockByName: Map<lowercased name, block>,
 //     loading, error,
-//     createBlock({ name, startKind, startMinutes, endKind, endMinutes }) -> block,
+//     createBlock({ name, startKind, startMinutes, durationMinutes }) -> block,
 //     updateBlock(id, patch) -> void,
 //     deleteBlock(id) -> void,                // soft delete
 //   }
 //
 // All mutations apply optimistically to local state first, then
 // persist; on persistence failure we revert.
+
+const SELECT_COLS =
+  "id, name, start_kind, start_minutes, duration_minutes, sort_order, is_active";
 
 export function useChoreBlocks() {
   const instanceId = useId();
@@ -34,7 +37,7 @@ export function useChoreBlocks() {
     let cancelled = false;
     setError(null);
     supabase.from("chore_blocks")
-      .select("id, name, start_kind, start_minutes, end_kind, end_minutes, sort_order, is_active")
+      .select(SELECT_COLS)
       .order("sort_order", { ascending: true })
       .order("start_minutes", { ascending: true })
       .then((res) => {
@@ -53,7 +56,7 @@ export function useChoreBlocks() {
       setTimeout(async () => {
         scheduled = false;
         const res = await supabase.from("chore_blocks")
-          .select("id, name, start_kind, start_minutes, end_kind, end_minutes, sort_order, is_active")
+          .select(SELECT_COLS)
           .order("sort_order", { ascending: true })
           .order("start_minutes", { ascending: true });
         if (!res.error) setBlocks(res.data ?? []);
@@ -72,8 +75,7 @@ export function useChoreBlocks() {
       name: b.name,
       startKind: b.start_kind,
       startMinutes: b.start_minutes,
-      endKind: b.end_kind,
-      endMinutes: b.end_minutes,
+      durationMinutes: b.duration_minutes,
       sortOrder: b.sort_order,
       isActive: b.is_active,
     }));
@@ -95,15 +97,14 @@ export function useChoreBlocks() {
       name,
       startKind = "fixed",
       startMinutes = null,
-      endKind = "fixed",
-      endMinutes = null,
+      durationMinutes = 120,
     } = input;
     if (!name?.trim()) throw new Error("Block needs a name.");
     if (startKind === "fixed" && typeof startMinutes !== "number") {
       throw new Error("Fixed-start blocks need a start time.");
     }
-    if (endKind === "fixed" && typeof endMinutes !== "number") {
-      throw new Error("Fixed-end blocks need an end time.");
+    if (typeof durationMinutes !== "number" || durationMinutes <= 0) {
+      throw new Error("Block needs a positive duration.");
     }
     const sort_order = (blocks ?? []).reduce(
       (m, b) => Math.max(m, b.sort_order), 0
@@ -114,8 +115,7 @@ export function useChoreBlocks() {
         name: name.trim(),
         start_kind: startKind,
         start_minutes: startKind === "fixed" ? startMinutes : null,
-        end_kind: endKind,
-        end_minutes: endKind === "fixed" ? endMinutes : null,
+        duration_minutes: durationMinutes,
         sort_order,
       })
       .select()
@@ -133,10 +133,8 @@ export function useChoreBlocks() {
       dbPatch.start_minutes =
         typeof patch.startMinutes === "number" ? patch.startMinutes : null;
     }
-    if (typeof patch.endKind === "string") dbPatch.end_kind = patch.endKind;
-    if ("endMinutes" in patch) {
-      dbPatch.end_minutes =
-        typeof patch.endMinutes === "number" ? patch.endMinutes : null;
+    if (typeof patch.durationMinutes === "number") {
+      dbPatch.duration_minutes = patch.durationMinutes;
     }
     if (typeof patch.sortOrder === "number") dbPatch.sort_order = patch.sortOrder;
     if (typeof patch.isActive === "boolean") dbPatch.is_active = patch.isActive;
@@ -224,30 +222,41 @@ export function nowAsTimeInput() {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-// Validation: a block window resolves to (startMin, endMin) for
-// today; check no overlap with any other active block. Returns
-// either { ok: true } or { ok: false, reason }.
+// Resolve a block to today's (startMin, endMin) pair.
+// endMin = startMin + durationMinutes, clamped to the same day for
+// overlap-comparison purposes (a block running past midnight wraps,
+// which is fine for display but treated as same-day for overlap).
+export function resolveBlockWindow(date, block) {
+  const start = resolveBlockMinutes(date, block.startKind, block.startMinutes);
+  if (start === null) return null;
+  const end = start + (block.durationMinutes ?? 0);
+  return { start, end };
+}
+
+// Validation: a block's start resolves to startMin for today; the
+// end is start + duration. Reject zero/negative durations and
+// overlap with any other active block. Returns either { ok: true } or
+// { ok: false, reason }.
 export function validateBlockWindow({
-  id, startKind, startMinutes, endKind, endMinutes, allBlocks,
+  id, startKind, startMinutes, durationMinutes, allBlocks,
 }) {
   const today = new Date();
   const start = resolveBlockMinutes(today, startKind, startMinutes);
-  const end = resolveBlockMinutes(today, endKind, endMinutes);
-  if (start === null || end === null) {
+  if (start === null) {
     return { ok: false, reason: "Couldn't resolve sunrise / sunset for today." };
   }
-  if (end <= start) {
-    return { ok: false, reason: "End must be after start." };
+  if (typeof durationMinutes !== "number" || durationMinutes <= 0) {
+    return { ok: false, reason: "Duration must be a positive number of minutes." };
   }
+  const end = start + durationMinutes;
   for (const b of allBlocks) {
     if (b.id === id || !b.isActive) continue;
-    const bStart = resolveBlockMinutes(today, b.startKind, b.startMinutes);
-    const bEnd = resolveBlockMinutes(today, b.endKind, b.endMinutes);
-    if (bStart === null || bEnd === null) continue;
-    if (start < bEnd && end > bStart) {
+    const bWin = resolveBlockWindow(today, b);
+    if (!bWin) continue;
+    if (start < bWin.end && end > bWin.start) {
       return {
         ok: false,
-        reason: `Overlaps "${b.name}" (${bStart < bEnd ? "active" : "active"} window).`,
+        reason: `Overlaps "${b.name}".`,
       };
     }
   }

@@ -12,10 +12,10 @@ import {
   displayBlockSide,
 } from "../lib/data/useChoreBlocks.js";
 
-// Chores → Blocks tab. Named windows of the day. Each side of a
-// block (start, end) can be a fixed clock time, sunrise, or sunset.
-// Sunrise / sunset resolve to actual local times via SunCalc when
-// rendered.
+// Chores → Blocks tab. Named windows of the day. Each block has a
+// start (a fixed clock time, sunrise, or sunset) and a duration; the
+// end is derived. Sunrise / sunset starts resolve to actual local
+// times via SunCalc when rendered.
 
 export default function ChoresBlocksTab() {
   const {
@@ -40,7 +40,9 @@ export default function ChoresBlocksTab() {
       <div className="flex items-start justify-between gap-3 mb-5 flex-wrap">
         <p className="text-[12px] text-dim m-0 max-w-[560px] leading-relaxed">
           Time blocks are named windows of the day chores get grouped
-          into. Editing a block propagates to every chore in it.
+          into. Pick a start (clock time or sun event) and a duration;
+          end is derived. Editing a block propagates to every chore in
+          it.
         </p>
         {!creating && (
           <button
@@ -99,8 +101,8 @@ export default function ChoresBlocksTab() {
               >
                 <span className="line-through flex-1">
                   {b.name} · {displayBlockSide(b.startKind, b.startMinutes)}
-                  {" – "}
-                  {displayBlockSide(b.endKind, b.endMinutes)}
+                  {" for "}
+                  {formatDuration(b.durationMinutes)}
                 </span>
                 <button
                   onClick={() => updateBlock(b.id, { isActive: true })}
@@ -125,8 +127,8 @@ function BlockCard({ block, allBlocks, onUpdate, onDelete }) {
       <div className="bg-surface border border-line flex items-center gap-3 px-3 py-2.5">
         <span className="text-[14px] font-semibold text-fg flex-1">{block.name}</span>
         <SideBadge kind={block.startKind} minutes={block.startMinutes} />
-        <span className="text-[11px] text-faint">to</span>
-        <SideBadge kind={block.endKind} minutes={block.endMinutes} />
+        <span className="text-[11px] text-faint">for</span>
+        <DurationBadge minutes={block.durationMinutes} />
         <button
           onClick={() => setEditing(true)}
           className="text-faint hover:text-fg border-0 bg-transparent cursor-pointer p-1"
@@ -184,8 +186,26 @@ function SideBadge({ kind, minutes }) {
   );
 }
 
-// Shared editor for create + edit. Handles sun-times by swapping
-// between a time input and a labelled badge per side.
+function DurationBadge({ minutes }) {
+  return (
+    <span className="text-[12px] text-dim">{formatDuration(minutes)}</span>
+  );
+}
+
+// "1h 30m" / "45m" / "2h" — short, glanceable.
+function formatDuration(minutes) {
+  if (typeof minutes !== "number" || Number.isNaN(minutes) || minutes <= 0) {
+    return "—";
+  }
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+// Shared editor for create + edit. Start is a sun-or-clock segmented
+// control; duration is a number-of-minutes input.
 function BlockEditor({ block, allBlocks, onCancel, onSave }) {
   const [name, setName] = useState(block?.name ?? "");
   const [startKind, setStartKind] = useState(block?.startKind ?? "fixed");
@@ -194,26 +214,18 @@ function BlockEditor({ block, allBlocks, onCancel, onSave }) {
       ? minutesOfDayToTimeInput(block.startMinutes)
       : ""
   );
-  const [endKind, setEndKind] = useState(block?.endKind ?? "fixed");
-  const [endTime, setEndTime] = useState(
-    block?.endKind === "fixed" && typeof block?.endMinutes === "number"
-      ? minutesOfDayToTimeInput(block.endMinutes)
-      : ""
+  const [durationStr, setDurationStr] = useState(
+    typeof block?.durationMinutes === "number"
+      ? String(block.durationMinutes)
+      : "120"
   );
   const [errorMsg, setErrorMsg] = useState(null);
 
-  const focusStart = startKind === "fixed";
-  const focusEnd = endKind === "fixed";
-
-  // When toggling a side from sun-event to fixed, default to "now"
+  // When toggling start from sun-event to fixed, default to "now"
   // so the input never opens with an empty value.
   const setStartKindAndDefault = (k) => {
     setStartKind(k);
     if (k === "fixed" && !startTime) setStartTime(nowAsTimeInput());
-  };
-  const setEndKindAndDefault = (k) => {
-    setEndKind(k);
-    if (k === "fixed" && !endTime) setEndTime(nowAsTimeInput());
   };
 
   const submit = async () => {
@@ -223,7 +235,6 @@ function BlockEditor({ block, allBlocks, onCancel, onSave }) {
       return;
     }
     let startMinutes = null;
-    let endMinutes = null;
     if (startKind === "fixed") {
       startMinutes = parseMinutesOfDay(startTime);
       if (startMinutes === null) {
@@ -231,17 +242,14 @@ function BlockEditor({ block, allBlocks, onCancel, onSave }) {
         return;
       }
     }
-    if (endKind === "fixed") {
-      endMinutes = parseMinutesOfDay(endTime);
-      if (endMinutes === null) {
-        setErrorMsg("End time isn't valid.");
-        return;
-      }
+    const durationMinutes = parseInt(durationStr, 10);
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+      setErrorMsg("Duration needs to be a positive number of minutes.");
+      return;
     }
     const valid = validateBlockWindow({
       id: block?.id ?? null,
-      startKind, startMinutes,
-      endKind, endMinutes,
+      startKind, startMinutes, durationMinutes,
       allBlocks,
     });
     if (!valid.ok) {
@@ -252,8 +260,7 @@ function BlockEditor({ block, allBlocks, onCancel, onSave }) {
       name: name.trim(),
       startKind,
       startMinutes,
-      endKind,
-      endMinutes,
+      durationMinutes,
     };
     try {
       await onSave(patch);
@@ -296,13 +303,9 @@ function BlockEditor({ block, allBlocks, onCancel, onSave }) {
           onKind={setStartKindAndDefault}
           onTime={setStartTime}
         />
-        <span className="text-[11px] text-faint">to</span>
-        <SideEditor
-          label="End"
-          kind={endKind}
-          time={endTime}
-          onKind={setEndKindAndDefault}
-          onTime={setEndTime}
+        <DurationEditor
+          minutesStr={durationStr}
+          onChange={setDurationStr}
         />
       </div>
 
@@ -313,9 +316,9 @@ function BlockEditor({ block, allBlocks, onCancel, onSave }) {
   );
 }
 
-// One side of a block (start or end). A small segmented control
-// chooses between Time / Sunrise / Sunset; a time input shows when
-// kind is 'fixed' and disappears for sunrise / sunset.
+// Start side of a block. A small segmented control chooses between
+// Time / Sunrise / Sunset; a time input shows when kind is 'fixed'
+// and disappears for sunrise / sunset.
 function SideEditor({ label, kind, time, onKind, onTime }) {
   const options = [
     { id: "fixed",   icon: Clock,   label: "Time" },
@@ -362,6 +365,29 @@ function SideEditor({ label, kind, time, onKind, onTime }) {
           className="bg-surface border border-line text-fg text-[12px] px-2 py-1 outline-none focus:border-accent font-[inherit]"
         />
       )}
+    </div>
+  );
+}
+
+// Duration side of a block. Plain integer input + "min" suffix —
+// fine-grained enough that anyone can express any window length
+// without an h/m parser to maintain.
+function DurationEditor({ minutesStr, onChange }) {
+  return (
+    <div className="inline-flex items-center gap-1.5">
+      <span className="text-[10px] uppercase tracking-[0.12em] text-faint font-semibold">
+        Duration
+      </span>
+      <input
+        type="number"
+        min="1"
+        max="1440"
+        step="5"
+        value={minutesStr}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-[80px] bg-surface border border-line text-fg text-[12px] px-2 py-1 outline-none focus:border-accent font-[inherit]"
+      />
+      <span className="text-[11px] text-faint">min</span>
     </div>
   );
 }

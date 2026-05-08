@@ -27,20 +27,6 @@ const ITEMS = [
       "coop 1, those buttons already know which cohort lives there.",
   },
   {
-    title: "Chores polish",
-    body: "A cleanup pass on the chores work that already shipped. " +
-      "Block windows simplify to \"start time + duration\" so editing " +
-      "one is a two-input affair. \"Condition\" becomes \"MASH\" and " +
-      "the chip sheet reads as \"I moved this bird because X\" with a " +
-      "free-text Other for cases the chips don't cover. Move and Sweep " +
-      "drop off the Rounds bottom rail (Move belongs to the calendar; " +
-      "Sweep is just bulk-tick on the main surface). Anytime chores " +
-      "with later deadlines sink to the bottom of the list with a " +
-      "\"4 days remaining\" pill so the urgent stuff stays on top. " +
-      "Previous-rounds, launch-out-of-block, and cancel-current " +
-      "round out the run lifecycle.",
-  },
-  {
     title: "Chores telemetry + push",
     body: "Push notifications when chores finish (\"AM rounds done · " +
       "1h 12m\" or \"AM rounds done · 1h 47m, overran 22m\"). A new " +
