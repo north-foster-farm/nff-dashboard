@@ -27,15 +27,6 @@ const ITEMS = [
       "coop 1, those buttons already know which cohort lives there.",
   },
   {
-    title: "A working calendar",
-    body: "Day, Week, Month, and Agenda views on one page. Click the " +
-      "month/year header to type where you want to land. Drag events " +
-      "to reschedule. Chore-block windows show as faint amber bands " +
-      "behind the day grid — when a market lands on top of a band, " +
-      "you see the conflict at a glance instead of finding out at 7:55 " +
-      "AM the day of.",
-  },
-  {
     title: "Farm events on your phone",
     body: "A one-way push to Google Calendar puts every market, " +
       "delivery, and processing day in the calendar app on your phone " +

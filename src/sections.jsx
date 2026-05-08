@@ -55,18 +55,22 @@ export const SECTIONS = [
     getCount: (d) => (d.orders ?? []).filter(o => o.status === "open").length },
   { id: "point_of_sale", group: "Sales", label: "Point of sale", icon: Banknote, kind: "action", description: "Record a sale on the spot at a market or event — drains inventory FIFO. Placeholder.", getCount: () => null },
 
-  { id: "events_all", group: "Events", label: "All events", icon: CalendarRange, description: "Every event in chronological order, with type filters and a date-range selector.", getCount: () => null },
-  { id: "events_all_types", group: "Events", label: "Event types", flyoutTitle: "Types of events", icon: Layers, kind: "flyout",
+  { id: "events_all_types", group: "Events", label: "Events", flyoutTitle: "Events", icon: CalendarRange, kind: "flyout",
     children: [
-      // Sorted alphabetically by label.
-      { id: "events_deliveries", label: "Deliveries", icon: Truck, description: "Deliveries to wholesale or restaurant partners. Placeholder." },
+      // First child is the unfiltered Agenda view (replaces the
+      // pre-14.2 "All events" top-level entry).
+      { id: "events_all", label: "All events", icon: CalendarRange, description: "Every event in chronological order — Schedule with the Agenda view selected." },
+      // Per-kind children are saved-filter chip presets — clicking
+      // any of them lands on Schedule with that one kind's filter on
+      // (Batch 14.2; per-kind pages retired). Keep ids in sync with
+      // data.events.kinds[].id (after the `events_` prefix).
+      { id: "events_deliveries", label: "Deliveries", icon: Truck, description: "Deliveries to wholesale or restaurant partners — Schedule filtered to this kind." },
       { id: "events_egg_drop", label: "Egg drop", icon: Package, description: "Off-season egg pickup at the same farmers market site." },
       { id: "events_farmers_market", label: "Farmers markets", icon: Tent, description: "Recurring weekly farmers markets NFF attends during market season." },
-      { id: "events_farm_visits", label: "Farm visits", icon: Users, description: "Visitors coming to the farm. Placeholder." },
-      { id: "events_pickups", label: "Pick-ups", icon: ShoppingBag, description: "Customer pick-ups directly from the farm. Placeholder." },
+      { id: "events_farm_visits", label: "Farm visits", icon: Users, description: "Visitors coming to the farm." },
+      { id: "events_pickups", label: "Pick-ups", icon: ShoppingBag, description: "Customer pick-ups directly from the farm." },
       { id: "events_popup_event", label: "Pop-ups", icon: Sparkles, description: "One-off selling occasions outside the regular weekly schedule." },
-      { id: "events_processing_days", label: "Processing days", icon: Scissors, description: "Broiler-processing day events. Placeholder until process is formalized." }
-      // Note: keep ids in sync with data.events.kinds[].id (after the `events_` prefix).
+      { id: "events_processing_days", label: "Processing days", icon: Scissors, description: "Broiler-processing day events." }
     ]
   },
 

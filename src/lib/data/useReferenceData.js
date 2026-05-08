@@ -362,7 +362,13 @@ async function loadEvents() {
   for (const s of seriesRes.data ?? []) {
     const occurrences = occurrencesBySeries.get(s.id) ?? [];
     const isRecurring = !!s.rrule;
-    const oneOff = !isRecurring ? occurrences[0] : null;
+    // For one-offs the canonical anchor is the first non-skipped
+    // occurrence — drag-to-reschedule (Batch 14.2) can leave the
+    // original row tombstoned `skipped` and a new row at a fresh
+    // date.
+    const oneOff = !isRecurring
+      ? (occurrences.find(o => o?.status !== "skipped") ?? occurrences[0])
+      : null;
     const inst = {
       id: s.id,
       legacyInstanceId: s.legacy_instance_id,

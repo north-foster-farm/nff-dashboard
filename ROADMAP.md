@@ -1046,6 +1046,98 @@ nav restructure to the single "Event types" entry. Processing-
 day workspace at `/events/processing/:id`. Visual conflict-dot
 lint on event-over-block overlap.
 
+### Batch 14.2 — Drag interactions + processing workspace · `v0.10.9-alpha`
+2026-05-08. Closes the Calendar UI rework. Triggers + GCal push
+(Batch 15) and animal-lifecycle pages (Batch 16) are the
+remaining slices of the events overhaul.
+
+**`useEventMutator` hook.** High-level wrapper over
+`useEventOccurrences.upsertOverride` that the calendar views call
+on drop:
+- `moveOccurrence({ seriesId, fromDate, toDate, newStartTime,
+  newEndTime })` — same-date moves upsert the override at the
+  date with the new times. Cross-date moves skip the source
+  (status='skipped' tombstone) and upsert a fresh row at the
+  destination. Recurring + one-off use the same flow because the
+  recurrence reader was extended (in this batch too) to look past
+  skipped rows.
+- `resizeOccurrence({ seriesId, occursOn, newStartTime,
+  newEndTime })` — pure same-day retime.
+
+**Drag-to-reschedule on Day + Week.** New `useRailDrag` hook
+inside `CalendarViews.jsx`. Pointer events ride out to the
+document so a fast drag doesn't lose its pointer when the
+cursor leaves the small event-block hit area. 15-minute snap
+on retime. Cross-column hops on Week view hit-test against
+each column's bounding rect — drop on Thu, the override anchors
+to Thu's date. Visual feedback uses CSS translate on the
+original block; the column packer re-runs after the realtime
+echo.
+
+**Drag-to-resize on Day + Week.** Bottom 8px of every event
+block is a resize hit zone (`cursor-ns-resize`). Dragging it
+extends / shortens the block; minimum length is enforced at the
+SNAP_MIN of 15 minutes.
+
+**Drag-to-reschedule on Month.** Separate `useGridDrag` hook
+walks the 42-cell ref array on pointer up; drop on a different
+cell → `moveOccurrence` with the target ISO date and the
+original times preserved. Hovered target cell gets an accent
+outline; a small floating label follows the cursor while
+dragging.
+
+**Click empty rail / cell → new event.** The Day / Week column
+host element fires its own click only when the click target is
+the host itself (not a bubbled event-block click). Translates
+the cursor's y-position into a snapped HH:MM and seeds the
+EventEditor with `{ mode: 'new', occursOn, startTime }`. Month
+cells do the same with the cell's date and a 9 AM default.
+
+**Conflict-dot lint.** New `bandsOverlapEvent` helper checks
+whether an event's resolved rail rectangle intersects any
+chore-block band on the same date. Day / Week event blocks
+render a small amber dot in the top-right when overlapping —
+the visual cue from the original mockup.
+
+**Recurrence reader robustness.** `expandOneOff` now collects
+every non-skipped occurrence row instead of trusting
+`occurrences[0]`, and `loadEvents` picks the first non-skipped
+occurrence for legacy `instance.date` shaping. Together these
+fix the post-drag display: a one-off whose original row was
+tombstoned `skipped` and whose canonical row moved to a new
+date renders at the new date everywhere.
+
+**Per-kind flyout collapse + nav restructure.** Top-level
+`events_all` removed from the sidebar. The `events_all_types`
+flyout renames to **Events** and now hosts every event-related
+nav target as children:
+- "All events" → Schedule with Agenda view, no filter.
+- Per-kind children → Schedule with that one kind's filter
+  pre-applied. The hosting `<Schedule>` re-mounts on kind
+  change (key={ek.id}) so the filter resets cleanly.
+The standalone `EventKindPage.jsx` is deleted.
+
+**Processing-day workspace** (`/events/processing/:id`). New
+`Processing.jsx` page, reachable only via the EventEditor's
+"Open processing details →" link on `processing_days` kind
+events. Owns four fields stored on `event_series.payload`:
+`cut_sheet`, `packed_crates`, `final_count`, `notes`, plus a
+`resolved` toggle with `resolved_at` timestamp. Saves write
+both the series payload AND the per-occurrence override's
+`payload_override` so per-instance edits survive series-level
+saves.
+
+App.jsx tracks `processingTarget`; setting it replaces the
+section content with the workspace and hides SectionHeader.
+The workspace's Back button clears the target, returning the
+user to whatever they had open.
+
+**Out of scope — deferred to Batch 15 / 16.** Triggers v1
+(feed reorder + broiler-batch lifecycle automations writing
+linked event_links). One-way Google Calendar push with
+`gcal_pushes` audit log. Animal-lifecycle pages with the
+event-link-driven timeline strip.
+
 ---
 
 ## Upcoming
@@ -1151,22 +1243,6 @@ chosen calendar rail at
   (creates arrival event + pasture-move event + processing event
   + cleanout chore on batch creation). Auto rows visually
   flagged with a sparkle icon, dismissable.
-
-### Batch 14.2 — Drag interactions + processing workspace
-Drag-to-reschedule on Day / Week / Month views writes new
-`event_occurrences` overrides (uses the upsertOverride hook from
-13.2). Drag-to-resize on Day view. Click empty time-rail space →
-new event seeded with that hour. Visual conflict-dot lint when
-an event sits on top of a chore-block band. Processing-day kind
-page morphs into a separate workspace at
-`/events/processing/:id` (cut sheet upload, packed-crates
-counter, final-count entry, batch resolution); reachable from
-the EventEditor via an "Open processing details →" link. The
-two events flyouts in `sections.jsx` collapse to one "Event
-types" entry whose children are saved-filter chip presets on
-Schedule.
-
-Ships value: the calendar you actually use day-to-day.
 
 ### Batch 15 — Triggers + GCal push
 `automations` table seeded with two rules. (1) Feed reorder

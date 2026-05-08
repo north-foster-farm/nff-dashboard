@@ -10,7 +10,6 @@ import Chores from "../pages/Chores.jsx";
 import Threads from "../pages/Threads.jsx";
 import Schedule from "../pages/Schedule.jsx";
 import SpeciesPage from "../pages/SpeciesPage.jsx";
-import EventKindPage from "../pages/EventKindPage.jsx";
 import Products from "../pages/Products.jsx";
 import Inventory from "../pages/Inventory.jsx";
 import Trailers from "../pages/Trailers.jsx";
@@ -36,9 +35,16 @@ export default function SectionContent({ section, data, onOpenEvent, onNavigate 
     return <Schedule data={data} onOpenEvent={onOpenEvent} initialView="agenda" />;
   }
   if (section.id.startsWith("events_")) {
+    // Per-kind sidebar children → Schedule with that kind's filter
+    // pre-applied (Batch 14.2). The standalone EventKindPage retired.
     const ek = getEventKindFromSectionId(section.id, data);
     if (!ek) return <ComingSoon featureName={section.label} />;
-    return <EventKindPage kind={ek} data={data} />;
+    return <Schedule
+      data={data}
+      onOpenEvent={onOpenEvent}
+      initialFilter={ek.id}
+      key={ek.id}
+    />;
   }
   switch (section.id) {
     case "overview": return <Overview data={data} onNavigate={onNavigate} />;

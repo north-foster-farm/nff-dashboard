@@ -97,14 +97,21 @@ function expandRecurring(series, kind, fromDate, toDate) {
 }
 
 // Expand a one-off series. Always materialized — the migration
-// pre-creates a single occurrence row.
+// pre-creates a single occurrence row. After a drag-to-reschedule
+// (Batch 14.2), the original row may be tombstoned `skipped` and a
+// new row inserted at the new date — so we walk all non-skipped
+// rows in case the canonical anchor moved.
 function expandOneOff(series, kind, fromDate, toDate) {
-  const ov = (series.occurrences ?? [])[0];
-  if (!ov?.occursOn) return [];
-  if (ov.status === "skipped") return [];
-  const d = parseISODate(ov.occursOn);
-  if (!d || d < fromDate || d > toDate) return [];
-  return [buildEntry(series, kind, ov.occursOn, ov, false)];
+  const live = (series.occurrences ?? []).filter(o =>
+    o?.occursOn && o.status !== "skipped"
+  );
+  const out = [];
+  for (const ov of live) {
+    const d = parseISODate(ov.occursOn);
+    if (!d || d < fromDate || d > toDate) continue;
+    out.push(buildEntry(series, kind, ov.occursOn, ov, false));
+  }
+  return out;
 }
 
 // Compose the legacy display row from series defaults + an optional

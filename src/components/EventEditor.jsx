@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, ArrowUpRight } from "lucide-react";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
 import RecurrenceEditor from "./RecurrenceEditor.jsx";
@@ -29,7 +29,7 @@ import EventScopePrompt from "./EventScopePrompt.jsx";
 // The parent owns nothing beyond passing seed + onClose. All DB
 // reads + writes live in this component via the hooks.
 
-export default function EventEditor({ open, onClose, kinds, seed }) {
+export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessing }) {
   const { series, seriesById, createSeries, updateSeries, deleteSeries, splitSeries } = useEventSeries();
   const { upsertOverride, deleteOverride } = useEventOccurrences();
 
@@ -343,6 +343,17 @@ export default function EventEditor({ open, onClose, kinds, seed }) {
             />
           </Field>
 
+          {!isNew && kindId === "processing_days" && (
+            <button
+              type="button"
+              onClick={() => onOpenProcessing?.({ seriesId: editingSeries?.id, occursOn: date })}
+              className="inline-flex items-center justify-between gap-2 bg-surface border border-line text-fg font-[inherit] text-[12px] font-semibold px-3 py-2 cursor-pointer hover:border-accent"
+            >
+              <span>Open processing details</span>
+              <ArrowUpRight size={14} className="shrink-0" />
+            </button>
+          )}
+
           {errorMsg && (
             <div className="text-[11px] text-warn">{errorMsg}</div>
           )}
@@ -411,7 +422,11 @@ function deriveInitial(seed, series) {
   const today = new Date();
   const todayIso = isoDateLocal(today);
   if (!series) {
-    // New event seed.
+    // New event seed. Seed `startTime` defaults to "09:00" but can be
+    // overridden when the user clicked an empty rail spot — in that
+    // case the parent passes the picked HH:MM and we default the end
+    // to a one-hour block.
+    const seedStart = seed?.startTime ?? "09:00";
     return {
       label: "",
       subtitle: "",
@@ -419,8 +434,8 @@ function deriveInitial(seed, series) {
       locationName: "",
       locationAddress: "",
       date: seed?.occursOn ?? todayIso,
-      startTime: "09:00",
-      endTime: "10:00",
+      startTime: seedStart,
+      endTime: hhmmAfter(seedStart, 60),
       notes: "",
       recurrence: { rrule: null, until: null },
     };

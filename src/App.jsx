@@ -6,6 +6,7 @@ import Sidebar from "./components/Sidebar.jsx";
 import SectionHeader from "./components/SectionHeader.jsx";
 import SectionContent from "./components/SectionContent.jsx";
 import EventEditor from "./components/EventEditor.jsx";
+import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
 
@@ -16,6 +17,11 @@ export default function App({ session }) {
   // EventEditor seed — null when closed; otherwise carries the edit/new
   // mode and (for edits) the seriesId + occurrence date that was clicked.
   const [eventSeed, setEventSeed] = useState(null);
+  // Processing-day workspace state (Batch 14.2). When non-null, the
+  // workspace renders in place of the normal section content. Set by
+  // the EventEditor's "Open processing details →" link; cleared by
+  // the workspace's Back button.
+  const [processingTarget, setProcessingTarget] = useState(null);
   // Rounds is a full-screen takeover — when open, the rest of the
   // app (TopBar / Sidebar / SectionHeader) gets out of the way.
   const [roundsOpen, setRoundsOpen] = useState(false);
@@ -45,6 +51,9 @@ export default function App({ session }) {
     section.id === "settings" ||
     section.id === "roadmap" ||
     section.comingSoon === true;
+  // Processing-day workspace renders in place of the section content
+  // (it carries its own header). Treat it as self-headered too.
+  const inProcessingWorkspace = !!processingTarget;
 
   if (roundsOpen) {
     return <Rounds data={data} onClose={() => setRoundsOpen(false)} />;
@@ -65,7 +74,7 @@ export default function App({ session }) {
           data={data}
         />
         <main className="flex-1 px-10 py-8 overflow-y-auto min-w-0">
-          {!isSelfHeadered && (
+          {!isSelfHeadered && !inProcessingWorkspace && (
             <SectionHeader
               section={section}
               parent={findFlyoutParentForChild(section.id)}
@@ -73,12 +82,20 @@ export default function App({ session }) {
               noBottomBorder={isSpeciesPage}
             />
           )}
-          <SectionContent
-            section={section}
-            data={data}
-            onOpenEvent={setEventSeed}
-            onNavigate={setCurrentSection}
-          />
+          {inProcessingWorkspace ? (
+            <Processing
+              seriesId={processingTarget.seriesId}
+              occursOn={processingTarget.occursOn}
+              onClose={() => setProcessingTarget(null)}
+            />
+          ) : (
+            <SectionContent
+              section={section}
+              data={data}
+              onOpenEvent={setEventSeed}
+              onNavigate={setCurrentSection}
+            />
+          )}
         </main>
       </div>
       <EventEditor
@@ -86,6 +103,10 @@ export default function App({ session }) {
         seed={eventSeed}
         kinds={data.events?.kinds ?? []}
         onClose={() => setEventSeed(null)}
+        onOpenProcessing={(target) => {
+          setEventSeed(null);
+          setProcessingTarget(target);
+        }}
       />
     </div>
   );

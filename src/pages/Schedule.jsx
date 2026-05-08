@@ -4,6 +4,7 @@ import { T } from "../theme.js";
 import { formatISODate, formatLongDate } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
+import { useEventMutator } from "../lib/data/useEventMutator.js";
 import {
   startOfWeek, advanceDate, formatViewLabel, isoDateLocal,
 } from "../lib/calendarMath.js";
@@ -23,7 +24,7 @@ import DateTyperPopover from "../components/DateTyperPopover.jsx";
 
 const VIEWS = ["day", "week", "month", "agenda"];
 
-export default function Schedule({ data, onOpenEvent, initialView }) {
+export default function Schedule({ data, onOpenEvent, initialView, initialFilter }) {
   const today = useMemo(() => {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
@@ -34,14 +35,22 @@ export default function Schedule({ data, onOpenEvent, initialView }) {
   // — we don't auto-flip on resize to avoid jumping mid-task.
   const [view, setView] = useState(() => initialView ?? defaultView());
   const [date, setDate] = useState(today);
-  // Filters: every kind starts on. Adding a new kind to data flows
-  // through automatically as a new chip + filter.
-  const [filters, setFilters] = useState(() =>
-    Object.fromEntries((data.events?.kinds ?? []).map(k => [k.id, true]))
-  );
+  // Filters: every kind starts on by default. When the parent passes
+  // `initialFilter` (e.g. clicking a per-kind preset in the sidebar),
+  // start with only that kind enabled — the user can re-enable
+  // others via the chip strip.
+  const [filters, setFilters] = useState(() => {
+    const all = Object.fromEntries((data.events?.kinds ?? []).map(k => [k.id, true]));
+    if (!initialFilter) return all;
+    const limited = Object.fromEntries(Object.keys(all).map(k => [k, false]));
+    limited[initialFilter] = true;
+    return limited;
+  });
 
   // Chore-block windows for the banded background on Day + Week.
   const { blocks } = useChoreBlocks();
+  // Drag-to-reschedule + drag-to-resize commit handlers (Batch 14.2).
+  const { moveOccurrence, resizeOccurrence } = useEventMutator();
 
   // Compute the visible date range based on view. Recurring series
   // expand inside this range; one-offs filter to it.
@@ -94,6 +103,37 @@ export default function Schedule({ data, onOpenEvent, initialView }) {
     });
   };
 
+  // Click-empty-space → new event seeded with the picked slot.
+  const onCreateAt = ({ date: iso, startTime }) => {
+    onOpenEvent?.({
+      mode: "new",
+      occursOn: iso,
+      startTime,
+    });
+  };
+
+  // Drag-to-reschedule commit — wraps useEventMutator so the views
+  // don't have to know about series-id resolution.
+  const handleMoveOccurrence = ({ occurrence, newDate, newStartTime, newEndTime }) => {
+    if (!occurrence?.instanceId) return;
+    moveOccurrence({
+      seriesId: occurrence.instanceId,
+      fromDate: occurrence.date,
+      toDate: newDate,
+      newStartTime,
+      newEndTime,
+    });
+  };
+  const handleResizeOccurrence = ({ occurrence, newStartTime, newEndTime }) => {
+    if (!occurrence?.instanceId) return;
+    resizeOccurrence({
+      seriesId: occurrence.instanceId,
+      occursOn: occurrence.date,
+      newStartTime,
+      newEndTime,
+    });
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <Controls
@@ -114,6 +154,9 @@ export default function Schedule({ data, onOpenEvent, initialView }) {
           blocks={blocks}
           today={today}
           onClickItem={onClickItem}
+          onMoveOccurrence={handleMoveOccurrence}
+          onResizeOccurrence={handleResizeOccurrence}
+          onCreateAt={onCreateAt}
         />
       )}
       {view === "week" && (
@@ -123,6 +166,9 @@ export default function Schedule({ data, onOpenEvent, initialView }) {
           blocks={blocks}
           today={today}
           onClickItem={onClickItem}
+          onMoveOccurrence={handleMoveOccurrence}
+          onResizeOccurrence={handleResizeOccurrence}
+          onCreateAt={onCreateAt}
         />
       )}
       {view === "month" && (
@@ -131,6 +177,8 @@ export default function Schedule({ data, onOpenEvent, initialView }) {
           occurrences={occurrences}
           today={today}
           onClickItem={onClickItem}
+          onMoveOccurrence={handleMoveOccurrence}
+          onCreateAt={onCreateAt}
         />
       )}
       {view === "agenda" && (
