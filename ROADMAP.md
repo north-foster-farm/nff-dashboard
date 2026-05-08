@@ -925,6 +925,71 @@ sheet, two-tier recurrence editor, the universal three-button
 materialization. The schema, expansion, and read paths land here
 so 13.2 only adds the editor + write paths.
 
+### Batch 13.2 — EventEditor (interactive layer) · `v0.10.7-alpha`
+2026-05-08. Second slice of the events overhaul. Event CRUD finally
+exists. Drag-trigger and GCal-push triggers stay deferred to
+Batch 14 / Batch 15 respectively.
+
+**Hooks** (new). `useEventSeries` exposes `series` + `seriesById`,
+`createSeries(input)`, `updateSeries(id, patch)`,
+`deleteSeries(id)`, and `splitSeries(id, splitDate, newPatch)` —
+the last is the "this and following" transaction (caps the old
+series at the day before, inserts a new series with the patch,
+re-parents override rows on/after the split date). Realtime-
+subscribed. `useEventOccurrences` exposes `occurrences`,
+`upsertOverride` (idempotent on `(series_id, occurs_on)` —
+materializes on first write), `skipOccurrence`,
+`unskipOccurrence`, `deleteOverride`. Optionally scoped to a
+single seriesId.
+
+**`<RecurrenceEditor>`** (new shared). Two-tier:
+- Top tier — preset dropdown: None / Daily / Weekly / Monthly /
+  Yearly / Custom. Picking a preset auto-generates a sensible
+  RRULE from the series's dtstart (Weekly anchors to dtstart's
+  day-of-week, Monthly to its day-of-month, Yearly to its
+  month + day).
+- Bottom tier — Custom dialog (Apple Calendar macOS pattern):
+  frequency, every-N interval, BYDAY toggle chips for weekly,
+  BYMONTHDAY for monthly, BYMONTH + BYMONTHDAY for yearly, ends
+  Never / On <date>. Outputs a flat RRULE string + UNTIL ISO.
+
+**`<EventScopePrompt>`** (new shared). The universal three-button
+"This event / This and following / All events" dialog. Each
+button has its own subtitle explaining the consequence
+("Splits the series at this date and applies the change going
+forward.") so users don't have to think about the model.
+
+**`<EventEditor>`** (new). Side-panel on desktop / full-height
+sheet on mobile. Holds title, subtitle, kind, date, start /
+end, recurrence (via `<RecurrenceEditor>`), location (name +
+address), and notes. Save flow:
+- New event → `createSeries`; if non-recurring, also pre-
+  materialize the single occurrence so the read pipeline
+  surfaces it without RRULE expansion.
+- Edit one-off → no scope prompt; updates series and the
+  materialized occurrence in lockstep.
+- Edit recurring → opens scope prompt:
+  - This event → `upsertOverride` materializes a single
+    override row (first-override trigger lives here).
+  - This and following → `splitSeries` caps the old series and
+    inserts a new one with the edited rule.
+  - All events → updates the series rule itself.
+- Delete recurring → same prompt, mapped to skip-this /
+  cap-from-this / delete-series.
+
+**Wiring.** App.jsx `eventSeed` state replaces the previous
+`scheduleDetail` modal route. Schedule.jsx click → seed `{ mode:
+'edit', seriesId, occurrenceId, occursOn, kindId }`; new "+ New
+event" button on Schedule → seed `{ mode: 'new', occursOn:
+today }`. The old `<DetailModal>` is removed; `SyncNotice` strip
+removed too (the Planned-feature warning is now stale — push-
+only GCal sync ships in Batch 15).
+
+**Out of scope — deferred to Batch 14 / 15.** Drag-to-reschedule
++ drag-to-resize (Batch 14, alongside the Calendar UI rework).
+GCal push trigger materialization (Batch 15). The two
+remaining lazy-materialization triggers from the events plan.
+
 ---
 
 ## Upcoming
@@ -1030,16 +1095,6 @@ chosen calendar rail at
   (creates arrival event + pasture-move event + processing event
   + cleanout chore on batch creation). Auto rows visually
   flagged with a sparkle icon, dismissable.
-
-### Batch 13.2 — EventEditor (interactive layer)
-Side-panel (desktop) / sheet (mobile) EventEditor with full CRUD.
-Two-tier recurrence editor (preset dropdown → Apple Calendar
-macOS dialog pattern for Custom). Universal three-button "This
-event / This and following / All events" prompt on per-occurrence
-edits. First-override materialization trigger wires up here —
-the schema, expansion, and read paths already shipped in 13.1.
-Drag-trigger and GCal-push triggers land alongside Calendar UI
-rework (Batch 14) and GCal push (Batch 15).
 
 ### Batch 14 — Calendar UI rework
 Schedule page gets the Day / Week / Month / Agenda toggle.

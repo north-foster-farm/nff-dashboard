@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { T } from "../theme.js";
 import {
   formatISODate, formatLongDate, formatTime12h,
@@ -7,7 +7,7 @@ import {
 } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
 
-export default function Schedule({ data, onShowDetail }) {
+export default function Schedule({ data, onOpenEvent }) {
   const [view, setView] = useState("calendar");
   const today = useMemo(() => todayUTC(), []);
   const [viewDate, setViewDate] = useState(() => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
@@ -41,6 +41,23 @@ export default function Schedule({ data, onShowDetail }) {
   const goToNextMonth = () => setViewDate(d => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)));
   const goToToday = () => setViewDate(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
 
+  const onClickItem = (item) => {
+    onOpenEvent?.({
+      mode: "edit",
+      seriesId: item.instanceId,
+      occurrenceId: item.occurrenceId ?? null,
+      occursOn: item.date,
+      kindId: item.kindId,
+    });
+  };
+
+  const onNewEvent = () => {
+    onOpenEvent?.({
+      mode: "new",
+      occursOn: formatISODate(today),
+    });
+  };
+
   return (
     <div>
       <ScheduleControls
@@ -49,21 +66,21 @@ export default function Schedule({ data, onShowDetail }) {
         onPrev={goToPrevMonth} onNext={goToNextMonth} onToday={goToToday}
         filters={filters} onFiltersChange={setFilters}
         kinds={data.events.kinds}
+        onNewEvent={onNewEvent}
       />
       {view === "calendar" ? (
         <CalendarView
           year={viewDate.getUTCFullYear()} month={viewDate.getUTCMonth()}
-          occurrences={occurrences} today={today} onClickItem={onShowDetail}
+          occurrences={occurrences} today={today} onClickItem={onClickItem}
         />
       ) : (
-        <TimelineView occurrences={occurrences} today={today} onClickItem={onShowDetail} />
+        <TimelineView occurrences={occurrences} today={today} onClickItem={onClickItem} />
       )}
-      <SyncNotice />
     </div>
   );
 }
 
-function ScheduleControls({ view, onViewChange, viewDate, onPrev, onNext, onToday, filters, onFiltersChange, kinds }) {
+function ScheduleControls({ view, onViewChange, viewDate, onPrev, onNext, onToday, filters, onFiltersChange, kinds, onNewEvent }) {
   const monthLabel = viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
   return (
     <div style={{ marginBottom: 18 }}>
@@ -82,6 +99,20 @@ function ScheduleControls({ view, onViewChange, viewDate, onPrev, onNext, onToda
             </div>
           )}
         </div>
+        {onNewEvent && (
+          <button
+            onClick={onNewEvent}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              background: T.accent, border: `1px solid ${T.accent}`,
+              color: T.onAccent, fontFamily: "inherit", fontSize: 11,
+              fontWeight: 600, padding: "6px 12px", cursor: "pointer",
+              textTransform: "uppercase", letterSpacing: "0.12em",
+            }}
+          >
+            <Plus size={13} /> New event
+          </button>
+        )}
       </div>
       <FilterChips filters={filters} onChange={onFiltersChange} kinds={kinds} />
     </div>
@@ -262,11 +293,3 @@ function TimelineRow({ item, onClick }) {
   );
 }
 
-function SyncNotice() {
-  return (
-    <div style={{ marginTop: 24, padding: "14px 16px", background: T.surfaceAlt, border: `1px dashed ${T.border}`, fontSize: 11, color: T.textMuted, lineHeight: 1.6 }}>
-      <span style={{ color: T.warn, textTransform: "uppercase", letterSpacing: "0.12em", fontSize: 9, marginRight: 8 }}>Planned</span>
-      Push-only sync to Google Calendar. Schedule changes here will publish to a linked GCal in a future build. Drag-and-drop reschedule, in-place editing of times, and the actual GCal API call are deferred — see <em>thread_schedule_full_scope</em>.
-    </div>
-  );
-}

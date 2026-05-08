@@ -21,7 +21,7 @@ import Settings from "../pages/Settings.jsx";
 import Roadmap from "../pages/Roadmap.jsx";
 import SitesPage from "../pages/SitesPage.jsx";
 
-export default function SectionContent({ section, data, onShowDetail, onNavigate }) {
+export default function SectionContent({ section, data, onOpenEvent, onNavigate }) {
   // Sections explicitly flagged with comingSoon get the full-page placeholder.
   if (section.comingSoon) return <ComingSoon featureName={section.label} />;
 
@@ -53,7 +53,7 @@ export default function SectionContent({ section, data, onShowDetail, onNavigate
     case "resources_trailers": return <Trailers data={data} />;
     case "products": return <Products data={data} />;
     case "inventory": return <Inventory data={data} />;
-    case "schedule": return <Schedule data={data} onShowDetail={onShowDetail} />;
+    case "schedule": return <Schedule data={data} onOpenEvent={onOpenEvent} />;
     case "chores": return <Chores data={data} />;
     case "activity": return <Activity />;
     case "observations": return <Observations />;

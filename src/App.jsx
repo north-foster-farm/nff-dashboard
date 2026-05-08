@@ -5,7 +5,7 @@ import TopBar from "./components/TopBar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import SectionHeader from "./components/SectionHeader.jsx";
 import SectionContent from "./components/SectionContent.jsx";
-import DetailModal from "./components/DetailModal.jsx";
+import EventEditor from "./components/EventEditor.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
 
@@ -13,7 +13,9 @@ import { useReferenceData } from "./lib/data/useReferenceData.js";
 // the user is authenticated AND passes the admins check.
 export default function App({ session }) {
   const [currentSection, setCurrentSection] = useState("overview");
-  const [scheduleDetail, setScheduleDetail] = useState(null);
+  // EventEditor seed — null when closed; otherwise carries the edit/new
+  // mode and (for edits) the seriesId + occurrence date that was clicked.
+  const [eventSeed, setEventSeed] = useState(null);
   // Rounds is a full-screen takeover — when open, the rest of the
   // app (TopBar / Sidebar / SectionHeader) gets out of the way.
   const [roundsOpen, setRoundsOpen] = useState(false);
@@ -71,10 +73,20 @@ export default function App({ session }) {
               noBottomBorder={isSpeciesPage}
             />
           )}
-          <SectionContent section={section} data={data} onShowDetail={setScheduleDetail} onNavigate={setCurrentSection} />
+          <SectionContent
+            section={section}
+            data={data}
+            onOpenEvent={setEventSeed}
+            onNavigate={setCurrentSection}
+          />
         </main>
       </div>
-      {scheduleDetail && <DetailModal item={scheduleDetail} onClose={() => setScheduleDetail(null)} />}
+      <EventEditor
+        open={!!eventSeed}
+        seed={eventSeed}
+        kinds={data.events?.kinds ?? []}
+        onClose={() => setEventSeed(null)}
+      />
     </div>
   );
 }

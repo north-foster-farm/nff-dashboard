@@ -27,15 +27,6 @@ const ITEMS = [
       "coop 1, those buttons already know which cohort lives there.",
   },
   {
-    title: "Events + Schedule, rebuilt",
-    body: "Event creation, editing, and the full recurrence picker " +
-      "(\"first and third Sunday May 14 to September 21 every year\" " +
-      "is one rule, not a workaround). The schema splits a series " +
-      "from its occurrences so per-instance edits — \"this Saturday's " +
-      "market is at a different address\" — have a real home. The " +
-      "old timeline view goes away; an Agenda view replaces it.",
-  },
-  {
     title: "A working calendar",
     body: "Day, Week, Month, and Agenda views on one page. Click the " +
       "month/year header to type where you want to land. Drag events " +
