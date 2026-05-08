@@ -790,6 +790,71 @@ where `kind` is `"on_time"` or `"overran"`. Title reads
 `"1h 47m, overran 22m"` when over the window — matches the
 in-app Performance numbers exactly.
 
+### Batch 12 — Chore assignment rules engine · `v0.10.5-alpha`
+2026-05-08. Closes the chores overhaul umbrella (Batches 7–12).
+Default assignments for chores expressed as a small day-of-week
+DSL — captured as data instead of in James's head, so every
+surface that asks "who's on this chore today?" reads from one
+source.
+
+**Schema** (`migration 0012`). New `chore_assignment_rules` table:
+`(scope, scope_id, days_of_week int[], assignees text[], priority,
+is_active)`. Two scopes: `'chore'` (one chore_definitions row,
+scope_id is the chore's text id) and `'block'` (one chore_blocks
+row, scope_id is the block's uuid as text). The discriminator
+means `scope_id` can't be a real FK, so two ON DELETE triggers
+mirror the cascade behavior — deleting a chore or block purges
+matching rules. RLS unchanged from the project default; realtime
+publication added so the rules editor live-updates.
+
+**Resolver** (`lib/chores.js`). `resolveAssignees(chore, date,
+{ rulesByChoreId, rulesByBlockId })` returns a string[] of
+resolved names. Precedence (first match wins): active
+chore-scoped rule whose `days_of_week` contains the day-of-week
+ordered by priority desc → active block-scoped rule for the
+chore's `block_id` ordered the same way → legacy
+`chore.assignment.byDayOfWeek[dow]` → legacy
+`chore.assignment.default` → empty list. The legacy
+`resolveAssignee` becomes a thin wrapper joining names with
+" · " so existing single-name callers keep working without
+edits — multi-assignee rules render as e.g. `"James · Jim"` in
+the meta line.
+
+**`useChoreAssignmentRules` hook.** CRUD + realtime; surfaces
+`rules`, two pre-bucketed maps (`rulesByChoreId`,
+`rulesByBlockId`) ready for the resolver, plus
+`createRule` / `updateRule` / `deleteRule`. Sanitizes incoming
+days-of-week (de-duped, integer-clamped 0–6) and assignees
+(de-duped, trimmed) so malformed payloads can't reach the DB.
+
+**`<AssignmentRulesEditor>`** (new shared component). Reusable for
+either scope. Lists existing rules with a day-letter chip strip
+("S M T W T F S" highlighted by membership) → arrow → assignee
+join. New-rule form: day toggle chips + assignee toggle chips
+(currently a hardcoded James / Jim list — same names the
+fake-auth picker uses). "Next 7 days preview" runs the real
+resolver against today + 6 so the reader sees exactly what the
+engine will produce, including legacy fallbacks.
+
+**Mount points:**
+- **Chore inline editor** — chore-scoped rules editor under the
+  existing fields. The preview uses the chore being edited so
+  the reader sees rules + that chore's legacy assignment field
+  resolved together.
+- **Block editor** — block-scoped rules editor folds in below
+  the start / duration row. The preview uses a synthetic chore
+  carrying just the block id, so it reflects what every chore
+  in this block would inherit by default.
+
+**Display.** `expandChoreForDay(chore, date, ruleOpts)` returns
+both `assignees: string[]` (the new shape) and `assignee: string`
+(the back-compat join). `getChoresForDay` accepts the same opts
+and forwards. `Today` tab + `Overview`'s upcoming-chores card +
+schedule-at-a-glance rollup all thread `{ rulesByChoreId,
+rulesByBlockId }` through. Today's "Mine" filter widens to
+include any chore whose assignees array contains the current
+user — matches the semantics of "Wed/Sat/Sun = both."
+
 ---
 
 ## Upcoming
@@ -851,29 +916,6 @@ Highlights:
   to populate, but the modifier-conflict UI ships with the
   Processes batch (now Batch 19) since it has nothing to render
   until then.
-
-### Batch 12 — Chore assignment rules engine
-Default assignments for chores, expressed as a small day-of-week
-DSL. Two scopes: chore-level ("on Mondays and Fridays James
-washes and packs eggs; on Tuesdays and Thursdays Jim washes and
-packs eggs; on Wednesday/Saturday/Sunday both") and block-level
-("on Mondays and Tuesdays James is assigned to morning chores;
-Wed–Sun Jim takes them"). Block-level rules seed defaults for
-chores in that block; chore-level rules override.
-
-Per-instance assignment changes (the assignment UI James
-already uses on the All chores tab) only touch that instance —
-they never edit the rule. Schema sketch:
-`chore_assignment_rules(id, scope, scope_id, days_of_week,
-assignees[], priority)` plus a resolver that runs at instance
-materialization. UI: a rules editor on each chore's expanded
-panel and on each block's edit form, with a "what does this
-look like for the next 7 days?" preview.
-
-Ships value: the assignment grid we keep recreating in our
-heads becomes data the dashboard owns. High-priority insert
-between Performance and the Events overhaul, ahead of the
-original sequencing.
 
 ### Events + Schedule overhaul (Batches 13–16)
 

@@ -123,19 +123,74 @@ export function computeDeadline(chore, date) {
   }
 }
 
-// Resolve who is assigned to the chore on a given day. Assignment precedence:
-// 1. explicit byDayOfWeek override, 2. default assignee, 3. null (unassigned).
-export function resolveAssignee(chore, date) {
-  const a = chore.assignment;
-  if (!a) return null;
+// Resolve who is assigned to a chore on a given day. Returns an
+// array of names (one or more) — multi-assignee rules are common
+// (Wed/Sat/Sun = both James + Jim). Empty array means unassigned.
+//
+// Precedence (Batch 12):
+//   1. Active chore-scoped rule whose days_of_week includes the
+//      day-of-week, ordered by priority desc, then created_at desc
+//      (the hook delivers them pre-sorted). Highest priority wins;
+//      its assignees become the resolved list.
+//   2. Active block-scoped rule for the chore's blockId, same
+//      ordering.
+//   3. Legacy chore.assignment.byDayOfWeek[dow] → list with that one
+//      name.
+//   4. Legacy chore.assignment.default → list with that one name.
+//   5. [] (unassigned).
+//
+// `rulesByChoreId` and `rulesByBlockId` are the Maps returned by
+// useChoreAssignmentRules. Either can be omitted; the function
+// degrades gracefully to the legacy fields.
+export function resolveAssignees(chore, date, opts = {}) {
+  if (!chore) return [];
+  const { rulesByChoreId, rulesByBlockId } = opts;
   const dow = dayOfWeek(date);
-  if (a.byDayOfWeek && a.byDayOfWeek[dow]) return a.byDayOfWeek[dow];
-  return a.default ?? null;
+
+  // 1. Chore-scoped rules.
+  const choreRules = rulesByChoreId?.get?.(chore.id) ?? [];
+  const choreMatch = pickRule(choreRules, dow);
+  if (choreMatch) return choreMatch.assignees.slice();
+
+  // 2. Block-scoped rules (only meaningful when the chore has a block).
+  if (chore.blockId) {
+    const blockRules = rulesByBlockId?.get?.(chore.blockId) ?? [];
+    const blockMatch = pickRule(blockRules, dow);
+    if (blockMatch) return blockMatch.assignees.slice();
+  }
+
+  // 3 + 4. Legacy chore.assignment fallbacks.
+  const a = chore.assignment;
+  if (a) {
+    if (a.byDayOfWeek && a.byDayOfWeek[dow]) return [a.byDayOfWeek[dow]];
+    if (a.default) return [a.default];
+  }
+  return [];
+}
+
+// Single-name shim — keeps existing callers working. Joins multiple
+// resolved assignees with " · " so a Wed/Sat/Sun "both" rule reads
+// "James · Jim" in the meta line. Returns null when nobody is on it.
+export function resolveAssignee(chore, date, opts) {
+  const list = resolveAssignees(chore, date, opts);
+  if (list.length === 0) return null;
+  return list.join(" · ");
+}
+
+// Internal: pick the highest-priority rule whose days_of_week
+// includes `dow`. Caller passes the per-scope list already filtered
+// to active rules and pre-sorted (priority desc, created_at desc).
+function pickRule(rules, dow) {
+  for (const r of rules) {
+    if (Array.isArray(r.daysOfWeek) && r.daysOfWeek.includes(dow)) return r;
+  }
+  return null;
 }
 
 // Expand a chore definition into a concrete instance for `date`, or null if
-// it doesn't fire that day.
-export function expandChoreForDay(chore, date) {
+// it doesn't fire that day. `opts` flows through to the assignment resolver
+// (rulesByChoreId, rulesByBlockId from useChoreAssignmentRules).
+export function expandChoreForDay(chore, date, opts) {
   if (!isChoreActiveOn(chore, date)) return null;
   return {
     choreId: chore.id,
@@ -143,7 +198,8 @@ export function expandChoreForDay(chore, date) {
     date,
     startAt: atTime(date, chore.startTime),
     deadlineAt: computeDeadline(chore, date),
-    assignee: resolveAssignee(chore, date)
+    assignees: resolveAssignees(chore, date, opts),
+    assignee: resolveAssignee(chore, date, opts),
   };
 }
 
@@ -151,11 +207,11 @@ export function expandChoreForDay(chore, date) {
 // order (which is the order James / Jim work through them in real life).
 // Callers that need a different ordering (e.g. the All Chores tab's sort
 // dropdown) sort the returned array themselves.
-export function getChoresForDay(data, date) {
+export function getChoresForDay(data, date, opts) {
   const defs = getAllChoreDefinitions(data);
   const instances = [];
   for (const c of defs) {
-    const inst = expandChoreForDay(c, date);
+    const inst = expandChoreForDay(c, date, opts);
     if (inst) instances.push(inst);
   }
   return instances;

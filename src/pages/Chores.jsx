@@ -12,6 +12,7 @@ import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
+import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useSites } from "../lib/data/useSites.js";
 import {
   useChoreBlocks, formatMinutesOfDay,
@@ -22,6 +23,7 @@ import ChoresBlocksTab from "../components/ChoresBlocksTab.jsx";
 import ChoresPerformanceTab from "../components/ChoresPerformanceTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
+import AssignmentRulesEditor from "../components/AssignmentRulesEditor.jsx";
 
 // The page renders its own header (title + tabs) in place of the generic
 // SectionHeader, so it can fit a tab bar + inline actions.
@@ -93,13 +95,21 @@ function TabBar({ tabs, active, onChange }) {
 function TodayTab({ data, currentUser, onChangeUser }) {
   const [scope, setScope] = useState("mine"); // "mine" | "all"
   const today = useMemo(() => new Date(), []);
-  const instances = useMemo(() => getChoresForDay(data, today), [data, today]);
+  const { rulesByChoreId, rulesByBlockId } = useChoreAssignmentRules();
+  const instances = useMemo(
+    () => getChoresForDay(data, today, { rulesByChoreId, rulesByBlockId }),
+    [data, today, rulesByChoreId, rulesByBlockId]
+  );
 
   // In "mine" mode, show chores assigned to the current user OR unassigned.
-  // In "all", show everything.
-  const visible = instances.filter(i =>
-    scope === "all" || i.assignee == null || i.assignee === currentUser
-  );
+  // In "all", show everything. With multi-assignee rules an instance can
+  // resolve to e.g. ["James", "Jim"] — current user is "in" if their
+  // name is anywhere in the list.
+  const visible = instances.filter(i => {
+    if (scope === "all") return true;
+    if (!i.assignees || i.assignees.length === 0) return true;
+    return i.assignees.includes(currentUser);
+  });
 
   const userEmail = useCurrentUserEmail();
   // Block-aware period labels: "Morning · 6 AM" comes from the
@@ -235,14 +245,15 @@ function BlockGroup({ block, instances, cols, completedSet, onToggle, currentUse
 }
 
 function TodayChoreRow({ inst, done, onToggle, currentUserEmail, blocks }) {
-  const { chore, assignee } = inst;
+  const { chore, assignees } = inst;
   // Persistence happens through onToggle (Supabase via useChoreCompletions).
   // The Set arrives via realtime so re-rendering on success is automatic.
   const handleClick = () => onToggle?.(chore.id, done);
-  // Right-column metadata: explicit assignee + deadline. If no assignee,
-  // show only the deadline — no "unassigned" label.
+  // Right-column metadata: explicit assignees + deadline. If no
+  // assignees, show only the deadline — no "unassigned" label.
+  // Multi-assignee rules render names joined with " · ".
   const metaParts = [];
-  if (assignee) metaParts.push(assignee);
+  if (assignees && assignees.length > 0) metaParts.push(assignees.join(" · "));
   metaParts.push(displayDeadlineConcrete(chore));
 
   return (
@@ -1097,6 +1108,14 @@ function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value)}
           style={{ ...editInputStyle, width: 90 }}
+        />
+      </EditField>
+
+      <EditField label="Assignment">
+        <AssignmentRulesEditor
+          scope="chore"
+          scopeId={chore.id}
+          previewChore={chore}
         />
       </EditField>
 

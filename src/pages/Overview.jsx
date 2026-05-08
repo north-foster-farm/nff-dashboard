@@ -18,6 +18,7 @@ import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
+import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { sunMinutesOfDay } from "../lib/sunTimes.js";
 import { Sunrise, Sunset } from "lucide-react";
@@ -43,16 +44,24 @@ export default function Overview({ data, onNavigate }) {
   // pre-morning cutoff. Editing a block in Settings → Sites & blocks
   // propagates to both surfaces in real time.
   const { blocks } = useChoreBlocks();
+  // Assignment rules engine (Batch 12). Maps thread through to the
+  // chore expander so rollup assignees + per-row assignees pick up
+  // both chore-scoped and block-scoped rules.
+  const { rulesByChoreId, rulesByBlockId } = useChoreAssignmentRules();
+  const ruleOpts = useMemo(
+    () => ({ rulesByChoreId, rulesByBlockId }),
+    [rulesByChoreId, rulesByBlockId]
+  );
 
   return (
     <div className="flex flex-col gap-4">
       {/* Row 1: chores on the left; conditions stacked above the day's
           schedule on the right. */}
       <GridRow cols={2}>
-        <UpcomingChoresCard data={data} today={today} blocks={blocks} />
+        <UpcomingChoresCard data={data} today={today} blocks={blocks} ruleOpts={ruleOpts} />
         <Stack>
           <CurrentConditionsCard />
-          <TodayScheduleCard data={data} today={today} blocks={blocks} />
+          <TodayScheduleCard data={data} today={today} blocks={blocks} ruleOpts={ruleOpts} />
         </Stack>
       </GridRow>
       {/* Row 2: three status cards, each taking a third of the row. */}
@@ -181,8 +190,8 @@ const BUCKET_LABEL = {
 
 // Build the chore-group rollups for a day. One row per bucket containing
 // the earliest start time + member count.
-function rollupChoresForDay(data, dayDate) {
-  const instances = getChoresForDay(data, dayDate);
+function rollupChoresForDay(data, dayDate, ruleOpts) {
+  const instances = getChoresForDay(data, dayDate, ruleOpts);
   const byBucket = {};
   for (const inst of instances) {
     const key = bucketForChore(inst);
@@ -206,9 +215,9 @@ function rollupChoresForDay(data, dayDate) {
   });
 }
 
-function todaysMorningCutoff(data, dayDate, blocks) {
+function todaysMorningCutoff(data, dayDate, blocks, ruleOpts) {
   return getBlockStartMinutesForPeriod(
-    getChoresForDay(data, dayDate),
+    getChoresForDay(data, dayDate, ruleOpts),
     "morning",
     blocks
   );
@@ -217,17 +226,19 @@ function todaysMorningCutoff(data, dayDate, blocks) {
 // If every chore in the rollup that has an assignee resolves to the same
 // single person on `dayDate`, return that name. Otherwise null. Loose rule:
 // unassigned chores are ignored — the moment one *named* assignee owns the
-// rollup it counts as "assigned to that person".
-function getRollupAssignee(rollup, dayDate) {
+// rollup it counts as "assigned to that person". Multi-assignee rules
+// produce a joined "James · Jim" label, so the rollup-assignee summary
+// only fires when every chore resolves to the exact same combo.
+function getRollupAssignee(rollup, dayDate, ruleOpts) {
   const names = new Set();
   for (const inst of rollup.items) {
-    const a = resolveAssignee(inst.chore, dayDate);
+    const a = resolveAssignee(inst.chore, dayDate, ruleOpts);
     if (a) names.add(a);
   }
   return names.size === 1 ? [...names][0] : null;
 }
 
-function TodayScheduleCard({ data, today, blocks }) {
+function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
   const { data: weather } = useCurrentWeather();
   const todayUTC = useMemo(
     () => new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())),
@@ -246,12 +257,12 @@ function TodayScheduleCard({ data, today, blocks }) {
   );
 
   const todayMorningCutoff = useMemo(
-    () => todaysMorningCutoff(data, today, blocks),
-    [data, today, blocks]
+    () => todaysMorningCutoff(data, today, blocks, ruleOpts),
+    [data, today, blocks, ruleOpts]
   );
   const tomorrowMorningCutoff = useMemo(
-    () => todaysMorningCutoff(data, tomorrow, blocks),
-    [data, tomorrow, blocks]
+    () => todaysMorningCutoff(data, tomorrow, blocks, ruleOpts),
+    [data, tomorrow, blocks, ruleOpts]
   );
 
   // Round sundown up to the next half-hour so the schedule shows a clean
@@ -268,8 +279,8 @@ function TodayScheduleCard({ data, today, blocks }) {
     [data, todayUTC]
   );
   const todaysChoreRollups = useMemo(
-    () => rollupChoresForDay(data, today),
-    [data, today]
+    () => rollupChoresForDay(data, today, ruleOpts),
+    [data, today, ruleOpts]
   );
   const todaysProjects = useMemo(
     () => (data.projects ?? []).filter(p =>
@@ -297,8 +308,8 @@ function TodayScheduleCard({ data, today, blocks }) {
     [data, tomorrowUTC]
   );
   const tomorrowsChoreRollups = useMemo(
-    () => rollupChoresForDay(data, tomorrow),
-    [data, tomorrow]
+    () => rollupChoresForDay(data, tomorrow, ruleOpts),
+    [data, tomorrow, ruleOpts]
   );
 
   const tomorrowItems = useMemo(() => {
@@ -315,7 +326,7 @@ function TodayScheduleCard({ data, today, blocks }) {
       } else if (r.bucket === "morning") {
         // Morning rollup → only include if a single named assignee owns it,
         // and surface that name in place of the item count.
-        const assignee = getRollupAssignee(r, tomorrow);
+        const assignee = getRollupAssignee(r, tomorrow, ruleOpts);
         if (assignee) filteredRollups.push({ ...r, assignee });
       }
     }
@@ -544,8 +555,11 @@ function TimelineRow({ item }) {
 
 // ─── Upcoming chores (next N, grouped by period, in seed order) ──────────────
 
-function UpcomingChoresCard({ data, today, blocks }) {
-  const instances = useMemo(() => getChoresForDay(data, today), [data, today]);
+function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
+  const instances = useMemo(
+    () => getChoresForDay(data, today, ruleOpts),
+    [data, today, ruleOpts]
+  );
   // Live completion subscription: realtime checkbox flips on the
   // dashboard mirror what's happening in Rounds + the Today tab.
   const completions = useChoreCompletions(today);

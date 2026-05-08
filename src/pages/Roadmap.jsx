@@ -27,16 +27,6 @@ const ITEMS = [
       "coop 1, those buttons already know which cohort lives there.",
   },
   {
-    title: "Chore assignments",
-    body: "Default assignments expressed as a small day-of-week DSL: " +
-      "\"on Mondays and Fridays James washes and packs eggs; on " +
-      "Tuesdays and Thursdays Jim washes and packs eggs; on Wednesday, " +
-      "Saturday, and Sunday both of them.\" Rules can hang off a " +
-      "specific chore or off a whole block (\"Wed–Sun Jim is on " +
-      "morning chores\"). Per-instance assignment changes only touch " +
-      "that instance — the rule keeps doing its thing tomorrow.",
-  },
-  {
     title: "Events + Schedule, rebuilt",
     body: "Event creation, editing, and the full recurrence picker " +
       "(\"first and third Sunday May 14 to September 21 every year\" " +

@@ -11,6 +11,7 @@ import {
   validateBlockWindow,
   displayBlockSide,
 } from "../lib/data/useChoreBlocks.js";
+import AssignmentRulesEditor from "./AssignmentRulesEditor.jsx";
 
 // Chores → Blocks tab. Named windows of the day. Each block has a
 // start (a fixed clock time, sunrise, or sunset) and a duration; the
@@ -311,6 +312,12 @@ function BlockEditor({ block, allBlocks, onCancel, onSave }) {
 
       {errorMsg && (
         <div className="text-[11px] text-red-500">{errorMsg}</div>
+      )}
+
+      {block?.id && (
+        <div className="mt-2 pt-2 border-t border-line">
+          <AssignmentRulesEditor scope="block" scopeId={block.id} />
+        </div>
       )}
     </div>
   );
