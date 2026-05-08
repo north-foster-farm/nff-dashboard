@@ -8,10 +8,11 @@ const ITEMS = [
     title: "Chores, rebuilt",
     body: "Sites become first-class — Brooder #1 and Brooder #2 are " +
       "different places, used across chores, observations, and the " +
-      "broiler tracker. Time blocks (Morning / Afternoon / Evening, " +
-      "or whatever you name them) are CRUD-able; edit a window once " +
-      "and every chore in it inherits. Chore definitions get in-place " +
-      "edit. The schema lays the rails for everything that follows.",
+      "metrics & analytics subsystem. Time blocks (Morning / " +
+      "Afternoon / Evening, or whatever you name them) are CRUD-able; " +
+      "edit a window once and every chore in it inherits. Chore " +
+      "definitions get in-place edit. The schema lays the rails for " +
+      "everything that follows.",
   },
   {
     title: "Rounds",
@@ -26,12 +27,39 @@ const ITEMS = [
       "coop 1, those buttons already know which cohort lives there.",
   },
   {
+    title: "Chores polish",
+    body: "A cleanup pass on the chores work that already shipped. " +
+      "Block windows simplify to \"start time + duration\" so editing " +
+      "one is a two-input affair. \"Condition\" becomes \"MASH\" and " +
+      "the chip sheet reads as \"I moved this bird because X\" with a " +
+      "free-text Other for cases the chips don't cover. Move and Sweep " +
+      "drop off the Rounds bottom rail (Move belongs to the calendar; " +
+      "Sweep is just bulk-tick on the main surface). Anytime chores " +
+      "with later deadlines sink to the bottom of the list with a " +
+      "\"4 days remaining\" pill so the urgent stuff stays on top. " +
+      "Previous-rounds, launch-out-of-block, and cancel-current " +
+      "round out the run lifecycle.",
+  },
+  {
     title: "Chores telemetry + push",
     body: "Push notifications when chores finish (\"AM rounds done · " +
       "1h 12m\" or \"AM rounds done · 1h 47m, overran 22m\"). A new " +
       "Performance tab plots start times, durations, late-start " +
-      "rate, and overrun rate per block — the data we need to keep " +
-      "our daily routines on track.",
+      "rate, and overrun rate per block. Chores with a window " +
+      "spanning multiple blocks (\"wash nest boxes by end of week\") " +
+      "get a last-chance-block setting so the deadline is the " +
+      "Friday afternoon rounds, not the Sunday-evening rounds — " +
+      "evening isn't the time to start power-washing.",
+  },
+  {
+    title: "Chore assignments",
+    body: "Default assignments expressed as a small day-of-week DSL: " +
+      "\"on Mondays and Fridays James washes and packs eggs; on " +
+      "Tuesdays and Thursdays Jim washes and packs eggs; on Wednesday, " +
+      "Saturday, and Sunday both of them.\" Rules can hang off a " +
+      "specific chore or off a whole block (\"Wed–Sun Jim is on " +
+      "morning chores\"). Per-instance assignment changes only touch " +
+      "that instance — the rule keeps doing its thing tomorrow.",
   },
   {
     title: "Events + Schedule, rebuilt",
@@ -71,6 +99,16 @@ const ITEMS = [
       "can sanity-check before the day arrives.",
   },
   {
+    title: "Inbox — \"just a thought…\"",
+    body: "A quiet capture surface for ideas that aren't yet projects " +
+      "or chores. Type-and-go from the top bar; new items land in the " +
+      "dashboard notifications widget without firing a push. A " +
+      "dedicated Inbox page lists every captured thought with " +
+      "drag-orderable, pinnable rows, an Archived tab for things " +
+      "you're done with, and per-user read/unread state so each of " +
+      "us can mark our own.",
+  },
+  {
     title: "Projects, rebuilt",
     body: "Every project breaks down into phases, steps, and checklists, " +
       "with progress that adds up on its own. Editing supports markdown, " +
@@ -100,13 +138,24 @@ const ITEMS = [
     body: "The Feed page becomes a group-cards layout: grouped by " +
       "animal, drag-orderable, with amount remaining and next order " +
       "date front-and-center and last price paid as a secondary line. " +
-      "Broiler pages get persistence and a per-batch tracker so " +
-      "batches are easy to compare side by side.",
+      "Broiler pages get persistence and a UI rethink across all " +
+      "subpages — the per-batch numbers (FCR, weight gain, mortality, " +
+      "feed cost) live in the Metrics & analytics subsystem below " +
+      "rather than being bolted on here.",
   },
   {
-    title: "Broiler weeks-remaining widget",
-    body: "Front-and-center on the dashboard: every active broiler " +
-      "batch with current week and weeks left.",
+    title: "Metrics & analytics",
+    body: "A first-class home for every number the dashboard tries to " +
+      "answer questions with — and the subsystem all our reporting " +
+      "and data-viz lands in instead of getting scattered across " +
+      "individual pages. Two seeded metric families to start: " +
+      "broiler batches (Feed Conversion Ratio, Average Daily Gain " +
+      "from a weekly random sample, uniformity, weeks-remaining, " +
+      "cross-batch comparison sheet) and layer flocks (hen-housed " +
+      "production, feed per dozen, feed per pound of egg mass, body " +
+      "weight trend with the \"burning reserves vs. getting fat\" " +
+      "flags). One registry, one front-end API, one place to ask " +
+      "\"how are we doing?\" and get a real answer.",
   },
   {
     title: "Products and pricing",
