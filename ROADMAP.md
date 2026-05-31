@@ -1154,7 +1154,7 @@ engine immediately after Performance, a new Batch 17 ships the
 Inbox "just a thought…" capture surface post-Events overhaul, and
 a new Batch 23 — Metrics & analytics — supersedes the broiler
 tracker and folds in any other data-visualization or reporting
-items the roadmap was tracking piecemeal). Sequencing is the
+items the roadmap was tracking piecemeal); renumbered to 38 on 2026-05-31 when the Farm Map UI overhaul was inserted as Batches 15–18 right after 14.2 — pushing the Events-overhaul tail (Triggers, Animal lifecycle) to 19–20, absorbing the old Resources rethink (Batch 21) into the place-model collapse, re-pointing the old Pasture simulator (Batch 34) into the Rotation planner (Batch 37), and pulling a field slice of Offline (old 33), App-wide search (old 30), and the mobile pass (old 32) forward into the farm-map MVP. Sequencing is the
 proposal — locked in only when the batch starts.
 
 ### Chores overhaul (Batches 7–12)
@@ -1197,10 +1197,12 @@ Highlights:
 - **Modifiers** are date-bound override rows that ride alongside
   chores; the table ships in Batch 7 so it's ready for Processes
   to populate, but the modifier-conflict UI ships with the
-  Processes batch (now Batch 19) since it has nothing to render
+  Processes batch (now Batch 23) since it has nothing to render
   until then.
 
-### Events + Schedule overhaul (Batches 13–16)
+### Events + Schedule overhaul (Batches 13–16; tail now 19–20)
+
+*Sequencing note (2026-05-31): the Farm Map overhaul was inserted as Batches 15–18 right after 14.2, so this overhaul's two still-upcoming batches — Triggers + GCal push and Animal lifecycle pages — now land as Batches 19–20.*
 
 Why these jump ahead of Projects: events + schedule are the other
 half of the time-management problem chores tackles. The current
@@ -1244,7 +1246,135 @@ chosen calendar rail at
   + cleanout chore on batch creation). Auto rows visually
   flagged with a sparkle icon, dismissable.
 
-### Batch 15 — Triggers + GCal push
+### Farm Map UI overhaul (Batches 15–18)
+
+Why these jump the queue: navigation and the place model are the
+structural problem the dashboard keeps running into. The sidebar is an
+arbitrary flat list with no wayfinding, it isn't responsive, and it's a
+friction point for a non-web-native operator (Dad) — and underneath it,
+three overlapping place vocabularies have accreted
+(`sites`/`site_locations`, the legacy `space_kinds`/`space_items`, and a
+free-text `livestock_groups.current_location`). A five-lens design
+workshop (May 2026 — blind pitches + synthesis + a "Dad" reserve-lens
+pass) produced a unified north-star; James's calls on the seven open
+questions and the work-backwards MVP cut land it as Batches 15–18,
+inserted right after 14.2. The north-star design, the rejected
+alternatives, the seven decisions, and the two Dad-derived hard
+requirements have been folded in here from
+`farm-map-north-star-requirements.md`, `farm-map-ui-overhaul-proposal.md`,
+and `farm-map-workshop-brief.md` — those artifacts are now retired; this
+roadmap is the capture point.
+
+Headline decisions (including the workshop's biggest surprise):
+- **The map is a view, not the front door.** Five blind agents
+  independently put a time-anchored **"Now"** surface first. The phone
+  lands on Now; the map is the **desktop** landing (decision 2) and a
+  secondary read-only view on phone.
+- **Place + time are two renderers of one dataset** — the map is
+  `WHERE place ∈ subtree`, the timeline is `WHERE time ∈ window` over one
+  place-anchored occurrence shape. Not glue between two features.
+- **One recursive place tree** (opaque surrogate id, `parent_id`, `kind`,
+  `kind_tag`, `code`, `mobile`) replaces the three place vocabularies.
+  Geography is the primary axis; `kind_tag` is secondary so Rounds can
+  still "sweep all coops." Display is always `name` + **bold parent**, so
+  non-unique names ("Mobile Coop 1" in both Pasture B and C) don't
+  confuse Dad in the field.
+- **Offline-first is a going-in requirement**, not a later batch — the
+  field flow silently loses data today.
+- **Two Dad-derived hard requirements:** **D1** visual place
+  disambiguation, and **D2** a loud "round in progress — tap to resume"
+  bar (the sidebar that holds the current resume path is being deleted).
+
+Collisions resolved (recorded here for the record):
+- **Resources rethink (old Batch 21) — absorbed** into the place-model
+  collapse + asset-as-occupant typing (Batch 15) and the Resources-flyout
+  dissolution (Batch 18). Removed as a standalone batch.
+- **Pasture visualization simulator (old Batch 34) → the Rotation planner
+  (now Batch 37)** — re-pointed onto the shared place-geometry substrate
+  rather than a standalone map.
+- **Offline (old 33 → 36), App-wide search (old 30 → 33), Mobile pass
+  (old 32 → 35)** each had a slice pulled forward into the farm-map MVP
+  (the field write-path outbox, place search, and Tier-1 mobile
+  respectively); the remainders stay as those later batches.
+
+### Batch 15 — Farm map: place-model foundation
+Schema-down spine; little visible value alone but unblocks everything
+below (same shape as the old Batch 7 chores foundation). Evolve
+`site_locations` into **one recursive place tree** (`parent_id`, `kind`,
+`kind_tag`, `code`, `mobile`, carrying `is_active`/`sort_order`); collapse
+the `sites` "category" role into the geographic tree + `kind_tag`;
+**re-seed geographically** (Pasture A/B/C, Barn, …). Generalize
+`site_residents` into a polymorphic **`placements`** occupancy edge
+(`occupant_type`/`occupant_id`, one open row per occupant — "coop moved
+paddock," "batch graduated brooder → tractor," "excavator parked in barn"
+are all one event type, move-history for free). Add a **`place_geometry`**
+binding table (`place_id → svg_layer_id` + centroid/footprint; binding
+*shape* only — the CI drift-guard is deferred). Delete the legacy
+`space_kinds`/`space_items` and the free-text `current_location`. Repoint
+chores / observations / run-events to `place_id`; place-anchor the
+`timeline_items` view. `SitesAdmin` becomes the place-tree editor.
+
+Ships value: one coherent, app-wide place model; the three-vocabulary
+tangle is gone.
+
+### Batch 16 — Farm map: per-place completion + offline outbox
+The rollout's beating heart — Dad working in the field, offline. Re-key
+`chore_completions` to `(chore_id, place_id, date)` and **fan site-scoped
+chores into per-place obligations** (so "tractor 3 fed, 4 not" is
+representable, and the map can show "3 of 5 fed"). Build a device-local
+**append-only IndexedDB outbox**; replace today's silent-revert toggle
+(`useChoreCompletions.toggle` reverts on network error — a tick behind the
+broiler pasture silently un-ticks) with optimistic local apply + a visible
+**"queued / not synced"** indicator + guaranteed sync. Conflict policy:
+completions are **idempotent** row-presence inserts; **counts (mortality)
+merge ADDITIVELY** (two offline phones each logging "1 dead" sum to 2 —
+non-negotiable); field **edits are clocked last-write-wins** with the
+append-only `activity_log` as audit. No full CRDT (shape it to grow).
+(May split 16.1 grain / 16.2 outbox when the batch starts.)
+
+Ships value: capture works with no signal and never silently loses data;
+per-place completion lights up the rest of the design.
+
+### Batch 17 — Farm map: Now surface + hardened Rounds
+The phone rollout. **Now** is the phone landing (decision 1): the
+active-or-next round as a fat primary button (`nextBlock` logic), then a
+farm-wide **due/overdue** list (`ChoreRemainingPill` logic), each row
+tagged with its place (**D1** bold parent) and deep-linking into the round
+or place; overdue sorts to the top. **D2** loud "round in progress — tap
+to resume" bar sits on Now (replacing the orphaned "rejoin from the
+sidebar" path — verified `Rounds.jsx:531`). The shipped **Rounds**
+takeover is promoted to the primary phone path; its Site Switcher gains a
+**group-by-zone OR group-by-kind** toggle (decision 4; geography default,
+Dad moves by place); mid-round capture pre-seeds and **prominently
+displays** the resolved place before save (**D1**). A derived
+**`place_status`** projection feeds the Now sort/flags (and the map tint
+in Batch 18).
+
+Ships value: Dad opens the app and his work is handed to him — nothing
+silently lost, no menu-hunting.
+
+### Batch 18 — Farm map: map renderer + place pages + nav restructure
+The desktop landing (decision 2) and the IA overhaul that started the
+project. Render the authored, geographically-accurate `farm-map_v1.svg`
+(commit it to `public/`) at the **zone** level, each zone **tinted by
+`place_status`**; click a zone → zoom → **structure pins** (auto-laid-out
+slots — v1 art has no structure geometry) → a **place page** (current
+occupant/batch detail, chores due here, recent observations, "view on
+timeline"). **Express lanes:** a thin **place search** over
+`code`/`name`/occupant, **D1-disambiguated** ("Mobile Coop 1 ·
+**Pasture B**" vs "· **Pasture C**"); recents; push deep-links into the
+active run. **Nav restructure:** the sidebar's flat `SECTIONS` list is
+replaced as primary nav by **Now · Map/Places · Schedule · Do rounds**,
+with the genuinely non-spatial/non-temporal records (Products, Orders,
+CRM, Comms, etc.) moved to a thin **admin/records drawer** off the header
+avatar; the **Resources flyout dissolves** (place-types → the tree;
+asset-types → typed occupants; suppliers → the drawer). On phone the map
+is a secondary read-only view, never on the capture path.
+
+Ships value: fly over the farm with status at a glance and drill to
+anything; the arbitrary sidebar is gone.
+
+### Batch 19 — Triggers + GCal push
 `automations` table seeded with two rules. (1) Feed reorder
 fires when `inventory.on_hand <= reorder_point`; emits a "Place
 feed order" chore + a "Receive feed delivery" event linked via
@@ -1265,7 +1395,7 @@ Ships value: automation closes the loop on
 inventory + livestock + chores; phone calendar shows farm
 events.
 
-### Batch 16 — Animal lifecycle pages
+### Batch 20 — Animal lifecycle pages
 Batch detail page (broiler batches first; layers + sheep follow
 the same shape). Lifespan timeline strip across the page —
 arrival → pasture move → milestones → processing → cleanout —
@@ -1282,7 +1412,7 @@ Ships value: the day James clicks "Broiler batch 2" and sees its
 arrival, pasture-move, processing, and cleanout in one timeline
 strip — and can edit any of them in place.
 
-### Batch 17 — Inbox / "just a thought…" capture
+### Batch 21 — Inbox / "just a thought…" capture
 Lightweight capture surface for ideas that aren't yet projects
 or chores. A top-bar capture button drops a quick text input for
 on-the-fly thought-dumping. New items show up in the dashboard
@@ -1303,7 +1433,7 @@ need to bottleneck through Projects or Chores. Slotted post-
 Events overhaul so a captured thought can later be promoted to
 a calendar event without a separate plumbing pass.
 
-### Batch 18 — Projects subsystem rewrite
+### Batch 22 — Projects subsystem rewrite
 Hierarchy Project → Phase → Step → Checklist → Checklist item.
 Schema: `projects`, `project_phases`, `project_steps`,
 `project_checklists`, `project_checklist_items`, `project_links`,
@@ -1313,7 +1443,7 @@ phases == 1 → steps drive %. Verbatim copy: "x/y steps complete" /
 "x/y milestones reached". Trello-style edit modal with markdown,
 Supabase Storage uploads, assignees, target dates / ranges.
 
-### Batch 19 — Processes
+### Batch 23 — Processes
 Process = template tied to an `event_kind`. Event instance lands on
 schedule → process expands into project(s) / tasks anchored to the
 event date (e.g. "1 week before processing day → check trailer
@@ -1330,17 +1460,11 @@ winner solid, loser ghosted, tap-to-explain shows winner + loser
 + source. v1 conflict resolution is priority-based and
 deterministic; no manual-resolver modal.
 
-### Batch 20 — Customers + Lists
+### Batch 24 — Customers + Lists
 `customers` CRUD (workshop fields together). `customer_lists`
 (title + purpose) and `customer_list_members`.
 
-### Batch 21 — Resources rethink
-"Resources" is too vague today. Redesign categorization and
-re-home items contextually (brooders inside Animals/Broilers,
-suppliers inside Feed/Inventory, etc.) with a fallback search
-index. Workshop scope at the start of the batch.
-
-### Batch 22 — Animals & Feed UI overhaul
+### Batch 25 — Animals & Feed UI overhaul
 - Feed page redesigned as a group-cards layout: group by animal
   (animals list pulled from DB); drag-drop orderable within group;
   cards lead with amount remaining + next order date, last price
@@ -1348,11 +1472,11 @@ index. Workshop scope at the start of the batch.
   "match the Chores page" — that comparison no longer holds after
   the chores overhaul, so the pattern is described directly here.)
 - Broilers pages: persistence + UI rethink across all subpages.
-- Broiler tracker carved out into Batch 23 (Metrics & analytics);
+- Broiler tracker carved out into Batch 26 (Metrics & analytics);
   this batch handles the page-shell + persistence work, the
   metric definitions and cross-batch comparison view ship there.
 
-### Batch 23 — Metrics & analytics
+### Batch 26 — Metrics & analytics
 New first-class subsystem that owns metric definitions, their
 underlying data plumbing, and every cross-cutting visualization
 or reporting surface in the app. **Supersedes the broiler
@@ -1401,7 +1525,7 @@ Ships value: the dashboard finally answers "how are we doing?"
 with numbers, not vibes. Closes the data-visualization /
 reporting umbrella in one place.
 
-### Batch 24 — Products + pricing
+### Batch 27 — Products + pricing
 Products CRUD with photos / descriptions / content (research
 Pat's etc. for content patterns first). Group by animal; allow
 "uncategorized / not animal-specific". Sales-over-time
@@ -1409,19 +1533,19 @@ visualization. **Pricing UI** — workshop together at start of
 batch; reference apps to surface: Shopify admin, Square, Faire,
 GoodEggs vendor portal.
 
-### Batch 25 — Inventory backend + Point of Sale
+### Batch 28 — Inventory backend + Point of Sale
 Inventory schema + CRUD; on-hand by SKU/location. POS marks items
 sold so inventory decrements correctly. Internal "family sale" flow.
 
-### Batch 26 — Orders
+### Batch 29 — Orders
 Manual order creation; edit / interact with customer orders;
 shipment creation from order (integration scoped here).
 
-### Batch 27 — Commerce integrations
+### Batch 30 — Commerce integrations
 Stripe (cards / online payments); Venmo (where API exists);
 QuickBooks (accounting sync). E-comm front-end if needed.
 
-### Batch 28 — Two-way Google Calendar sync (deferred)
+### Batch 31 — Two-way Google Calendar sync (deferred)
 Push-only sync ships in Batch 15. This batch is reserved for the
 two-way case if it ever becomes a real need — e.g., editing on
 the phone calendar app and having those edits flow back to the
@@ -1432,7 +1556,7 @@ and so the design constraints (idempotent change ledger,
 per-field merge rules, conflict resolver UI) are remembered if
 it ever lands.
 
-### Batch 29 — Farm updates / Social / Content calendar
+### Batch 32 — Farm updates / Social / Content calendar
 Farm updates: list-targeting, markdown editor, file uploads, email
 sequences (delays + scheduled dates), "needs review" message
 thread, **AI review pipeline** gating "ready to send".
@@ -1455,27 +1579,28 @@ already-live page in place.
 Social posts: same shell + real social-network integrations + true
 scheduling. Content calendar: calendar UI + auto-add to schedule.
 
-### Batch 30 — App-wide search
+### Batch 33 — App-wide search
 Cross-cutting; lands after most data models exist so the index is
 comprehensive. Likely Postgres `tsvector` + a client palette
-(cmd-K).
+(cmd-K). **Re-scoped by the farm map:** a thin, place-only search with D1 disambiguation already ships in Batch 18 — this batch is the full cross-entity cmd-K palette.
 
-### Batch 31 — App-wide bookmarking
+### Batch 34 — App-wide bookmarking
 Per-user bookmarks of arbitrary entities/pages, surfaced in nav.
 Table `user_bookmarks (user_email, target_type, target_id, label,
 sort_order)`.
 
-### Batch 32 — iOS / mobile-responsive pass
+### Batch 35 — iOS / mobile-responsive pass
 Audit every page for iPhone widths. PWA manifest + install prompt
 for Add to Home Screen. Lands after Tailwind so responsive
-utilities are available.
+utilities are available. **Re-scoped by the farm map:** the Tier-1 field surfaces (Now, Rounds, capture) are built mobile-first in Batches 16–17 — this batch is the broad audit of every *other* page.
 
-### Batch 33 — Offline tolerance + resync
+### Batch 36 — Offline tolerance + resync
 IndexedDB write queue (idb / Dexie) wrapping the Supabase client;
 outbox pattern for mutations; conflict policy per table. Service
-worker for asset caching. Affects every data hook.
+worker for asset caching. Affects every data hook. **Re-scoped by the farm map:** the field write-path outbox (completions, observations, additive-merge mortality) ships in Batch 16 — this batch generalizes the outbox to every remaining hook and adds the service-worker asset cache.
 
-### Batch 34 — Pasture visualization simulator
+### Batch 37 — Rotation planner (formerly Pasture visualization simulator)
+**Re-pointed by the farm map:** a sibling on the **shared place-geometry substrate** — it draws real structure/paddock geometry and *sets* tractor positions over time, while the nav map only *shows* current schematic pins. A rotation plan is a sequence of future `placements` rows on the same place tree (no longer a standalone map). Otherwise as specced below:
 Standalone subsystem. Map / canvas with land outline; draw + name
 pasture boundaries; tractor pins (dims + capacity drive math);
 assign batch → tractor count needed; hypothetical-batch sandbox;
@@ -1485,7 +1610,7 @@ occupied / available in Y"); commit a movement plan → scheduled
 chore moves; per-plan distance/location breakdown. Likely libs:
 Leaflet or MapLibre + a geometry layer.
 
-### Batch 35 — Voice / natural-language control
+### Batch 38 — Voice / natural-language control
 Speech-to-text on device; intent → tool-call mapping via Claude;
 confirmation step for state-changing actions. High-priority once
 foundational batches land.
@@ -1509,7 +1634,7 @@ him doing the math from scratch.
 
 Open question: does each batch already carry a `start_date` and a
 target weeks-to-process value, or do we need to add one? Natural
-home is the new Metrics & analytics batch (Batch 23), which owns
+home is the new Metrics & analytics batch (Batch 26), which owns
 broiler-batch metric definitions and cross-batch comparison —
 the widget is just a dashboard surface over the same underlying
 metric. If the data is already present, this could ship sooner
