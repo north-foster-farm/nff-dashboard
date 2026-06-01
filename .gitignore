@@ -6,6 +6,9 @@ dist
 .branches
 .temp
 
+# Local DB backups (scripts/backup-db.mjs) — may contain real data.
+.backups
+
 # Env files with secrets. .env.example is committed as a setup reference;
 # every real .env / .env.local stays local.
 .env

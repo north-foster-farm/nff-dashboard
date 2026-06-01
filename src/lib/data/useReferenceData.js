@@ -14,7 +14,7 @@ import NFF_DATA from "../../data/nff-data.json";
 // atomically to DB data.
 //
 // Keys exposed:
-//   Batch 1 — suppliers, machines, trailers, feeds, spaces
+//   Batch 1 — suppliers, machines, trailers, feeds
 //   Batch 2 — livestock ({species}), feedSchedules, chores ({definitions})
 //   Batch 3 — events ({kinds}), productKinds, inventory ({eggLots, chickenLots})
 //   Batch 4 — threads, orders, updates, projects
@@ -27,7 +27,6 @@ const INITIAL = {
   machines: null,
   trailers: null,
   feeds: null,
-  spaces: null,
   livestock: null,
   feedSchedules: null,
   chores: null,
@@ -52,7 +51,6 @@ export function useReferenceData() {
     loadMachines().then(v => !cancelled && setState(s => ({ ...s, machines: v })));
     loadTrailers().then(v => !cancelled && setState(s => ({ ...s, trailers: v })));
     loadFeeds().then(v => !cancelled && setState(s => ({ ...s, feeds: v })));
-    loadSpaces().then(v => !cancelled && setState(s => ({ ...s, spaces: v })));
     loadLivestock().then(v => !cancelled && setState(s => ({ ...s, livestock: v })));
     loadFeedSchedules().then(v => !cancelled && setState(s => ({ ...s, feedSchedules: v })));
     loadChores().then(v => !cancelled && setState(s => ({ ...s, chores: v })));
@@ -64,6 +62,40 @@ export function useReferenceData() {
     loadUpdates().then(v => !cancelled && setState(s => ({ ...s, updates: v })));
     loadProjects().then(v => !cancelled && setState(s => ({ ...s, projects: v })));
     return () => { cancelled = true; };
+  }, []);
+
+  // Keep the events slice live. EventEditor writes through the
+  // realtime useEventSeries / useEventOccurrences hooks, but the
+  // calendar reads `data.events` from here — so without this
+  // subscription, creating / editing / deleting an event only showed
+  // up after a hard refresh. Re-run loadEvents (debounced) on any
+  // change to either events table.
+  useEffect(() => {
+    let cancelled = false;
+    let scheduled = false;
+    const refresh = () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(async () => {
+        scheduled = false;
+        const v = await loadEvents();
+        if (!cancelled && v) setState(s => ({ ...s, events: v }));
+      }, 120);
+    };
+    const channel = supabase
+      .channel("refdata:events:stream")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "event_series" },
+        refresh
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "event_occurrences" },
+        refresh
+      )
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, []);
 
   return state;
@@ -126,38 +158,6 @@ async function loadFeeds() {
   }));
 }
 
-// Two tables, one UI shape: { kinds: [...], items: [...] }.
-async function loadSpaces() {
-  const [kinds, items] = await Promise.all([
-    supabase
-      .from("space_kinds")
-      .select("id, label, description, movement_method, used_by")
-      .order("label"),
-    supabase
-      .from("space_items")
-      .select("id, label, kind_id, current_residents, notes")
-      .order("label")
-  ]);
-  if (kinds.error) { console.error("loadSpaces:kinds", kinds.error); return null; }
-  if (items.error) { console.error("loadSpaces:items", items.error); return null; }
-  return {
-    kinds: kinds.data.map(k => ({
-      id: k.id,
-      label: k.label,
-      description: k.description,
-      movementMethod: k.movement_method,
-      usedBy: k.used_by
-    })),
-    items: items.data.map(i => ({
-      id: i.id,
-      label: i.label,
-      kindId: i.kind_id,
-      currentResidents: i.current_residents,
-      notes: i.notes
-    }))
-  };
-}
-
 // Livestock species + groups joined in-memory. Two queries are cheaper than
 // the PostgREST nested-resource syntax here because we want full control
 // over the shape (UI expects groups nested inside each species).
@@ -171,7 +171,7 @@ async function loadLivestock() {
       .order("ordinal"),
     supabase
       .from("livestock_groups")
-      .select("id, species_id, label, ordinal, count, arrival_date, known_age, current_location, cohabits")
+      .select("id, species_id, label, ordinal, count, arrival_date, known_age, cohabits")
       .order("ordinal", { nullsLast: true })
   ]);
   if (speciesRes.error) { console.error("loadLivestock:species", speciesRes.error); return null; }
@@ -187,7 +187,11 @@ async function loadLivestock() {
       count: g.count,
       arrivalDate: g.arrival_date,
       knownAge: g.known_age,
-      currentLocation: g.current_location,
+      // current_location was dropped in Batch 15 (place-model collapse);
+      // a cohort's location now lives in `placements`. SpeciesPage still
+      // reads this field, so keep it defined as null until that page is
+      // repointed to placements (Batch 16+).
+      currentLocation: null,
       cohabits: g.cohabits
     });
     groupsBySpecies.set(g.species_id, arr);
@@ -264,7 +268,7 @@ async function loadChores() {
     .from("chore_definitions")
     .select(
       "id, title, category, description, frequency, period, start_time, " +
-      "deadline, assignment, tags, site_id, location_id, block_id, sort_order"
+      "deadline, assignment, tags, place_id, block_id, sort_order"
     )
     .order("sort_order")
     .order("category");
@@ -281,8 +285,7 @@ async function loadChores() {
       deadline: c.deadline,
       assignment: c.assignment,
       tags: c.tags,
-      siteId: c.site_id,
-      locationId: c.location_id,
+      placeId: c.place_id,
       blockId: c.block_id,
       sortOrder: c.sort_order ?? 0,
     })),

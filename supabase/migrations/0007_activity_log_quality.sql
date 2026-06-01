@@ -69,6 +69,10 @@ create trigger chore_uncompletion_logged
   after delete on public.chore_completions
   for each row execute function public.log_chore_uncompletion();
 
+-- Trigger-only function; not meant to be called as an RPC.
+revoke execute on function public.log_chore_uncompletion()
+  from public, anon, authenticated;
+
 
 -- ── RPC: edit_activity_entry ───────────────────────────────────────────
 -- Sets edited_summary on a row owned by the caller. Empty / whitespace-
@@ -103,6 +107,7 @@ end;
 $$;
 
 revoke all on function public.edit_activity_entry(uuid, text) from public;
+revoke execute on function public.edit_activity_entry(uuid, text) from anon;
 grant execute on function public.edit_activity_entry(uuid, text) to authenticated;
 
 
@@ -132,6 +137,7 @@ end;
 $$;
 
 revoke all on function public.delete_activity_entry(uuid) from public;
+revoke execute on function public.delete_activity_entry(uuid) from anon;
 grant execute on function public.delete_activity_entry(uuid) to authenticated;
 
 

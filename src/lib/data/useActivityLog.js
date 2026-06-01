@@ -40,7 +40,7 @@ export function useActivityLog({
       .from("activity_log")
       .select(
         "id, occurred_at, actor_email, kind, payload, edited_summary, " +
-        "site_id, location_id, run_id"
+        "place_id, run_id"
       )
       .order("occurred_at", { ascending: false });
     if (sinceISO) q = q.gte("occurred_at", sinceISO);
@@ -171,8 +171,7 @@ function toUIEntry(row) {
     ownerEmail: row.actor_email,
     kind: row.kind,
     payload: row.payload,
-    siteId: row.site_id ?? null,
-    locationId: row.location_id ?? null,
+    placeId: row.place_id ?? null,
     runId: row.run_id ?? null
   };
 }

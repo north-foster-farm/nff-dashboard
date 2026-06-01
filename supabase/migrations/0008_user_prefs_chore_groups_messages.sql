@@ -46,7 +46,7 @@ create policy user_preferences_self_update on public.user_preferences
   with check (user_email = (auth.jwt() ->> 'email'));
 
 create or replace function public.touch_user_preferences_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   new.updated_at = now();
   return new;

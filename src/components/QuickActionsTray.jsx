@@ -3,6 +3,7 @@ import {
   X, MessageSquare, AlertTriangle, Skull, ChevronDown,
 } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
+import { descendantIds } from "../lib/places.js";
 
 // Bottom-pinned tray for the Rounds doing surface. Quick actions —
 // Note, MASH, Mortality — each opens a sheet that writes a typed Run
@@ -10,43 +11,52 @@ import { supabase } from "../lib/supabase.js";
 // from the tray in Batch 10: cohort moves are planned events, and
 // sweep is just bulk-tick on the doing surface itself.
 //
-// Site/location context defaults from Rounds:
-//   - selectedLocationId, if set, scopes the event to that location.
-//   - else selectedSiteId scopes to the site (location_id null).
-//   - else "general" — both null. The user can still pick in-sheet.
-//
-// Quick actions write to `activity_log` with `run_id` set so the
-// Performance sub-tab and the upcoming Observation Log can group
-// them by run.
+// Place context defaults from Rounds: selectedPlaceId (the drilled
+// child if set, else the top-level place) seeds the sheet; "" means
+// general (no place) and the user can still pick in-sheet. Quick
+// actions write to `activity_log` with `run_id` + `place_id` set so
+// the Observation Log can group them.
 
 const CONDITION_STATES = [
   "Listless", "Unthrifty", "Off-feed",
   "Off-water", "Damaged", "Sick",
 ];
 
+// Depth-ordered, indented place options for the in-sheet picker.
+function buildPlaceOptions(places, childrenByParent) {
+  const out = [];
+  const walk = (parentId, depth) => {
+    for (const p of childrenByParent.get(parentId) ?? []) {
+      if (p.isActive !== false) {
+        out.push({ id: p.id, label: `${"  ".repeat(depth)}${p.name}` });
+      }
+      walk(p.id, depth + 1);
+    }
+  };
+  walk(null, 0);
+  return out;
+}
+
 export default function QuickActionsTray({
   runId,
-  selectedSiteId,
-  selectedLocationId,
-  sites,
-  locations,
-  residents,
-  recentConditionsByLocation,
+  selectedPlaceId,
+  places,
+  placesById,
+  childrenByParent,
+  placementsByPlaceId,
+  recentConditionsByPlace,
   repeatWindowDays,
   onLogRunEvent,
-  onMoveOutResident,
+  onMoveOutOccupant,
 }) {
   const [open, setOpen] = useState(null);
   // 'note' | 'mash' | 'mortality'
 
-  // Derived: the location_id we'll seed the sheet with. When the user
-  // picked a site without drilling into a location, we'll leave the
-  // sheet's location null so they explicitly pick.
-  const seedLocationId = selectedLocationId ?? null;
-  const seedSiteId = selectedSiteId
-    ?? (seedLocationId
-        ? locations.find(l => l.id === seedLocationId)?.siteId
-        : null);
+  const seedPlaceId = selectedPlaceId ?? null;
+  const placeOptions = useMemo(
+    () => buildPlaceOptions(places ?? [], childrenByParent),
+    [places, childrenByParent]
+  );
 
   return (
     <>
@@ -76,10 +86,8 @@ export default function QuickActionsTray({
       {open === "note" && (
         <NoteSheet
           runId={runId}
-          seedSiteId={seedSiteId}
-          seedLocationId={seedLocationId}
-          sites={sites}
-          locations={locations}
+          seedPlaceId={seedPlaceId}
+          placeOptions={placeOptions}
           onLogRunEvent={onLogRunEvent}
           onClose={() => setOpen(null)}
         />
@@ -87,11 +95,10 @@ export default function QuickActionsTray({
       {open === "mash" && (
         <MashSheet
           runId={runId}
-          seedSiteId={seedSiteId}
-          seedLocationId={seedLocationId}
-          sites={sites}
-          locations={locations}
-          recentConditionsByLocation={recentConditionsByLocation}
+          seedPlaceId={seedPlaceId}
+          placeOptions={placeOptions}
+          placesById={placesById}
+          recentConditionsByPlace={recentConditionsByPlace}
           repeatWindowDays={repeatWindowDays}
           onLogRunEvent={onLogRunEvent}
           onClose={() => setOpen(null)}
@@ -100,13 +107,12 @@ export default function QuickActionsTray({
       {open === "mortality" && (
         <MortalitySheet
           runId={runId}
-          seedSiteId={seedSiteId}
-          seedLocationId={seedLocationId}
-          sites={sites}
-          locations={locations}
-          residents={residents}
+          seedPlaceId={seedPlaceId}
+          placeOptions={placeOptions}
+          childrenByParent={childrenByParent}
+          placementsByPlaceId={placementsByPlaceId}
           onLogRunEvent={onLogRunEvent}
-          onMoveOutResident={onMoveOutResident}
+          onMoveOutOccupant={onMoveOutOccupant}
           onClose={() => setOpen(null)}
         />
       )}
@@ -178,40 +184,22 @@ function Sheet({ title, onClose, children, footer }) {
   );
 }
 
-// ── Site/location picker (shared) ─────────────────────────────────────
-function SitePicker({
-  siteId, locationId, sites, locations, onChange,
-}) {
-  const activeSites = sites.filter(s => s.isActive);
-  const siteLocations = locations.filter(
-    l => l.siteId === siteId && l.isActive
-  );
+// ── Place picker (shared) ─────────────────────────────────────────────
+function PlacePicker({ placeId, placeOptions, onChange }) {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
         Where
       </label>
-      <div className="grid grid-cols-2 gap-2">
-        <SelectField
-          value={siteId ?? ""}
-          onChange={(v) => onChange({ siteId: v || null, locationId: null })}
-          placeholder="General"
-        >
-          {activeSites.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </SelectField>
-        <SelectField
-          value={locationId ?? ""}
-          disabled={!siteId || siteLocations.length === 0}
-          onChange={(v) => onChange({ siteId, locationId: v || null })}
-          placeholder={siteId ? "Anywhere" : "—"}
-        >
-          {siteLocations.map(l => (
-            <option key={l.id} value={l.id}>{l.name}</option>
-          ))}
-        </SelectField>
-      </div>
+      <SelectField
+        value={placeId ?? ""}
+        onChange={(v) => onChange(v || null)}
+        placeholder="General"
+      >
+        {placeOptions.map(o => (
+          <option key={o.id} value={o.id}>{o.label}</option>
+        ))}
+      </SelectField>
     </div>
   );
 }
@@ -262,12 +250,11 @@ function PrimaryButton({ children, disabled, onClick }) {
 
 // ── Note sheet ────────────────────────────────────────────────────────
 function NoteSheet({
-  runId, seedSiteId, seedLocationId, sites, locations,
+  runId, seedPlaceId, placeOptions,
   onLogRunEvent, onClose,
 }) {
   const [text, setText] = useState("");
-  const [siteId, setSiteId] = useState(seedSiteId);
-  const [locationId, setLocationId] = useState(seedLocationId);
+  const [placeId, setPlaceId] = useState(seedPlaceId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -280,8 +267,7 @@ function NoteSheet({
         kind: "note_observed",
         payload: { text: text.trim() },
         runId,
-        siteId: siteId ?? null,
-        locationId: locationId ?? null,
+        placeId: placeId ?? null,
       });
       onClose();
     } catch (e) {
@@ -301,15 +287,10 @@ function NoteSheet({
       }
     >
       <div className="flex flex-col gap-4">
-        <SitePicker
-          siteId={siteId}
-          locationId={locationId}
-          sites={sites}
-          locations={locations}
-          onChange={(v) => {
-            setSiteId(v.siteId);
-            setLocationId(v.locationId);
-          }}
+        <PlacePicker
+          placeId={placeId}
+          placeOptions={placeOptions}
+          onChange={setPlaceId}
         />
         <div className="flex flex-col gap-2">
           <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
@@ -345,12 +326,11 @@ function NoteSheet({
 const OTHER_CHIP = "Other";
 
 function MashSheet({
-  runId, seedSiteId, seedLocationId, sites, locations,
-  recentConditionsByLocation, repeatWindowDays,
+  runId, seedPlaceId, placeOptions, placesById,
+  recentConditionsByPlace, repeatWindowDays,
   onLogRunEvent, onClose,
 }) {
-  const [siteId, setSiteId] = useState(seedSiteId);
-  const [locationId, setLocationId] = useState(seedLocationId);
+  const [placeId, setPlaceId] = useState(seedPlaceId);
   const [picked, setPicked] = useState(() => new Set());
   const [otherText, setOtherText] = useState("");
   const [saving, setSaving] = useState(false);
@@ -366,25 +346,25 @@ function MashSheet({
   };
 
   // Repeat detection — show a banner if any picked condition has been
-  // logged at this location within the rolling window.
+  // logged at this place within the rolling window.
   const repeatBanners = useMemo(() => {
-    if (!locationId) return [];
-    const counts = recentConditionsByLocation.get(locationId);
+    if (!placeId) return [];
+    const counts = recentConditionsByPlace.get(placeId);
     if (!counts) return [];
     const out = [];
     for (const state of picked) {
       if (state === OTHER_CHIP) continue;
       const c = counts.get(state);
       if (c && c >= 2) {
-        const loc = locations.find(l => l.id === locationId);
+        const place = placesById.get(placeId);
         out.push(
-          `${loc?.name ?? "this location"}: ${c} ${state.toLowerCase()} ` +
+          `${place?.name ?? "this place"}: ${c} ${state.toLowerCase()} ` +
           `calls in the last ${repeatWindowDays} days`
         );
       }
     }
     return out;
-  }, [picked, locationId, recentConditionsByLocation, locations, repeatWindowDays]);
+  }, [picked, placeId, recentConditionsByPlace, placesById, repeatWindowDays]);
 
   const otherPicked = picked.has(OTHER_CHIP);
   const otherTextValid =
@@ -405,8 +385,7 @@ function MashSheet({
           ...(trimmedOther ? { other_text: trimmedOther } : {}),
         },
         runId,
-        siteId: siteId ?? null,
-        locationId: locationId ?? null,
+        placeId: placeId ?? null,
         conditions: states,
       });
       onClose();
@@ -429,15 +408,10 @@ function MashSheet({
       }
     >
       <div className="flex flex-col gap-4">
-        <SitePicker
-          siteId={siteId}
-          locationId={locationId}
-          sites={sites}
-          locations={locations}
-          onChange={(v) => {
-            setSiteId(v.siteId);
-            setLocationId(v.locationId);
-          }}
+        <PlacePicker
+          placeId={placeId}
+          placeOptions={placeOptions}
+          onChange={setPlaceId}
         />
         <div className="flex flex-col gap-2">
           <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
@@ -494,17 +468,16 @@ function MashSheet({
 
 // ── Mortality sheet ───────────────────────────────────────────────────
 function MortalitySheet({
-  runId, seedSiteId, seedLocationId, sites, locations, residents,
-  onLogRunEvent, onMoveOutResident, onClose,
+  runId, seedPlaceId, placeOptions, childrenByParent, placementsByPlaceId,
+  onLogRunEvent, onMoveOutOccupant, onClose,
 }) {
-  const [siteId, setSiteId] = useState(seedSiteId);
-  const [locationId, setLocationId] = useState(seedLocationId);
+  const [placeId, setPlaceId] = useState(seedPlaceId);
   const [groupId, setGroupId] = useState(null);
   const [count, setCount] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  // Pull livestock_group labels just for cohorts present at locations
+  // Pull livestock_group labels just for cohorts present at places
   // we can address. Cheaper than wiring useReferenceData through.
   const [groupLabels, setGroupLabels] = useState(() => new Map());
   useEffect(() => {
@@ -521,20 +494,30 @@ function MortalitySheet({
     return () => { cancelled = true; };
   }, []);
 
-  // Cohort candidates. When a location is picked, scope to its
-  // residents. When no location is picked (General), widen to every
-  // active cohort on the farm — common case is logging losses on a
-  // cohort that's between locations or that was never assigned a
-  // residency row.
+  // All current batch placements, flattened from the by-place map.
+  const batchPlacements = useMemo(() => {
+    const out = [];
+    for (const list of placementsByPlaceId?.values() ?? []) {
+      for (const pl of list) {
+        if (pl.occupantType === "batch") out.push(pl);
+      }
+    }
+    return out;
+  }, [placementsByPlaceId]);
+
+  // Cohort candidates. When a place is picked, scope to the batches
+  // living anywhere in its subtree. When no place is picked (General),
+  // widen to every active cohort on the farm — common case is logging
+  // losses on a cohort between places or never given a placement.
   const candidates = useMemo(() => {
-    if (locationId) {
-      return residents
-        .filter(r => r.locationId === locationId && !r.movedOut)
-        .map(r => ({
-          id: r.livestockGroupId,
-          label: groupLabels.get(r.livestockGroupId)?.label
-            ?? r.livestockGroupId,
-          count: groupLabels.get(r.livestockGroupId)?.count,
+    if (placeId) {
+      const subtree = descendantIds(placeId, childrenByParent);
+      return batchPlacements
+        .filter(pl => subtree.has(pl.placeId))
+        .map(pl => ({
+          id: pl.occupantId,
+          label: groupLabels.get(pl.occupantId)?.label ?? pl.occupantId,
+          count: groupLabels.get(pl.occupantId)?.count,
         }));
     }
     return Array.from(groupLabels.values())
@@ -544,10 +527,10 @@ function MortalitySheet({
         label: g.label ?? g.id,
         count: g.count,
       }));
-  }, [locationId, residents, groupLabels]);
+  }, [placeId, batchPlacements, childrenByParent, groupLabels]);
 
-  // Reset cohort selection when location changes.
-  useEffect(() => { setGroupId(null); }, [locationId]);
+  // Reset cohort selection when place changes.
+  useEffect(() => { setGroupId(null); }, [placeId]);
 
   const submit = async () => {
     if (!groupId || count < 1) return;
@@ -563,8 +546,7 @@ function MortalitySheet({
           count,
         },
         runId,
-        siteId: siteId ?? null,
-        locationId: locationId ?? null,
+        placeId: placeId ?? null,
       });
       // Auto-decrement the cohort count. Best-effort: ignore errors so
       // a count-out-of-sync doesn't lose the activity_log entry.
@@ -577,15 +559,12 @@ function MortalitySheet({
           .update({ count: nextCount })
           .eq("id", groupId);
       }
-      // 8.3 — auto move-out: when a cohort empties to zero, mark its
-      // open site_residents row(s) moved-out today so the location no
-      // longer surfaces it in cohort pickers.
-      if (nextCount === 0 && onMoveOutResident) {
-        const open = (residents ?? []).filter(
-          r => r.livestockGroupId === groupId && !r.movedOut
-        );
+      // 8.3 — auto move-out: when a cohort empties to zero, close its
+      // open placement(s) so it stops surfacing in pickers.
+      if (nextCount === 0 && onMoveOutOccupant) {
+        const open = batchPlacements.filter(pl => pl.occupantId === groupId);
         await Promise.all(
-          open.map(r => onMoveOutResident(r.id).catch(() => {}))
+          open.map(pl => onMoveOutOccupant(pl.id).catch(() => {}))
         );
       }
       onClose();
@@ -613,20 +592,15 @@ function MortalitySheet({
       }
     >
       <div className="flex flex-col gap-4">
-        <SitePicker
-          siteId={siteId}
-          locationId={locationId}
-          sites={sites}
-          locations={locations}
-          onChange={(v) => {
-            setSiteId(v.siteId);
-            setLocationId(v.locationId);
-          }}
+        <PlacePicker
+          placeId={placeId}
+          placeOptions={placeOptions}
+          onChange={setPlaceId}
         />
         {noCandidates && (
           <div className="text-[12px] text-faint leading-relaxed">
-            {locationId
-              ? "No cohorts currently live at this location. Assign one in Settings → Sites first."
+            {placeId
+              ? "No cohorts currently live in this place. Assign one in Settings → Sites first."
               : "No active cohorts on the farm yet."}
           </div>
         )}

@@ -5,7 +5,11 @@
 -- reference tables — catalog data that everything else points at but that
 -- rarely changes in its own right:
 --
---   suppliers, machines, trailers, feed_types, space_kinds, space_items
+--   suppliers, machines, trailers, feed_types
+--
+-- (The legacy space_kinds / space_items lived here too; the Batch 15
+-- place-model collapse removed them in favor of the recursive `places`
+-- tree defined in 0009.)
 --
 -- Seeds are embedded via `jsonb_to_recordset` — compact, re-runnable, and
 -- obviously matches what the frontend JSON contained on the day of
@@ -121,46 +125,7 @@ create policy feed_types_write on public.feed_types
   with check (public.current_user_is_admin());
 
 
--- ── spaces: kinds + items ───────────────────────────────────────────────────
-create table if not exists public.space_kinds (
-  id text primary key,
-  label text not null,
-  description text,
-  movement_method text,
-  used_by text
-);
-
-alter table public.space_kinds enable row level security;
-
-drop policy if exists space_kinds_read on public.space_kinds;
-create policy space_kinds_read on public.space_kinds
-  for select to authenticated using (public.current_user_is_admin());
-
-drop policy if exists space_kinds_write on public.space_kinds;
-create policy space_kinds_write on public.space_kinds
-  for all to authenticated
-  using (public.current_user_is_admin())
-  with check (public.current_user_is_admin());
-
-create table if not exists public.space_items (
-  id text primary key,
-  label text not null,
-  kind_id text references public.space_kinds(id) on delete restrict,
-  current_residents text,
-  notes text
-);
-
-alter table public.space_items enable row level security;
-
-drop policy if exists space_items_read on public.space_items;
-create policy space_items_read on public.space_items
-  for select to authenticated using (public.current_user_is_admin());
-
-drop policy if exists space_items_write on public.space_items;
-create policy space_items_write on public.space_items
-  for all to authenticated
-  using (public.current_user_is_admin())
-  with check (public.current_user_is_admin());
+-- (space_kinds / space_items removed in Batch 15 — see header note.)
 
 
 -- ============================================================================
@@ -300,57 +265,4 @@ on conflict (id) do update set
   reorder_point = excluded.reorder_point,
   reorder_quantity = excluded.reorder_quantity,
   lead_time_days = excluded.lead_time_days,
-  notes = excluded.notes;
-
-
-insert into public.space_kinds (id, label, description, movement_method, used_by)
-select id, label, description, movement_method, used_by
-from jsonb_to_recordset($seed$
-[
-  {"id": "mobile_coop", "label": "Mobile coop",
-   "description": "Wooden chicken coop on running gear, moved on rotation within the layer pasture.",
-   "movement_method": "Towed by the tractor via drawbar hitch.",
-   "used_by": "layers"},
-  {"id": "brooder", "label": "Brooder",
-   "description": "Heated enclosure where broiler chicks spend their first 3–4 weeks. Temperature starts at 85°F in week 1 and decreases weekly.",
-   "movement_method": null,
-   "used_by": "broilers"},
-  {"id": "pasture", "label": "Pasture",
-   "description": "Outdoor grazing/foraging land. The layer pasture houses mobile coops on rotation; broilers rotate via chicken tractors.",
-   "movement_method": null, "used_by": null},
-  {"id": "chicken_tractor", "label": "Chicken tractor",
-   "description": "Mobile pen with feed, water, and fencing. Houses broilers from brooder graduation through processing. Moved twice daily.",
-   "movement_method": null, "used_by": "broilers"}
-]
-$seed$::jsonb) as x(id text, label text, description text, movement_method text, used_by text)
-on conflict (id) do update set
-  label = excluded.label,
-  description = excluded.description,
-  movement_method = excluded.movement_method,
-  used_by = excluded.used_by;
-
-
-insert into public.space_items (id, label, kind_id, current_residents, notes)
-select id, label, kind_id, current_residents, notes
-from jsonb_to_recordset($seed$
-[
-  {"id": "mc1", "label": "MC1", "kind_id": "mobile_coop",
-   "current_residents": "Gold bands",
-   "notes": "Houses the newest layer generation; kept separate."},
-  {"id": "mc2", "label": "MC2", "kind_id": "mobile_coop",
-   "current_residents": "No bands, blue bands, and orange bands (cohabit)",
-   "notes": null},
-  {"id": "b1", "label": "B1", "kind_id": "brooder",
-   "current_residents": null, "notes": "Specs TBD."},
-  {"id": "b2", "label": "B2", "kind_id": "brooder",
-   "current_residents": null, "notes": "Specs TBD."},
-  {"id": "layer_pasture", "label": "Layer pasture", "kind_id": "pasture",
-   "current_residents": "Mobile coops MC1 and MC2 rotate through this pasture.",
-   "notes": "Dimensions and satellite-image boundary pending."}
-]
-$seed$::jsonb) as x(id text, label text, kind_id text, current_residents text, notes text)
-on conflict (id) do update set
-  label = excluded.label,
-  kind_id = excluded.kind_id,
-  current_residents = excluded.current_residents,
   notes = excluded.notes;

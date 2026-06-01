@@ -53,7 +53,7 @@ create policy chore_assignment_rules_write on public.chore_assignment_rules
   with check (public.current_user_is_admin());
 
 create or replace function public.touch_chore_assignment_rules_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   new.updated_at = now();
   return new;
@@ -101,6 +101,12 @@ drop trigger if exists chore_blocks_purge_rules
 create trigger chore_blocks_purge_rules
   before delete on public.chore_blocks
   for each row execute function public.purge_chore_assignment_rules_for_block();
+
+-- Trigger-only functions; not meant to be callable as RPCs.
+revoke execute on function public.purge_chore_assignment_rules_for_chore()
+  from public, anon, authenticated;
+revoke execute on function public.purge_chore_assignment_rules_for_block()
+  from public, anon, authenticated;
 
 
 -- ── Realtime ─────────────────────────────────────────────────────────

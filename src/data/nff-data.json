@@ -1,7 +1,7 @@
 {
   "meta": {
-    "version": "0.10.9-alpha",
-    "lastUpdated": "2026-05-08",
+    "version": "0.10.10-alpha",
+    "lastUpdated": "2026-05-31",
     "businessName": "North Foster Farm",
     "location": "Foster, Rhode Island",
     "users": [
@@ -63,21 +63,6 @@
           { "id": "sheep_pets", "label": "Lily, Ivy, and Violet", "ordinal": null, "count": null, "arrivalDate": null, "knownAge": null, "currentLocation": null, "cohabits": null }
         ]
       }
-    ]
-  },
-  "spaces": {
-    "kinds": [
-      { "id": "mobile_coop", "label": "Mobile coop", "description": "Wooden chicken coop on running gear, moved on rotation within the layer pasture.", "movementMethod": "Towed by the tractor via drawbar hitch.", "usedBy": "layers" },
-      { "id": "brooder", "label": "Brooder", "description": "Heated enclosure where broiler chicks spend their first 3–4 weeks. Temperature starts at 85°F in week 1 and decreases weekly.", "usedBy": "broilers" },
-      { "id": "pasture", "label": "Pasture", "description": "Outdoor grazing/foraging land. The layer pasture houses mobile coops on rotation; broilers rotate via chicken tractors." },
-      { "id": "chicken_tractor", "label": "Chicken tractor", "description": "Mobile pen with feed, water, and fencing. Houses broilers from brooder graduation through processing. Moved twice daily.", "usedBy": "broilers" }
-    ],
-    "items": [
-      { "id": "mc1", "label": "MC1", "kindId": "mobile_coop", "currentResidents": "Gold bands", "notes": "Houses the newest layer generation; kept separate." },
-      { "id": "mc2", "label": "MC2", "kindId": "mobile_coop", "currentResidents": "No bands, blue bands, and orange bands (cohabit)", "notes": null },
-      { "id": "b1", "label": "B1", "kindId": "brooder", "currentResidents": null, "notes": "Specs TBD." },
-      { "id": "b2", "label": "B2", "kindId": "brooder", "currentResidents": null, "notes": "Specs TBD." },
-      { "id": "layer_pasture", "label": "Layer pasture", "kindId": "pasture", "currentResidents": "Mobile coops MC1 and MC2 rotate through this pasture.", "notes": "Dimensions and satellite-image boundary pending." }
     ]
   },
   "trailers": [

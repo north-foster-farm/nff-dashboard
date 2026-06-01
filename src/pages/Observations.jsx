@@ -2,13 +2,15 @@ import { useMemo, useState } from "react";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useSites } from "../lib/data/useSites.js";
+import { descendantIds } from "../lib/places.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 
 // The Observation Log. A focused window into the activity_log rows that
 // originate from Rounds quick-actions: notes, MASH intakes, mortality,
-// and cohort moves. Filterable by kind, site, date range, and author.
+// and cohort moves. Filterable by kind, place, date range, and author.
 // No new table — the source of truth is the activity_log, with the
-// same edit/delete affordances Activity has.
+// same edit/delete affordances Activity has. The place filter matches a
+// place's whole subtree (picking Pasture C catches its coops).
 
 const OBSERVATION_KINDS = [
   { id: "note_observed", label: "Notes" },
@@ -28,10 +30,10 @@ const RANGE_PRESETS = [
 
 export default function Observations() {
   const userEmail = useCurrentUserEmail();
-  const { sites: siteList, locations: locationList } = useSites();
+  const { places, childrenByParent } = useSites();
 
   const [kindFilter, setKindFilter] = useState("all"); // "all" | kind id
-  const [siteFilter, setSiteFilter] = useState("all"); // "all" | site id
+  const [placeFilter, setPlaceFilter] = useState("all"); // "all" | place id
   const [authorFilter, setAuthorFilter] = useState("all");
   const [rangePreset, setRangePreset] = useState("30d");
 
@@ -51,13 +53,12 @@ export default function Observations() {
     kinds: OBSERVATION_KIND_IDS,
   });
 
-  // Location → site lookup so the site filter catches rows tagged with
-  // only a location_id.
-  const locationById = useMemo(() => {
-    const m = new Map();
-    for (const l of locationList ?? []) m.set(l.id, l);
-    return m;
-  }, [locationList]);
+  // The selected place's subtree — an entry matches the place filter if
+  // its place_id falls anywhere inside it.
+  const placeSubtree = useMemo(() => {
+    if (placeFilter === "all") return null;
+    return descendantIds(placeFilter, childrenByParent);
+  }, [placeFilter, childrenByParent]);
 
   // Authors that appear in the (server-filtered) entries — drives the
   // dropdown. Falls back to the seed admins (James / Jim) if nothing has
@@ -74,21 +75,17 @@ export default function Observations() {
     if (!entries) return null;
     return entries.filter(e => {
       if (kindFilter !== "all" && e.kind !== kindFilter) return false;
-      if (siteFilter !== "all") {
-        const locSite = e.locationId
-          ? locationById.get(e.locationId)?.siteId ?? null
-          : null;
-        const effectiveSiteId = e.siteId ?? locSite;
-        if (effectiveSiteId !== siteFilter) return false;
+      if (placeSubtree) {
+        if (!e.placeId || !placeSubtree.has(e.placeId)) return false;
       }
       if (authorFilter !== "all" && e.ownerEmail !== authorFilter) return false;
       return true;
     });
-  }, [entries, kindFilter, siteFilter, authorFilter, locationById]);
+  }, [entries, kindFilter, placeSubtree, authorFilter]);
 
-  const activeSites = useMemo(
-    () => (siteList ?? []).filter(s => s.isActive),
-    [siteList]
+  const activePlaces = useMemo(
+    () => (places ?? []).filter(p => p.isActive !== false),
+    [places]
   );
 
   return (
@@ -96,13 +93,13 @@ export default function Observations() {
       <FilterBar
         kindFilter={kindFilter}
         onKindChange={setKindFilter}
-        siteFilter={siteFilter}
-        onSiteChange={setSiteFilter}
+        placeFilter={placeFilter}
+        onPlaceChange={setPlaceFilter}
         authorFilter={authorFilter}
         onAuthorChange={setAuthorFilter}
         rangePreset={rangePreset}
         onRangeChange={setRangePreset}
-        sites={activeSites}
+        places={activePlaces}
         authors={authorOptions}
       />
 
@@ -119,10 +116,10 @@ export default function Observations() {
 
 function FilterBar({
   kindFilter, onKindChange,
-  siteFilter, onSiteChange,
+  placeFilter, onPlaceChange,
   authorFilter, onAuthorChange,
   rangePreset, onRangeChange,
-  sites, authors,
+  places, authors,
 }) {
   return (
     <div className="bg-surface border border-line p-3 flex flex-wrap gap-3 items-center">
@@ -131,12 +128,12 @@ function FilterBar({
       <div className="h-5 w-px bg-line" />
 
       <PickerSelect
-        label="Site"
-        value={siteFilter}
-        onChange={onSiteChange}
+        label="Place"
+        value={placeFilter}
+        onChange={onPlaceChange}
         options={[
-          { value: "all", label: "All sites" },
-          ...sites.map(s => ({ value: s.id, label: s.name })),
+          { value: "all", label: "All places" },
+          ...places.map(p => ({ value: p.id, label: p.name })),
         ]}
       />
 

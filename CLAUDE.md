@@ -69,6 +69,49 @@ Every commit on this repo follows one consistent shape. Match it.
     Roadmap: the farm-map north-star artifacts are now retired — this
     file is the capture point.
 
+## Data safety — back up before any destructive DB op
+
+The linked Supabase project holds **real, irreplaceable data**. Two
+kinds in particular must never be lost: **events** (`event_series`,
+`event_occurrences`, `event_instances`, `event_links`) and **chores**
+(`chore_definitions`, `chore_blocks`, `chore_runs`, `chore_modifiers`,
+`chore_completions`, `chore_assignment_rules`). Re-importing afterward is
+acceptable; silently losing what's in the DB is not.
+
+Because the pre-production rule **amends migrations in place**, picking
+up an amended migration means resetting the DB — which is destructive.
+So, before **any** destructive DB operation (`supabase db reset`,
+re-applying amended migrations to the linked project, or any drop/
+truncate):
+
+1. **Run `node scripts/backup-db.mjs` first.** It does a read-only,
+   full export of every table to a timestamped, gitignored
+   `.backups/<ts>/` folder (`SUPABASE_URL` + `SUPABASE_SECRET_KEY` from
+   `.env.local`). The events/chores tables above are flagged `*` in its
+   summary.
+2. **Confirm the row counts look right** (non-empty event/chore tables)
+   before proceeding with anything destructive.
+3. If a reset wipes the linked DB, restore with
+   `node scripts/restore-db.mjs <backupDir> --yes`.
+
+### Pre-rollout reset/restore loop (until v1.0)
+
+While migrations are amended in place, treat the DB as disposable:
+**back up → reset → restore** on every reset.
+
+    node scripts/backup-db.mjs                    # snapshot all tables
+    supabase db reset --linked                    # apply amended migrations
+    node scripts/restore-db.mjs <backupDir> --yes # put data back
+
+`restore-db.mjs` is **replace-mode**: it deletes the just-seeded rows
+and re-inserts the backup verbatim (uuids preserved, FK-safe order) so
+the backup is authoritative and references stay consistent. It is
+per-table tolerant — a table whose **schema changed** (column
+renamed/dropped) won't reinsert and is logged + skipped; that's the
+"handle case-by-case" path, and it's usually fine because the migration
+re-seeds that table. At v1.0 rollout this loop ends: migrations go
+additive-only and data persists across deploys.
+
 ## Pre-commit checklist
 
 Run through this before every commit:

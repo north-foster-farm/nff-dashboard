@@ -2,15 +2,15 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { supabase } from "../supabase.js";
 
 // Run Events live in `activity_log` (typed rows tagged with run_id +
-// site/location context) plus the `activity_log_condition_states`
-// child table for the multi-select MASH-intake action. Quick actions
-// in Rounds write through `logRunEvent` which calls the SECURITY
-// DEFINER RPC `log_run_event`. The activity feed picks them up via
-// the same realtime subscription that powers `useActivityLog`.
+// place context) plus the `activity_log_condition_states` child table
+// for the multi-select MASH-intake action. Quick actions in Rounds
+// write through `logRunEvent` which calls the SECURITY DEFINER RPC
+// `log_run_event`. The activity feed picks them up via the same
+// realtime subscription that powers `useActivityLog`.
 //
-// `recentConditionsByLocation` lets the MASH sheet flag repeat
-// observations ("Brooder #1: 2 off-feed calls in the last 7 days").
-// It's a small lookup keyed by location_id over the last 7 days.
+// `recentConditionsByPlace` lets the MASH sheet flag repeat
+// observations ("Brooder 1: 2 off-feed calls in the last 7 days").
+// It's a small lookup keyed by place_id over the last 7 days.
 
 const REPEAT_WINDOW_DAYS = 7;
 
@@ -30,7 +30,7 @@ export function useRunEvents() {
     Promise.all([
       supabase
         .from("activity_log")
-        .select("id, occurred_at, location_id, site_id")
+        .select("id, occurred_at, place_id")
         .eq("kind", "mash_intake")
         .gte("occurred_at", since),
       supabase
@@ -50,8 +50,7 @@ export function useRunEvents() {
       const stitched = (logsRes.data ?? []).map(l => ({
         id: l.id,
         occurredAt: l.occurred_at,
-        locationId: l.location_id,
-        siteId: l.site_id,
+        placeId: l.place_id,
         states: chipsByLog.get(l.id) ?? [],
       }));
       setRecent(stitched);
@@ -74,7 +73,7 @@ export function useRunEvents() {
         const [logsRes, chipsRes] = await Promise.all([
           supabase
             .from("activity_log")
-            .select("id, occurred_at, location_id, site_id")
+            .select("id, occurred_at, place_id")
             .eq("kind", "mash_intake")
             .gte("occurred_at", since),
           supabase
@@ -93,8 +92,7 @@ export function useRunEvents() {
           (logsRes.data ?? []).map(l => ({
             id: l.id,
             occurredAt: l.occurred_at,
-            locationId: l.location_id,
-            siteId: l.site_id,
+            placeId: l.place_id,
             states: chipsByLog.get(l.id) ?? [],
           }))
         );
@@ -123,14 +121,14 @@ export function useRunEvents() {
     return () => { supabase.removeChannel(channel); };
   }, [instanceId]);
 
-  // Map<locationId, Map<state, count>> over the rolling window.
-  const recentConditionsByLocation = useMemo(() => {
+  // Map<placeId, Map<state, count>> over the rolling window.
+  const recentConditionsByPlace = useMemo(() => {
     const out = new Map();
     if (!recent) return out;
     for (const r of recent) {
-      if (!r.locationId) continue;
-      if (!out.has(r.locationId)) out.set(r.locationId, new Map());
-      const counts = out.get(r.locationId);
+      if (!r.placeId) continue;
+      if (!out.has(r.placeId)) out.set(r.placeId, new Map());
+      const counts = out.get(r.placeId);
       for (const s of r.states) {
         counts.set(s, (counts.get(s) ?? 0) + 1);
       }
@@ -142,16 +140,14 @@ export function useRunEvents() {
     kind,
     payload = {},
     runId = null,
-    siteId = null,
-    locationId = null,
+    placeId = null,
     conditions = null,
   }) => {
     const { data, error: rpcErr } = await supabase.rpc("log_run_event", {
       p_kind: kind,
       p_payload: payload,
       p_run_id: runId,
-      p_site_id: siteId,
-      p_location_id: locationId,
+      p_place_id: placeId,
       p_conditions: conditions,
     });
     if (rpcErr) throw rpcErr;
@@ -160,7 +156,7 @@ export function useRunEvents() {
 
   return {
     logRunEvent,
-    recentConditionsByLocation,
+    recentConditionsByPlace,
     repeatWindowDays: REPEAT_WINDOW_DAYS,
     loading: recent === null,
     error,

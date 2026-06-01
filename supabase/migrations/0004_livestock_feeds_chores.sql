@@ -63,7 +63,6 @@ create table if not exists public.livestock_groups (
   count integer,
   arrival_date date,
   known_age jsonb,
-  current_location text,
   cohabits text
 );
 
@@ -249,39 +248,38 @@ on conflict (id) do update set
 -- ── livestock_groups ───────────────────────────────────────────────────────
 insert into public.livestock_groups (
   id, species_id, label, ordinal, count, arrival_date, known_age,
-  current_location, cohabits
+  cohabits
 )
 select id, species_id, label, ordinal, count, arrival_date, known_age,
-       current_location, cohabits
+       cohabits
 from jsonb_to_recordset($seed$
 [
   {"id": "layers_no_band", "species_id": "layers", "label": "No bands", "ordinal": 1,
    "count": null, "arrival_date": null, "known_age": null,
-   "current_location": "MC2", "cohabits": "Shares MC2 with blue bands and orange bands."},
+   "cohabits": "Shares MC2 with blue bands and orange bands."},
   {"id": "layers_blue_band", "species_id": "layers", "label": "Blue bands", "ordinal": 2,
    "count": null, "arrival_date": null, "known_age": null,
-   "current_location": "MC2", "cohabits": "Shares MC2 with no bands and orange bands."},
+   "cohabits": "Shares MC2 with no bands and orange bands."},
   {"id": "layers_orange_band", "species_id": "layers", "label": "Orange bands", "ordinal": 3,
    "count": null, "arrival_date": "2025-10-14", "known_age": null,
-   "current_location": "MC2", "cohabits": "Shares MC2 with no bands and blue bands."},
+   "cohabits": "Shares MC2 with no bands and blue bands."},
   {"id": "layers_gold_band", "species_id": "layers", "label": "Gold bands", "ordinal": 4,
    "count": 200, "arrival_date": "2026-04-01",
    "known_age": {"weeks": 16, "asOfDate": "2026-05-03"},
-   "current_location": "MC1",
    "cohabits": "Kept separate. Future generations will also be kept separate from older generations."},
   {"id": "broilers_batch_1", "species_id": "broilers", "label": "Batch 1", "ordinal": 1,
    "count": 275, "arrival_date": null, "known_age": null,
-   "current_location": null, "cohabits": null},
+   "cohabits": null},
   {"id": "broilers_batch_2", "species_id": "broilers", "label": "Batch 2", "ordinal": 2,
    "count": 275, "arrival_date": null, "known_age": null,
-   "current_location": null, "cohabits": null},
+   "cohabits": null},
   {"id": "sheep_pets", "species_id": "sheep", "label": "Lily, Ivy, and Violet", "ordinal": null,
    "count": null, "arrival_date": null, "known_age": null,
-   "current_location": null, "cohabits": null}
+   "cohabits": null}
 ]
 $seed$::jsonb) as x(
   id text, species_id text, label text, ordinal integer, count integer,
-  arrival_date date, known_age jsonb, current_location text, cohabits text
+  arrival_date date, known_age jsonb, cohabits text
 )
 on conflict (id) do update set
   species_id = excluded.species_id,
@@ -290,7 +288,6 @@ on conflict (id) do update set
   count = excluded.count,
   arrival_date = excluded.arrival_date,
   known_age = excluded.known_age,
-  current_location = excluded.current_location,
   cohabits = excluded.cohabits;
 
 

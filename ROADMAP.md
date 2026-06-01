@@ -1132,11 +1132,80 @@ section content with the workspace and hides SectionHeader.
 The workspace's Back button clears the target, returning the
 user to whatever they had open.
 
-**Out of scope — deferred to Batch 15 / 16.** Triggers v1
+**Out of scope — deferred to Batch 19 / 20.** Triggers v1
 (feed reorder + broiler-batch lifecycle automations writing
 linked event_links). One-way Google Calendar push with
 `gcal_pushes` audit log. Animal-lifecycle pages with the
-event-link-driven timeline strip.
+event-link-driven timeline strip. (These were the old Batch
+15 / 16 slots before the Farm Map overhaul pushed the
+events-overhaul tail to 19–20.)
+
+### Batch 15 — Farm map: place-model foundation · `v0.10.10-alpha`
+2026-05-31. The schema-down spine of the Farm Map overhaul
+(Batches 15–18). Collapses the three overlapping place
+vocabularies — `sites`/`site_locations`/`site_residents`,
+the legacy `space_kinds`/`space_items`, and the free-text
+`livestock_groups.current_location` — into **one recursive
+`places` tree**. Migrations amended in place per the
+pre-production rule (events + chores backed up first via the
+new `scripts/backup-db.mjs`; see CLAUDE.md → Data safety).
+
+**Schema** (migrations 0003/0004/0009/0010/0013 amended):
+- `places` — recursive tree (`parent_id`, `name`, `kind`
+  [farm/zone/area/structure], `kind_tag` [the secondary
+  "sweep all coops" axis], `code`, `mobile`, `sort_order`,
+  `is_active`). Geography is the primary axis.
+- `placements` — polymorphic occupancy edge
+  (`occupant_type`/`occupant_id`, one open row per occupant)
+  replacing `site_residents`; covers livestock batches AND
+  assets (machinery parked in the barn).
+- `place_geometry` — `place_id → svg_layer_id` +
+  centroid/footprint binding (shape only; the SVG lands in
+  Batch 18).
+- `chore_definitions`/`activity_log`/`chore_modifiers` repoint
+  to a single `place_id` (drop the site/location pair + XOR);
+  `log_run_event(… p_place_id …)`; `timeline_items` view gains
+  `place_id`. Legacy `space_*` tables + `current_location`
+  deleted.
+- Re-seeded with the real North Foster Farm geography (House,
+  Barn → High tunnel + "Fred" container, Brooders → Brooder 1
+  + Mobile Brooder, Pastures A/B/C with chicken tractors 1–5
+  and Mobile Coops 1–2), plus current cohort + machine
+  placements.
+
+**Client.** New `src/lib/places.js` (`buildPlaceTree`,
+`descendantIds` subtree fan-out, `displayPlace`,
+`placePath`). `useSites` rewritten as a places + placements
+loader (CRUD incl. reparent + polymorphic occupant assign).
+`SitesAdmin` is now a recursive place-tree editor (rename,
+add-child, reparent, reorder, archive, mobile/kind/kind_tag/
+code, occupants pane). Chores / Rounds / Observations /
+QuickActionsTray repoint to `place_id` with subtree fan-out
+(a chore on "Pastures" surfaces under every tractor/coop
+beneath it); the legacy Resources → Spaces page is removed.
+
+Mid-flight (high-priority bug fixes folded in, separate from
+the place model): the calendar now reflects event
+create/edit/delete **without a hard refresh**
+(`useReferenceData` subscribes to `event_series` /
+`event_occurrences` and re-loads the events slice), and the
+EventEditor reads the **occurrence override** time so the
+edit UI matches the time shown on the calendar month view.
+
+Also folded in (security-linter cleanup ahead of rollout):
+`timeline_items` recreated `with (security_invoker = on)` to
+fix the SECURITY DEFINER view ERROR; `search_path = public`
+pinned on every trigger function; and EXECUTE revoked on the
+trigger-only functions (+ `anon` on `log_run_event` /
+`edit`/`delete_activity_entry`) so they're not exposed as
+PostgREST RPCs. New backup/restore tooling
+(`scripts/backup-db.mjs` + `scripts/restore-db.mjs`) supports
+the pre-rollout back-up → reset → restore loop.
+
+**Out of scope (Batches 16–18):** per-place completion +
+offline outbox, the Now surface + hardened Rounds, and the
+map renderer + place pages + nav restructure. `place_geometry`
+ships empty until the authored SVG lands in 18.
 
 ---
 
@@ -1297,25 +1366,8 @@ Collisions resolved (recorded here for the record):
   (the field write-path outbox, place search, and Tier-1 mobile
   respectively); the remainders stay as those later batches.
 
-### Batch 15 — Farm map: place-model foundation
-Schema-down spine; little visible value alone but unblocks everything
-below (same shape as the old Batch 7 chores foundation). Evolve
-`site_locations` into **one recursive place tree** (`parent_id`, `kind`,
-`kind_tag`, `code`, `mobile`, carrying `is_active`/`sort_order`); collapse
-the `sites` "category" role into the geographic tree + `kind_tag`;
-**re-seed geographically** (Pasture A/B/C, Barn, …). Generalize
-`site_residents` into a polymorphic **`placements`** occupancy edge
-(`occupant_type`/`occupant_id`, one open row per occupant — "coop moved
-paddock," "batch graduated brooder → tractor," "excavator parked in barn"
-are all one event type, move-history for free). Add a **`place_geometry`**
-binding table (`place_id → svg_layer_id` + centroid/footprint; binding
-*shape* only — the CI drift-guard is deferred). Delete the legacy
-`space_kinds`/`space_items` and the free-text `current_location`. Repoint
-chores / observations / run-events to `place_id`; place-anchor the
-`timeline_items` view. `SitesAdmin` becomes the place-tree editor.
-
-Ships value: one coherent, app-wide place model; the three-vocabulary
-tangle is gone.
+### Batch 15 — Farm map: place-model foundation ✅ SHIPPED
+Shipped `v0.10.10-alpha` (2026-05-31) — see the Shipped section above.
 
 ### Batch 16 — Farm map: per-place completion + offline outbox
 The rollout's beating heart — Dad working in the field, offline. Re-key

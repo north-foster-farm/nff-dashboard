@@ -70,7 +70,7 @@ create policy event_series_write on public.event_series
   with check (public.current_user_is_admin());
 
 create or replace function public.touch_event_series_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin new.updated_at = now(); return new; end;
 $$;
 drop trigger if exists event_series_updated_at on public.event_series;
@@ -117,7 +117,7 @@ create policy event_occurrences_write on public.event_occurrences
   with check (public.current_user_is_admin());
 
 create or replace function public.touch_event_occurrences_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin new.updated_at = now(); return new; end;
 $$;
 drop trigger if exists event_occurrences_updated_at on public.event_occurrences;
@@ -218,7 +218,11 @@ create policy gcal_pushes_write on public.gcal_pushes
 -- as rule expansions (no materialized override) don't appear here —
 -- the view is the materialized half. Read-time expansion of the rule
 -- happens in JS (lib/recurrence.js wrapper).
-create or replace view public.timeline_items as
+-- security_invoker = on so the view enforces the QUERYING user's RLS
+-- (not the view creator's). Without it Postgres/Supabase treats the
+-- view as SECURITY DEFINER, which the linter flags as an error.
+create or replace view public.timeline_items
+  with (security_invoker = on) as
   select
     'event'::text                  as kind,
     eo.id                          as id,
@@ -231,7 +235,8 @@ create or replace view public.timeline_items as
     es.label                       as label,
     null::uuid                     as block_id,
     null::timestamptz              as started_at,
-    null::timestamptz              as ended_at
+    null::timestamptz              as ended_at,
+    null::uuid                     as place_id
   from public.event_occurrences eo
   join public.event_series es on es.id = eo.series_id
   union all
@@ -247,7 +252,8 @@ create or replace view public.timeline_items as
     null::text                     as label,
     cr.block_id                    as block_id,
     cr.started_at                  as started_at,
-    cr.ended_at                    as ended_at
+    cr.ended_at                    as ended_at,
+    null::uuid                     as place_id
   from public.chore_runs cr;
 
 grant select on public.timeline_items to authenticated;

@@ -31,16 +31,28 @@ import EventScopePrompt from "./EventScopePrompt.jsx";
 
 export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessing }) {
   const { series, seriesById, createSeries, updateSeries, deleteSeries, splitSeries } = useEventSeries();
-  const { upsertOverride, deleteOverride } = useEventOccurrences();
+  const { occurrences: seriesOccurrences, upsertOverride, deleteOverride } =
+    useEventOccurrences({ seriesId: seed?.seriesId });
 
   const editingSeries = seed?.seriesId ? seriesById.get(seed.seriesId) : null;
   const isRecurring = !!editingSeries?.rrule;
   const isNew = (seed?.mode ?? "new") === "new";
 
-  // Form state. Re-seeded whenever `seed` (or the resolved series)
-  // changes — e.g. clicking a different event row in Schedule with
-  // the editor already open.
-  const initial = useMemo(() => deriveInitial(seed, editingSeries), [seed, editingSeries]);
+  // The materialized occurrence for the date being edited, if any. The
+  // calendar shows the occurrence's override time when present (see
+  // recurrence.js `pickTime`), so the editor must read from the same
+  // source or its time disagrees with the row that was clicked.
+  const editingOccurrence = seed?.seriesId && seed?.occursOn
+    ? seriesOccurrences.find(o => o.occursOn === seed.occursOn) ?? null
+    : null;
+
+  // Form state. Re-seeded whenever `seed` (or the resolved series /
+  // occurrence) changes — e.g. clicking a different event row in
+  // Schedule with the editor already open.
+  const initial = useMemo(
+    () => deriveInitial(seed, editingSeries, editingOccurrence),
+    [seed, editingSeries, editingOccurrence]
+  );
   const [label, setLabel] = useState(initial.label);
   const [subtitle, setSubtitle] = useState(initial.subtitle);
   const [kindId, setKindId] = useState(initial.kindId);
@@ -418,7 +430,7 @@ function Field({ label, children }) {
 }
 
 // ── Form-state derivation ────────────────────────────────────────────
-function deriveInitial(seed, series) {
+function deriveInitial(seed, series, occurrence) {
   const today = new Date();
   const todayIso = isoDateLocal(today);
   if (!series) {
@@ -441,24 +453,39 @@ function deriveInitial(seed, series) {
     };
   }
   const dtstart = series.dtstart ? new Date(series.dtstart) : null;
-  const startTime = dtstart && !Number.isNaN(dtstart.getTime())
+  // Series-default time from dtstart (UTC components, matching how
+  // loadEvents reads it).
+  const seriesStart = dtstart && !Number.isNaN(dtstart.getTime())
     ? `${pad(dtstart.getUTCHours())}:${pad(dtstart.getUTCMinutes())}`
-    : "09:00";
-  const endTime = dtstart && typeof series.durationMinutes === "number"
-    ? hhmmAfter(startTime, series.durationMinutes)
-    : "10:00";
+    : null;
+  // The occurrence override wins over the series default — this is the
+  // exact precedence the calendar uses, so the time shown here matches
+  // the row that was clicked.
+  const startTime = trimHHMM(occurrence?.startTime) ?? seriesStart ?? "09:00";
+  const overrideEnd = trimHHMM(occurrence?.endTime);
+  const endTime = overrideEnd
+    ?? (seriesStart && typeof series.durationMinutes === "number"
+        ? hhmmAfter(seriesStart, series.durationMinutes)
+        : hhmmAfter(startTime, 60));
   return {
     label: series.label ?? "",
     subtitle: series.subtitle ?? "",
     kindId: series.kindId ?? "",
-    locationName: series.location?.name ?? "",
-    locationAddress: series.location?.address ?? "",
+    locationName: occurrence?.locationOverride?.name ?? series.location?.name ?? "",
+    locationAddress: occurrence?.locationOverride?.address ?? series.location?.address ?? "",
     date: seed?.occursOn ?? (dtstart ? isoDateLocalFromUtc(dtstart) : todayIso),
     startTime,
     endTime,
-    notes: series.notes ?? "",
+    notes: occurrence?.notesOverride ?? series.notes ?? "",
     recurrence: { rrule: series.rrule ?? null, until: series.until ?? null },
   };
+}
+
+// Trim "08:00:00" → "08:00"; pass null/undefined through. Mirrors
+// recurrence.js `pickTime` so the editor and calendar agree.
+function trimHHMM(t) {
+  if (typeof t !== "string" || t.length < 5) return null;
+  return t.slice(0, 5);
 }
 
 function composeDtstart(dateIso, hhmm) {

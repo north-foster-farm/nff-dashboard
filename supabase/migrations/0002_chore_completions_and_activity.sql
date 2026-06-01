@@ -224,6 +224,18 @@ create trigger batch_assignment_logged
   for each row execute function public.log_batch_assignment();
 
 
+-- ── Lock down trigger functions ────────────────────────────────────────
+-- These are invoked by triggers (which run as the table owner), so no
+-- role needs EXECUTE. Revoke it so they aren't exposed as PostgREST RPCs
+-- (Supabase grants anon/authenticated execute by default; `revoke from
+-- public` alone doesn't remove those explicit grants).
+-- log_chore_uncompletion is redefined + revoked in 0007.
+revoke execute on function public.log_chore_completion()
+  from public, anon, authenticated;
+revoke execute on function public.log_batch_assignment()
+  from public, anon, authenticated;
+
+
 -- ── Realtime: enable change broadcasts for the read tables ─────────────────
 -- Lets the JS client subscribe to chore_completions / activity_log changes
 -- via supabase.channel(...).on('postgres_changes', ...) so two admins on

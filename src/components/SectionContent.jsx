@@ -2,7 +2,6 @@ import { getSpeciesFromSectionId, getEventKindFromSectionId } from "../sections.
 import ComingSoon from "./ComingSoon.jsx";
 import { T } from "../theme.js";
 import Overview from "../pages/Overview.jsx";
-import Spaces from "../pages/Spaces.jsx";
 import Machines from "../pages/Machines.jsx";
 import Suppliers from "../pages/Suppliers.jsx";
 import Feeds from "../pages/Feeds.jsx";
@@ -48,7 +47,6 @@ export default function SectionContent({ section, data, onOpenEvent, onNavigate 
   }
   switch (section.id) {
     case "overview": return <Overview data={data} onNavigate={onNavigate} />;
-    case "spaces": return <Spaces data={data} />;
     case "machines":
     case "resources_machinery":
       return <Machines data={data} />;

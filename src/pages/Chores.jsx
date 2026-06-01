@@ -14,6 +14,7 @@ import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useSites } from "../lib/data/useSites.js";
+import { buildPlaceTree } from "../lib/places.js";
 import {
   useChoreBlocks, formatMinutesOfDay,
 } from "../lib/data/useChoreBlocks.js";
@@ -339,7 +340,7 @@ function AllChoresTab({ data }) {
     definitions: liveDefs, loading: defsLoading,
     updateDefinition, deleteDefinition,
   } = useChoreDefinitions();
-  const { sites, locations } = useSites();
+  const { places, placesById } = useSites();
   const { blocks, blockById } = useChoreBlocks();
 
   // Until live data lands, fall back to the static definitions from the
@@ -384,26 +385,14 @@ function AllChoresTab({ data }) {
         if (!b) return 9999;
         return resolveBlockMinutes(today, b.startKind, b.startMinutes) ?? 9999;
       };
-      const siteName = (chore) => {
-        if (chore.locationId) {
-          const loc = locations.find(l => l.id === chore.locationId);
-          if (loc) {
-            const s = sites.find(x => x.id === loc.siteId);
-            return s?.name ?? "";
-          }
-        }
-        if (chore.siteId) {
-          const s = sites.find(x => x.id === chore.siteId);
-          return s?.name ?? "";
-        }
-        return "";
-      };
+      const placeName = (chore) =>
+        chore.placeId ? placesById.get(chore.placeId)?.name ?? "" : "";
       out.sort((a, b) => {
         const sa = startMin(a);
         const sb = startMin(b);
         if (sa !== sb) return sa - sb;
-        const na = siteName(a).toLowerCase();
-        const nb = siteName(b).toLowerCase();
+        const na = placeName(a).toLowerCase();
+        const nb = placeName(b).toLowerCase();
         if (na !== nb) return na.localeCompare(nb);
         return a.title.localeCompare(b.title);
       });
@@ -416,7 +405,7 @@ function AllChoresTab({ data }) {
       });
     }
     return out;
-  }, [defs, query, sort, blocks, sites, locations]);
+  }, [defs, query, sort, blocks, placesById]);
 
   return (
     <div>
@@ -450,8 +439,7 @@ function AllChoresTab({ data }) {
             if (!ok) return;
             await deleteDefinition(id);
           }}
-          sites={sites}
-          locations={locations}
+          places={places}
           blocks={blocks}
           blockById={blockById}
         />
@@ -466,7 +454,7 @@ function AllChoresTab({ data }) {
 function AllChoresList({
   filtered, expanded, onToggle,
   editing, onStartEdit, onCancelEdit, onSaveEdit, onQuickSave, onDeleteChore,
-  sites, locations, blocks, blockById,
+  places, blocks, blockById,
 }) {
   const [setWidthRef, cols] = useColumnCount(1200);
   const userEmail = useCurrentUserEmail();
@@ -488,8 +476,7 @@ function AllChoresList({
             onSaveEdit={(patch) => onSaveEdit(chore.id, patch)}
             onQuickSave={(patch) => onQuickSave(chore.id, patch)}
             onDeleteChore={() => onDeleteChore(chore.id)}
-            sites={sites}
-            locations={locations}
+            places={places}
             blocks={blocks}
             blockById={blockById}
           />
@@ -527,7 +514,7 @@ function SortPicker({ value, onChange }) {
 function ChoreDefinitionRow({
   chore, expanded, onToggle, currentUserEmail,
   editing, onStartEdit, onCancelEdit, onSaveEdit, onQuickSave, onDeleteChore,
-  sites, locations, blocks, blockById,
+  places, blocks, blockById,
 }) {
   return (
     <div style={{ background: T.surface }}>
@@ -543,8 +530,7 @@ function ChoreDefinitionRow({
           <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{chore.title}</div>
           <SecondaryRow
             chore={chore}
-            sites={sites}
-            locations={locations}
+            places={places}
             blocks={blocks}
             blockById={blockById}
             onQuickSave={onQuickSave}
@@ -565,8 +551,7 @@ function ChoreDefinitionRow({
         editing
           ? <ChoreInlineEditor
               chore={chore}
-              sites={sites}
-              locations={locations}
+              places={places}
               blocks={blocks}
               onCancel={onCancelEdit}
               onSave={onSaveEdit}
@@ -581,7 +566,7 @@ function ChoreDefinitionRow({
 // any of them to swap in an inline editor for that field; saving
 // commits via onQuickSave (chore_definitions update) without
 // expanding the full row editor.
-function SecondaryRow({ chore, sites, locations, blocks, blockById, onQuickSave }) {
+function SecondaryRow({ chore, places, blocks, blockById, onQuickSave }) {
   // Pill is conditional — appears only when the helper resolves
   // (window or anytime chores). Render at the end so the layout
   // stays calm for the simple-daily-chore majority.
@@ -601,16 +586,15 @@ function SecondaryRow({ chore, sites, locations, blocks, blockById, onQuickSave 
       }}
     >
       {editing === "site" ? (
-        <SiteQuickEdit
+        <PlaceQuickEdit
           chore={chore}
-          sites={sites}
-          locations={locations}
+          places={places}
           onSave={save}
           onCancel={close}
         />
       ) : (
-        <Chip onDoubleClick={() => setEditing("site")} title="Double-click to edit site">
-          {describeChoreLocation(chore, sites, locations)}
+        <Chip onDoubleClick={() => setEditing("site")} title="Double-click to edit place">
+          {describeChorePlace(chore, places)}
         </Chip>
       )}
       <ChipSep />
@@ -668,32 +652,35 @@ function ChipSep() {
   return <span aria-hidden style={{ color: T.textFaint, userSelect: "none" }}>·</span>;
 }
 
-// ── Site quick-edit ─────────────────────────────────────────────────
-// Single select with optgroups: each site offers a "Whole site"
-// option (= site_id, location_id null) plus its locations.
-function SiteQuickEdit({ chore, sites, locations, onSave, onCancel }) {
-  const initial =
-    chore.locationId ? `loc:${chore.locationId}`
-      : chore.siteId ? `site:${chore.siteId}`
-      : "";
+// Depth-ordered, indented options for a place <select>. A chore scoped
+// to a place applies to that place's whole subtree, so any node is a
+// valid target. Order is a pre-order tree walk; depth drives the indent.
+function placeSelectOptions(places) {
+  const { childrenByParent } = buildPlaceTree(
+    (places ?? []).filter(p => p.isActive !== false)
+  );
+  const out = [];
+  const walk = (parentId, depth) => {
+    for (const p of childrenByParent.get(parentId) ?? []) {
+      out.push({ id: p.id, label: `${"  ".repeat(depth)}${p.name}` });
+      walk(p.id, depth + 1);
+    }
+  };
+  walk(null, 0);
+  return out;
+}
+
+// ── Place quick-edit ────────────────────────────────────────────────
+// Single select of every active place (indented by depth). A chore is
+// scoped to one place_id and fans out to that place's subtree.
+function PlaceQuickEdit({ chore, places, onSave, onCancel }) {
+  const initial = chore.placeId ?? "";
   const [val, setVal] = useState(initial);
-  const activeSites = sites.filter(s => s.isActive);
-  const activeLocations = locations.filter(l => l.isActive);
+  const options = placeSelectOptions(places);
 
   const submit = async (newVal) => {
     if (newVal === initial) { onCancel(); return; }
-    if (!newVal) {
-      await onSave({ siteId: null, locationId: null });
-      return;
-    }
-    if (newVal.startsWith("site:")) {
-      await onSave({ siteId: newVal.slice(5), locationId: null });
-      return;
-    }
-    if (newVal.startsWith("loc:")) {
-      await onSave({ locationId: newVal.slice(4), siteId: null });
-      return;
-    }
+    await onSave({ placeId: newVal || null });
   };
 
   return (
@@ -706,18 +693,10 @@ function SiteQuickEdit({ chore, sites, locations, onSave, onCancel }) {
       onClick={(e) => e.stopPropagation()}
       style={editChipInputStyle}
     >
-      <option value="">— no site —</option>
-      {activeSites.map(s => {
-        const inSite = activeLocations.filter(l => l.siteId === s.id);
-        return (
-          <optgroup key={s.id} label={s.name}>
-            <option value={`site:${s.id}`}>Whole site</option>
-            {inSite.map(l => (
-              <option key={l.id} value={`loc:${l.id}`}>{l.name}</option>
-            ))}
-          </optgroup>
-        );
-      })}
+      <option value="">— no place —</option>
+      {options.map(o => (
+        <option key={o.id} value={o.id}>{o.label}</option>
+      ))}
     </select>
   );
 }
@@ -864,20 +843,19 @@ const editChipInputStyle = {
   fontFamily: "inherit",
 };
 
-// Site / location label for the row's secondary line.
-function describeChoreLocation(chore, sites, locations) {
-  if (chore.locationId) {
-    const l = locations.find(x => x.id === chore.locationId);
-    if (!l) return "(removed location)";
-    const s = sites.find(x => x.id === l.siteId);
-    return s ? `${s.name} · ${l.name}` : l.name;
-  }
-  if (chore.siteId) {
-    const s = sites.find(x => x.id === chore.siteId);
-    return s ? s.name : "(removed site)";
+// Place label for the row's secondary line: name + parent for D1
+// disambiguation ("Mobile Coop 1 · Pasture C").
+function describeChorePlace(chore, places) {
+  if (chore.placeId) {
+    const p = (places ?? []).find(x => x.id === chore.placeId);
+    if (!p) return "(removed place)";
+    const parent = p.parentId
+      ? (places ?? []).find(x => x.id === p.parentId)
+      : null;
+    return parent ? `${parent.name} · ${p.name}` : p.name;
   }
   // Fall back to the legacy category text (pre-migration).
-  return CHORE_CATEGORIES[chore.category]?.label ?? chore.category ?? "No site";
+  return CHORE_CATEGORIES[chore.category]?.label ?? chore.category ?? "No place";
 }
 
 // Block label for the row's secondary line.
@@ -955,14 +933,10 @@ function RowActions({ editing, onEdit, onDelete }) {
 // location / parent site / none), block, sort_order. Frequency,
 // deadline, and per-day-of-week assignment editing are out of scope
 // for v1 — those JSON shapes deserve dedicated editors later.
-function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }) {
+function ChoreInlineEditor({ chore, places, blocks, onCancel, onSave }) {
   const [title, setTitle] = useState(chore.title);
   const [description, setDescription] = useState(chore.description ?? "");
-  const [siteMode, setSiteMode] = useState(
-    chore.locationId ? "location" : chore.siteId ? "site" : "none"
-  );
-  const [siteId, setSiteId] = useState(chore.siteId ?? "");
-  const [locationId, setLocationId] = useState(chore.locationId ?? "");
+  const [placeId, setPlaceId] = useState(chore.placeId ?? "");
   const [blockId, setBlockId] = useState(chore.blockId ?? "");
   const [lastChanceBlockId, setLastChanceBlockId] = useState(
     chore.lastChanceBlockId ?? ""
@@ -971,8 +945,7 @@ function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  const activeSites = sites.filter(s => s.isActive);
-  const activeLocations = locations.filter(l => l.isActive);
+  const placeOptions = placeSelectOptions(places);
   const activeBlocks = blocks.filter(b => b.isActive);
 
   const submit = async () => {
@@ -989,17 +962,8 @@ function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }
         sortOrder: Number(sortOrder) || 0,
         blockId: blockId || null,
         lastChanceBlockId: lastChanceBlockId || null,
+        placeId: placeId || null,
       };
-      if (siteMode === "location") {
-        patch.locationId = locationId || null;
-        patch.siteId = null;
-      } else if (siteMode === "site") {
-        patch.siteId = siteId || null;
-        patch.locationId = null;
-      } else {
-        patch.siteId = null;
-        patch.locationId = null;
-      }
       await onSave(patch);
     } catch (err) {
       console.error("save chore:", err);
@@ -1033,40 +997,19 @@ function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }
         />
       </EditField>
       <EditField label="Where">
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <SiteModeRadios value={siteMode} onChange={setSiteMode} />
-          {siteMode === "location" && (
-            <select
-              value={locationId}
-              onChange={(e) => setLocationId(e.target.value)}
-              style={editInputStyle}
-            >
-              <option value="">— pick a specific location —</option>
-              {activeSites.map(s => {
-                const inSite = activeLocations.filter(l => l.siteId === s.id);
-                if (inSite.length === 0) return null;
-                return (
-                  <optgroup key={s.id} label={s.name}>
-                    {inSite.map(l => (
-                      <option key={l.id} value={l.id}>{l.name}</option>
-                    ))}
-                  </optgroup>
-                );
-              })}
-            </select>
-          )}
-          {siteMode === "site" && (
-            <select
-              value={siteId}
-              onChange={(e) => setSiteId(e.target.value)}
-              style={editInputStyle}
-            >
-              <option value="">— pick a site —</option>
-              {activeSites.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          )}
+        <select
+          value={placeId}
+          onChange={(e) => setPlaceId(e.target.value)}
+          style={editInputStyle}
+        >
+          <option value="">— no place —</option>
+          {placeOptions.map(o => (
+            <option key={o.id} value={o.id}>{o.label}</option>
+          ))}
+        </select>
+        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
+          The chore applies to this place and everything beneath it
+          (scoping to Pastures covers every tractor and coop).
         </div>
       </EditField>
       <EditField label="When">
@@ -1149,35 +1092,6 @@ function ChoreInlineEditor({ chore, sites, locations, blocks, onCancel, onSave }
           }}
         >{saving ? "Saving…" : "Save"}</button>
       </div>
-    </div>
-  );
-}
-
-function SiteModeRadios({ value, onChange }) {
-  const options = [
-    { id: "location", label: "Specific location" },
-    { id: "site", label: "Whole site" },
-    { id: "none", label: "No site" },
-  ];
-  return (
-    <div style={{ display: "flex", gap: 12 }}>
-      {options.map(o => (
-        <label key={o.id} style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 12,
-          color: value === o.id ? T.text : T.textDim,
-          cursor: "pointer",
-        }}>
-          <input
-            type="radio"
-            checked={value === o.id}
-            onChange={() => onChange(o.id)}
-          />
-          {o.label}
-        </label>
-      ))}
     </div>
   );
 }

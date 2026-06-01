@@ -2,10 +2,10 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { supabase } from "../supabase.js";
 
 // Loads chore_definitions and exposes update + delete actions for the
-// in-place edit affordance on the All chores tab. Site assignment is
-// either site_id (the parent kind — fans out to every active location
-// underneath) or location_id (instance-scoped). Setting one clears
-// the other.
+// in-place edit affordance on the All chores tab. A chore is scoped to a
+// single place_id; it applies to that place and its whole subtree (the
+// fan-out is computed client-side via lib/places.js). place_id null ==
+// not place-scoped.
 //
 // patch is a JS-shaped (camelCase) object; the hook converts to DB
 // (snake_case) before writing.
@@ -21,7 +21,7 @@ export function useChoreDefinitions() {
     supabase.from("chore_definitions")
       .select(
         "id, title, description, frequency, period, start_time, deadline, " +
-        "assignment, tags, category, site_id, location_id, block_id, " +
+        "assignment, tags, category, place_id, block_id, " +
         "last_chance_block_id, sort_order"
       )
       .order("sort_order", { ascending: true })
@@ -48,7 +48,7 @@ export function useChoreDefinitions() {
         const res = await supabase.from("chore_definitions")
           .select(
             "id, title, description, frequency, period, start_time, deadline, " +
-            "assignment, tags, category, site_id, location_id, block_id, " +
+            "assignment, tags, category, place_id, block_id, " +
             "last_chance_block_id, sort_order"
           )
           .order("sort_order", { ascending: true })
@@ -74,8 +74,7 @@ export function useChoreDefinitions() {
     assignment: c.assignment,
     tags: c.tags,
     category: c.category,
-    siteId: c.site_id,
-    locationId: c.location_id,
+    placeId: c.place_id,
     blockId: c.block_id,
     lastChanceBlockId: c.last_chance_block_id,
     sortOrder: c.sort_order ?? 0,
@@ -119,17 +118,12 @@ function camelToDb(patch) {
   const out = {};
   if (typeof patch.title === "string") out.title = patch.title.trim();
   if ("description" in patch) out.description = patch.description?.trim() || null;
-  if ("siteId" in patch) out.site_id = patch.siteId || null;
-  if ("locationId" in patch) out.location_id = patch.locationId || null;
+  if ("placeId" in patch) out.place_id = patch.placeId || null;
   if ("blockId" in patch) out.block_id = patch.blockId || null;
   if ("lastChanceBlockId" in patch) {
     out.last_chance_block_id = patch.lastChanceBlockId || null;
   }
   if (typeof patch.sortOrder === "number") out.sort_order = patch.sortOrder;
   if (typeof patch.startTime === "string") out.start_time = patch.startTime;
-  // Mutually-exclusive site_id vs location_id: clear the other side
-  // when the caller sets one.
-  if ("siteId" in patch && patch.siteId) out.location_id = null;
-  if ("locationId" in patch && patch.locationId) out.site_id = null;
   return out;
 }

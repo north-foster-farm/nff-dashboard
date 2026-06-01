@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { useChoreBlocks, formatMinutesOfDay } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
+import { descendantIds, placePath } from "../lib/places.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useChoreRuns, formatElapsed } from "../lib/data/useChoreRuns.js";
@@ -27,12 +28,12 @@ import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 export default function Rounds({ data, onClose }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const {
-    sites, locations, locationsBySiteId, residents,
-    moveOutResident,
+    places, placesById, childrenByParent, placementsByPlaceId,
+    moveOutOccupant,
     loading: sitesLoading,
   } = useSites();
   const {
-    logRunEvent, recentConditionsByLocation, repeatWindowDays,
+    logRunEvent, recentConditionsByPlace, repeatWindowDays,
   } = useRunEvents();
   const {
     definitions, loading: defsLoading,
@@ -56,31 +57,41 @@ export default function Rounds({ data, onClose }) {
   const today = useMemo(() => new Date(), []);
   const completions = useChoreCompletions(today);
 
-  // Selected site / location for the Switcher. Null = "show everything"
-  // for this block, grouped by site.
-  const [selectedSiteId, setSelectedSiteId] = useState(null);
-  const [selectedLocationId, setSelectedLocationId] = useState(null);
+  // Selected place for the Switcher. selectedPlaceId is a top-level
+  // place (a "zone" chip); selectedChildId drills to one place inside
+  // its subtree. Null = "show everything" for this block, grouped by
+  // top-level place.
+  const [selectedPlaceId, setSelectedPlaceId] = useState(null);
+  const [selectedChildId, setSelectedChildId] = useState(null);
 
-  // Derive sites that have chores in this block (parent site-scoped
-  // or any location-scoped under them). We render Switcher buttons
-  // only for sites that are actually relevant.
-  const relevantSiteIds = useMemo(() => {
+  // The switcher operates at the top-level (depth-1: a child of the
+  // farm root). Map any place to its top-level ancestor so a chore deep
+  // in the tree still lands under the right chip.
+  const switcherIdOf = useMemo(() => (placeId) => {
+    if (!placeId) return null;
+    const path = placePath(placeId, placesById); // [root, …, place]
+    if (path.length === 0) return null;
+    return path.length === 1 ? path[0].id : path[1].id;
+  }, [placesById]);
+
+  // Top-level places whose subtree has a chore in this block — the only
+  // Switcher chips worth rendering.
+  const relevantSwitcherIds = useMemo(() => {
     if (!targetBlock) return new Set();
     const ids = new Set();
     for (const def of definitions) {
       if (def.blockId !== targetBlock.id) continue;
-      if (def.siteId) ids.add(def.siteId);
-      if (def.locationId) {
-        const loc = locations.find(l => l.id === def.locationId);
-        if (loc) ids.add(loc.siteId);
-      }
+      const sid = switcherIdOf(def.placeId);
+      if (sid) ids.add(sid);
     }
     return ids;
-  }, [definitions, locations, targetBlock]);
+  }, [definitions, switcherIdOf, targetBlock]);
 
-  const switcherSites = useMemo(
-    () => sites.filter(s => s.isActive && relevantSiteIds.has(s.id)),
-    [sites, relevantSiteIds]
+  const switcherPlaces = useMemo(
+    () => (places ?? [])
+      .filter(p => p.isActive !== false && relevantSwitcherIds.has(p.id))
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+    [places, relevantSwitcherIds]
   );
 
   // Loading guard. Show a skeleton until enough data is ready to
@@ -145,11 +156,12 @@ export default function Rounds({ data, onClose }) {
       run={activeRun}
       block={targetBlock}
       blocks={blocks}
-      sites={sites}
-      switcherSites={switcherSites}
-      locations={locations}
-      locationsBySiteId={locationsBySiteId}
-      residents={residents}
+      places={places}
+      placesById={placesById}
+      childrenByParent={childrenByParent}
+      switcherPlaces={switcherPlaces}
+      switcherIdOf={switcherIdOf}
+      placementsByPlaceId={placementsByPlaceId}
       definitions={definitions}
       completions={completions}
       logRunEvent={logRunEvent}
@@ -157,16 +169,16 @@ export default function Rounds({ data, onClose }) {
         if (!activeRun) return;
         await cancelRun(activeRun.id);
       }}
-      moveOutResident={moveOutResident}
-      recentConditionsByLocation={recentConditionsByLocation}
+      moveOutOccupant={moveOutOccupant}
+      recentConditionsByPlace={recentConditionsByPlace}
       repeatWindowDays={repeatWindowDays}
-      selectedSiteId={selectedSiteId}
-      onSelectSite={(id) => {
-        setSelectedSiteId(id);
-        setSelectedLocationId(null);
+      selectedPlaceId={selectedPlaceId}
+      onSelectPlace={(id) => {
+        setSelectedPlaceId(id);
+        setSelectedChildId(null);
       }}
-      selectedLocationId={selectedLocationId}
-      onSelectLocation={setSelectedLocationId}
+      selectedChildId={selectedChildId}
+      onSelectChild={setSelectedChildId}
       onAutoDone={async () => {
         if (!activeRun) return;
         await endRun(activeRun.id);
@@ -400,12 +412,13 @@ function formatBlockDuration(minutes) {
 
 // ── Doing surface (active run) ────────────────────────────────────────
 function DoingSurface({
-  run, block, blocks, sites, switcherSites, locations, locationsBySiteId,
-  residents, definitions, completions,
-  logRunEvent, moveOutResident, onCancelRun,
-  recentConditionsByLocation, repeatWindowDays,
-  selectedSiteId, onSelectSite,
-  selectedLocationId, onSelectLocation,
+  run, block, blocks, places, placesById, childrenByParent,
+  switcherPlaces, switcherIdOf, placementsByPlaceId,
+  definitions, completions,
+  logRunEvent, moveOutOccupant, onCancelRun,
+  recentConditionsByPlace, repeatWindowDays,
+  selectedPlaceId, onSelectPlace,
+  selectedChildId, onSelectChild,
   onAutoDone, onAutoUndone, onClose,
 }) {
   // Live elapsed time tick.
@@ -454,49 +467,43 @@ function DoingSurface({
     blockChores, completions.completedSet, run, onAutoDone, onAutoUndone,
   ]);
 
-  // Group chores by site for rendering. site_id chores group under
-  // that site; location_id chores group under their location's site.
-  // Chores with neither go into a "general" bucket.
-  const choresBySiteId = useMemo(() => {
+  // Group chores by their top-level place for the all-places view.
+  // Each chore lands under the switcher place its place_id rolls up to;
+  // chores with no place go into a "general" bucket.
+  const choresBySwitcher = useMemo(() => {
     const out = new Map();
     const general = [];
     for (const def of blockChores) {
-      let siteId = def.siteId;
-      if (!siteId && def.locationId) {
-        const loc = locations.find(l => l.id === def.locationId);
-        siteId = loc?.siteId ?? null;
-      }
-      if (siteId) {
-        if (!out.has(siteId)) out.set(siteId, []);
-        out.get(siteId).push(def);
+      const sid = switcherIdOf(def.placeId);
+      if (sid) {
+        if (!out.has(sid)) out.set(sid, []);
+        out.get(sid).push(def);
       } else {
         general.push(def);
       }
     }
     return { out, general };
-  }, [blockChores, locations]);
+  }, [blockChores, switcherIdOf]);
 
-  // Visible chores = either the selected site's, or all if no site
-  // is selected.
-  const visibleChores = selectedSiteId
-    ? (choresBySiteId.out.get(selectedSiteId) ?? [])
-    : blockChores;
-
-  // Within selected site, group by location for clarity.
+  // Within the selected top-level place, group chores by their actual
+  // place (subtree). Chores scoped exactly to the selected place land
+  // in the "anywhere in X" bucket.
   const groupedForSelected = useMemo(() => {
-    if (!selectedSiteId) return null;
-    const groups = new Map(); // locationId|null → chores[]
-    const siteScopedAll = [];
-    for (const def of choresBySiteId.out.get(selectedSiteId) ?? []) {
-      if (def.locationId) {
-        if (!groups.has(def.locationId)) groups.set(def.locationId, []);
-        groups.get(def.locationId).push(def);
+    if (!selectedPlaceId) return null;
+    const subtree = descendantIds(selectedPlaceId, childrenByParent);
+    const groups = new Map(); // placeId → chores[]
+    const anywhere = [];
+    for (const def of blockChores) {
+      if (!def.placeId || !subtree.has(def.placeId)) continue;
+      if (def.placeId === selectedPlaceId) {
+        anywhere.push(def);
       } else {
-        siteScopedAll.push(def);
+        if (!groups.has(def.placeId)) groups.set(def.placeId, []);
+        groups.get(def.placeId).push(def);
       }
     }
-    return { groups, siteScopedAll };
-  }, [selectedSiteId, choresBySiteId]);
+    return { groups, anywhere };
+  }, [selectedPlaceId, blockChores, childrenByParent]);
 
   return (
     <div className="bg-bg text-fg h-screen flex flex-col font-body">
@@ -535,34 +542,34 @@ function DoingSurface({
         </div>
       </header>
 
-      {/* Site Switcher */}
-      <SiteSwitcher
-        sites={switcherSites}
-        selectedSiteId={selectedSiteId}
-        onSelect={onSelectSite}
+      {/* Place Switcher */}
+      <PlaceSwitcher
+        places={switcherPlaces}
+        selectedPlaceId={selectedPlaceId}
+        onSelect={onSelectPlace}
       />
 
       {/* Body */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
-        {!selectedSiteId ? (
-          <AllSitesView
-            sites={sites}
+        {!selectedPlaceId ? (
+          <AllPlacesView
+            switcherPlaces={switcherPlaces}
             chores={blockChores}
-            choresBySiteId={choresBySiteId}
-            locations={locations}
+            choresBySwitcher={choresBySwitcher}
+            placesById={placesById}
             blocks={blocks}
             completions={completions}
-            onSelectSite={onSelectSite}
+            onSelectPlace={onSelectPlace}
           />
         ) : (
-          <SelectedSiteView
-            site={sites.find(s => s.id === selectedSiteId)}
+          <SelectedPlaceView
+            place={placesById.get(selectedPlaceId)}
             grouped={groupedForSelected}
-            locationsBySiteId={locationsBySiteId}
+            placesById={placesById}
             blocks={blocks}
             completions={completions}
-            selectedLocationId={selectedLocationId}
-            onSelectLocation={onSelectLocation}
+            selectedChildId={selectedChildId}
+            onSelectChild={onSelectChild}
           />
         )}
       </main>
@@ -570,37 +577,37 @@ function DoingSurface({
       {/* Quick actions tray (Run Events) */}
       <QuickActionsTray
         runId={run.id}
-        selectedSiteId={selectedSiteId}
-        selectedLocationId={selectedLocationId}
-        sites={sites}
-        locations={locations}
-        residents={residents}
-        recentConditionsByLocation={recentConditionsByLocation}
+        selectedPlaceId={selectedChildId ?? selectedPlaceId}
+        places={places}
+        placesById={placesById}
+        childrenByParent={childrenByParent}
+        placementsByPlaceId={placementsByPlaceId}
+        recentConditionsByPlace={recentConditionsByPlace}
         repeatWindowDays={repeatWindowDays}
         onLogRunEvent={logRunEvent}
-        onMoveOutResident={moveOutResident}
+        onMoveOutOccupant={moveOutOccupant}
       />
     </div>
   );
 }
 
-// ── Site Switcher ─────────────────────────────────────────────────────
-function SiteSwitcher({ sites, selectedSiteId, onSelect }) {
+// ── Place Switcher ────────────────────────────────────────────────────
+function PlaceSwitcher({ places, selectedPlaceId, onSelect }) {
   return (
     <nav className="flex items-center gap-1 px-4 sm:px-6 py-2 border-b border-line bg-surface-alt overflow-x-auto no-scrollbar">
       <SwitcherChip
-        active={selectedSiteId === null}
+        active={selectedPlaceId === null}
         onClick={() => onSelect(null)}
       >
-        All sites
+        Everywhere
       </SwitcherChip>
-      {sites.map(s => (
+      {places.map(p => (
         <SwitcherChip
-          key={s.id}
-          active={selectedSiteId === s.id}
-          onClick={() => onSelect(s.id)}
+          key={p.id}
+          active={selectedPlaceId === p.id}
+          onClick={() => onSelect(p.id)}
         >
-          {s.name}
+          {p.name}
         </SwitcherChip>
       ))}
     </nav>
@@ -625,9 +632,10 @@ function SwitcherChip({ active, onClick, children }) {
   );
 }
 
-// ── All-sites view ────────────────────────────────────────────────────
-function AllSitesView({
-  sites, chores, choresBySiteId, locations, blocks, completions, onSelectSite,
+// ── All-places view ───────────────────────────────────────────────────
+function AllPlacesView({
+  switcherPlaces, chores, choresBySwitcher, placesById, blocks, completions,
+  onSelectPlace,
 }) {
   if (chores.length === 0) {
     return (
@@ -644,24 +652,24 @@ function AllSitesView({
   }
   return (
     <div className="flex flex-col gap-4 max-w-[680px] mx-auto">
-      {sites
-        .filter(s => choresBySiteId.out.has(s.id) && s.isActive)
-        .map(s => (
-          <SiteSection
-            key={s.id}
-            site={s}
-            chores={choresBySiteId.out.get(s.id)}
-            locations={locations}
+      {switcherPlaces
+        .filter(p => choresBySwitcher.out.has(p.id))
+        .map(p => (
+          <PlaceSection
+            key={p.id}
+            place={p}
+            chores={choresBySwitcher.out.get(p.id)}
+            placesById={placesById}
             blocks={blocks}
             completions={completions}
-            onTitleClick={() => onSelectSite(s.id)}
+            onTitleClick={() => onSelectPlace(p.id)}
           />
         ))}
-      {choresBySiteId.general.length > 0 && (
-        <SiteSection
-          site={{ id: null, name: "Other" }}
-          chores={choresBySiteId.general}
-          locations={locations}
+      {choresBySwitcher.general.length > 0 && (
+        <PlaceSection
+          place={{ id: null, name: "Other" }}
+          chores={choresBySwitcher.general}
+          placesById={placesById}
           blocks={blocks}
           completions={completions}
         />
@@ -670,7 +678,7 @@ function AllSitesView({
   );
 }
 
-function SiteSection({ site, chores, locations, blocks, completions, onTitleClick }) {
+function PlaceSection({ place, chores, placesById, blocks, completions, onTitleClick }) {
   const completed = chores.filter(c => completions.completedSet?.has(c.id)).length;
   return (
     <section className="bg-surface border border-line">
@@ -680,10 +688,10 @@ function SiteSection({ site, chores, locations, blocks, completions, onTitleClic
             onClick={onTitleClick}
             className="text-[14px] font-semibold text-fg border-0 bg-transparent cursor-pointer hover:underline"
           >
-            {site.name}
+            {place.name}
           </button>
         ) : (
-          <span className="text-[14px] font-semibold text-fg">{site.name}</span>
+          <span className="text-[14px] font-semibold text-fg">{place.name}</span>
         )}
         <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
           {completed}/{chores.length} done
@@ -691,15 +699,21 @@ function SiteSection({ site, chores, locations, blocks, completions, onTitleClic
         <AllDoneButton chores={chores} completions={completions} />
       </header>
       <ul className="m-0 p-0 list-none">
-        {chores.map(c => (
-          <ChoreCheckRow
-            key={c.id}
-            chore={c}
-            location={c.locationId ? locations.find(l => l.id === c.locationId) : null}
-            blocks={blocks}
-            completions={completions}
-          />
-        ))}
+        {chores.map(c => {
+          // Show the chore's specific place under the title when it's
+          // deeper than this section's top-level place.
+          const cp = c.placeId ? placesById.get(c.placeId) : null;
+          const subLabel = cp && cp.id !== place.id ? cp.name : null;
+          return (
+            <ChoreCheckRow
+              key={c.id}
+              chore={c}
+              placeLabel={subLabel}
+              blocks={blocks}
+              completions={completions}
+            />
+          );
+        })}
       </ul>
     </section>
   );
@@ -745,92 +759,90 @@ function AllDoneButton({ chores, completions }) {
   );
 }
 
-// ── Selected-site view (with optional location drill) ────────────────
-function SelectedSiteView({
-  site, grouped, locationsBySiteId, blocks, completions,
-  selectedLocationId, onSelectLocation,
+// ── Selected-place view (with optional drill to a child place) ───────
+function SelectedPlaceView({
+  place, grouped, placesById, blocks, completions,
+  selectedChildId, onSelectChild,
 }) {
-  const siteLocations = (locationsBySiteId.get(site?.id) ?? []).filter(l => l.isActive);
-  const showLocationStrip = siteLocations.length > 1;
+  // The child places (within the selected subtree) that actually have
+  // chores — these drive the drill-down strip and the per-place sections.
+  const childPlaces = [...(grouped?.groups?.keys() ?? [])]
+    .map(id => placesById.get(id))
+    .filter(Boolean)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const showChildStrip = childPlaces.length > 1;
 
   return (
     <div className="flex flex-col gap-4 max-w-[680px] mx-auto">
-      {/* Back to "all sites" affordance */}
+      {/* Back to "everywhere" affordance */}
       <button
-        onClick={() => onSelectLocation(null)}
+        onClick={() => onSelectChild(null)}
         className="self-start inline-flex items-center gap-1 text-[11px] text-dim hover:text-fg uppercase tracking-[0.12em] font-semibold border-0 bg-transparent cursor-pointer"
       >
         <ChevronLeft size={12} className="shrink-0" />
-        {site?.name ?? "Site"}
+        {place?.name ?? "Place"}
       </button>
 
-      {showLocationStrip && (
+      {showChildStrip && (
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
           <SwitcherChip
-            active={selectedLocationId === null}
-            onClick={() => onSelectLocation(null)}
+            active={selectedChildId === null}
+            onClick={() => onSelectChild(null)}
           >
-            All locations
+            All
           </SwitcherChip>
-          {siteLocations.map(l => (
+          {childPlaces.map(c => (
             <SwitcherChip
-              key={l.id}
-              active={selectedLocationId === l.id}
-              onClick={() => onSelectLocation(l.id)}
+              key={c.id}
+              active={selectedChildId === c.id}
+              onClick={() => onSelectChild(c.id)}
             >
-              {l.name}
+              {c.name}
             </SwitcherChip>
           ))}
         </div>
       )}
 
-      {grouped?.siteScopedAll?.length > 0 && (
+      {grouped?.anywhere?.length > 0 && selectedChildId === null && (
         <section className="bg-surface border border-line">
           <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
             <span className="text-[12px] font-semibold text-fg uppercase tracking-[0.12em]">
-              Anywhere in {site?.name?.toLowerCase()}
+              Anywhere in {place?.name?.toLowerCase()}
             </span>
             <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
-              {grouped.siteScopedAll.filter(c => completions.completedSet?.has(c.id)).length}
+              {grouped.anywhere.filter(c => completions.completedSet?.has(c.id)).length}
               /
-              {grouped.siteScopedAll.length} done
+              {grouped.anywhere.length} done
             </span>
-            <AllDoneButton chores={grouped.siteScopedAll} completions={completions} />
+            <AllDoneButton chores={grouped.anywhere} completions={completions} />
           </header>
           <ul className="m-0 p-0 list-none">
-            {grouped.siteScopedAll.map(c => (
+            {grouped.anywhere.map(c => (
               <ChoreCheckRow key={c.id} chore={c} blocks={blocks} completions={completions} />
             ))}
           </ul>
         </section>
       )}
 
-      {siteLocations
-        .filter(l => selectedLocationId === null || selectedLocationId === l.id)
-        .map(l => {
-          const chores = grouped?.groups?.get(l.id) ?? [];
-          if (chores.length === 0 && selectedLocationId !== l.id) return null;
-          const completed = chores.filter(c => completions.completedSet?.has(c.id)).length;
+      {childPlaces
+        .filter(c => selectedChildId === null || selectedChildId === c.id)
+        .map(c => {
+          const chores = grouped?.groups?.get(c.id) ?? [];
+          const completed = chores.filter(x => completions.completedSet?.has(x.id)).length;
           return (
-            <section key={l.id} className="bg-surface border border-line">
+            <section key={c.id} className="bg-surface border border-line">
               <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
-                <span className="text-[14px] font-semibold text-fg">{l.name}</span>
+                <span className="text-[14px] font-semibold text-fg">{c.name}</span>
                 <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
                   {completed}/{chores.length} done
                 </span>
                 <AllDoneButton chores={chores} completions={completions} />
               </header>
-              {chores.length === 0 ? (
-                <div className="text-faint text-[11px] italic px-4 py-3">
-                  No chores assigned to this location.
-                </div>
-              ) : (
-                <ul className="m-0 p-0 list-none">
-                  {chores.map(c => (
-                    <ChoreCheckRow key={c.id} chore={c} location={l} blocks={blocks} completions={completions} />
-                  ))}
-                </ul>
-              )}
+              <ul className="m-0 p-0 list-none">
+                {chores.map(x => (
+                  <ChoreCheckRow key={x.id} chore={x} blocks={blocks} completions={completions} />
+                ))}
+              </ul>
             </section>
           );
         })}
@@ -843,7 +855,7 @@ function SelectedSiteView({
 // the realtime-contention "✓ + disabled" treatment. The completedSet
 // updates from the realtime channel within ~80ms of any other user's
 // click; that flips the disabled state automatically.
-function ChoreCheckRow({ chore, location, blocks, completions }) {
+function ChoreCheckRow({ chore, placeLabel, blocks, completions }) {
   const done = completions.completedSet?.has(chore.id) ?? false;
   const [pending, setPending] = useState(false);
 
@@ -888,8 +900,8 @@ function ChoreCheckRow({ chore, location, blocks, completions }) {
           <span className="truncate">{chore.title}</span>
           <ChoreRemainingPill chore={chore} blocks={blocks} />
         </div>
-        {location && (
-          <div className="text-[11px] text-faint mt-0.5">{location.name}</div>
+        {placeLabel && (
+          <div className="text-[11px] text-faint mt-0.5">{placeLabel}</div>
         )}
       </div>
     </li>

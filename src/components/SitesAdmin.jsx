@@ -1,159 +1,165 @@
 import { useMemo, useState } from "react";
 import {
-  Plus, X, ArrowUp, ArrowDown, Pencil, Check,
+  Plus, X, ArrowUp, ArrowDown, Pencil, Check, ChevronRight, ChevronDown,
 } from "lucide-react";
-import pluralize from "pluralize";
 import { useSites } from "../lib/data/useSites.js";
+import { descendantIds } from "../lib/places.js";
 
-// Resources → Sites. Two levels of structure:
-//   - Sites (parent categories: Brooders, Mobile coops, Barn, …)
-//   - Locations (specific instances within a site: Brooder #1,
-//     Hay room, Egg station)
-// Each location can host livestock cohorts (site_residents). The
-// residents panel is always visible for cohort-hosting locations
-// — no toggle, no close button.
+// Resources → Sites is now the recursive PLACE TREE editor (Batch 15).
+// One tree replaces the old sites / locations / residents trio:
+//   - every node is a place (farm → zones → areas → structures)
+//   - a node can be renamed, reparented, reordered among its siblings,
+//     archived, flagged mobile, and typed (kind / kind_tag / code)
+//   - any place can host occupants (livestock batches, machines, …) via
+//     `placements`; the occupants pane shows who's there now.
+//
+// The geographic axis is primary; `kind_tag` is the secondary "type"
+// (coop / tractor / brooder / pasture …) Rounds uses to sweep by kind.
+
+const KIND_OPTIONS = ["farm", "zone", "area", "structure"];
 
 export default function SitesAdmin({ data }) {
-  const livestockGroups = useMemo(() => {
-    const out = [];
+  // Occupant catalogs the placements pane can assign + label from.
+  const occupants = useMemo(() => {
+    const batches = [];
     for (const sp of data?.livestock?.species ?? []) {
       for (const g of sp.groups ?? []) {
-        out.push({
-          id: g.id,
-          label: g.label,
-          speciesId: sp.id,
-          speciesName: sp.name,
-        });
+        batches.push({ id: g.id, label: g.label, sub: sp.name });
       }
     }
-    return out;
+    const machines = (data?.machines ?? []).map((m) => ({
+      id: m.id,
+      label: m.label,
+      sub: m.manufacturer ?? "Machine",
+    }));
+    return { batch: batches, machine: machines };
   }, [data]);
 
+  const occupantLabel = useMemo(() => {
+    const byKey = new Map();
+    for (const [type, list] of Object.entries(occupants)) {
+      for (const o of list) byKey.set(`${type}:${o.id}`, o);
+    }
+    return (type, id) => byKey.get(`${type}:${id}`) ?? { label: id, sub: type };
+  }, [occupants]);
+
   const {
-    sites, locationsBySiteId, residentsByLocationId, loading,
-    createSite, updateSite, deleteSite, reorderSites,
-    createLocation, updateLocation, deleteLocation, reorderLocations,
-    assignResident, moveOutResident, updateResident,
+    places, placesById, childrenByParent, roots, placements,
+    placementsByPlaceId, loading,
+    createPlace, updatePlace, deletePlace, reorderPlaces, reparentPlace,
+    assignOccupant, moveOutOccupant,
   } = useSites();
 
-  const [creatingSite, setCreatingSite] = useState(false);
-  const [draftSiteName, setDraftSiteName] = useState("");
+  // Where is each occupant right now? (open placements only.)
+  const occupantCurrentPlace = useMemo(() => {
+    const m = new Map();
+    for (const pl of placements ?? []) {
+      if (pl.movedOut === null) m.set(`${pl.occupantType}:${pl.occupantId}`, pl.placeId);
+    }
+    return m;
+  }, [placements]);
 
-  const activeSites = (sites ?? []).filter(s => s.isActive);
-  const archivedSites = (sites ?? []).filter(s => !s.isActive);
+  const [creatingRoot, setCreatingRoot] = useState(false);
+  const [draftRootName, setDraftRootName] = useState("");
 
-  const moveSite = (id, direction) => {
-    const idx = activeSites.findIndex(s => s.id === id);
-    if (idx < 0) return;
-    const target = idx + direction;
-    if (target < 0 || target >= activeSites.length) return;
-    const order = activeSites.map(s => s.id);
-    [order[idx], order[target]] = [order[target], order[idx]];
-    reorderSites(order);
-  };
+  const activeRoots = roots.filter((p) => p.isActive !== false);
+  const archived = (places ?? []).filter((p) => p.isActive === false);
 
-  const submitNewSite = async () => {
-    const name = draftSiteName.trim();
-    if (!name) { setCreatingSite(false); return; }
-    await createSite({ name });
-    setDraftSiteName("");
-    setCreatingSite(false);
+  const submitNewRoot = async () => {
+    const name = draftRootName.trim();
+    if (!name) { setCreatingRoot(false); return; }
+    await createPlace({ parentId: null, name, kind: "zone" });
+    setDraftRootName("");
+    setCreatingRoot(false);
   };
 
   if (loading) {
     return (
       <div className="bg-surface border border-line py-8 text-center text-[12px] text-muted uppercase tracking-[0.16em]">
-        Loading sites…
+        Loading places…
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {creatingSite && (
-        <div className="bg-surface-alt border border-line p-3 flex items-center gap-2">
-          <input
-            autoFocus
-            value={draftSiteName}
-            onChange={(e) => setDraftSiteName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") submitNewSite();
-              if (e.key === "Escape") { setDraftSiteName(""); setCreatingSite(false); }
-            }}
-            placeholder="Site name (e.g. Barn, Brooders, Mobile coops)"
-            className="flex-1 bg-surface text-fg border border-line px-2 py-1.5 outline-none focus:border-accent text-[13px] font-[inherit]"
-          />
-          <button
-            onClick={submitNewSite}
-            className="text-muted hover:text-accent p-1 cursor-pointer bg-transparent border-0"
-            aria-label="Create"
-          >
-            <Check size={14} />
-          </button>
-          <button
-            onClick={() => { setDraftSiteName(""); setCreatingSite(false); }}
-            className="text-muted hover:text-fg p-1 cursor-pointer bg-transparent border-0"
-            aria-label="Cancel"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
-      {activeSites.length === 0 && !creatingSite && (
+    <div className="flex flex-col gap-3">
+      {activeRoots.length === 0 && !creatingRoot && (
         <div className="bg-surface border border-line py-10 px-6 text-center">
-          <div className="text-[13px] text-muted font-medium mb-1">No sites yet</div>
+          <div className="text-[13px] text-muted font-medium mb-1">No places yet</div>
           <div className="text-[12px] text-faint leading-relaxed max-w-[420px] mx-auto">
-            Add a site to start grouping farm locations. Brooders,
-            mobile coops, paddocks, the barn, the wash &amp; pack
-            station — anywhere chores happen lives here.
+            Add the farm, then build out zones, pastures, and structures
+            beneath it. Anywhere chores happen, animals live, or assets
+            park lives in this tree.
           </div>
         </div>
       )}
 
-      {activeSites.map((site, i) => (
-        <SiteCard
-          key={site.id}
-          site={site}
-          isFirst={i === 0}
-          isLast={i === activeSites.length - 1}
-          locations={(locationsBySiteId.get(site.id) ?? []).filter(l => l.isActive)}
-          archivedLocations={(locationsBySiteId.get(site.id) ?? []).filter(l => !l.isActive)}
-          residentsByLocationId={residentsByLocationId}
-          livestockGroups={livestockGroups}
-          onUpdateSite={updateSite}
-          onDeleteSite={deleteSite}
-          onMoveSite={moveSite}
-          onCreateLocation={createLocation}
-          onUpdateLocation={updateLocation}
-          onDeleteLocation={deleteLocation}
-          onReorderLocations={reorderLocations}
-          onAssignResident={assignResident}
-          onMoveOutResident={moveOutResident}
-          onUpdateResident={updateResident}
-        />
-      ))}
+      <div className="flex flex-col gap-2">
+        {activeRoots.map((place, i) => (
+          <PlaceNode
+            key={place.id}
+            place={place}
+            depth={0}
+            isFirst={i === 0}
+            isLast={i === activeRoots.length - 1}
+            childrenByParent={childrenByParent}
+            placesById={placesById}
+            placements={placements}
+            placementsByPlaceId={placementsByPlaceId}
+            occupants={occupants}
+            occupantLabel={occupantLabel}
+            occupantCurrentPlace={occupantCurrentPlace}
+            onCreatePlace={createPlace}
+            onUpdatePlace={updatePlace}
+            onDeletePlace={deletePlace}
+            onReorder={reorderPlaces}
+            onReparent={reparentPlace}
+            onAssignOccupant={assignOccupant}
+            onMoveOutOccupant={moveOutOccupant}
+          />
+        ))}
+      </div>
 
-      {!creatingSite && (
+      {creatingRoot ? (
+        <div className="bg-surface-alt border border-line p-3 flex items-center gap-2">
+          <input
+            autoFocus
+            value={draftRootName}
+            onChange={(e) => setDraftRootName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitNewRoot();
+              if (e.key === "Escape") { setDraftRootName(""); setCreatingRoot(false); }
+            }}
+            placeholder="Top-level place (e.g. North Foster Farm)"
+            className="flex-1 bg-surface text-fg border border-line px-2 py-1.5 outline-none focus:border-accent text-[13px] font-[inherit]"
+          />
+          <button onClick={submitNewRoot} className="text-muted hover:text-accent p-1 cursor-pointer bg-transparent border-0" aria-label="Create">
+            <Check size={14} />
+          </button>
+          <button onClick={() => { setDraftRootName(""); setCreatingRoot(false); }} className="text-muted hover:text-fg p-1 cursor-pointer bg-transparent border-0" aria-label="Cancel">
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
         <button
-          onClick={() => setCreatingSite(true)}
+          onClick={() => setCreatingRoot(true)}
           className="self-start inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold px-3 py-1.5 cursor-pointer uppercase tracking-[0.12em] leading-none"
         >
-          <Plus size={13} className="shrink-0" /> New site
+          <Plus size={13} className="shrink-0" /> New top-level place
         </button>
       )}
 
-      {archivedSites.length > 0 && (
+      {archived.length > 0 && (
         <details className="mt-2">
           <summary className="text-[11px] text-faint cursor-pointer">
-            {archivedSites.length} archived site{archivedSites.length !== 1 ? "s" : ""}
+            {archived.length} archived place{archived.length !== 1 ? "s" : ""}
           </summary>
           <div className="flex flex-col gap-1 mt-2">
-            {archivedSites.map(s => (
-              <div key={s.id} className="flex items-center gap-2 px-3 py-1.5 text-faint text-[11px] bg-surface border border-line">
-                <span className="line-through flex-1">{s.name}</span>
+            {archived.map((p) => (
+              <div key={p.id} className="flex items-center gap-2 px-3 py-1.5 text-faint text-[11px] bg-surface border border-line">
+                <span className="line-through flex-1">{p.name}</span>
                 <button
-                  onClick={() => updateSite(s.id, { isActive: true })}
+                  onClick={() => updatePlace(p.id, { isActive: true })}
                   className="text-[11px] text-dim hover:text-fg border-0 bg-transparent cursor-pointer uppercase tracking-[0.12em] font-semibold"
                 >
                   Restore
@@ -167,218 +173,49 @@ export default function SitesAdmin({ data }) {
   );
 }
 
-function SiteCard({
-  site, isFirst, isLast,
-  locations, archivedLocations,
-  residentsByLocationId, livestockGroups,
-  onUpdateSite, onDeleteSite, onMoveSite,
-  onCreateLocation, onUpdateLocation, onDeleteLocation, onReorderLocations,
-  onAssignResident, onMoveOutResident, onUpdateResident,
+function PlaceNode({
+  place, depth, isFirst, isLast,
+  childrenByParent, placesById, placements, placementsByPlaceId,
+  occupants, occupantLabel, occupantCurrentPlace,
+  onCreatePlace, onUpdatePlace, onDeletePlace, onReorder, onReparent,
+  onAssignOccupant, onMoveOutOccupant,
 }) {
-  const [editingName, setEditingName] = useState(false);
-  const [name, setName] = useState(site.name);
-  const [creatingLocation, setCreatingLocation] = useState(false);
-  const [draftLocationName, setDraftLocationName] = useState("");
-
-  const saveName = async () => {
-    if (name.trim() && name.trim() !== site.name) {
-      await onUpdateSite(site.id, { name: name.trim() });
-    } else {
-      setName(site.name);
-    }
-    setEditingName(false);
-  };
-
-  const moveLocation = (id, direction) => {
-    const idx = locations.findIndex(l => l.id === id);
-    if (idx < 0) return;
-    const target = idx + direction;
-    if (target < 0 || target >= locations.length) return;
-    const order = locations.map(l => l.id);
-    [order[idx], order[target]] = [order[target], order[idx]];
-    onReorderLocations(site.id, order);
-  };
-
-  const submitNewLocation = async () => {
-    const name = draftLocationName.trim();
-    if (!name) { setCreatingLocation(false); return; }
-    await onCreateLocation({ siteId: site.id, name });
-    setDraftLocationName("");
-    setCreatingLocation(false);
-  };
-
-  // pluralize gracefully turns "Brooders" → "Brooder", "Sheep paddocks"
-  // → "Sheep paddock", "Wash & pack" → "Wash & pack" (already singular).
-  const singular = pluralize.singular(site.name);
-  const addLabel = `Add ${singular.toLowerCase()}`;
-
-  return (
-    <section className="bg-surface border border-line">
-      {/* Site header */}
-      <header className="flex items-center gap-2 px-3 py-2.5 border-b border-line bg-surface-alt">
-        <div className="flex flex-col">
-          <button
-            type="button"
-            onClick={() => onMoveSite(site.id, -1)}
-            disabled={isFirst}
-            className="border-0 bg-transparent text-dim hover:text-fg disabled:opacity-30 disabled:cursor-default cursor-pointer p-0 leading-none flex items-center justify-center h-3"
-            title="Move site up"
-          >
-            <ArrowUp size={11} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onMoveSite(site.id, 1)}
-            disabled={isLast}
-            className="border-0 bg-transparent text-dim hover:text-fg disabled:opacity-30 disabled:cursor-default cursor-pointer p-0 leading-none flex items-center justify-center h-3"
-            title="Move site down"
-          >
-            <ArrowDown size={11} />
-          </button>
-        </div>
-        {editingName ? (
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={saveName}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") saveName();
-              if (e.key === "Escape") { setName(site.name); setEditingName(false); }
-            }}
-            className="flex-1 self-center bg-surface text-fg border border-line px-2 py-1 outline-none focus:border-accent text-[13px] font-[inherit] font-semibold"
-          />
-        ) : (
-          <button
-            onClick={() => setEditingName(true)}
-            className="flex-1 self-center text-left text-[14px] font-semibold text-fg border-0 bg-transparent cursor-text px-1"
-          >
-            {site.name}
-          </button>
-        )}
-        <button
-          onClick={() => onDeleteSite(site.id)}
-          className="text-faint hover:text-red-500 border-0 bg-transparent cursor-pointer self-center p-1"
-          title="Archive site"
-        >
-          <X size={14} />
-        </button>
-      </header>
-
-      {/* Locations */}
-      <div className="flex flex-col">
-        {locations.length === 0 && !creatingLocation && (
-          <div className="text-faint text-[11px] italic px-3 py-3">
-            No locations yet.
-          </div>
-        )}
-        {locations.map((l, i) => (
-          <LocationRow
-            key={l.id}
-            location={l}
-            isFirst={i === 0}
-            isLast={i === locations.length - 1}
-            residents={(residentsByLocationId.get(l.id) ?? []).filter(r => r.movedOut === null)}
-            livestockGroups={livestockGroups}
-            onUpdate={onUpdateLocation}
-            onDelete={onDeleteLocation}
-            onMove={moveLocation}
-            onAssignResident={onAssignResident}
-            onMoveOutResident={onMoveOutResident}
-            onUpdateResident={onUpdateResident}
-          />
-        ))}
-        {creatingLocation && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-surface-alt border-t border-line">
-            <input
-              autoFocus
-              value={draftLocationName}
-              onChange={(e) => setDraftLocationName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitNewLocation();
-                if (e.key === "Escape") { setDraftLocationName(""); setCreatingLocation(false); }
-              }}
-              placeholder={`${singular} name`}
-              className="flex-1 bg-surface text-fg border border-line px-2 py-1.5 outline-none focus:border-accent text-[13px] font-[inherit]"
-            />
-            <button
-              onClick={submitNewLocation}
-              className="text-muted hover:text-accent p-1 cursor-pointer bg-transparent border-0"
-              aria-label="Create"
-            >
-              <Check size={14} />
-            </button>
-            <button
-              onClick={() => { setDraftLocationName(""); setCreatingLocation(false); }}
-              className="text-muted hover:text-fg p-1 cursor-pointer bg-transparent border-0"
-              aria-label="Cancel"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {!creatingLocation && (
-        <div className="px-3 py-2 border-t border-line">
-          <button
-            onClick={() => setCreatingLocation(true)}
-            className="inline-flex items-center gap-1.5 bg-transparent text-dim hover:text-fg border border-line px-2 py-1 cursor-pointer uppercase tracking-[0.12em] text-[10px] font-semibold leading-none"
-          >
-            <Plus size={11} className="shrink-0" />
-            <span>{addLabel}</span>
-          </button>
-        </div>
-      )}
-
-      {archivedLocations.length > 0 && (
-        <details className="px-3 py-2 border-t border-line">
-          <summary className="text-[11px] text-faint cursor-pointer">
-            {archivedLocations.length} archived
-          </summary>
-          <div className="flex flex-col gap-1 mt-1">
-            {archivedLocations.map(l => (
-              <div key={l.id} className="flex items-center gap-2 py-1 text-faint text-[11px]">
-                <span className="line-through flex-1">{l.name}</span>
-                <button
-                  onClick={() => onUpdateLocation(l.id, { isActive: true })}
-                  className="text-[11px] text-dim hover:text-fg border-0 bg-transparent cursor-pointer uppercase tracking-[0.12em] font-semibold"
-                >
-                  Restore
-                </button>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-    </section>
-  );
-}
-
-function LocationRow({
-  location, isFirst, isLast, residents, livestockGroups,
-  onUpdate, onDelete, onMove,
-  onAssignResident, onMoveOutResident, onUpdateResident,
-}) {
+  const kids = (childrenByParent.get(place.id) ?? []).filter((p) => p.isActive !== false);
+  const [open, setOpen] = useState(depth < 2);
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(location.name);
+  const [name, setName] = useState(place.name);
+  const [creatingChild, setCreatingChild] = useState(false);
+  const [draftChildName, setDraftChildName] = useState("");
+
+  const residents = placementsByPlaceId.get(place.id) ?? [];
 
   const saveName = async () => {
-    if (name.trim() && name.trim() !== location.name) {
-      await onUpdate(location.id, { name: name.trim() });
+    if (name.trim() && name.trim() !== place.name) {
+      await onUpdatePlace(place.id, { name: name.trim() });
     } else {
-      setName(location.name);
+      setName(place.name);
     }
     setEditing(false);
   };
 
+  const submitNewChild = async () => {
+    const n = draftChildName.trim();
+    if (!n) { setCreatingChild(false); return; }
+    await onCreatePlace({ parentId: place.id, name: n, kind: "structure" });
+    setDraftChildName("");
+    setCreatingChild(false);
+    setOpen(true);
+  };
+
   return (
-    <div className="border-t border-line first:border-t-0">
-      <div className="flex items-center gap-2 px-3 py-2.5">
+    <div className="bg-surface border border-line">
+      {/* Node header */}
+      <div className="flex items-center gap-2 px-2.5 py-2">
+        {/* reorder among siblings */}
         <div className="flex flex-col">
           <button
             type="button"
-            onClick={() => onMove(location.id, -1)}
+            onClick={() => reorderAmongSiblings(place, -1, childrenByParent, onReorder)}
             disabled={isFirst}
             className="border-0 bg-transparent text-dim hover:text-fg disabled:opacity-30 disabled:cursor-default cursor-pointer p-0 leading-none flex items-center justify-center h-3"
             title="Move up"
@@ -387,7 +224,7 @@ function LocationRow({
           </button>
           <button
             type="button"
-            onClick={() => onMove(location.id, 1)}
+            onClick={() => reorderAmongSiblings(place, 1, childrenByParent, onReorder)}
             disabled={isLast}
             className="border-0 bg-transparent text-dim hover:text-fg disabled:opacity-30 disabled:cursor-default cursor-pointer p-0 leading-none flex items-center justify-center h-3"
             title="Move down"
@@ -395,6 +232,20 @@ function LocationRow({
             <ArrowDown size={11} />
           </button>
         </div>
+
+        {/* expand / collapse */}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="border-0 bg-transparent text-dim hover:text-fg cursor-pointer p-0.5 self-center disabled:opacity-20"
+          disabled={kids.length === 0}
+          aria-label={open ? "Collapse" : "Expand"}
+        >
+          {kids.length > 0
+            ? (open ? <ChevronDown size={14} /> : <ChevronRight size={14} />)
+            : <span className="inline-block w-[14px]" />}
+        </button>
+
         {editing ? (
           <input
             autoFocus
@@ -403,201 +254,297 @@ function LocationRow({
             onBlur={saveName}
             onKeyDown={(e) => {
               if (e.key === "Enter") saveName();
-              if (e.key === "Escape") { setName(location.name); setEditing(false); }
+              if (e.key === "Escape") { setName(place.name); setEditing(false); }
             }}
-            className="flex-1 self-center bg-surface text-fg border border-line px-2 py-1 outline-none focus:border-accent text-[13px] font-[inherit]"
+            className="flex-1 self-center bg-surface text-fg border border-line px-2 py-1 outline-none focus:border-accent text-[13px] font-[inherit] font-semibold"
           />
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="flex-1 self-center text-left text-[13px] text-fg border-0 bg-transparent cursor-text px-1"
+            className="flex-1 self-center text-left text-[13px] font-semibold text-fg border-0 bg-transparent cursor-text px-1 inline-flex items-center gap-2 min-w-0"
           >
-            {location.name}
+            <span className="truncate">{place.name}</span>
+            {place.code && (
+              <span className="text-[10px] text-dim font-mono bg-surface-alt border border-line px-1 py-0.5 leading-none">{place.code}</span>
+            )}
+            {place.mobile && (
+              <span className="text-[9px] text-accent uppercase tracking-[0.12em] font-semibold">mobile</span>
+            )}
+            {place.kindTag && (
+              <span className="text-[10px] text-faint">{place.kindTag}</span>
+            )}
           </button>
         )}
-        <CheckboxField
-          checked={location.hasResidents}
-          onChange={(v) => onUpdate(location.id, { hasResidents: v })}
-          label="Hosts cohorts"
-          title="When checked, this location hosts livestock cohorts."
-        />
-        <button
-          onClick={() => onDelete(location.id)}
-          className="text-faint hover:text-red-500 border-0 bg-transparent cursor-pointer self-center p-1"
-          title="Archive"
-        >
-          <X size={13} />
+
+        <button onClick={() => setCreatingChild(true)} className="text-faint hover:text-accent border-0 bg-transparent cursor-pointer self-center p-1" title="Add child place">
+          <Plus size={14} />
+        </button>
+        <button onClick={() => onDeletePlace(place.id)} className="text-faint hover:text-red-500 border-0 bg-transparent cursor-pointer self-center p-1" title="Archive">
+          <X size={14} />
         </button>
       </div>
-      {location.hasResidents && (
-        <ResidentsPane
-          locationId={location.id}
-          residents={residents}
-          livestockGroups={livestockGroups}
-          onAssign={onAssignResident}
-          onMoveOut={onMoveOutResident}
-          onUpdate={onUpdateResident}
+
+      {/* Inline editor (kind / kind_tag / code / mobile / parent) */}
+      {editing && (
+        <PlaceEditor
+          place={place}
+          placesById={placesById}
+          childrenByParent={childrenByParent}
+          onUpdatePlace={onUpdatePlace}
+          onReparent={onReparent}
         />
+      )}
+
+      {/* Occupants pane */}
+      <OccupantsPane
+        place={place}
+        residents={residents}
+        occupants={occupants}
+        occupantLabel={occupantLabel}
+        occupantCurrentPlace={occupantCurrentPlace}
+        placesById={placesById}
+        onAssign={onAssignOccupant}
+        onMoveOut={onMoveOutOccupant}
+      />
+
+      {/* New child input */}
+      {creatingChild && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-surface-alt border-t border-line">
+          <input
+            autoFocus
+            value={draftChildName}
+            onChange={(e) => setDraftChildName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitNewChild();
+              if (e.key === "Escape") { setDraftChildName(""); setCreatingChild(false); }
+            }}
+            placeholder={`Child of ${place.name}`}
+            className="flex-1 bg-surface text-fg border border-line px-2 py-1.5 outline-none focus:border-accent text-[13px] font-[inherit]"
+          />
+          <button onClick={submitNewChild} className="text-muted hover:text-accent p-1 cursor-pointer bg-transparent border-0" aria-label="Create">
+            <Check size={14} />
+          </button>
+          <button onClick={() => { setDraftChildName(""); setCreatingChild(false); }} className="text-muted hover:text-fg p-1 cursor-pointer bg-transparent border-0" aria-label="Cancel">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Children */}
+      {open && kids.length > 0 && (
+        <div className="border-t border-line pl-4 pr-2 py-2 flex flex-col gap-2 bg-bg">
+          {kids.map((child, i) => (
+            <PlaceNode
+              key={child.id}
+              place={child}
+              depth={depth + 1}
+              isFirst={i === 0}
+              isLast={i === kids.length - 1}
+              childrenByParent={childrenByParent}
+              placesById={placesById}
+              placements={placements}
+              placementsByPlaceId={placementsByPlaceId}
+              occupants={occupants}
+              occupantLabel={occupantLabel}
+              occupantCurrentPlace={occupantCurrentPlace}
+              onCreatePlace={onCreatePlace}
+              onUpdatePlace={onUpdatePlace}
+              onDeletePlace={onDeletePlace}
+              onReorder={onReorder}
+              onReparent={onReparent}
+              onAssignOccupant={onAssignOccupant}
+              onMoveOutOccupant={onMoveOutOccupant}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-function ResidentsPane({
-  locationId, residents, livestockGroups,
-  onAssign, onMoveOut, onUpdate,
+// Reorder a place among its active siblings by swapping with the
+// neighbor in `direction` and persisting the new order.
+function reorderAmongSiblings(place, direction, childrenByParent, onReorder) {
+  const siblings = (childrenByParent.get(place.parentId ?? null) ?? [])
+    .filter((p) => p.isActive !== false);
+  const idx = siblings.findIndex((p) => p.id === place.id);
+  if (idx < 0) return;
+  const target = idx + direction;
+  if (target < 0 || target >= siblings.length) return;
+  const order = siblings.map((p) => p.id);
+  [order[idx], order[target]] = [order[target], order[idx]];
+  onReorder(place.parentId ?? null, order);
+}
+
+function PlaceEditor({ place, placesById, childrenByParent, onUpdatePlace, onReparent }) {
+  const [kind, setKind] = useState(place.kind ?? "structure");
+  const [kindTag, setKindTag] = useState(place.kindTag ?? "");
+  const [code, setCode] = useState(place.code ?? "");
+
+  // Valid reparent targets: every active place except self + its
+  // descendants (no cycles), plus "(top level)".
+  const blocked = descendantIds(place.id, childrenByParent);
+  const targets = [...placesById.values()].filter(
+    (p) => p.isActive !== false && !blocked.has(p.id)
+  );
+
+  const commit = (patch) => onUpdatePlace(place.id, patch);
+
+  return (
+    <div className="border-t border-line bg-surface-alt px-3 py-2.5 flex flex-wrap items-end gap-3">
+      <Field label="Type">
+        <select
+          value={kind}
+          onChange={(e) => { setKind(e.target.value); commit({ kind: e.target.value }); }}
+          className="bg-surface border border-line text-fg text-[12px] px-2 py-1 outline-none focus:border-accent"
+        >
+          {KIND_OPTIONS.map((k) => <option key={k} value={k}>{k}</option>)}
+        </select>
+      </Field>
+      <Field label="Tag (coop / tractor / …)">
+        <input
+          value={kindTag}
+          onChange={(e) => setKindTag(e.target.value)}
+          onBlur={() => commit({ kindTag })}
+          placeholder="kind_tag"
+          className="bg-surface border border-line text-fg text-[12px] px-2 py-1 outline-none focus:border-accent w-[120px]"
+        />
+      </Field>
+      <Field label="Code">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          onBlur={() => commit({ code })}
+          placeholder="MC1"
+          className="bg-surface border border-line text-fg text-[12px] px-2 py-1 outline-none focus:border-accent w-[80px]"
+        />
+      </Field>
+      <Field label="Parent">
+        <select
+          value={place.parentId ?? ""}
+          onChange={(e) => onReparent(place.id, e.target.value || null)}
+          className="bg-surface border border-line text-fg text-[12px] px-2 py-1 outline-none focus:border-accent max-w-[180px]"
+        >
+          <option value="">(top level)</option>
+          {targets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </Field>
+      <label className="inline-flex items-center gap-1.5 text-[11px] text-dim hover:text-fg cursor-pointer select-none pb-1">
+        <input
+          type="checkbox"
+          checked={!!place.mobile}
+          onChange={(e) => commit({ mobile: e.target.checked })}
+          className="cursor-pointer accent-[var(--c-accent)]"
+        />
+        <span>Mobile</span>
+      </label>
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[10px] text-faint uppercase tracking-[0.12em]">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function OccupantsPane({
+  place, residents, occupants, occupantLabel, occupantCurrentPlace,
+  placesById, onAssign, onMoveOut,
 }) {
   const [picking, setPicking] = useState(false);
-  const [pickedGroupId, setPickedGroupId] = useState("");
+  const [type, setType] = useState("batch");
+  const [pickedId, setPickedId] = useState("");
 
   const submitAssign = async () => {
-    if (!pickedGroupId) return;
-    await onAssign(locationId, pickedGroupId);
-    setPickedGroupId("");
+    if (!pickedId) return;
+    await onAssign(place.id, type, pickedId);
+    setPickedId("");
     setPicking(false);
   };
 
-  const occupied = new Set(residents.map(r => r.livestockGroupId));
-  const available = livestockGroups.filter(g => !occupied.has(g.id));
-  const groupLabel = (groupId) =>
-    livestockGroups.find(g => g.id === groupId)?.label ?? groupId;
-  const groupSpecies = (groupId) =>
-    livestockGroups.find(g => g.id === groupId)?.speciesName ?? "";
+  // Candidates of the chosen type that aren't already at THIS place.
+  const candidates = (occupants[type] ?? []).filter(
+    (o) => occupantCurrentPlace.get(`${type}:${o.id}`) !== place.id
+  );
+  const currentPlaceName = (o) => {
+    const pid = occupantCurrentPlace.get(`${type}:${o.id}`);
+    return pid ? placesById.get(pid)?.name : null;
+  };
+
+  const hasAny = residents.length > 0;
 
   return (
-    <div className="bg-bg border-t border-line px-3 py-2.5 flex flex-col gap-1.5">
-      {residents.length === 0 && !picking && (
-        <div className="text-faint text-[11px] italic">
-          No cohort assigned.
-        </div>
+    <div className="bg-bg border-t border-line px-3 py-2 flex flex-col gap-1.5">
+      {!hasAny && !picking && (
+        <div className="text-faint text-[11px] italic">No occupants here.</div>
       )}
-      {residents.map(r => (
-        <ResidentRow
-          key={r.id}
-          resident={r}
-          groupSpecies={groupSpecies(r.livestockGroupId)}
-          groupLabel={groupLabel(r.livestockGroupId)}
-          onUpdate={onUpdate}
-          onMoveOut={onMoveOut}
-        />
-      ))}
+      {residents.map((r) => {
+        const o = occupantLabel(r.occupantType, r.occupantId);
+        return (
+          <div key={r.id} className="flex items-center gap-3 text-[12px]">
+            <span className="text-fg flex-1 truncate">
+              {o.sub && <span className="text-dim">{o.sub} · </span>}
+              {o.label}
+              <span className="text-faint text-[10px] uppercase tracking-[0.12em] ml-2">{r.occupantType}</span>
+            </span>
+            <span className="text-faint text-[11px]">moved in {r.movedIn}</span>
+            <button
+              onClick={() => onMoveOut(r.id)}
+              className="text-[10px] text-dim hover:text-red-500 border border-line bg-transparent cursor-pointer uppercase tracking-[0.12em] font-semibold px-2 py-0.5 leading-none"
+              title="Mark moved out today"
+            >
+              Move out
+            </button>
+          </div>
+        );
+      })}
+
       {picking ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={type}
+            onChange={(e) => { setType(e.target.value); setPickedId(""); }}
+            className="bg-surface border border-line text-fg text-[12px] px-2 py-1.5 outline-none focus:border-accent"
+          >
+            <option value="batch">Batch</option>
+            <option value="machine">Machine</option>
+          </select>
           <select
             autoFocus
-            value={pickedGroupId}
-            onChange={(e) => setPickedGroupId(e.target.value)}
-            className="flex-1 bg-surface border border-line text-fg text-[12px] px-2 py-1.5 outline-none focus:border-accent"
+            value={pickedId}
+            onChange={(e) => setPickedId(e.target.value)}
+            className="flex-1 min-w-[160px] bg-surface border border-line text-fg text-[12px] px-2 py-1.5 outline-none focus:border-accent"
           >
-            <option value="">— pick a cohort —</option>
-            {available.map(g => (
-              <option key={g.id} value={g.id}>
-                {g.speciesName} · {g.label}
-              </option>
-            ))}
+            <option value="">— pick an occupant —</option>
+            {candidates.map((o) => {
+              const at = currentPlaceName(o);
+              return (
+                <option key={o.id} value={o.id}>
+                  {o.sub} · {o.label}{at ? ` (now at ${at})` : ""}
+                </option>
+              );
+            })}
           </select>
-          <button
-            onClick={submitAssign}
-            disabled={!pickedGroupId}
-            className="text-muted hover:text-accent p-1 cursor-pointer bg-transparent border-0 disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Assign"
-          >
+          <button onClick={submitAssign} disabled={!pickedId} className="text-muted hover:text-accent p-1 cursor-pointer bg-transparent border-0 disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Assign">
             <Check size={14} />
           </button>
-          <button
-            onClick={() => { setPicking(false); setPickedGroupId(""); }}
-            className="text-muted hover:text-fg p-1 cursor-pointer bg-transparent border-0"
-            aria-label="Cancel"
-          >
+          <button onClick={() => { setPicking(false); setPickedId(""); }} className="text-muted hover:text-fg p-1 cursor-pointer bg-transparent border-0" aria-label="Cancel">
             <X size={14} />
           </button>
         </div>
       ) : (
         <button
           onClick={() => setPicking(true)}
-          disabled={available.length === 0}
-          className="self-start inline-flex items-center gap-1.5 bg-transparent text-dim hover:text-fg border border-line px-2 py-1 cursor-pointer uppercase tracking-[0.12em] text-[10px] font-semibold leading-none disabled:opacity-50 disabled:cursor-not-allowed"
-          title={
-            available.length === 0
-              ? "All cohorts are already assigned somewhere"
-              : "Assign a cohort"
-          }
+          className="self-start inline-flex items-center gap-1.5 bg-transparent text-dim hover:text-fg border border-line px-2 py-1 cursor-pointer uppercase tracking-[0.12em] text-[10px] font-semibold leading-none"
         >
           <Plus size={11} className="shrink-0" />
-          <span>Assign cohort</span>
+          <span>Place occupant here</span>
         </button>
       )}
     </div>
-  );
-}
-
-function ResidentRow({ resident, groupSpecies, groupLabel, onUpdate, onMoveOut }) {
-  const [editingDate, setEditingDate] = useState(false);
-  const [movedIn, setMovedIn] = useState(resident.movedIn);
-
-  const saveDate = async () => {
-    if (movedIn && movedIn !== resident.movedIn) {
-      await onUpdate(resident.id, { movedIn });
-    } else {
-      setMovedIn(resident.movedIn);
-    }
-    setEditingDate(false);
-  };
-
-  return (
-    <div className="flex items-center gap-3 text-[12px]">
-      <span className="text-fg flex-1 truncate">
-        {groupSpecies && <span className="text-dim">{groupSpecies} · </span>}
-        {groupLabel}
-      </span>
-      <span className="text-faint text-[11px] inline-flex items-center gap-1.5">
-        <span>moved in</span>
-        {editingDate ? (
-          <input
-            type="date"
-            autoFocus
-            value={movedIn}
-            onChange={(e) => setMovedIn(e.target.value)}
-            onBlur={saveDate}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") saveDate();
-              if (e.key === "Escape") { setMovedIn(resident.movedIn); setEditingDate(false); }
-            }}
-            className="bg-surface border border-line text-fg text-[11px] px-1.5 py-0.5 outline-none focus:border-accent"
-          />
-        ) : (
-          <button
-            onClick={() => setEditingDate(true)}
-            className="text-fg border-0 bg-transparent cursor-text hover:underline"
-          >
-            {resident.movedIn}
-          </button>
-        )}
-      </span>
-      <button
-        onClick={() => onMoveOut(resident.id)}
-        className="text-[10px] text-dim hover:text-red-500 border border-line bg-transparent cursor-pointer uppercase tracking-[0.12em] font-semibold px-2 py-0.5 leading-none"
-        title="Mark moved out today"
-      >
-        Move out
-      </button>
-    </div>
-  );
-}
-
-function CheckboxField({ checked, onChange, label, title }) {
-  return (
-    <label
-      title={title}
-      className="inline-flex items-center gap-1.5 text-[11px] text-dim hover:text-fg cursor-pointer self-center select-none"
-    >
-      <input
-        type="checkbox"
-        checked={!!checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="cursor-pointer accent-[var(--c-accent)]"
-      />
-      <span>{label}</span>
-    </label>
   );
 }
