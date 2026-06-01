@@ -197,6 +197,7 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
         <MonthView
           date={date}
           occurrences={occurrences}
+          blocks={blocks}
           today={today}
           onClickItem={onClickItem}
           onMoveOccurrence={handleMoveOccurrence}
@@ -206,6 +207,7 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
       {view === "agenda" && (
         <AgendaView
           occurrences={occurrences}
+          blocks={blocks}
           today={today}
           onClickItem={onClickItem}
           range={{

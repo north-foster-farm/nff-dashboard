@@ -4,6 +4,7 @@ import {
   blockToBand, eventToBlock, layoutOverlappingEvents,
   startOfWeek, isSameDate, isoDateLocal, hhmmToMinutes,
 } from "../lib/calendarMath.js";
+import { resolveBlockMinutes, formatMinutesOfDay } from "../lib/sunTimes.js";
 import { formatLongDate, formatTime12h, parseISODate } from "../lib/dates.js";
 
 // The four calendar views (Batch 14.1 + 14.2).
@@ -115,7 +116,7 @@ export function WeekView({
 }
 
 export function MonthView({
-  date, occurrences, today,
+  date, occurrences, blocks, today,
   onClickItem, onMoveOccurrence, onCreateAt,
 }) {
   const year = date.getFullYear();
@@ -151,6 +152,7 @@ export function MonthView({
             key={i}
             ref={(el) => { cellRefs.current[i] = el; }}
             cell={c}
+            blocks={blocks}
             isToday={isSameDate(c.date, today)}
             onClickItem={onClickItem}
             onCreateAt={onCreateAt}
@@ -177,7 +179,7 @@ export function MonthView({
   );
 }
 
-export function AgendaView({ occurrences, today, onClickItem, range }) {
+export function AgendaView({ occurrences, blocks, today, onClickItem, range }) {
   if (occurrences.length === 0) {
     return (
       <div className="bg-surface border border-line py-12 px-6 text-center">
@@ -207,6 +209,7 @@ export function AgendaView({ occurrences, today, onClickItem, range }) {
         <AgendaGroup
           key={g.date}
           group={g}
+          blocks={blocks}
           today={today}
           onClickItem={onClickItem}
         />
@@ -772,12 +775,34 @@ function buildMonthCells(year, month, occurrences) {
   return cells;
 }
 
+// Resolve the active chore blocks for one calendar date, ordered by
+// that day's start time. Shared by the Month cells and the Agenda
+// groups — the Day/Week views position the same blocks as time bands.
+function blocksForDate(blocks, date) {
+  return (blocks ?? [])
+    .filter(b => b.isActive)
+    .map(b => {
+      const start = resolveBlockMinutes(date, b.startKind, b.startMinutes);
+      if (start === null) return null;
+      return { block: b, start, end: start + (b.durationMinutes ?? 0) };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.start - b.start);
+}
+
 const MonthCell = forwardRef(function MonthCell({
-  cell, isToday, onClickItem, onCreateAt, beginMove, isDragTarget,
+  cell, blocks, isToday, onClickItem, onCreateAt, beginMove, isDragTarget,
 }, ref) {
   const visible = cell.items.slice(0, 3);
   const overflow = cell.items.length - visible.length;
   const cellRef = useRef(null);
+  // Chore-block bands for this date — rendered as semi-transparent
+  // chips above the day's events (the blocks themselves matter on the
+  // calendar; the individual chores don't).
+  const dayBlocks = useMemo(
+    () => blocksForDate(blocks, cell.date),
+    [blocks, cell.date]
+  );
 
   const onCellClick = (e) => {
     if (e.target !== cellRef.current) return;
@@ -808,6 +833,15 @@ const MonthCell = forwardRef(function MonthCell({
         {cell.date.getDate()}
       </div>
       <div className="flex flex-col gap-0.5">
+        {dayBlocks.map(({ block, start }) => (
+          <div
+            key={block.id}
+            className="w-full text-[9px] font-semibold uppercase tracking-[0.04em] text-warn px-1 py-0.5 truncate bg-warn/10 border border-warn/25 pointer-events-none"
+            title={`${block.name} · ${formatMinutesOfDay(start)}`}
+          >
+            {formatMinutesOfDay(start).replace(" ", "")} {block.name}
+          </div>
+        ))}
         {visible.map((it, idx) => (
           <button
             key={idx}
@@ -838,13 +872,32 @@ const MonthCell = forwardRef(function MonthCell({
 });
 
 // ── Agenda list ─────────────────────────────────────────────────────
-function AgendaGroup({ group, today, onClickItem }) {
+function AgendaGroup({ group, blocks, today, onClickItem }) {
   const dDate = parseISODate(group.date);
   const isToday = dDate && (
     dDate.getUTCFullYear() === today.getFullYear()
     && dDate.getUTCMonth() === today.getMonth()
     && dDate.getUTCDate() === today.getDate()
   );
+
+  // Merge the day's chore blocks into the event list by start time so
+  // the agenda reads as one chronological day. Blocks are read-only,
+  // semi-transparent rows — the calendar shows the rounds windows, not
+  // the individual chores inside them.
+  const rows = useMemo(() => {
+    const localDate = dDate
+      ? new Date(dDate.getUTCFullYear(), dDate.getUTCMonth(), dDate.getUTCDate())
+      : new Date(group.date);
+    const blockRows = blocksForDate(blocks, localDate)
+      .map(b => ({ type: "block", ...b, sortMin: b.start }));
+    const eventRows = group.items.map(ev => ({
+      type: "event",
+      ev,
+      sortMin: hhmmToMinutes(ev.startTime) ?? 24 * 60,
+    }));
+    return [...blockRows, ...eventRows].sort((a, b) => a.sortMin - b.sortMin);
+  }, [blocks, group, dDate]);
+
   return (
     <div>
       <div
@@ -856,41 +909,62 @@ function AgendaGroup({ group, today, onClickItem }) {
         {formatLongDate(group.date)}{isToday ? " · today" : ""}
       </div>
       <ul className="m-0 p-0 list-none flex flex-col gap-px bg-line">
-        {group.items.map(ev => (
+        {rows.map(row => row.type === "block" ? (
           <li
-            key={(ev.occurrenceId ?? ev.instanceId) + ev.date}
+            key={`block-${row.block.id}`}
+            className="bg-warn/[0.07]"
+          >
+            <div className="flex items-center gap-3 px-3 py-2">
+              <span aria-hidden className="w-1 h-7 shrink-0 bg-warn/50" />
+              <span className="text-[11px] text-dim tabular-nums w-[100px] shrink-0">
+                {formatMinutesOfDay(row.start)}
+                {` – ${formatMinutesOfDay(row.end)}`}
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="text-[13px] text-warn font-medium block truncate">
+                  {row.block.name} rounds
+                </span>
+              </span>
+              <span className="text-[10px] text-dim uppercase tracking-[0.08em] text-right">
+                Chores
+              </span>
+            </div>
+          </li>
+        ) : (
+          <li
+            key={(row.ev.occurrenceId ?? row.ev.instanceId) + row.ev.date}
             className="bg-surface"
           >
             <button
-              onClick={() => onClickItem?.(ev)}
+              onClick={() => onClickItem?.(row.ev)}
               className="w-full text-left bg-transparent border-0 cursor-pointer flex items-center gap-3 px-3 py-2.5"
             >
               <span
                 aria-hidden
                 className="w-1 h-7 shrink-0"
-                style={{ background: `var(--c-cat-${kindToCss(ev.kindId)})` }}
+                style={{ background: `var(--c-cat-${kindToCss(row.ev.kindId)})` }}
               />
               <span className="text-[11px] text-dim tabular-nums w-[100px] shrink-0">
-                {ev.startTime ? formatTime12h(ev.startTime) : ""}
-                {ev.endTime ? ` – ${formatTime12h(ev.endTime)}` : ""}
+                {row.ev.startTime ? formatTime12h(row.ev.startTime) : ""}
+                {row.ev.endTime ? ` – ${formatTime12h(row.ev.endTime)}` : ""}
               </span>
               <span className="flex-1 min-w-0">
                 <span className="text-[13px] text-fg font-medium block truncate">
-                  {ev.instanceLabel}
+                  {row.ev.instanceLabel}
                 </span>
-                {ev.subtitle && (
+                {row.ev.subtitle && (
                   <span className="text-[11px] text-faint block truncate">
-                    {ev.subtitle}
+                    {row.ev.subtitle}
                   </span>
                 )}
               </span>
               <span className="text-[10px] text-dim text-right">
                 <span className="block uppercase tracking-[0.08em]">
-                  {ev.kindLabel}
+                  {row.ev.kindLabel}
                 </span>
-                {ev.location?.name && (
+                {row.ev.location?.name && (
                   <span className="block text-faint mt-0.5 truncate max-w-[160px]">
-                    {ev.location.name}
+                    {row.ev.location.name}
                   </span>
                 )}
               </span>
