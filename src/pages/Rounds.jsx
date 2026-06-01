@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  X, Check, ChevronLeft, CloudOff,
+  X, Check, ChevronLeft, CloudOff, Trash2,
 } from "lucide-react";
 import pluralize from "pluralize";
 import { useChoreBlocks, formatMinutesOfDay } from "../lib/data/useChoreBlocks.js";
@@ -48,7 +48,7 @@ export default function Rounds({ data, initialBlockId, onClose }) {
   const {
     activeRun, nextBlock, runByBlockId, historicalRuns, runs: todayRuns,
     loading: runsLoading,
-    startRun, endRun, resumeRun, cancelRun,
+    startRun, endRun, resumeRun, cancelRun, deleteRun,
   } = useChoreRuns({ blocks });
 
   // The block this Rounds session is targeting. Active run wins over
@@ -163,6 +163,9 @@ export default function Rounds({ data, initialBlockId, onClose }) {
         onResumeRun={async (runId) => {
           await resumeRun(runId);
         }}
+        onDeleteRun={async (runId) => {
+          await deleteRun(runId);
+        }}
         onClose={onClose}
       />
     );
@@ -226,7 +229,7 @@ export default function Rounds({ data, initialBlockId, onClose }) {
 // ── Cold open ─────────────────────────────────────────────────────────
 function ColdOpen({
   block, blocks, todayRuns, historicalRuns, runByBlockId,
-  onStart, onStartBlock, onResumeRun, onClose,
+  onStart, onStartBlock, onResumeRun, onDeleteRun, onClose,
 }) {
   // Other blocks the user can launch out of natural sequence —
   // everything other than the suggested "next" block, ordered by
@@ -331,6 +334,7 @@ function ColdOpen({
             runs={recentHistory}
             blocks={blocks}
             onResumeRun={onResumeRun}
+            onDeleteRun={onDeleteRun}
           />
         )}
       </div>
@@ -338,7 +342,7 @@ function ColdOpen({
   );
 }
 
-function RecentRuns({ runs, blocks, onResumeRun }) {
+function RecentRuns({ runs, blocks, onResumeRun, onDeleteRun }) {
   const blockById = useMemo(() => {
     const m = new Map();
     for (const b of blocks ?? []) m.set(b.id, b);
@@ -377,6 +381,22 @@ function RecentRuns({ runs, blocks, onResumeRun }) {
                   className="text-[10px] text-dim hover:text-fg uppercase tracking-[0.12em] font-semibold border-0 bg-transparent cursor-pointer"
                 >
                   Resume
+                </button>
+              )}
+              {r.state === "canceled" && (
+                <button
+                  onClick={() => {
+                    const ok = window.confirm(
+                      "Delete this canceled run? The block will read " +
+                      "as never-run for that day."
+                    );
+                    if (ok) onDeleteRun(r.id);
+                  }}
+                  className="text-muted hover:text-warn border-0 bg-transparent cursor-pointer p-1 flex items-center"
+                  title="Delete this canceled run"
+                  aria-label="Delete this canceled run"
+                >
+                  <Trash2 size={13} />
                 </button>
               )}
             </li>

@@ -402,6 +402,20 @@ function execRunCancel(p) {
   });
 }
 
+// Delete a run row entirely — cleanup of canceled runs from the cold
+// open's history list. Keys off the natural (block_id, run_date)
+// identity like the other run ops; matching zero rows (already deleted
+// from another device) counts as success.
+async function execRunDelete(p) {
+  const { error } = await supabase
+    .from("chore_runs")
+    .delete()
+    .eq("block_id", p.blockId)
+    .eq("run_date", p.runDate);
+  if (error) throw asError(error);
+  return { run: null };
+}
+
 // Fire-and-forget POST to the Netlify function that fans out the
 // run-done push. Failures are logged but never re-thrown — the run
 // state UPDATE already succeeded by the time this is called.
@@ -429,6 +443,7 @@ const EXECUTORS = {
   run_end: execRunEnd,
   run_resume: execRunResume,
   run_cancel: execRunCancel,
+  run_delete: execRunDelete,
 };
 
 // ── Queue state + subscriptions ─────────────────────────────────────

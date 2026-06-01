@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { T } from "../theme.js";
 import {
-  CHORE_CATEGORIES, CHORE_PERIODS,
+  CHORE_CATEGORIES,
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete,
   obligationPlaceIds, describeChoreAnchor,
@@ -15,7 +15,7 @@ import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useSites } from "../lib/data/useSites.js";
-import { buildPlaceTree, displayPlace, childrenOf } from "../lib/places.js";
+import { buildPlaceTree, childrenOf } from "../lib/places.js";
 import {
   useChoreBlocks, formatMinutesOfDay,
 } from "../lib/data/useChoreBlocks.js";
@@ -153,25 +153,17 @@ function TodayTab({ data, currentUser, onChangeUser }) {
     weekday: "long", month: "long", day: "numeric", year: "numeric"
   });
 
-  // Width-observed column count. Threshold is 960px: once the content pane
-  // crosses that, all period groups switch from one column to two. We
-  // measure once on the outer wrapper so every period picks up the same
-  // break — avoids weirdness like Morning being 2-col and Evening 1-col
-  // just because one had fewer chores.
-  const [setWidthRef, cols] = useColumnCount(960);
-
   // One subscription for the whole tab. The completions hook + the
-  // place tree propagate down to each TodayChoreRow as props — see
-  // BlockGroup → TodayChoreRow below.
+  // place tree propagate down to each block's place tree as props.
   const completions = useChoreCompletions(today);
 
   // Place tree + occupancy + livestock groups for the anchor-driven
-  // obligation fan-out (Batches 16.1 + 18). A chore that fans into
-  // multiple places renders as a progress row ("2 of 3") with
-  // expandable per-place sub-checkboxes; a dormant chore (anchor
-  // resolves nowhere — no active animals) drops off today's list.
+  // obligation fan-out (Batches 16.1 + 18). Within each block, chores
+  // group by the place tree (same nesting as the All chores tab); a
+  // dormant chore (anchor resolves nowhere — no active animals) drops
+  // off today's list.
   const {
-    placesById, choreCtx, loading: sitesLoading,
+    roots, childrenByParent, choreCtx, loading: sitesLoading,
   } = useSites();
 
   // Hide dormant chores from every block bucket. Skipped while the
@@ -191,7 +183,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   const isEmpty = visibleBlockKeys.length === 0 && !sitesLoading;
 
   return (
-    <div ref={setWidthRef}>
+    <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
         <div style={{ fontSize: 13, color: T.textDim }}>{dateLabel}</div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -214,9 +206,9 @@ function TodayTab({ data, currentUser, onChangeUser }) {
             key={blockKey || "anytime"}
             block={block}
             instances={blockGroups.get(blockKey)}
-            cols={cols}
+            roots={roots}
+            childrenByParent={childrenByParent}
             completions={completions}
-            placesById={placesById}
             choreCtx={choreCtx}
             currentUserEmail={userEmail}
             blocks={blocks}
@@ -234,8 +226,13 @@ function isWindowy(chore) {
   return (t === "weekly_window" || t === "monthly_last_week_window") ? 1 : 0;
 }
 
+// One time-of-day block on the Today tab. Blocks order by today's
+// resolved start time (handled by the parent); within the block,
+// chores group by the place tree — the same nesting + alphabetical
+// sorting as the All chores tab — with one checkable row per
+// (chore, place) obligation.
 function BlockGroup({
-  block, instances, cols, completions, placesById, choreCtx,
+  block, instances, roots, childrenByParent, completions, choreCtx,
   currentUserEmail, blocks,
 }) {
   const headerLabel = block ? block.name : "Anytime";
@@ -244,7 +241,7 @@ function BlockGroup({
     : "";
   return (
     <div style={{ marginBottom: 32 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8 }}>
         <div style={{
           fontFamily: T.uiLabel, fontSize: 14, color: T.text,
           textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700
@@ -256,86 +253,148 @@ function BlockGroup({
           {instances.length} {instances.length === 1 ? "chore" : "chores"}
         </div>
       </div>
-      <ColumnList
-        items={instances}
-        cols={cols}
-        keyFor={inst => inst.choreId}
-        renderItem={inst => (
-          <TodayChoreRow
-            inst={inst}
-            completions={completions}
-            placesById={placesById}
-            choreCtx={choreCtx}
-            currentUserEmail={currentUserEmail}
-            blocks={blocks}
-          />
-        )}
+      <TodayPlaceTree
+        instances={instances}
+        roots={roots}
+        childrenByParent={childrenByParent}
+        completions={completions}
+        choreCtx={choreCtx}
+        currentUserEmail={currentUserEmail}
+        blocks={blocks}
       />
     </div>
   );
 }
 
-function TodayChoreRow({
-  inst, completions, placesById, choreCtx,
+// The place-tree body of one block group. Fans the block's chores into
+// per-place obligations, then renders the place tree with one
+// checkable row per obligation. Top-level places with nothing in this
+// block are skipped (each block stays focused); nesting inside a
+// rendered branch matches the All chores tree exactly.
+function TodayPlaceTree({
+  instances, roots, childrenByParent, completions, choreCtx,
   currentUserEmail, blocks,
 }) {
-  const { chore, assignees } = inst;
-  const [expanded, setExpanded] = useState(false);
-
-  // Per-place obligations via the chore's anchor (Batches 16.1 + 18).
-  // A chore that fans into multiple places gets one checkbox per
-  // place; the main checkbox bulk-completes whatever is left.
-  const placeIds = useMemo(
-    () => obligationPlaceIds(chore, choreCtx),
-    [chore, choreCtx]
-  );
-  const sortedPlaceIds = useMemo(() => {
-    return [...placeIds].sort((a, b) => {
-      const pa = a ? placesById?.get(a) : null;
-      const pb = b ? placesById?.get(b) : null;
-      return (
-        (pa?.sortOrder ?? 0) - (pb?.sortOrder ?? 0) ||
-        (pa?.name ?? "").localeCompare(pb?.name ?? "")
-      );
-    });
-  }, [placeIds, placesById]);
-
-  const { done, total } = completions.doneCountForChore(chore.id, placeIds);
-  const allDone = total > 0 && done === total;
-  const fanned = total > 1;
-  // Batch 16.2 — any obligation still sitting in the device-local
-  // outbox (offline tick waiting for signal).
-  const queued = placeIds.some(
-    pid => completions.isQueued?.(chore.id, pid) ?? false
-  );
-
-  // Main checkbox: single-obligation chores toggle that obligation;
-  // fanned chores bulk-complete all remaining (or un-complete all).
-  const handleClick = () => {
-    if (fanned) {
-      completions.toggleMany(chore.id, placeIds, !allDone);
-    } else {
-      completions.toggle(chore.id, placeIds[0] ?? null, allDone);
+  const {
+    entriesByPlace, farmEntries, subtreeCounts, topLevel,
+  } = useMemo(() => {
+    const byPlace = new Map();
+    const farm = [];
+    for (const inst of instances) {
+      const placeIds = obligationPlaceIds(inst.chore, choreCtx);
+      for (const pid of placeIds) {
+        if (pid == null) {
+          farm.push({ inst, placeId: null });
+          continue;
+        }
+        if (!byPlace.has(pid)) byPlace.set(pid, []);
+        byPlace.get(pid).push({ inst, placeId: pid });
+      }
     }
-  };
+    const byTitle = (a, b) =>
+      (a.inst.chore.title ?? "").localeCompare(b.inst.chore.title ?? "");
+    for (const list of byPlace.values()) list.sort(byTitle);
+
+    // Subtree counts drive the auto-fold + top-level pruning.
+    const counts = new Map();
+    const walk = (placeId) => {
+      let n = (byPlace.get(placeId) ?? []).length;
+      for (const child of childrenOf(placeId, childrenByParent)) {
+        n += walk(child.id);
+      }
+      counts.set(placeId, n);
+      return n;
+    };
+    for (const root of roots ?? []) walk(root.id);
+
+    // Obligations sitting at the farm root read as whole-farm work.
+    for (const root of roots ?? []) {
+      farm.push(...(byPlace.get(root.id) ?? []));
+      byPlace.delete(root.id);
+    }
+    farm.sort(byTitle);
+
+    const top = [];
+    for (const root of roots ?? []) {
+      top.push(...childrenOf(root.id, childrenByParent));
+    }
+    top.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+
+    return {
+      entriesByPlace: byPlace,
+      farmEntries: farm,
+      subtreeCounts: counts,
+      topLevel: top,
+    };
+  }, [instances, choreCtx, roots, childrenByParent]);
+
+  const renderEntry = ({ inst, placeId }) => (
+    <TodayObligationRow
+      inst={inst}
+      placeId={placeId}
+      completions={completions}
+      currentUserEmail={currentUserEmail}
+      blocks={blocks}
+    />
+  );
+  const keyOf = ({ inst, placeId }) => `${inst.choreId}|${placeId ?? "farm"}`;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {topLevel
+        .filter(place => (subtreeCounts.get(place.id) ?? 0) > 0)
+        .map(place => (
+          <PlaceTreeNode
+            key={place.id}
+            place={place}
+            depth={0}
+            childrenByParent={childrenByParent}
+            entriesByPlace={entriesByPlace}
+            subtreeCounts={subtreeCounts}
+            renderEntry={renderEntry}
+            keyOf={keyOf}
+          />
+        ))}
+      {farmEntries.length > 0 && (
+        <PlaceTreeSection
+          title="Whole farm"
+          subtitle="Not tied to any one place"
+          entries={farmEntries}
+          renderEntry={renderEntry}
+          keyOf={keyOf}
+        />
+      )}
+    </div>
+  );
+}
+
+// One checkable (chore, place) obligation row on the Today tab. The
+// place is carried by the tree header above it, so the row is just the
+// chore: checkbox, title, queued glyph, assignees + deadline meta, and
+// the sticky-note button.
+function TodayObligationRow({
+  inst, placeId, completions, currentUserEmail, blocks,
+}) {
+  const { chore, assignees } = inst;
+  const isDone = completions.isDone(chore.id, placeId);
+  const queued = completions.isQueued?.(chore.id, placeId) ?? false;
 
   // Right-column metadata: explicit assignees + deadline. If no
   // assignees, show only the deadline — no "unassigned" label.
-  // Multi-assignee rules render names joined with " · ".
   const metaParts = [];
   if (assignees && assignees.length > 0) metaParts.push(assignees.join(" · "));
   metaParts.push(displayDeadlineConcrete(chore));
 
   return (
     <div style={{ background: T.surface }}>
-      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          onClick={handleClick}
-          aria-label={allDone ? "Mark incomplete" : "Mark complete"}
+          onClick={() => completions.toggle(chore.id, placeId, isDone)}
+          aria-label={isDone ? "Mark incomplete" : "Mark complete"}
           style={{
             width: 20, height: 20, flexShrink: 0,
-            background: allDone ? T.accent : "transparent",
-            border: `1.5px solid ${allDone ? T.accent : T.border}`,
+            background: isDone ? T.accent : "transparent",
+            border: `1.5px solid ${isDone ? T.accent : T.border}`,
             cursor: "pointer",
             padding: 0,
             transition: "background-color 120ms ease, border-color 120ms ease"
@@ -344,8 +403,8 @@ function TodayChoreRow({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontSize: 13, fontWeight: 500,
-            color: allDone ? T.textFaint : T.text,
-            textDecoration: allDone ? "line-through" : "none",
+            color: isDone ? T.textFaint : T.text,
+            textDecoration: isDone ? "line-through" : "none",
             display: "flex", alignItems: "center", gap: 8
           }}>
             <span>{chore.title}</span>
@@ -356,100 +415,20 @@ function TodayChoreRow({
                 aria-label="Saved on this device — not synced yet"
               />
             )}
-            {fanned && (
-              <button
-                onClick={() => setExpanded(e => !e)}
-                style={{
-                  background: "transparent", border: "none", cursor: "pointer",
-                  color: done > 0 && !allDone ? T.accent : T.textDim,
-                  fontSize: 11, fontWeight: 600, padding: 0,
-                  display: "inline-flex", alignItems: "center", gap: 2,
-                  fontFamily: "inherit"
-                }}
-                aria-label={expanded ? "Collapse places" : "Expand places"}
-              >
-                {done} of {total}
-                {expanded
-                  ? <ChevronDown size={12} />
-                  : <ChevronRight size={12} />}
-              </button>
-            )}
           </div>
           {chore.description && (
             <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{chore.description}</div>
           )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-          <div style={{ fontSize: 12, color: T.textDim }}>{describeChoreAnchor(chore, choreCtx)}</div>
-          <div style={{ fontSize: 12, color: T.textFaint, display: "flex", alignItems: "center", gap: 6 }}>
-            <ChoreRemainingPill chore={chore} blocks={blocks} />
-            <span>{metaParts.join(" · ")}</span>
-          </div>
+        <div style={{ fontSize: 12, color: T.textFaint, display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <ChoreRemainingPill chore={chore} blocks={blocks} />
+          <span>{metaParts.join(" · ")}</span>
         </div>
         <ChoreMessageButton
           choreId={chore.id}
           choreTitle={chore.title}
           currentUserEmail={currentUserEmail}
         />
-      </div>
-      {fanned && expanded && (
-        <div style={{ padding: "0 16px 12px 48px", display: "flex", flexDirection: "column", gap: 6 }}>
-          {sortedPlaceIds.map(pid => (
-            <PlaceObligationRow
-              key={pid ?? "general"}
-              choreId={chore.id}
-              placeId={pid}
-              placesById={placesById}
-              completions={completions}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// One per-place sub-row inside an expanded fanned chore: checkbox +
-// place name + bold parent name (D1 disambiguation — "Mobile Coop 1"
-// exists under more than one pasture).
-function PlaceObligationRow({ choreId, placeId, placesById, completions }) {
-  const place = placeId ? placesById?.get(placeId) : null;
-  const { name, parentName } = displayPlace(place, placesById);
-  const isDone = completions.isDone(choreId, placeId);
-  const queued = completions.isQueued?.(choreId, placeId) ?? false;
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <button
-        onClick={() => completions.toggle(choreId, placeId, isDone)}
-        aria-label={isDone ? "Mark incomplete" : "Mark complete"}
-        style={{
-          width: 16, height: 16, flexShrink: 0,
-          background: isDone ? T.accent : "transparent",
-          border: `1.5px solid ${isDone ? T.accent : T.border}`,
-          cursor: "pointer",
-          padding: 0,
-          transition: "background-color 120ms ease, border-color 120ms ease"
-        }}
-      />
-      <div style={{
-        fontSize: 12,
-        color: isDone ? T.textFaint : T.text,
-        textDecoration: isDone ? "line-through" : "none",
-        display: "flex", alignItems: "center", gap: 6
-      }}>
-        {name || "This chore"}
-        {parentName && (
-          <span style={{ color: T.textDim }}>
-            {" · "}<strong>{parentName}</strong>
-          </span>
-        )}
-        {queued && (
-          <CloudOff
-            size={11}
-            style={{ color: T.warn, flexShrink: 0 }}
-            aria-label="Saved on this device — not synced yet"
-          />
-        )}
       </div>
     </div>
   );
@@ -700,48 +679,74 @@ function PlaceGroupedChores({
     return out;
   }, [wholeFarm, roots, choresByPlace]);
 
+  // Definition-row renderers for the generic tree components.
+  const renderDefinition = ({ chore, placeIds }) => (
+    <ChoreDefinitionRow
+      chore={chore}
+      fannedCount={placeIds?.length}
+      {...rowHandlersFor(chore, rowHandlers)}
+      {...editorData}
+    />
+  );
+  const renderDormant = (chore) => (
+    <ChoreDefinitionRow
+      chore={chore}
+      dormantNote={describeChoreAnchor(chore, choreCtx)}
+      {...rowHandlersFor(chore, rowHandlers)}
+      {...editorData}
+    />
+  );
+  const definitionKey = (entry, placeId) =>
+    `${(entry.chore ?? entry).id}|${placeId ?? "farm"}`;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {topLevel.map(place => (
-        <PlaceChoreNode
+        <PlaceTreeNode
           key={place.id}
           place={place}
           depth={0}
           childrenByParent={childrenByParent}
-          choresByPlace={choresByPlace}
+          entriesByPlace={choresByPlace}
           subtreeCounts={subtreeCounts}
-          rowHandlers={rowHandlers}
-          editorData={editorData}
+          renderEntry={renderDefinition}
+          keyOf={definitionKey}
         />
       ))}
       {rootChores.length > 0 && (
-        <PlaceChoreSection
+        <PlaceTreeSection
           title="Whole farm"
           subtitle="Not tied to any one place"
           entries={rootChores}
-          depth={0}
-          rowHandlers={rowHandlers}
-          editorData={editorData}
+          renderEntry={renderDefinition}
+          keyOf={definitionKey}
         />
       )}
       {dormant.length > 0 && (
-        <DormantChoresSection
-          chores={dormant}
-          choreCtx={choreCtx}
-          rowHandlers={rowHandlers}
-          editorData={editorData}
-        />
+        <div style={{ marginTop: 12 }}>
+          <PlaceTreeSection
+            title="Dormant"
+            subtitle="No active animals or places right now"
+            entries={dormant}
+            renderEntry={renderDormant}
+            keyOf={definitionKey}
+            defaultOpen={false}
+            dimmed
+          />
+        </div>
       )}
     </div>
   );
 }
 
-// One place in the tree: accordion header + (when open) its own chore
-// rows followed by its child places. Auto-folds when the whole subtree
-// is empty; the header stays so every layer of the farm is visible.
-function PlaceChoreNode({
-  place, depth, childrenByParent, choresByPlace, subtreeCounts,
-  rowHandlers, editorData,
+// One place in the tree: accordion header + (when open) its own
+// entries followed by its child places. Auto-folds when the whole
+// subtree is empty; the header stays so every layer of the farm is
+// visible. Generic over what an "entry" is — the All chores tab
+// renders definition rows, the Today tab renders obligation rows.
+function PlaceTreeNode({
+  place, depth, childrenByParent, entriesByPlace, subtreeCounts,
+  renderEntry, keyOf,
 }) {
   const subtreeCount = subtreeCounts.get(place.id) ?? 0;
   // User toggle overrides the default (open when there's something to
@@ -750,7 +755,7 @@ function PlaceChoreNode({
   const [userOpen, setUserOpen] = useState(null);
   const open = userOpen ?? subtreeCount > 0;
 
-  const ownEntries = choresByPlace.get(place.id) ?? [];
+  const ownEntries = entriesByPlace.get(place.id) ?? [];
   const children = [...childrenOf(place.id, childrenByParent)]
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 
@@ -790,27 +795,23 @@ function PlaceChoreNode({
         }}>
           {ownEntries.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
-              {ownEntries.map(({ chore, placeIds }) => (
-                <ChoreDefinitionRow
-                  key={`${chore.id}|${place.id}`}
-                  chore={chore}
-                  fannedCount={placeIds.length}
-                  {...rowHandlersFor(chore, rowHandlers)}
-                  {...editorData}
-                />
+              {ownEntries.map(entry => (
+                <div key={keyOf(entry, place.id)}>
+                  {renderEntry(entry, place.id)}
+                </div>
               ))}
             </div>
           )}
           {children.map(child => (
-            <PlaceChoreNode
+            <PlaceTreeNode
               key={child.id}
               place={child}
               depth={depth + 1}
               childrenByParent={childrenByParent}
-              choresByPlace={choresByPlace}
+              entriesByPlace={entriesByPlace}
               subtreeCounts={subtreeCounts}
-              rowHandlers={rowHandlers}
-              editorData={editorData}
+              renderEntry={renderEntry}
+              keyOf={keyOf}
             />
           ))}
         </div>
@@ -819,11 +820,12 @@ function PlaceChoreNode({
   );
 }
 
-// Flat titled section used for the "Whole farm" bucket.
-function PlaceChoreSection({
-  title, subtitle, entries, rowHandlers, editorData,
+// Flat titled section used for the "Whole farm" / "Dormant" buckets.
+function PlaceTreeSection({
+  title, subtitle, entries, renderEntry, keyOf, defaultOpen = true,
+  dimmed = false,
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div>
       <button
@@ -839,7 +841,8 @@ function PlaceChoreSection({
           ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
           : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0 }} />}
         <span style={{
-          fontFamily: T.uiLabel, fontSize: 13, color: T.text,
+          fontFamily: T.uiLabel, fontSize: 13,
+          color: dimmed ? T.textDim : T.text,
           textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700,
         }}>
           {title}
@@ -855,68 +858,13 @@ function PlaceChoreSection({
         <div style={{
           borderLeft: `1px solid ${T.border}`,
           marginLeft: 6, paddingLeft: 12,
+          opacity: dimmed ? 0.7 : 1,
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
-            {entries.map(({ chore, placeIds }) => (
-              <ChoreDefinitionRow
-                key={`${chore.id}|farm`}
-                chore={chore}
-                fannedCount={placeIds.length}
-                {...rowHandlersFor(chore, rowHandlers)}
-                {...editorData}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Dormant chores: anchored to animals that aren't on the farm right
-// now (or to places/kinds that no longer exist). The definitions stay
-// visible and editable so they don't silently vanish over the winter.
-function DormantChoresSection({ chores, choreCtx, rowHandlers, editorData }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ marginTop: 12 }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: "flex", alignItems: "center", gap: 8, width: "100%",
-          background: "transparent", border: "none", cursor: "pointer",
-          padding: "8px 0", fontFamily: "inherit", textAlign: "left",
-        }}
-        aria-expanded={open}
-      >
-        {open
-          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
-          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0 }} />}
-        <span style={{
-          fontFamily: T.uiLabel, fontSize: 13, color: T.textDim,
-          textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700,
-        }}>
-          Dormant
-        </span>
-        <span style={{ fontSize: 11, color: T.textMuted }}>
-          {chores.length} {chores.length === 1 ? "chore" : "chores"} with no
-          active animals or places right now
-        </span>
-      </button>
-      {open && (
-        <div style={{
-          borderLeft: `1px solid ${T.border}`,
-          marginLeft: 6, paddingLeft: 12, opacity: 0.7,
-        }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
-            {chores.map(chore => (
-              <ChoreDefinitionRow
-                key={`${chore.id}|dormant`}
-                chore={chore}
-                dormantNote={describeChoreAnchor(chore, choreCtx)}
-                {...rowHandlersFor(chore, rowHandlers)}
-                {...editorData}
-              />
+            {entries.map(entry => (
+              <div key={keyOf(entry, null)}>
+                {renderEntry(entry, null)}
+              </div>
             ))}
           </div>
         </div>

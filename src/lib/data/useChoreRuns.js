@@ -44,7 +44,7 @@ const SELECT_COLS =
   "started_by_email, ended_by_email";
 
 const RUN_OP_KINDS = new Set([
-  "run_start", "run_end", "run_resume", "run_cancel",
+  "run_start", "run_end", "run_resume", "run_cancel", "run_delete",
 ]);
 
 // Natural-key map key for a run.
@@ -117,6 +117,9 @@ function applyRunOps(serverRows, ops) {
             ended_by_email: p.email,
           });
         }
+        break;
+      case "run_delete":
+        byKey.delete(key);
         break;
       default:
         break;
@@ -336,6 +339,18 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
     });
   }, [allRuns]);
 
+  // Delete a run row entirely — cleanup of canceled runs from the cold
+  // open's history list. Removes the row rather than flipping state, so
+  // the block reads as never-run for that day.
+  const deleteRun = useCallback(async (runId) => {
+    const run = allRuns.find(r => r.id === runId);
+    if (!run) throw new Error("Run not found.");
+    await enqueueOp("run_delete", {
+      blockId: run.blockId,
+      runDate: run.runDate,
+    });
+  }, [allRuns]);
+
   return {
     runs: shaped.todayRuns,
     historicalRuns: shaped.historicalRuns,
@@ -348,6 +363,7 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
     endRun,
     resumeRun,
     cancelRun,
+    deleteRun,
   };
 }
 
