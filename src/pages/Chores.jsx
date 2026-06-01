@@ -7,7 +7,7 @@ import {
   CHORE_CATEGORIES, CHORE_PERIODS,
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete,
-  obligationPlaceIds,
+  obligationPlaceIds, describeChoreAnchor,
 } from "../lib/chores.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
@@ -15,7 +15,7 @@ import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useSites } from "../lib/data/useSites.js";
-import { buildPlaceTree, displayPlace } from "../lib/places.js";
+import { buildPlaceTree, displayPlace, childrenOf } from "../lib/places.js";
 import {
   useChoreBlocks, formatMinutesOfDay,
 } from "../lib/data/useChoreBlocks.js";
@@ -165,14 +165,30 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   // BlockGroup → TodayChoreRow below.
   const completions = useChoreCompletions(today);
 
-  // Place tree + occupancy for per-place obligation fan-out
-  // (Batch 16.1). A chore scoped to a parent place renders as a
-  // progress row ("2 of 3") with expandable per-place sub-checkboxes.
+  // Place tree + occupancy + livestock groups for the anchor-driven
+  // obligation fan-out (Batches 16.1 + 18). A chore that fans into
+  // multiple places renders as a progress row ("2 of 3") with
+  // expandable per-place sub-checkboxes; a dormant chore (anchor
+  // resolves nowhere — no active animals) drops off today's list.
   const {
-    placesById, childrenByParent, placementsByPlaceId,
+    placesById, choreCtx, loading: sitesLoading,
   } = useSites();
 
-  const isEmpty = orderedBlockKeys.length === 0;
+  // Hide dormant chores from every block bucket. Skipped while the
+  // occupancy data is still loading — an empty placements map would
+  // make every animal-anchored chore read as dormant for a frame.
+  if (!sitesLoading) {
+    for (const [key, list] of blockGroups) {
+      const active = list.filter(
+        inst => obligationPlaceIds(inst.chore, choreCtx).length > 0
+      );
+      if (active.length === 0) blockGroups.delete(key);
+      else blockGroups.set(key, active);
+    }
+  }
+  const visibleBlockKeys = orderedBlockKeys.filter(k => blockGroups.has(k));
+
+  const isEmpty = visibleBlockKeys.length === 0 && !sitesLoading;
 
   return (
     <div ref={setWidthRef}>
@@ -191,7 +207,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
         </EmptyCard>
       )}
 
-      {orderedBlockKeys.map(blockKey => {
+      {visibleBlockKeys.map(blockKey => {
         const block = blockKey ? blocks.find(b => b.id === blockKey) : null;
         return (
           <BlockGroup
@@ -201,8 +217,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
             cols={cols}
             completions={completions}
             placesById={placesById}
-            childrenByParent={childrenByParent}
-            placementsByPlaceId={placementsByPlaceId}
+            choreCtx={choreCtx}
             currentUserEmail={userEmail}
             blocks={blocks}
           />
@@ -220,8 +235,8 @@ function isWindowy(chore) {
 }
 
 function BlockGroup({
-  block, instances, cols, completions, placesById, childrenByParent,
-  placementsByPlaceId, currentUserEmail, blocks,
+  block, instances, cols, completions, placesById, choreCtx,
+  currentUserEmail, blocks,
 }) {
   const headerLabel = block ? block.name : "Anytime";
   const timeLabel = block
@@ -250,8 +265,7 @@ function BlockGroup({
             inst={inst}
             completions={completions}
             placesById={placesById}
-            childrenByParent={childrenByParent}
-            placementsByPlaceId={placementsByPlaceId}
+            choreCtx={choreCtx}
             currentUserEmail={currentUserEmail}
             blocks={blocks}
           />
@@ -262,18 +276,18 @@ function BlockGroup({
 }
 
 function TodayChoreRow({
-  inst, completions, placesById, childrenByParent, placementsByPlaceId,
+  inst, completions, placesById, choreCtx,
   currentUserEmail, blocks,
 }) {
   const { chore, assignees } = inst;
   const [expanded, setExpanded] = useState(false);
 
-  // Per-place obligations (Batch 16.1). A chore scoped to a parent
-  // place fans into one checkbox per occupied descendant place; the
-  // main checkbox bulk-completes whatever is left.
+  // Per-place obligations via the chore's anchor (Batches 16.1 + 18).
+  // A chore that fans into multiple places gets one checkbox per
+  // place; the main checkbox bulk-completes whatever is left.
   const placeIds = useMemo(
-    () => obligationPlaceIds(chore, childrenByParent, placementsByPlaceId),
-    [chore, childrenByParent, placementsByPlaceId]
+    () => obligationPlaceIds(chore, choreCtx),
+    [chore, choreCtx]
   );
   const sortedPlaceIds = useMemo(() => {
     return [...placeIds].sort((a, b) => {
@@ -366,7 +380,7 @@ function TodayChoreRow({
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-          <div style={{ fontSize: 12, color: T.textDim }}>{CHORE_CATEGORIES[chore.category]?.label ?? chore.category}</div>
+          <div style={{ fontSize: 12, color: T.textDim }}>{describeChoreAnchor(chore, choreCtx)}</div>
           <div style={{ fontSize: 12, color: T.textFaint, display: "flex", alignItems: "center", gap: 6 }}>
             <ChoreRemainingPill chore={chore} blocks={blocks} />
             <span>{metaParts.join(" · ")}</span>
@@ -475,14 +489,18 @@ function Toggle({ active, onClick, children }) {
 
 function AllChoresTab({ data }) {
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("time"); // alpha | time | category
+  // "place" (default — recursive place-tree accordions) | alpha | time
+  const [sort, setSort] = useState("place");
   const [expanded, setExpanded] = useState(() => new Set());
   const [editing, setEditing] = useState(null); // chore_id currently in edit mode
   const {
     definitions: liveDefs, loading: defsLoading,
     updateDefinition, deleteDefinition,
   } = useChoreDefinitions();
-  const { places, placesById } = useSites();
+  const {
+    places, placesById, childrenByParent, roots, groups, speciesById,
+    choreCtx, loading: sitesLoading,
+  } = useSites();
   const { blocks, blockById } = useChoreBlocks();
 
   // Until live data lands, fall back to the static definitions from the
@@ -513,13 +531,13 @@ function AllChoresTab({ data }) {
       || (c.description ?? "").toLowerCase().includes(q)
       || (c.tags ?? []).some(t => t.toLowerCase().includes(q))
       || (CHORE_CATEGORIES[c.category]?.label ?? "").toLowerCase().includes(q)
+      || describeChoreAnchor(c, choreCtx).toLowerCase().includes(q)
     );
     if (sort === "alpha") {
       out.sort((a, b) => a.title.localeCompare(b.title));
     } else if (sort === "time") {
       // Sort by today's resolved block start time (ascending — chores
-      // with no block sort last), then by site name (alphabetical),
-      // then by title.
+      // with no block sort last), then by anchor label, then by title.
       const today = new Date();
       const blockMap = new Map(blocks.map(b => [b.id, b]));
       const startMin = (chore) => {
@@ -527,27 +545,44 @@ function AllChoresTab({ data }) {
         if (!b) return 9999;
         return resolveBlockMinutes(today, b.startKind, b.startMinutes) ?? 9999;
       };
-      const placeName = (chore) =>
-        chore.placeId ? placesById.get(chore.placeId)?.name ?? "" : "";
       out.sort((a, b) => {
         const sa = startMin(a);
         const sb = startMin(b);
         if (sa !== sb) return sa - sb;
-        const na = placeName(a).toLowerCase();
-        const nb = placeName(b).toLowerCase();
+        const na = describeChoreAnchor(a, choreCtx).toLowerCase();
+        const nb = describeChoreAnchor(b, choreCtx).toLowerCase();
         if (na !== nb) return na.localeCompare(nb);
         return a.title.localeCompare(b.title);
       });
-    } else if (sort === "category") {
-      out.sort((a, b) => {
-        const ac = CHORE_CATEGORIES[a.category]?.order ?? 99;
-        const bc = CHORE_CATEGORIES[b.category]?.order ?? 99;
-        if (ac !== bc) return ac - bc;
-        return a.title.localeCompare(b.title);
-      });
     }
+    // sort === "place" keeps definition order; the tree handles
+    // grouping + per-place alphabetical sorting itself.
     return out;
-  }, [defs, query, sort, blocks, placesById]);
+  }, [defs, query, sort, blocks, choreCtx]);
+
+  // Shared row-level handlers, threaded into both render modes.
+  const userEmail = useCurrentUserEmail();
+  const rowHandlers = {
+    expanded,
+    onToggle: toggleExpand,
+    editing,
+    onStartEdit: startEdit,
+    onCancelEdit: () => setEditing(null),
+    onSaveEdit: async (id, patch) => {
+      await updateDefinition(id, patch);
+      setEditing(null);
+    },
+    onQuickSave: updateDefinition,
+    onDeleteChore: async (id) => {
+      const ok = window.confirm("Delete this chore? This can't be undone.");
+      if (!ok) return;
+      await deleteDefinition(id);
+    },
+  };
+  const editorData = {
+    places, blocks, blockById, groups, speciesById, choreCtx,
+    currentUserEmail: userEmail,
+  };
 
   return (
     <div>
@@ -563,43 +598,353 @@ function AllChoresTab({ data }) {
 
       {filtered.length === 0 ? (
         <EmptyCard title="No chores match">Try a different search term.</EmptyCard>
+      ) : sort === "place" && sitesLoading ? (
+        <EmptyCard title="Loading places…">
+          Building the place tree and current occupancy.
+        </EmptyCard>
+      ) : sort === "place" ? (
+        <PlaceGroupedChores
+          defs={filtered}
+          roots={roots}
+          childrenByParent={childrenByParent}
+          placesById={placesById}
+          choreCtx={choreCtx}
+          rowHandlers={rowHandlers}
+          editorData={editorData}
+        />
       ) : (
         <AllChoresList
           filtered={filtered}
-          expanded={expanded}
-          onToggle={toggleExpand}
-          editing={editing}
-          onStartEdit={startEdit}
-          onCancelEdit={() => setEditing(null)}
-          onSaveEdit={async (id, patch) => {
-            await updateDefinition(id, patch);
-            setEditing(null);
-          }}
-          onQuickSave={updateDefinition}
-          onDeleteChore={async (id) => {
-            const ok = window.confirm("Delete this chore? This can't be undone.");
-            if (!ok) return;
-            await deleteDefinition(id);
-          }}
-          places={places}
-          blocks={blocks}
-          blockById={blockById}
+          rowHandlers={rowHandlers}
+          editorData={editorData}
         />
       )}
     </div>
   );
 }
 
+// ── By-place tree view (Batch 18) ───────────────────────────────────
+// The default All-chores rendering: the full place tree as nested
+// accordion headers — every level of nesting gets its own header, so
+// the hierarchy reads exactly like the farm is organized. Chores land
+// under the place their anchor currently resolves to (one row per
+// fanned obligation), which is what makes coop chores follow the coops
+// and pasture chores stay with the pasture. Headers with nothing
+// beneath them fold up automatically but stay visible — every place is
+// represented even when it has no chores yet.
+function PlaceGroupedChores({
+  defs, roots, childrenByParent, placesById, choreCtx,
+  rowHandlers, editorData,
+}) {
+  // Fan every definition into its obligations. choresByPlace maps
+  // placeId|null → [{ chore, placeIds }] (placeIds kept so rows can
+  // show "1 of N places" context). Dormant chores collect separately.
+  const { choresByPlace, wholeFarm, dormant } = useMemo(() => {
+    const byPlace = new Map();
+    const farm = [];
+    const sleeping = [];
+    for (const chore of defs) {
+      const placeIds = obligationPlaceIds(chore, choreCtx);
+      if (placeIds.length === 0) {
+        sleeping.push(chore);
+        continue;
+      }
+      for (const pid of placeIds) {
+        if (pid == null) {
+          farm.push({ chore, placeIds });
+          continue;
+        }
+        if (!byPlace.has(pid)) byPlace.set(pid, []);
+        byPlace.get(pid).push({ chore, placeIds });
+      }
+    }
+    const byTitle = (a, b) =>
+      (a.chore.title ?? "").localeCompare(b.chore.title ?? "");
+    for (const list of byPlace.values()) list.sort(byTitle);
+    farm.sort(byTitle);
+    sleeping.sort((a, b) => (a.title ?? "").localeCompare(b.title ?? ""));
+    return { choresByPlace: byPlace, wholeFarm: farm, dormant: sleeping };
+  }, [defs, choreCtx]);
+
+  // Subtree chore counts drive the auto-fold behavior: a header with
+  // nothing anywhere beneath it renders collapsed.
+  const subtreeCounts = useMemo(() => {
+    const counts = new Map();
+    const walk = (placeId) => {
+      let n = (choresByPlace.get(placeId) ?? []).length;
+      for (const child of childrenOf(placeId, childrenByParent)) {
+        n += walk(child.id);
+      }
+      counts.set(placeId, n);
+      return n;
+    };
+    for (const root of roots) walk(root.id);
+    return counts;
+  }, [choresByPlace, childrenByParent, roots]);
+
+  // Top level: the farm root's children, alphabetical. Obligations
+  // sitting at the farm root itself read as whole-farm work.
+  const topLevel = useMemo(() => {
+    const out = [];
+    for (const root of roots) {
+      out.push(...childrenOf(root.id, childrenByParent));
+    }
+    out.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    return out;
+  }, [roots, childrenByParent]);
+  const rootChores = useMemo(() => {
+    const out = [...wholeFarm];
+    for (const root of roots) {
+      out.push(...(choresByPlace.get(root.id) ?? []));
+    }
+    return out;
+  }, [wholeFarm, roots, choresByPlace]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {topLevel.map(place => (
+        <PlaceChoreNode
+          key={place.id}
+          place={place}
+          depth={0}
+          childrenByParent={childrenByParent}
+          choresByPlace={choresByPlace}
+          subtreeCounts={subtreeCounts}
+          rowHandlers={rowHandlers}
+          editorData={editorData}
+        />
+      ))}
+      {rootChores.length > 0 && (
+        <PlaceChoreSection
+          title="Whole farm"
+          subtitle="Not tied to any one place"
+          entries={rootChores}
+          depth={0}
+          rowHandlers={rowHandlers}
+          editorData={editorData}
+        />
+      )}
+      {dormant.length > 0 && (
+        <DormantChoresSection
+          chores={dormant}
+          choreCtx={choreCtx}
+          rowHandlers={rowHandlers}
+          editorData={editorData}
+        />
+      )}
+    </div>
+  );
+}
+
+// One place in the tree: accordion header + (when open) its own chore
+// rows followed by its child places. Auto-folds when the whole subtree
+// is empty; the header stays so every layer of the farm is visible.
+function PlaceChoreNode({
+  place, depth, childrenByParent, choresByPlace, subtreeCounts,
+  rowHandlers, editorData,
+}) {
+  const subtreeCount = subtreeCounts.get(place.id) ?? 0;
+  // User toggle overrides the default (open when there's something to
+  // show). Defaults re-derive when data changes: an empty header that
+  // gains a chore pops open on its own.
+  const [userOpen, setUserOpen] = useState(null);
+  const open = userOpen ?? subtreeCount > 0;
+
+  const ownEntries = choresByPlace.get(place.id) ?? [];
+  const children = [...childrenOf(place.id, childrenByParent)]
+    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+
+  return (
+    <div style={{ marginLeft: depth === 0 ? 0 : 18 }}>
+      <button
+        onClick={() => setUserOpen(o => (o == null ? !(subtreeCount > 0) : !o))}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, width: "100%",
+          background: "transparent", border: "none", cursor: "pointer",
+          padding: "8px 0", fontFamily: "inherit", textAlign: "left",
+        }}
+        aria-expanded={open}
+      >
+        {open
+          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
+          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0 }} />}
+        <span style={{
+          fontFamily: T.uiLabel, fontSize: depth === 0 ? 13 : 12,
+          color: subtreeCount > 0 ? T.text : T.textDim,
+          textTransform: "uppercase", letterSpacing: "0.12em",
+          fontWeight: depth === 0 ? 700 : 600,
+        }}>
+          {place.name}
+        </span>
+        <span style={{ fontSize: 11, color: T.textMuted }}>
+          {subtreeCount > 0
+            ? `${subtreeCount} ${subtreeCount === 1 ? "chore" : "chores"}`
+            : "no chores"}
+        </span>
+      </button>
+      {open && (
+        <div style={{
+          borderLeft: `1px solid ${T.border}`,
+          marginLeft: 6, paddingLeft: 12,
+          display: "flex", flexDirection: "column", gap: 2,
+        }}>
+          {ownEntries.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
+              {ownEntries.map(({ chore, placeIds }) => (
+                <ChoreDefinitionRow
+                  key={`${chore.id}|${place.id}`}
+                  chore={chore}
+                  fannedCount={placeIds.length}
+                  {...rowHandlersFor(chore, rowHandlers)}
+                  {...editorData}
+                />
+              ))}
+            </div>
+          )}
+          {children.map(child => (
+            <PlaceChoreNode
+              key={child.id}
+              place={child}
+              depth={depth + 1}
+              childrenByParent={childrenByParent}
+              choresByPlace={choresByPlace}
+              subtreeCounts={subtreeCounts}
+              rowHandlers={rowHandlers}
+              editorData={editorData}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Flat titled section used for the "Whole farm" bucket.
+function PlaceChoreSection({
+  title, subtitle, entries, rowHandlers, editorData,
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, width: "100%",
+          background: "transparent", border: "none", cursor: "pointer",
+          padding: "8px 0", fontFamily: "inherit", textAlign: "left",
+        }}
+        aria-expanded={open}
+      >
+        {open
+          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
+          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0 }} />}
+        <span style={{
+          fontFamily: T.uiLabel, fontSize: 13, color: T.text,
+          textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700,
+        }}>
+          {title}
+        </span>
+        {subtitle && (
+          <span style={{ fontSize: 11, color: T.textMuted }}>{subtitle}</span>
+        )}
+        <span style={{ fontSize: 11, color: T.textMuted, marginLeft: "auto" }}>
+          {entries.length} {entries.length === 1 ? "chore" : "chores"}
+        </span>
+      </button>
+      {open && (
+        <div style={{
+          borderLeft: `1px solid ${T.border}`,
+          marginLeft: 6, paddingLeft: 12,
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
+            {entries.map(({ chore, placeIds }) => (
+              <ChoreDefinitionRow
+                key={`${chore.id}|farm`}
+                chore={chore}
+                fannedCount={placeIds.length}
+                {...rowHandlersFor(chore, rowHandlers)}
+                {...editorData}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Dormant chores: anchored to animals that aren't on the farm right
+// now (or to places/kinds that no longer exist). The definitions stay
+// visible and editable so they don't silently vanish over the winter.
+function DormantChoresSection({ chores, choreCtx, rowHandlers, editorData }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 12 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, width: "100%",
+          background: "transparent", border: "none", cursor: "pointer",
+          padding: "8px 0", fontFamily: "inherit", textAlign: "left",
+        }}
+        aria-expanded={open}
+      >
+        {open
+          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
+          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0 }} />}
+        <span style={{
+          fontFamily: T.uiLabel, fontSize: 13, color: T.textDim,
+          textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700,
+        }}>
+          Dormant
+        </span>
+        <span style={{ fontSize: 11, color: T.textMuted }}>
+          {chores.length} {chores.length === 1 ? "chore" : "chores"} with no
+          active animals or places right now
+        </span>
+      </button>
+      {open && (
+        <div style={{
+          borderLeft: `1px solid ${T.border}`,
+          marginLeft: 6, paddingLeft: 12, opacity: 0.7,
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
+            {chores.map(chore => (
+              <ChoreDefinitionRow
+                key={`${chore.id}|dormant`}
+                chore={chore}
+                dormantNote={describeChoreAnchor(chore, choreCtx)}
+                {...rowHandlersFor(chore, rowHandlers)}
+                {...editorData}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Adapt the tab-level handler bag to the per-row prop shape
+// ChoreDefinitionRow expects.
+function rowHandlersFor(chore, h) {
+  return {
+    expanded: h.expanded.has(chore.id),
+    onToggle: () => h.onToggle(chore.id),
+    editing: h.editing === chore.id,
+    onStartEdit: () => h.onStartEdit(chore.id),
+    onCancelEdit: h.onCancelEdit,
+    onSaveEdit: (patch) => h.onSaveEdit(chore.id, patch),
+    onQuickSave: (patch) => h.onQuickSave(chore.id, patch),
+    onDeleteChore: () => h.onDeleteChore(chore.id),
+  };
+}
+
 // Same newspaper-split layout as Today, but the width threshold is higher
 // (1200px) because each chore-definition row is denser (inline actions +
 // expand caret) and needs more horizontal room before it's worth splitting.
-function AllChoresList({
-  filtered, expanded, onToggle,
-  editing, onStartEdit, onCancelEdit, onSaveEdit, onQuickSave, onDeleteChore,
-  places, blocks, blockById,
-}) {
+function AllChoresList({ filtered, rowHandlers, editorData }) {
   const [setWidthRef, cols] = useColumnCount(1200);
-  const userEmail = useCurrentUserEmail();
   return (
     <div ref={setWidthRef}>
       <ColumnList
@@ -609,18 +954,8 @@ function AllChoresList({
         renderItem={chore => (
           <ChoreDefinitionRow
             chore={chore}
-            expanded={expanded.has(chore.id)}
-            onToggle={() => onToggle(chore.id)}
-            currentUserEmail={userEmail}
-            editing={editing === chore.id}
-            onStartEdit={() => onStartEdit(chore.id)}
-            onCancelEdit={onCancelEdit}
-            onSaveEdit={(patch) => onSaveEdit(chore.id, patch)}
-            onQuickSave={(patch) => onQuickSave(chore.id, patch)}
-            onDeleteChore={() => onDeleteChore(chore.id)}
-            places={places}
-            blocks={blocks}
-            blockById={blockById}
+            {...rowHandlersFor(chore, rowHandlers)}
+            {...editorData}
           />
         )}
       />
@@ -630,9 +965,9 @@ function AllChoresList({
 
 function SortPicker({ value, onChange }) {
   const options = [
+    { id: "place", label: "By place" },
     { id: "alpha", label: "A–Z" },
-    { id: "time", label: "Time of day" },
-    { id: "category", label: "Category" }
+    { id: "time", label: "Time of day" }
   ];
   return (
     <div style={{ display: "flex", border: `1px solid ${T.border}`, background: T.surface }}>
@@ -654,9 +989,10 @@ function SortPicker({ value, onChange }) {
 }
 
 function ChoreDefinitionRow({
-  chore, expanded, onToggle, currentUserEmail,
+  chore, fannedCount, dormantNote,
+  expanded, onToggle, currentUserEmail,
   editing, onStartEdit, onCancelEdit, onSaveEdit, onQuickSave, onDeleteChore,
-  places, blocks, blockById,
+  places, blocks, blockById, groups, speciesById, choreCtx,
 }) {
   return (
     <div style={{ background: T.surface }}>
@@ -669,13 +1005,22 @@ function ChoreDefinitionRow({
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{chore.title}</div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: T.text, display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span>{chore.title}</span>
+            {fannedCount > 1 && (
+              <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 400 }}>
+                1 of {fannedCount} places
+              </span>
+            )}
+          </div>
           <SecondaryRow
             chore={chore}
-            places={places}
             blocks={blocks}
             blockById={blockById}
+            choreCtx={choreCtx}
             onQuickSave={onQuickSave}
+            onStartEdit={onStartEdit}
+            dormantNote={dormantNote}
           />
         </div>
         <ChoreMessageButton
@@ -695,6 +1040,9 @@ function ChoreDefinitionRow({
               chore={chore}
               places={places}
               blocks={blocks}
+              groups={groups}
+              speciesById={speciesById}
+              choreCtx={choreCtx}
               onCancel={onCancelEdit}
               onSave={onSaveEdit}
             />
@@ -704,15 +1052,18 @@ function ChoreDefinitionRow({
   );
 }
 
-// Three quick-edit chips on the row's secondary line. Double-click
-// any of them to swap in an inline editor for that field; saving
-// commits via onQuickSave (chore_definitions update) without
-// expanding the full row editor.
-function SecondaryRow({ chore, places, blocks, blockById, onQuickSave }) {
+// Quick-edit chips on the row's secondary line. The anchor ("belongs
+// to") chip opens the full inline editor on double-click — anchors
+// have too many moving parts for a single inline select. Schedule and
+// frequency keep their in-place quick editors.
+function SecondaryRow({
+  chore, blocks, blockById, choreCtx, onQuickSave, onStartEdit,
+  dormantNote,
+}) {
   // Pill is conditional — appears only when the helper resolves
   // (window or anytime chores). Render at the end so the layout
   // stays calm for the simple-daily-chore majority.
-  const [editing, setEditing] = useState(null); // 'site' | 'schedule' | 'frequency' | null
+  const [editing, setEditing] = useState(null); // 'schedule' | 'frequency' | null
 
   const close = () => setEditing(null);
   const save = async (patch) => {
@@ -727,18 +1078,12 @@ function SecondaryRow({ chore, places, blocks, blockById, onQuickSave }) {
         display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
       }}
     >
-      {editing === "site" ? (
-        <PlaceQuickEdit
-          chore={chore}
-          places={places}
-          onSave={save}
-          onCancel={close}
-        />
-      ) : (
-        <Chip onDoubleClick={() => setEditing("site")} title="Double-click to edit place">
-          {describeChorePlace(chore, places)}
-        </Chip>
-      )}
+      <Chip
+        onDoubleClick={onStartEdit}
+        title="Double-click to edit what this chore belongs to"
+      >
+        {dormantNote ?? describeChoreAnchor(chore, choreCtx)}
+      </Chip>
       <ChipSep />
       {editing === "schedule" ? (
         <ScheduleQuickEdit
@@ -810,37 +1155,6 @@ function placeSelectOptions(places) {
   };
   walk(null, 0);
   return out;
-}
-
-// ── Place quick-edit ────────────────────────────────────────────────
-// Single select of every active place (indented by depth). A chore is
-// scoped to one place_id and fans out to that place's subtree.
-function PlaceQuickEdit({ chore, places, onSave, onCancel }) {
-  const initial = chore.placeId ?? "";
-  const [val, setVal] = useState(initial);
-  const options = placeSelectOptions(places);
-
-  const submit = async (newVal) => {
-    if (newVal === initial) { onCancel(); return; }
-    await onSave({ placeId: newVal || null });
-  };
-
-  return (
-    <select
-      autoFocus
-      value={val}
-      onChange={(e) => { setVal(e.target.value); submit(e.target.value); }}
-      onBlur={() => submit(val)}
-      onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
-      onClick={(e) => e.stopPropagation()}
-      style={editChipInputStyle}
-    >
-      <option value="">— no place —</option>
-      {options.map(o => (
-        <option key={o.id} value={o.id}>{o.label}</option>
-      ))}
-    </select>
-  );
 }
 
 // ── Schedule (block) quick-edit ────────────────────────────────────
@@ -985,21 +1299,6 @@ const editChipInputStyle = {
   fontFamily: "inherit",
 };
 
-// Place label for the row's secondary line: name + parent for D1
-// disambiguation ("Mobile Coop 1 · Pasture C").
-function describeChorePlace(chore, places) {
-  if (chore.placeId) {
-    const p = (places ?? []).find(x => x.id === chore.placeId);
-    if (!p) return "(removed place)";
-    const parent = p.parentId
-      ? (places ?? []).find(x => x.id === p.parentId)
-      : null;
-    return parent ? `${parent.name} · ${p.name}` : p.name;
-  }
-  // Fall back to the legacy category text (pre-migration).
-  return CHORE_CATEGORIES[chore.category]?.label ?? chore.category ?? "No place";
-}
-
 // Block label for the row's secondary line.
 function describeChoreSchedule(chore, blockById) {
   if (chore.blockId) {
@@ -1071,14 +1370,15 @@ function RowActions({ editing, onEdit, onDelete }) {
 }
 
 // Inline editor body — lives where ExpandedChoreDetail normally renders.
-// Editable fields: title, description, site assignment (specific
-// location / parent site / none), block, sort_order. Frequency,
+// Editable fields: title, description, the anchor ("belongs to" — what
+// drives where obligations surface), block, sort_order. Frequency,
 // deadline, and per-day-of-week assignment editing are out of scope
 // for v1 — those JSON shapes deserve dedicated editors later.
-function ChoreInlineEditor({ chore, places, blocks, onCancel, onSave }) {
+function ChoreInlineEditor({
+  chore, places, blocks, groups, speciesById, choreCtx, onCancel, onSave,
+}) {
   const [title, setTitle] = useState(chore.title);
   const [description, setDescription] = useState(chore.description ?? "");
-  const [placeId, setPlaceId] = useState(chore.placeId ?? "");
   const [blockId, setBlockId] = useState(chore.blockId ?? "");
   const [lastChanceBlockId, setLastChanceBlockId] = useState(
     chore.lastChanceBlockId ?? ""
@@ -1087,12 +1387,114 @@ function ChoreInlineEditor({ chore, places, blocks, onCancel, onSave }) {
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
+  // ── Anchor ("belongs to") state ──────────────────────────────────
+  // Four UI modes mapping onto the six anchor types:
+  //   animals    → 'species' | 'batch'
+  //   place      → 'place' | 'occupied_place' (checkbox)
+  //   place_kind → 'place_kind'
+  //   none       → 'none'
+  const initialType =
+    chore.anchorType ?? (chore.placeId ? "occupied_place" : "none");
+  const [anchorMode, setAnchorMode] = useState(
+    initialType === "species" || initialType === "batch" ? "animals"
+    : initialType === "place" || initialType === "occupied_place" ? "place"
+    : initialType === "place_kind" ? "place_kind"
+    : "none"
+  );
+  // animals mode: "species:<id>" or "batch:<id>"
+  const [animalKey, setAnimalKey] = useState(
+    initialType === "batch" && chore.anchorBatchId
+      ? `batch:${chore.anchorBatchId}`
+      : initialType === "species" && chore.anchorSpeciesId
+        ? `species:${chore.anchorSpeciesId}`
+        : ""
+  );
+  const [housedTag, setHousedTag] = useState(
+    initialType === "species" || initialType === "batch"
+      ? chore.anchorKindTag ?? ""
+      : ""
+  );
+  const [atPlaceId, setAtPlaceId] = useState(chore.atPlaceId ?? "");
+  const [placeId, setPlaceId] = useState(chore.placeId ?? "");
+  const [occupiedOnly, setOccupiedOnly] = useState(
+    initialType === "occupied_place"
+  );
+  const [kindTag, setKindTag] = useState(
+    initialType === "place_kind" ? chore.anchorKindTag ?? "" : ""
+  );
+
   const placeOptions = placeSelectOptions(places);
   const activeBlocks = blocks.filter(b => b.isActive);
+  const speciesList = [...(speciesById?.values() ?? [])];
+  const kindTags = [...new Set(
+    (places ?? [])
+      .filter(p => p.isActive !== false && p.kindTag)
+      .map(p => p.kindTag)
+  )].sort();
+  const prettyTag = (tag) => tag.replaceAll("_", " ");
+
+  // The anchor portion of the save patch, derived from the UI mode.
+  // Every anchor field is written every time so switching modes clears
+  // the fields the new mode doesn't use.
+  const anchorPatch = () => {
+    if (anchorMode === "animals") {
+      const [kind, id] = animalKey.split(":");
+      if (!id) return null; // validation failure
+      return {
+        anchorType: kind === "batch" ? "batch" : "species",
+        anchorSpeciesId: kind === "species" ? id : null,
+        anchorBatchId: kind === "batch" ? id : null,
+        anchorKindTag: housedTag || null,
+        atPlaceId: atPlaceId || null,
+        placeId: null,
+      };
+    }
+    if (anchorMode === "place") {
+      if (!placeId) return null;
+      return {
+        anchorType: occupiedOnly ? "occupied_place" : "place",
+        anchorSpeciesId: null,
+        anchorBatchId: null,
+        anchorKindTag: null,
+        atPlaceId: null,
+        placeId,
+      };
+    }
+    if (anchorMode === "place_kind") {
+      if (!kindTag) return null;
+      return {
+        anchorType: "place_kind",
+        anchorSpeciesId: null,
+        anchorBatchId: null,
+        anchorKindTag: kindTag,
+        atPlaceId: null,
+        placeId: null,
+      };
+    }
+    return {
+      anchorType: "none",
+      anchorSpeciesId: null,
+      anchorBatchId: null,
+      anchorKindTag: null,
+      atPlaceId: null,
+      placeId: null,
+    };
+  };
 
   const submit = async () => {
     if (!title.trim()) {
       setErrorMsg("Title can't be empty.");
+      return;
+    }
+    const anchor = anchorPatch();
+    if (!anchor) {
+      setErrorMsg(
+        anchorMode === "animals"
+          ? "Pick which animals this chore belongs to."
+          : anchorMode === "place"
+            ? "Pick which place this chore belongs to."
+            : "Pick a kind of place."
+      );
       return;
     }
     setErrorMsg(null);
@@ -1104,7 +1506,7 @@ function ChoreInlineEditor({ chore, places, blocks, onCancel, onSave }) {
         sortOrder: Number(sortOrder) || 0,
         blockId: blockId || null,
         lastChanceBlockId: lastChanceBlockId || null,
-        placeId: placeId || null,
+        ...anchor,
       };
       await onSave(patch);
     } catch (err) {
@@ -1138,20 +1540,127 @@ function ChoreInlineEditor({ chore, places, blocks, onCancel, onSave }) {
           style={{ ...editInputStyle, resize: "vertical", fontFamily: "inherit" }}
         />
       </EditField>
-      <EditField label="Where">
-        <select
-          value={placeId}
-          onChange={(e) => setPlaceId(e.target.value)}
-          style={editInputStyle}
-        >
-          <option value="">— no place —</option>
-          {placeOptions.map(o => (
-            <option key={o.id} value={o.id}>{o.label}</option>
-          ))}
-        </select>
-        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
-          The chore applies to this place and everything beneath it
-          (scoping to Pastures covers every tractor and coop).
+      <EditField label="Belongs to">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <AnchorModeRadio
+            value={anchorMode}
+            onChange={setAnchorMode}
+            options={[
+              { id: "animals", label: "Animals" },
+              { id: "place", label: "A place" },
+              { id: "place_kind", label: "Every place of a kind" },
+              { id: "none", label: "Nothing — whole farm" },
+            ]}
+          />
+          {anchorMode === "animals" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 22 }}>
+              <select
+                value={animalKey}
+                onChange={(e) => setAnimalKey(e.target.value)}
+                style={editInputStyle}
+              >
+                <option value="">— pick animals —</option>
+                <optgroup label="A species (every batch)">
+                  {speciesList.map(s => (
+                    <option key={s.id} value={`species:${s.id}`}>
+                      {s.name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="One specific batch">
+                  {(groups ?? []).map(g => (
+                    <option key={g.id} value={`batch:${g.id}`}>
+                      {g.label}
+                      {speciesById?.get(g.speciesId)
+                        ? ` (${speciesById.get(g.speciesId).name})`
+                        : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <select
+                  value={housedTag}
+                  onChange={(e) => setHousedTag(e.target.value)}
+                  style={editInputStyle}
+                  title="Only count these animals where they're housed in this kind of place"
+                >
+                  <option value="">housed anywhere</option>
+                  {kindTags.map(tag => (
+                    <option key={tag} value={tag}>
+                      housed in {prettyTag(tag)}s
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={atPlaceId}
+                  onChange={(e) => setAtPlaceId(e.target.value)}
+                  style={editInputStyle}
+                  title="Where the work physically happens"
+                >
+                  <option value="">work happens where they live</option>
+                  {placeOptions.map(o => (
+                    <option key={o.id} value={o.id}>
+                      work happens at {o.label.trim()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
+                The chore follows these animals — move them and the
+                chore moves with them. No active animals → the chore
+                goes dormant. "Wash eggs" belongs to the layers but
+                happens at the House.
+              </div>
+            </div>
+          )}
+          {anchorMode === "place" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 22 }}>
+              <select
+                value={placeId}
+                onChange={(e) => setPlaceId(e.target.value)}
+                style={editInputStyle}
+              >
+                <option value="">— pick a place —</option>
+                {placeOptions.map(o => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
+                ))}
+              </select>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: T.textDim, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={occupiedOnly}
+                  onChange={(e) => setOccupiedOnly(e.target.checked)}
+                />
+                Only where animals currently live (fans into occupied
+                places beneath it)
+              </label>
+              <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
+                Unchecked: the chore sticks to this exact place whether
+                or not anything lives there ("mow Pasture B").
+              </div>
+            </div>
+          )}
+          {anchorMode === "place_kind" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 22 }}>
+              <select
+                value={kindTag}
+                onChange={(e) => setKindTag(e.target.value)}
+                style={editInputStyle}
+              >
+                <option value="">— pick a kind —</option>
+                {kindTags.map(tag => (
+                  <option key={tag} value={tag}>
+                    every {prettyTag(tag)}
+                  </option>
+                ))}
+              </select>
+              <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
+                One obligation per active place of this kind, occupied
+                or not ("power-wash nest boxes" → every coop).
+              </div>
+            </div>
+          )}
         </div>
       </EditField>
       <EditField label="When">
@@ -1248,6 +1757,32 @@ function EditField({ label, children }) {
         letterSpacing: "0.12em",
       }}>{label}</label>
       {children}
+    </div>
+  );
+}
+
+// Radio row for the anchor mode in ChoreInlineEditor.
+function AnchorModeRadio({ value, onChange, options }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px" }}>
+      {options.map(o => (
+        <label
+          key={o.id}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 12, color: value === o.id ? T.text : T.textDim,
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="radio"
+            name="chore-anchor-mode"
+            checked={value === o.id}
+            onChange={() => onChange(o.id)}
+          />
+          {o.label}
+        </label>
+      ))}
     </div>
   );
 }

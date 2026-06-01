@@ -2,10 +2,11 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { supabase } from "../supabase.js";
 
 // Loads chore_definitions and exposes update + delete actions for the
-// in-place edit affordance on the All chores tab. A chore is scoped to a
-// single place_id; it applies to that place and its whole subtree (the
-// fan-out is computed client-side via lib/places.js). place_id null ==
-// not place-scoped.
+// in-place edit affordance on the All chores tab. A chore carries an
+// *anchor* (migration 0014) — what it belongs to: a place, an occupied
+// place subtree, every place of a kind, a species, or one specific
+// batch. The fan-out into per-place obligations is computed client-side
+// via lib/chores.js obligationPlaceIds().
 //
 // patch is a JS-shaped (camelCase) object; the hook converts to DB
 // (snake_case) before writing.
@@ -22,7 +23,8 @@ export function useChoreDefinitions() {
       .select(
         "id, title, description, frequency, period, start_time, deadline, " +
         "assignment, tags, category, place_id, block_id, " +
-        "last_chance_block_id, sort_order"
+        "last_chance_block_id, sort_order, anchor_type, anchor_kind_tag, " +
+        "anchor_species_id, anchor_batch_id, at_place_id"
       )
       .order("sort_order", { ascending: true })
       .order("title", { ascending: true })
@@ -49,7 +51,8 @@ export function useChoreDefinitions() {
           .select(
             "id, title, description, frequency, period, start_time, deadline, " +
             "assignment, tags, category, place_id, block_id, " +
-            "last_chance_block_id, sort_order"
+            "last_chance_block_id, sort_order, anchor_type, anchor_kind_tag, " +
+            "anchor_species_id, anchor_batch_id, at_place_id"
           )
           .order("sort_order", { ascending: true })
           .order("title", { ascending: true });
@@ -78,6 +81,11 @@ export function useChoreDefinitions() {
     blockId: c.block_id,
     lastChanceBlockId: c.last_chance_block_id,
     sortOrder: c.sort_order ?? 0,
+    anchorType: c.anchor_type ?? "none",
+    anchorKindTag: c.anchor_kind_tag,
+    anchorSpeciesId: c.anchor_species_id,
+    anchorBatchId: c.anchor_batch_id,
+    atPlaceId: c.at_place_id,
   })), [defs]);
 
   const updateDefinition = useCallback(async (id, patch) => {
@@ -120,6 +128,17 @@ function camelToDb(patch) {
   if ("description" in patch) out.description = patch.description?.trim() || null;
   if ("placeId" in patch) out.place_id = patch.placeId || null;
   if ("blockId" in patch) out.block_id = patch.blockId || null;
+  if ("anchorType" in patch) out.anchor_type = patch.anchorType || "none";
+  if ("anchorKindTag" in patch) {
+    out.anchor_kind_tag = patch.anchorKindTag || null;
+  }
+  if ("anchorSpeciesId" in patch) {
+    out.anchor_species_id = patch.anchorSpeciesId || null;
+  }
+  if ("anchorBatchId" in patch) {
+    out.anchor_batch_id = patch.anchorBatchId || null;
+  }
+  if ("atPlaceId" in patch) out.at_place_id = patch.atPlaceId || null;
   if ("lastChanceBlockId" in patch) {
     out.last_chance_block_id = patch.lastChanceBlockId || null;
   }

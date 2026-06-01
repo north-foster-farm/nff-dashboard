@@ -48,7 +48,8 @@ export function obligationStatus(chore, done, now, blocks) {
 //   computePlaceStatus({
 //     definitions,         // chore defs (camelCase, DB-backed)
 //     blocks,              // chore blocks (camelCase)
-//     placesById, childrenByParent, placementsByPlaceId,  // useSites
+//     choreCtx,            // useSites().choreCtx — anchor fan-out
+//                          // lookups (places, placements, groups)
 //     isDone,              // (choreId, placeId) => boolean
 //     now,                 // Date (defaults to new Date())
 //   })
@@ -66,20 +67,19 @@ export function obligationStatus(chore, done, now, blocks) {
 export function computePlaceStatus({
   definitions,
   blocks,
-  placesById,
-  childrenByParent,
-  placementsByPlaceId,
+  choreCtx,
   isDone,
   now = new Date(),
 }) {
+  const placesById = choreCtx?.placesById;
   const blockById = new Map((blocks ?? []).map((b) => [b.id, b]));
   const obligations = [];
 
   for (const chore of definitions ?? []) {
     if (!isChoreActiveOn(chore, now)) continue;
-    const placeIds = obligationPlaceIds(
-      chore, childrenByParent, placementsByPlaceId
-    );
+    // Dormant anchors (no active animals / no matching places) fan out
+    // to nothing — the chore simply isn't on today's list.
+    const placeIds = obligationPlaceIds(chore, choreCtx);
     for (const placeId of placeIds) {
       const done = isDone ? isDone(chore.id, placeId) : false;
       obligations.push({

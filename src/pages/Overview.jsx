@@ -566,22 +566,24 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
   // Live completion subscription: realtime checkbox flips on the
   // dashboard mirror what's happening in Rounds + the Today tab.
   const completions = useChoreCompletions(today);
-  // Place tree + occupancy for per-place obligation fan-out
-  // (Batch 16.1) — a fanned chore shows "N of M" progress with
-  // expandable per-place sub-checkboxes.
+  // Place tree + occupancy + livestock groups for the anchor-driven
+  // obligation fan-out (Batches 16.1 + 18) — a fanned chore shows
+  // "N of M" progress with expandable per-place sub-checkboxes.
   const {
-    placesById, childrenByParent, placementsByPlaceId,
+    placesById, choreCtx, loading: sitesLoading,
   } = useSites();
   const now = today.getTime();
   // Drop fully-completed chores from the upcoming list — once every
   // obligation is ticked off, the chore shouldn't crowd the dashboard.
   // Partially-done fanned chores stay (there's still work to do).
+  // Dormant chores (anchor fans out to nothing — no active animals)
+  // drop too: done == total == 0. While occupancy is still loading,
+  // skip the dormancy filter so animal-anchored chores don't flash out.
   const upcoming = instances
     .filter(i => i.deadlineAt.getTime() >= now)
     .filter(i => {
-      const placeIds = obligationPlaceIds(
-        i.chore, childrenByParent, placementsByPlaceId
-      );
+      if (sitesLoading) return true;
+      const placeIds = obligationPlaceIds(i.chore, choreCtx);
       const { done, total } = completions.doneCountForChore(
         i.chore.id, placeIds
       );
@@ -611,8 +613,7 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
               blocks={blocks}
               completions={completions}
               placesById={placesById}
-              childrenByParent={childrenByParent}
-              placementsByPlaceId={placementsByPlaceId}
+              choreCtx={choreCtx}
             />
           ))}
         </div>
@@ -622,8 +623,7 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
 }
 
 function UpcomingPeriodGroup({
-  period, instances, blocks, completions, placesById, childrenByParent,
-  placementsByPlaceId,
+  period, instances, blocks, completions, placesById, choreCtx,
 }) {
   const meta = CHORE_PERIODS[period];
   const timeLabel = getBlockTimeLabelForPeriod(instances, period, blocks) || meta?.hint || "";
@@ -640,8 +640,7 @@ function UpcomingPeriodGroup({
             inst={inst}
             completions={completions}
             placesById={placesById}
-            childrenByParent={childrenByParent}
-            placementsByPlaceId={placementsByPlaceId}
+            choreCtx={choreCtx}
           />
         ))}
       </div>
@@ -650,16 +649,16 @@ function UpcomingPeriodGroup({
 }
 
 function UpcomingChoreRow({
-  inst, completions, placesById, childrenByParent, placementsByPlaceId,
+  inst, completions, placesById, choreCtx,
 }) {
   const { chore } = inst;
   const [pending, setPending] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  // Per-place obligations (Batch 16.1).
+  // Per-place obligations via the chore's anchor (Batches 16.1 + 18).
   const placeIds = useMemo(
-    () => obligationPlaceIds(chore, childrenByParent, placementsByPlaceId),
-    [chore, childrenByParent, placementsByPlaceId]
+    () => obligationPlaceIds(chore, choreCtx),
+    [chore, choreCtx]
   );
   const { done, total } = completions.doneCountForChore(chore.id, placeIds);
   const allDone = total > 0 && done === total;

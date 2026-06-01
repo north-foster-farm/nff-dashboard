@@ -501,39 +501,191 @@ export function displayDeadlineConcrete(chore) {
   }
 }
 
-// ── Per-place obligations (Batch 16.1) ───────────────────────────────
-// A chore scoped to a place applies to that place's whole subtree, but
-// it only demands *doing* at the places where animals currently live —
-// occupancy-driven fan-out. "Feed chicken tractors" scoped to Pasture A
-// becomes one obligation per tractor that hosts a batch right now, so
-// "tractor 3 fed, tractor 4 not" is representable and the map can show
-// "3 of 5 fed". Chores follow the animals: move a batch and the
-// obligation moves with it.
+// ── Per-place obligations (Batches 16.1 + 18) ────────────────────────
+// A chore belongs to *something* (its anchor — migration 0014), and
+// the anchor determines where its obligations surface:
 //
-// Returns the list of place ids the chore fans out into:
-//   - placeId null           → [null]   (one chore-level obligation)
-//   - no occupied descendant → [placeId] (one obligation at the chore's
-//                                          own place — fallback)
-//   - otherwise              → every place in the subtree (incl. the
-//                               root) hosting a livestock batch via an
-//                               open `placements` row. Machines parked
-//                               somewhere never create feed obligations.
+//   anchorType        obligations appear at…
+//   ──────────────    ──────────────────────────────────────────────
+//   'none'            [null] — one whole-farm obligation
+//   'place'           the anchored place, occupied or not (mowing)
+//   'occupied_place'  occupied structures in the place's subtree
+//                     (pre-0014 behavior; brooder-style chores)
+//   'place_kind'      every active place tagged anchorKindTag
+//                     (power-wash nest boxes → every coop)
+//   'species'         wherever active batches of the species live
+//                     right now, narrowed by the optional housed-in
+//                     anchorKindTag, collapsed to atPlaceId when the
+//                     work happens at a fixed place (egg washing →
+//                     layers, at the House)
+//   'batch'           same, for one specific livestock group
 //
-// Pure + id-only; callers sort for display via placesById. Reused by
-// Rounds, the Today tab, the dashboard Upcoming card, and (Batches
-// 17–18) the place_status projection + map tint.
-export function obligationPlaceIds(
-  chore, childrenByParent, placementsByPlaceId
-) {
-  const root = chore?.placeId ?? null;
-  if (root == null) return [null];
-  const subtree = descendantIds(root, childrenByParent); // includes root
-  const hosting = [];
-  for (const id of subtree) {
-    const occupants = placementsByPlaceId?.get(id) ?? [];
-    if (occupants.some((o) => o.occupantType === "batch")) {
-      hosting.push(id);
+// Returns [] when the anchor resolves nowhere (no active animals, no
+// matching places, dangling anchor) — the chore is *dormant* and
+// surfaces nothing today. Chores follow the animals: move a batch and
+// its obligations move with it; pasture chores stay with the pasture.
+//
+// `ctx` is the choreCtx object from useSites: { placesById,
+// childrenByParent, placementsByPlaceId, groupsById }. Pure + id-only;
+// callers sort for display via placesById. Reused by Rounds, the Today
+// tab, the dashboard Upcoming card, the All chores tree, and the
+// place_status projection (Batch 17) + map tint (Batch 18).
+export function obligationPlaceIds(chore, ctx = {}) {
+  const {
+    placesById, childrenByParent, placementsByPlaceId, groupsById,
+  } = ctx;
+  // Legacy chores (static seeds / pre-0014 rows) have no anchorType;
+  // infer the old semantics from place_id.
+  const type =
+    chore?.anchorType ??
+    (chore?.placeId ? "occupied_place" : "none");
+
+  switch (type) {
+    case "place":
+      return chore.placeId ? [chore.placeId] : [];
+
+    case "occupied_place": {
+      const root = chore.placeId ?? null;
+      if (root == null) return [null];
+      const subtree = descendantIds(root, childrenByParent);
+      const hosting = [];
+      for (const id of subtree) {
+        const occupants = placementsByPlaceId?.get(id) ?? [];
+        if (occupants.some((o) => o.occupantType === "batch")) {
+          hosting.push(id);
+        }
+      }
+      return hosting.length > 0 ? hosting : [root];
     }
+
+    case "place_kind": {
+      if (!chore.anchorKindTag) return [];
+      const out = [];
+      for (const place of placesById?.values() ?? []) {
+        if (place.isActive === false) continue;
+        if (place.kindTag === chore.anchorKindTag) out.push(place.id);
+      }
+      return out;
+    }
+
+    case "species":
+    case "batch": {
+      if (type === "species" && !chore.anchorSpeciesId) return [];
+      if (type === "batch" && !chore.anchorBatchId) return [];
+      const placeIds = new Set();
+      let anyAnimals = false;
+      for (const [placeId, occupants] of
+           placementsByPlaceId?.entries() ?? []) {
+        for (const o of occupants) {
+          if (o.occupantType !== "batch") continue;
+          if (type === "batch") {
+            if (o.occupantId !== chore.anchorBatchId) continue;
+          } else {
+            const group = groupsById?.get(o.occupantId);
+            if (!group || group.speciesId !== chore.anchorSpeciesId) {
+              continue;
+            }
+          }
+          const place = placesById?.get(placeId);
+          if (
+            chore.anchorKindTag &&
+            place?.kindTag !== chore.anchorKindTag
+          ) {
+            continue;
+          }
+          anyAnimals = true;
+          placeIds.add(placeId);
+        }
+      }
+      // No active animals match → dormant, nothing to do anywhere.
+      if (!anyAnimals) return [];
+      // Fixed work place: the animals' existence creates the
+      // obligation, but the work happens somewhere specific.
+      if (chore.atPlaceId) return [chore.atPlaceId];
+      return [...placeIds];
+    }
+
+    case "none":
+    default:
+      return [null];
   }
-  return hosting.length > 0 ? hosting : [root];
+}
+
+// True when a chore's anchor currently resolves to zero obligations —
+// no active animals (winter, between batches), no places with the
+// anchored kind_tag, or a dangling anchor whose target was deleted.
+export function choreIsDormant(chore, ctx) {
+  return obligationPlaceIds(chore, ctx).length === 0;
+}
+
+// Human-readable label for what a chore belongs to. `ctx` additionally
+// carries speciesById (Map<speciesId, { id, name }>) for species names.
+//   "Broilers · in tractors"       (species + housed-in filter)
+//   "Layers · at House"            (species + fixed work place)
+//   "Batch 1 · Broilers"           (one specific batch)
+//   "Every coop"                   (place_kind)
+//   "Pastures · Pasture B"         (place — parent · name)
+//   "Brooders · occupied"          (occupied_place)
+//   "Whole farm"                   (none)
+//   "Needs re-anchoring"           (dangling anchor)
+export function describeChoreAnchor(chore, ctx = {}) {
+  const { placesById, groupsById, speciesById } = ctx;
+  const type =
+    chore?.anchorType ??
+    (chore?.placeId ? "occupied_place" : "none");
+
+  const placeLabel = (placeId) => {
+    const p = placesById?.get(placeId);
+    if (!p) return "(removed place)";
+    const parent = p.parentId ? placesById?.get(p.parentId) : null;
+    // Skip the farm root as a parent prefix — it adds no information.
+    return parent && parent.parentId != null
+      ? `${parent.name} · ${p.name}`
+      : p.name;
+  };
+  const kindLabel = (tag) =>
+    (tag ?? "").replaceAll("_", " ").trim();
+
+  switch (type) {
+    case "place":
+      return chore.placeId ? placeLabel(chore.placeId) : "Needs re-anchoring";
+    case "occupied_place": {
+      if (!chore.placeId) return "Needs re-anchoring";
+      const p = placesById?.get(chore.placeId);
+      return `${p?.name ?? "(removed place)"} · occupied`;
+    }
+    case "place_kind":
+      return chore.anchorKindTag
+        ? `Every ${kindLabel(chore.anchorKindTag)}`
+        : "Needs re-anchoring";
+    case "species": {
+      if (!chore.anchorSpeciesId) return "Needs re-anchoring";
+      const sp = speciesById?.get(chore.anchorSpeciesId);
+      let label = sp?.name ?? chore.anchorSpeciesId;
+      if (chore.anchorKindTag) {
+        label += ` · in ${kindLabel(chore.anchorKindTag)}s`;
+      }
+      if (chore.atPlaceId) {
+        const p = placesById?.get(chore.atPlaceId);
+        label += ` · at ${p?.name ?? "(removed place)"}`;
+      }
+      return label;
+    }
+    case "batch": {
+      if (!chore.anchorBatchId) return "Needs re-anchoring";
+      const group = groupsById?.get(chore.anchorBatchId);
+      const sp = group ? speciesById?.get(group.speciesId) : null;
+      let label = group
+        ? `${group.label}${sp ? ` · ${sp.name}` : ""}`
+        : "Needs re-anchoring";
+      if (chore.atPlaceId) {
+        const p = placesById?.get(chore.atPlaceId);
+        label += ` · at ${p?.name ?? "(removed place)"}`;
+      }
+      return label;
+    }
+    case "none":
+    default:
+      return "Whole farm";
+  }
 }

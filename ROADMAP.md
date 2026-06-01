@@ -1439,6 +1439,85 @@ place pages, place search, the nav restructure to Now · Map/Places ·
 Schedule · Do rounds, and the records drawer. The `place_status`
 rollup ships here but nothing tints by it until the map exists.
 
+### Batch 18.1 — Chore anchors (ownership model) · `v0.10.14-alpha`
+2026-06-01. Inserted as the first slice of Batch 18 when James flagged
+the place-only chore model as a rollout blocker: chores were vanishing
+from Pasture B because the mobile coops (and their layers) had moved to
+Pasture C — but those were never the *pasture's* chores to begin with.
+The map renderer (now Batch 18.2) builds on top of this fix. First
+**additive-only** migration (`0014`) — rollout began 2026-06-01, so the
+amend-in-place / reset era is over; this applied to the linked DB with
+a plain `db push`, no reset, after a safety backup.
+
+**The model.** `chore_definitions` gains an *anchor* — what the chore
+belongs to — which drives where its obligations surface:
+- `place` — a specific place, occupied or not ("mow Pasture B").
+  Obligation always at that place; never disappears when animals move.
+- `occupied_place` — the pre-0014 occupancy fan-out, kept for
+  brooder-style "whoever is currently brooding" chores.
+- `place_kind` — every active place with a kind_tag ("power-wash nest
+  boxes" → every coop, occupied or not).
+- `species` — all active batches of a species; obligations follow the
+  animals wherever they live. Optional `anchor_kind_tag` housing
+  filter ("broilers, *in tractors*"); optional `at_place_id` fixed
+  work place ("wash eggs" belongs to the layers but happens at the
+  House).
+- `batch` — one specific livestock group, same following + at-place
+  semantics.
+- `none` — whole-farm chore.
+
+**Schema** (`migration 0014`). Five new columns on `chore_definitions`
+(`anchor_type`, `anchor_kind_tag`, `anchor_species_id` FK,
+`anchor_batch_id` FK, `at_place_id` FK — all ON DELETE SET NULL so a
+deleted species/batch/place flags the chore as "needs re-anchoring"
+instead of deleting or orphaning it), an enum check, partial indexes,
+and a category-keyed backfill: tractors → broilers-in-tractors, coop
+care → layers-in-coops, coop equipment (power wash / deep clean) →
+every-coop, sheep → sheep, egg washing → layers-at-House, brooders →
+occupied-place (unchanged behavior).
+
+**Fan-out engine** (`lib/chores.js`). `obligationPlaceIds(chore, ctx)`
+rewritten around the anchor types; returns `[]` when the anchor
+resolves nowhere — the chore is *dormant* (no broilers in winter → no
+tractor chores anywhere, instead of phantom obligations). New
+`describeChoreAnchor()` ("Broilers · in tractors", "Layers · at
+House", "Every coop") and `choreIsDormant()`. `useSites` now also
+loads `livestock_groups` + `livestock_species` and exposes a single
+`choreCtx` lookup bag that every fan-out call site consumes;
+`computePlaceStatus` (Batch 17) takes `choreCtx` directly.
+
+**All chores tab — recursive place tree** (the new default view).
+"By place" renders the *full place tree* as nested accordion headers —
+every level of nesting gets its own header, exactly mirroring how the
+farm is organized. Chores land under the place their anchor currently
+resolves to (one row per fanned obligation, with a "1 of N places"
+hint), so coop chores read under wherever the coops are *right now*.
+Headers with nothing beneath them auto-fold but stay visible — every
+place is represented even when it has no chores yet. A "Whole farm"
+section collects unanchored chores; a "Dormant" section at the bottom
+keeps no-active-animals chores visible and editable instead of letting
+them silently vanish. A–Z and Time-of-day sorts remain; the legacy
+Category sort is retired.
+
+**Editor.** The inline editor's "Where" select is replaced by a
+"Belongs to" section: Animals (species or one batch, with "housed
+in ___" + "work happens at ___" refinements) / A place (with an
+"only where animals currently live" checkbox) / Every place of a
+kind / Nothing — whole farm. The secondary-row place chip now shows
+the anchor description and double-click opens the full editor.
+
+**Surfaces updated to the anchor fan-out:** Rounds (switcher chips +
+doing-surface obligations), Chores Today tab (dormant chores hidden),
+dashboard Upcoming card, Now / place_status. All gain a loading guard
+so animal-anchored chores don't flash as dormant while occupancy
+loads.
+
+**Verification.** Fan-out tested against the live DB: moving both
+mobile coops (and their layers) to Pasture B moves all 23 coop-chore
+obligations with them — nothing disappears, nothing phantom remains
+at Pasture C; processing the broilers sends the 15 tractor chores to
+Dormant instead of leaving them dangling at Pasture A.
+
 ---
 
 ## Upcoming
@@ -1628,6 +1707,20 @@ quick-action sheets, and the client-side `place_status` projection the
 Batch 18 map tint will consume.
 
 ### Batch 18 — Farm map: map renderer + place pages + nav restructure
+
+Split when 18.1 was inserted mid-flight (2026-06-01):
+
+**18.1 ✅ SHIPPED** (`v0.10.14-alpha`, 2026-06-01 — see Shipped above):
+chore anchors. The place-only chore model was a rollout blocker — chores
+vanished from Pasture B when the coops moved to Pasture C. Chores now
+belong to a place, an occupied place, every place of a kind, a species
+(optionally housed-in-filtered, optionally at a fixed work place), or
+one batch; obligations follow the animals. Plus the All-chores recursive
+place-tree view (the new default), the dormant section, and the
+"Belongs to" editor.
+
+**18.2 — the map renderer itself** (below) is the remaining scope.
+
 The desktop landing (decision 2) and the IA overhaul that started the
 project. Render the authored, geographically-accurate `farm-map_v1.svg`
 (commit it to `public/`) at the **zone** level, each zone **tinted by

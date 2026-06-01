@@ -268,7 +268,9 @@ async function loadChores() {
     .from("chore_definitions")
     .select(
       "id, title, category, description, frequency, period, start_time, " +
-      "deadline, assignment, tags, place_id, block_id, sort_order"
+      "deadline, assignment, tags, place_id, block_id, sort_order, " +
+      "anchor_type, anchor_kind_tag, anchor_species_id, anchor_batch_id, " +
+      "at_place_id"
     )
     .order("sort_order")
     .order("category");
@@ -288,6 +290,11 @@ async function loadChores() {
       placeId: c.place_id,
       blockId: c.block_id,
       sortOrder: c.sort_order ?? 0,
+      anchorType: c.anchor_type ?? "none",
+      anchorKindTag: c.anchor_kind_tag,
+      anchorSpeciesId: c.anchor_species_id,
+      anchorBatchId: c.anchor_batch_id,
+      atPlaceId: c.at_place_id,
     })),
     completions: [],
     modelNotes: []

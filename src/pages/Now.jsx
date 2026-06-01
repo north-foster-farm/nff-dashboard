@@ -25,7 +25,7 @@ import PlaceTag from "../components/PlaceTag.jsx";
 export default function Now({ onOpenRounds }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const {
-    placesById, childrenByParent, placementsByPlaceId,
+    placesById, choreCtx,
     loading: sitesLoading,
   } = useSites();
   const { definitions, loading: defsLoading } = useChoreDefinitions();
@@ -47,15 +47,10 @@ export default function Now({ onOpenRounds }) {
   const status = useMemo(() => computePlaceStatus({
     definitions,
     blocks,
-    placesById,
-    childrenByParent,
-    placementsByPlaceId,
+    choreCtx,
     isDone: completions.isDone,
     now,
-  }), [
-    definitions, blocks, placesById, childrenByParent,
-    placementsByPlaceId, completions.isDone, now,
-  ]);
+  }), [definitions, blocks, choreCtx, completions.isDone, now]);
 
   const loading =
     blocksLoading || sitesLoading || defsLoading || runsLoading ||

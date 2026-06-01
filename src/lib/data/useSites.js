@@ -13,6 +13,11 @@ import { buildPlaceTree } from "../places.js";
 // where the occupant is now. Replaces the old sites / site_locations /
 // site_residents trio.
 //
+// Also loads livestock_groups + livestock_species (the occupants the
+// placements point at), because chore-anchor fan-out (Batch 18 /
+// migration 0014) needs to answer "where do the broilers live right
+// now?" — that takes places + placements + groups together.
+//
 // Returned shape:
 //   {
 //     places: [{ id, parentId, name, kind, kindTag, code, mobile,
@@ -23,6 +28,13 @@ import { buildPlaceTree } from "../places.js";
 //     placements: [{ id, placeId, occupantType, occupantId, movedIn,
 //                    movedOut, notes }],
 //     placementsByPlaceId: Map<placeId, placements[]>, // current only
+//     groups: [{ id, speciesId, label, count }],
+//     groupsById: Map<id, group>,
+//     speciesById: Map<id, { id, name }>,
+//     choreCtx: { placesById, childrenByParent, placementsByPlaceId,
+//                 groupsById, speciesById },  // pass to
+//                                             // obligationPlaceIds /
+//                                             // describeChoreAnchor
 //     loading, error,
 //     createPlace({ parentId, name, kind?, kindTag?, code?, mobile? }),
 //     updatePlace(id, patch), deletePlace(id) [soft],
@@ -39,6 +51,8 @@ const PLACE_COLS =
   "id, parent_id, name, kind, kind_tag, code, mobile, sort_order, is_active";
 const PLACEMENT_COLS =
   "id, place_id, occupant_type, occupant_id, moved_in, moved_out, notes";
+const GROUP_COLS = "id, species_id, label, count";
+const SPECIES_COLS = "id, name";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -46,6 +60,8 @@ export function useSites() {
   const instanceId = useId();
   const [places, setPlaces] = useState(null);
   const [placements, setPlacements] = useState(null);
+  const [groups, setGroups] = useState(null);
+  const [species, setSpecies] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -61,21 +77,27 @@ export function useSites() {
         .from("placements")
         .select(PLACEMENT_COLS)
         .order("moved_in", { ascending: false }),
-    ]).then(([placesRes, placementsRes]) => {
+      supabase.from("livestock_groups").select(GROUP_COLS),
+      supabase.from("livestock_species").select(SPECIES_COLS),
+    ]).then(([placesRes, placementsRes, groupsRes, speciesRes]) => {
       if (cancelled) return;
       if (placesRes.error) {
         setError(placesRes.error);
         setPlaces([]);
         setPlacements([]);
+        setGroups([]);
+        setSpecies([]);
         return;
       }
       setPlaces(placesRes.data ?? []);
       if (placementsRes.error) {
         setError(placementsRes.error);
         setPlacements([]);
-        return;
+      } else {
+        setPlacements(placementsRes.data ?? []);
       }
-      setPlacements(placementsRes.data ?? []);
+      setGroups(groupsRes.error ? [] : groupsRes.data ?? []);
+      setSpecies(speciesRes.error ? [] : speciesRes.data ?? []);
     });
     return () => {
       cancelled = true;
@@ -91,7 +113,7 @@ export function useSites() {
       scheduled = true;
       setTimeout(async () => {
         scheduled = false;
-        const [p, pl] = await Promise.all([
+        const [p, pl, g] = await Promise.all([
           supabase
             .from("places")
             .select(PLACE_COLS)
@@ -101,9 +123,11 @@ export function useSites() {
             .from("placements")
             .select(PLACEMENT_COLS)
             .order("moved_in", { ascending: false }),
+          supabase.from("livestock_groups").select(GROUP_COLS),
         ]);
         if (!p.error) setPlaces(p.data ?? []);
         if (!pl.error) setPlacements(pl.data ?? []);
+        if (!g.error) setGroups(g.data ?? []);
       }, 80);
     };
     const channel = supabase
@@ -116,6 +140,11 @@ export function useSites() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "placements" },
+        refresh
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "livestock_groups" },
         refresh
       )
       .subscribe();
@@ -154,6 +183,18 @@ export function useSites() {
         placementsByPlaceId.set(pl.placeId, []);
       placementsByPlaceId.get(pl.placeId).push(pl);
     }
+
+    const groupList = (groups ?? []).map((g) => ({
+      id: g.id,
+      speciesId: g.species_id,
+      label: g.label,
+      count: g.count,
+    }));
+    const groupsById = new Map(groupList.map((g) => [g.id, g]));
+    const speciesById = new Map(
+      (species ?? []).map((s) => [s.id, { id: s.id, name: s.name }])
+    );
+
     return {
       placeList,
       placesById: byId,
@@ -161,8 +202,20 @@ export function useSites() {
       roots,
       placementList,
       placementsByPlaceId,
+      groupList,
+      groupsById,
+      speciesById,
+      // One bag of lookups for obligationPlaceIds / describeChoreAnchor
+      // (lib/chores.js) so call sites don't thread five Maps around.
+      choreCtx: {
+        placesById: byId,
+        childrenByParent,
+        placementsByPlaceId,
+        groupsById,
+        speciesById,
+      },
     };
-  }, [places, placements]);
+  }, [places, placements, groups, species]);
 
   // ── Place mutations ───────────────────────────────────────────────
   const createPlace = useCallback(
@@ -376,7 +429,13 @@ export function useSites() {
     roots: shaped.roots,
     placements: shaped.placementList,
     placementsByPlaceId: shaped.placementsByPlaceId,
-    loading: places === null || placements === null,
+    groups: shaped.groupList,
+    groupsById: shaped.groupsById,
+    speciesById: shaped.speciesById,
+    choreCtx: shaped.choreCtx,
+    loading:
+      places === null || placements === null ||
+      groups === null || species === null,
     error,
     createPlace,
     updatePlace,

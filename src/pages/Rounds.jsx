@@ -36,7 +36,7 @@ import PlaceTag from "../components/PlaceTag.jsx";
 export default function Rounds({ data, initialBlockId, onClose }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const {
-    places, placesById, childrenByParent, placementsByPlaceId,
+    places, placesById, childrenByParent, placementsByPlaceId, choreCtx,
     loading: sitesLoading,
   } = useSites();
   const {
@@ -91,18 +91,22 @@ export default function Rounds({ data, initialBlockId, onClose }) {
     return path.length === 1 ? path[0].id : path[1].id;
   }, [placesById]);
 
-  // Top-level places whose subtree has a chore in this block — the only
-  // Switcher chips worth rendering.
+  // Top-level places whose subtree has a chore obligation in this
+  // block — the only Switcher chips worth rendering. Obligations come
+  // from the anchor fan-out (Batch 18), so a species-anchored chore
+  // surfaces chips for wherever its animals currently live.
   const relevantSwitcherIds = useMemo(() => {
     if (!targetBlock) return new Set();
     const ids = new Set();
     for (const def of definitions) {
       if (def.blockId !== targetBlock.id) continue;
-      const sid = switcherIdOf(def.placeId);
-      if (sid) ids.add(sid);
+      for (const placeId of obligationPlaceIds(def, choreCtx)) {
+        const sid = switcherIdOf(placeId);
+        if (sid) ids.add(sid);
+      }
     }
     return ids;
-  }, [definitions, switcherIdOf, targetBlock]);
+  }, [definitions, switcherIdOf, targetBlock, choreCtx]);
 
   const switcherPlaces = useMemo(
     () => (places ?? [])
@@ -179,6 +183,7 @@ export default function Rounds({ data, initialBlockId, onClose }) {
       switcherPlaces={switcherPlaces}
       switcherIdOf={switcherIdOf}
       placementsByPlaceId={placementsByPlaceId}
+      choreCtx={choreCtx}
       definitions={definitions}
       completions={completions}
       logRunEvent={logRunEvent}
@@ -443,7 +448,7 @@ function formatBlockDuration(minutes) {
 // ── Doing surface (active run) ────────────────────────────────────────
 function DoingSurface({
   run, block, blocks, places, placesById, childrenByParent,
-  switcherPlaces, switcherIdOf, placementsByPlaceId,
+  switcherPlaces, switcherIdOf, placementsByPlaceId, choreCtx,
   definitions, completions,
   logRunEvent, logMortality, onCancelRun,
   recentConditionsByPlace, repeatWindowDays,
@@ -467,17 +472,16 @@ function DoingSurface({
     [definitions, block]
   );
 
-  // Fan each chore into per-place obligations (Batch 16.1). A chore
-  // scoped to a parent place produces one independently completable
-  // { chore, placeId } entry per occupied descendant place. Within a
+  // Fan each chore into per-place obligations via its anchor (Batches
+  // 16.1 + 18). Each { chore, placeId } entry is independently
+  // completable. Dormant chores (anchor resolves nowhere — no active
+  // animals) fan out to nothing and disappear from the run. Within a
   // chore, obligations sort by place sortOrder then name so render
   // order is stable.
   const blockObligations = useMemo(() => {
     const out = [];
     for (const chore of blockChores) {
-      const placeIds = obligationPlaceIds(
-        chore, childrenByParent, placementsByPlaceId
-      );
+      const placeIds = obligationPlaceIds(chore, choreCtx);
       const sorted = [...placeIds].sort((a, b) => {
         const pa = a ? placesById.get(a) : null;
         const pb = b ? placesById.get(b) : null;
@@ -489,7 +493,7 @@ function DoingSurface({
       for (const placeId of sorted) out.push({ chore, placeId });
     }
     return out;
-  }, [blockChores, childrenByParent, placementsByPlaceId, placesById]);
+  }, [blockChores, choreCtx, placesById]);
 
   // Auto-derive run completion: every obligation checked → done; any
   // un-checked while done → resume. Guard against the trivial 0/0
