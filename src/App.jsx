@@ -6,13 +6,14 @@ import Sidebar from "./components/Sidebar.jsx";
 import SectionHeader from "./components/SectionHeader.jsx";
 import SectionContent from "./components/SectionContent.jsx";
 import EventEditor from "./components/EventEditor.jsx";
+import RecordsDrawer from "./components/RecordsDrawer.jsx";
 import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
 
 // Phone-width media query — used once at boot to pick the landing
-// section (decision 1 of the Farm Map workshop: phones land on Now,
-// desktop keeps the Dashboard until the map lands in Batch 18).
+// section (farm-map workshop decisions 1 + 2: phones land on Now,
+// desktop lands on the Farm map).
 const PHONE_QUERY = "(max-width: 639px)";
 
 function isPhone() {
@@ -26,7 +27,7 @@ function isPhone() {
 // the user is authenticated AND passes the admins check.
 export default function App({ session }) {
   const [currentSection, setCurrentSection] = useState(() =>
-    isPhone() ? "now" : "overview"
+    isPhone() ? "now" : "map"
   );
   // EventEditor seed — null when closed; otherwise carries the edit/new
   // mode and (for edits) the seriesId + occurrence date that was clicked.
@@ -44,6 +45,9 @@ export default function App({ session }) {
   // Phone nav drawer (Batch 17). The fixed sidebar is desktop-only;
   // on phones it opens as an overlay from the TopBar hamburger.
   const [navOpen, setNavOpen] = useState(false);
+  // Records drawer (Batch 18.2). Products / Sales / CRM / Comms /
+  // Animals / resource lists + Settings, off the header avatar.
+  const [recordsOpen, setRecordsOpen] = useState(false);
 
   const openRounds = (blockId) =>
     setRoundsTarget({ blockId: blockId ?? null });
@@ -69,6 +73,7 @@ export default function App({ session }) {
   // SectionHeader chrome.
   const isSelfHeadered =
     section.id === "now" ||
+    section.id === "map" ||
     section.id === "overview" ||
     section.id === "chores" ||
     section.id === "settings" ||
@@ -91,6 +96,7 @@ export default function App({ session }) {
   const handleSelect = (id) => {
     setCurrentSection(id);
     setNavOpen(false);
+    setRecordsOpen(false);
   };
   const handleOpenRounds = (blockId) => {
     openRounds(blockId);
@@ -102,7 +108,7 @@ export default function App({ session }) {
       <TopBar
         data={data}
         session={session}
-        onOpenSettings={() => setCurrentSection("settings")}
+        onOpenRecords={() => setRecordsOpen((o) => !o)}
         onToggleNav={() => setNavOpen((o) => !o)}
       />
       <div className="flex flex-1 min-h-0">
@@ -168,6 +174,14 @@ export default function App({ session }) {
           setEventSeed(null);
           setProcessingTarget(target);
         }}
+      />
+      <RecordsDrawer
+        open={recordsOpen}
+        current={currentSection}
+        data={data}
+        session={session}
+        onSelect={handleSelect}
+        onClose={() => setRecordsOpen(false)}
       />
     </div>
   );

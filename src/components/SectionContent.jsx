@@ -2,6 +2,7 @@ import { getSpeciesFromSectionId, getEventKindFromSectionId } from "../sections.
 import ComingSoon from "./ComingSoon.jsx";
 import { T } from "../theme.js";
 import Now from "../pages/Now.jsx";
+import MapPage from "../pages/MapPage.jsx";
 import Overview from "../pages/Overview.jsx";
 import Machines from "../pages/Machines.jsx";
 import Suppliers from "../pages/Suppliers.jsx";
@@ -50,6 +51,12 @@ export default function SectionContent({
   }
   switch (section.id) {
     case "now": return <Now onOpenRounds={onOpenRounds} />;
+    case "map":
+      return <MapPage
+        data={data}
+        onOpenRounds={onOpenRounds}
+        onNavigate={onNavigate}
+      />;
     case "overview": return <Overview data={data} onNavigate={onNavigate} />;
     case "machines":
     case "resources_machinery":

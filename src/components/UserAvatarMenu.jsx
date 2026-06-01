@@ -3,7 +3,8 @@ import { useState } from "react";
 // Header avatar. Starts grayscale, transitions to full color on hover.
 // Sized to match the icon-button cluster next to it (padding 6 around a
 // 16px-square avatar circle ⇒ 28×28 hit area, matching the theme/logout
-// buttons exactly).
+// buttons exactly). Clicking opens the records drawer (Batch 18.2) —
+// products / sales / CRM / comms / animals / resource lists + Settings.
 export default function UserAvatarMenu({ session, onClick }) {
   const [pictureFailed, setPictureFailed] = useState(false);
 
@@ -16,8 +17,8 @@ export default function UserAvatarMenu({ session, onClick }) {
   return (
     <button
       onClick={onClick}
-      title={`${displayName} — settings`}
-      aria-label={`Open settings (${displayName})`}
+      title={`${displayName} — records & settings`}
+      aria-label={`Open records and settings (${displayName})`}
       className="group bg-transparent border-0 p-1.5 cursor-pointer flex items-center justify-center shrink-0"
     >
       <span

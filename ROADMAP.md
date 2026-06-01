@@ -1518,6 +1518,81 @@ obligations with them — nothing disappears, nothing phantom remains
 at Pasture C; processing the broilers sends the 15 tractor chores to
 Dormant instead of leaving them dangling at Pasture A.
 
+Follow-up commit (same day, from field testing): canceled rounds get a
+delete affordance (new `run_delete` outbox op), and the Today tab
+re-groups as time-of-day block → place tree, reusing the All-chores
+tree components generalized over their row type.
+
+### Batch 18.2 — Farm map: map renderer + place pages + nav restructure · `v0.10.15-alpha`
+2026-06-01. Closes Batch 18 and the Farm Map UI overhaul (Batches
+15–18). The desktop landing (decision 2) and the IA overhaul that
+started the project. Client-only — no migrations; `place_geometry`
+rows are written by the app itself.
+
+**Map renderer** (`public/farm-map_v1.svg` + `lib/farmMap.js` +
+`<FarmMap>`):
+- The authored SVG is committed to `public/` and fetched/parsed at
+  runtime (`parseFarmMapSvg`). Background art (roads, the farm
+  boundary) renders as-is; zone layers (House, Barn, Brooders,
+  Pastures A–C) become interactive shapes.
+- **Layer ↔ place binding**: an explicit `place_geometry` row wins;
+  otherwise slug matching ("Pasture-A" ↔ "Pasture A"). Slug-derived
+  bindings are persisted back to `place_geometry` (with centroids)
+  the first time the map renders, so the table reflects reality and
+  renames don't break the art.
+- **Zones tint by `place_status`** (the Batch 17 projection): overdue
+  → warn, due → accent, all-done → resolved, quiet → neutral, with
+  the rollup propagating up the tree (a tractor's overdue chore tints
+  Pasture A). Labels carry a live "N to do" count.
+- **Click a zone → zoom** (CSS-transform animated viewBox fit) →
+  child structures appear as **auto-laid-out pins** (grid inside the
+  zone bbox; the v1 art has no structure geometry) sized
+  counter-to-scale so they stay readable. Click a pin → that place's
+  page; click the zone name plate → the zone's page; click outside →
+  zoom back out.
+
+**Place pages** (`pages/PlacePage.jsx`). Everything the dashboard
+knows about one place: clickable ancestor breadcrumb, status flag,
+"Who's here" (batches with species + count + since-date, machines —
+subtree occupants link to their actual sub-place), "Chores here
+today" (the place_status obligations for the subtree, deep-linking
+into Rounds), "Places inside" (child cards with their own flags +
+occupants), "Recent observations" (activity_log observation kinds
+filtered to the subtree, with the standard edit/delete affordances),
+and a "View on timeline" hand-off to Schedule.
+
+**Place search** (`components/PlaceSearch.jsx`). The express lane:
+searches names, codes (MC1, CT3), and current occupants (typing
+"gold band" finds Mobile Coop 1), D1-disambiguated results via
+`<PlaceTag>`, recents (localStorage) when focused-but-empty.
+
+**Nav restructure** (the IA overhaul):
+- The sidebar slims to the spatial/temporal surfaces: **Now · Farm
+  map · Dashboard**, then Planning (Schedule / Events / Chores /
+  Do rounds / Projects / Processes) and the Other log pages
+  (What's coming / Activity / Observations / Notes / Threads).
+- Everything that's a pure record moves to the new **records drawer**
+  (`components/RecordsDrawer.jsx`) off the header avatar: Products,
+  Sales, Animals, CRM, Communication, Resources (feed / suppliers /
+  machinery / trailers / the place tree) + Settings. `RECORDS_GROUPS`
+  in sections.jsx is the source of truth; `findSection` resolves both
+  lists so deep links keep working.
+- **The Resources flyout dissolves**: place-type placeholders
+  (brooders, tractors, coops, pastures, containers) are deleted —
+  the place tree is the source of truth, reachable from the map's
+  "Edit places" button and the drawer's "Places" entry.
+- **Desktop lands on the map** (decision 2); phones keep landing on
+  Now, with the map as a secondary read-only view. The What's-coming
+  page icon switches Map → Telescope, freeing the Map glyph for the
+  actual map.
+
+**Out of scope / deferred:** structure-level geometry in the SVG
+(pins stay auto-laid-out until a future art pass), push deep-links
+from search into a specific chore of the active run (search opens
+place pages; place pages deep-link into Rounds), and the cmd-K
+cross-entity palette (Batch 33 — place search here is the thin
+slice).
+
 ---
 
 ## Upcoming
@@ -1626,7 +1701,9 @@ chosen calendar rail at
   + cleanout chore on batch creation). Auto rows visually
   flagged with a sparkle icon, dismissable.
 
-### Farm Map UI overhaul (Batches 15–18)
+### Farm Map UI overhaul (Batches 15–18) ✅ COMPLETE
+*All four batches shipped as of 2026-06-01 (`v0.10.15-alpha`). The
+write-up below is kept as the design record for the overhaul.*
 
 Why these jump the queue: navigation and the place model are the
 structural problem the dashboard keeps running into. The sidebar is an
@@ -1706,9 +1783,10 @@ group-by-kind Switcher toggle, prominent D1 capture context in the
 quick-action sheets, and the client-side `place_status` projection the
 Batch 18 map tint will consume.
 
-### Batch 18 — Farm map: map renderer + place pages + nav restructure
-
-Split when 18.1 was inserted mid-flight (2026-06-01):
+### Batch 18 — Farm map: chore anchors + map renderer ✅ SHIPPED
+Split into 18.1 / 18.2 when the chore-ownership blocker surfaced
+mid-flight (2026-06-01); both halves now shipped, closing the Farm Map
+UI overhaul (Batches 15–18).
 
 **18.1 ✅ SHIPPED** (`v0.10.14-alpha`, 2026-06-01 — see Shipped above):
 chore anchors. The place-only chore model was a rollout blocker — chores
@@ -1719,27 +1797,12 @@ one batch; obligations follow the animals. Plus the All-chores recursive
 place-tree view (the new default), the dormant section, and the
 "Belongs to" editor.
 
-**18.2 — the map renderer itself** (below) is the remaining scope.
-
-The desktop landing (decision 2) and the IA overhaul that started the
-project. Render the authored, geographically-accurate `farm-map_v1.svg`
-(commit it to `public/`) at the **zone** level, each zone **tinted by
-`place_status`**; click a zone → zoom → **structure pins** (auto-laid-out
-slots — v1 art has no structure geometry) → a **place page** (current
-occupant/batch detail, chores due here, recent observations, "view on
-timeline"). **Express lanes:** a thin **place search** over
-`code`/`name`/occupant, **D1-disambiguated** ("Mobile Coop 1 ·
-**Pasture B**" vs "· **Pasture C**"); recents; push deep-links into the
-active run. **Nav restructure:** the sidebar's flat `SECTIONS` list is
-replaced as primary nav by **Now · Map/Places · Schedule · Do rounds**,
-with the genuinely non-spatial/non-temporal records (Products, Orders,
-CRM, Comms, etc.) moved to a thin **admin/records drawer** off the header
-avatar; the **Resources flyout dissolves** (place-types → the tree;
-asset-types → typed occupants; suppliers → the drawer). On phone the map
-is a secondary read-only view, never on the capture path.
-
-Ships value: fly over the farm with status at a glance and drill to
-anything; the arbitrary sidebar is gone.
+**18.2 ✅ SHIPPED** (`v0.10.15-alpha`, 2026-06-01 — see Shipped above):
+the map renderer (`farm-map_v1.svg`, zones tinted by place_status, zoom
+→ structure pins → place pages), place search with recents, and the nav
+restructure (sidebar slims to Now · Farm map · Dashboard · Planning ·
+Other; records move to the avatar drawer; the Resources flyout
+dissolves). Desktop lands on the map.
 
 ### Batch 19 — Triggers + GCal push
 `automations` table seeded with two rules. (1) Feed reorder

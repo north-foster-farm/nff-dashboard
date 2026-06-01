@@ -13,7 +13,7 @@ function nextDensity(d) {
   return DENSITY_ORDER[(i + 1) % DENSITY_ORDER.length];
 }
 
-export default function TopBar({ data, session, onOpenSettings, onToggleNav }) {
+export default function TopBar({ data, session, onOpenRecords, onToggleNav }) {
   const { theme, density, setTheme, setDensity } = useUserPreferences();
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
@@ -46,7 +46,7 @@ export default function TopBar({ data, session, onOpenSettings, onToggleNav }) {
         {/* Queued / not-synced field writes (Batch 16.2) */}
         <OutboxIndicator className="mr-2" />
         <InboxBell />
-        <UserAvatarMenu session={session} onClick={onOpenSettings} />
+        <UserAvatarMenu session={session} onClick={onOpenRecords} />
         <IconButton
           onClick={toggleDensity}
           ariaLabel={`Text density: ${density} (click to cycle)`}

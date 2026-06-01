@@ -5,7 +5,9 @@
 //
 // Items are deleted from this list as they ship. Recently retired:
 // "Chores, rebuilt", "Rounds", "Chore telemetry + push", "Chore
-// assignments", "Events + Schedule, rebuilt", "A working calendar".
+// assignments", "Events + Schedule, rebuilt", "A working calendar",
+// "Resources, rethought" (dissolved into the farm map's place tree +
+// the records drawer in Batch 18.2).
 
 const ITEMS = [
   {
@@ -54,13 +56,6 @@ const ITEMS = [
     title: "Customers and lists",
     body: "A customer directory plus named lists for segmentation and " +
       "mailing groups.",
-  },
-  {
-    title: "Resources, rethought",
-    body: "Today's catch-all \"Resources\" gets broken up and re-homed " +
-      "where it belongs — brooders alongside broilers, suppliers " +
-      "alongside feed and inventory — with a search fallback so " +
-      "anything is still findable.",
   },
   {
     title: "Animals & feed, overhauled",
