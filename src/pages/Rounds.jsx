@@ -119,7 +119,7 @@ export default function Rounds({ data, initialBlockId, onClose }) {
   // make sensible decisions.
   if (blocksLoading || sitesLoading || defsLoading || runsLoading) {
     return (
-      <div className="bg-bg text-fg h-screen flex items-center justify-center font-body">
+      <div className="bg-bg text-fg min-h-dvh flex items-center justify-center font-body">
         <div className="text-[12px] text-muted uppercase tracking-[0.16em]">
           Loading rounds…
         </div>
@@ -252,7 +252,7 @@ function ColdOpen({
     .slice(0, 8);
 
   return (
-    <div className="bg-bg text-fg min-h-screen flex flex-col font-body relative overflow-y-auto">
+    <div className="bg-bg text-fg min-h-dvh flex flex-col font-body relative">
       <CloseButton onClose={onClose} />
       {/* Queued / not-synced indicator (Batch 16.2) */}
       <div className="absolute top-5 left-4 sm:left-6">
@@ -414,7 +414,7 @@ function WrapCard({ block, run, onClose }) {
     : 0;
   const overran = isOverran(block, run);
   return (
-    <div className="bg-bg text-fg h-screen flex flex-col items-center justify-center font-body p-6 relative">
+    <div className="bg-bg text-fg min-h-dvh flex flex-col items-center justify-center font-body p-6 relative">
       <CloseButton onClose={onClose} />
       <div className="flex flex-col items-center gap-5 max-w-[420px] text-center">
         <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
@@ -609,61 +609,70 @@ function DoingSurface({
     return out;
   }, [blockObligations, placesById]);
 
+  // Layout note: the surface scrolls as one normal document — no
+  // h-screen + inner overflow-y-auto. The inner-scroll version hid the
+  // bottom quick-actions tray behind iOS browser chrome (100vh >
+  // visible viewport) and defeated tap-status-bar-to-scroll-to-top,
+  // which only drives the document scroller. The status bar + place
+  // switcher pin to the top via `sticky`; the tray pins to the bottom
+  // the same way (inside QuickActionsTray).
   return (
-    <div className="bg-bg text-fg h-screen flex flex-col font-body">
-      {/* Status bar */}
-      <header className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-line bg-surface">
-        <div className="flex flex-col">
-          <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
-            {block?.name ?? "Rounds"}
+    <div className="bg-bg text-fg min-h-dvh flex flex-col font-body">
+      <div className="sticky top-0 z-30">
+        {/* Status bar */}
+        <header className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-line bg-surface">
+          <div className="flex flex-col">
+            <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+              {block?.name ?? "Rounds"}
+            </div>
+            <div className="font-heading text-[20px] font-bold -tracking-[0.02em] text-fg leading-tight">
+              {formatElapsed(elapsed)}
+            </div>
           </div>
-          <div className="font-heading text-[20px] font-bold -tracking-[0.02em] text-fg leading-tight">
-            {formatElapsed(elapsed)}
+          {/* Queued / not-synced indicator (Batch 16.2) — the field
+              surface is exactly where offline capture happens, so it
+              gets the loudest placement. */}
+          <OutboxIndicator />
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={async () => {
+                const ok = window.confirm(
+                  "Cancel this run? Chores stay as ticked but the run is " +
+                  "marked canceled instead of done."
+                );
+                if (!ok) return;
+                await onCancelRun();
+              }}
+              className="text-muted hover:text-warn p-2 cursor-pointer bg-transparent border-0 text-[10px] uppercase tracking-[0.12em] font-semibold"
+              title="Cancel this run"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onClose}
+              className="text-muted hover:text-fg p-2 cursor-pointer bg-transparent border-0"
+              title="Exit (run keeps going — resume from Now)"
+            >
+              <X size={16} />
+            </button>
           </div>
-        </div>
-        {/* Queued / not-synced indicator (Batch 16.2) — the field
-            surface is exactly where offline capture happens, so it
-            gets the loudest placement. */}
-        <OutboxIndicator />
-        <div className="ml-auto flex items-center gap-1">
-          <button
-            onClick={async () => {
-              const ok = window.confirm(
-                "Cancel this run? Chores stay as ticked but the run is " +
-                "marked canceled instead of done."
-              );
-              if (!ok) return;
-              await onCancelRun();
-            }}
-            className="text-muted hover:text-warn p-2 cursor-pointer bg-transparent border-0 text-[10px] uppercase tracking-[0.12em] font-semibold"
-            title="Cancel this run"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onClose}
-            className="text-muted hover:text-fg p-2 cursor-pointer bg-transparent border-0"
-            title="Exit (run keeps going — resume from Now)"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      </header>
+        </header>
 
-      {/* Place Switcher */}
-      <PlaceSwitcher
-        places={switcherPlaces}
-        selectedPlaceId={selectedPlaceId}
-        onSelect={onSelectPlace}
-        groupMode={groupMode}
-        onChangeGroupMode={onChangeGroupMode}
-        kindTags={[...obligationsByKind.keys()].sort()}
-        selectedKindTag={selectedKindTag}
-        onSelectKindTag={onSelectKindTag}
-      />
+        {/* Place Switcher */}
+        <PlaceSwitcher
+          places={switcherPlaces}
+          selectedPlaceId={selectedPlaceId}
+          onSelect={onSelectPlace}
+          groupMode={groupMode}
+          onChangeGroupMode={onChangeGroupMode}
+          kindTags={[...obligationsByKind.keys()].sort()}
+          selectedKindTag={selectedKindTag}
+          onSelectKindTag={onSelectKindTag}
+        />
+      </div>
 
       {/* Body */}
-      <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+      <main className="flex-1 px-4 sm:px-6 py-5">
         {groupMode === "kind" ? (
           <KindView
             obligationsByKind={obligationsByKind}

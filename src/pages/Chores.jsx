@@ -21,6 +21,7 @@ import {
 } from "../lib/data/useChoreBlocks.js";
 import { displayBlockSide, resolveBlockMinutes } from "../lib/sunTimes.js";
 import ActivityRow from "../components/ActivityRow.jsx";
+import { blockIcon } from "../components/BlockBadge.jsx";
 import ChoresBlocksTab from "../components/ChoresBlocksTab.jsx";
 import ChoresPerformanceTab from "../components/ChoresPerformanceTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
@@ -103,10 +104,78 @@ function TabBar({ tabs, active, onChange }) {
   );
 }
 
+// ─── Jump nav (sub-tab navigation) ───────────────────────────────────────────
+// Sticky horizontal chip strip that scrolls a section of the list
+// below into view: block groups on the Today tab, top-level places on
+// the All chores tab. Sticky works against the document scroll (the
+// app deliberately has no inner scroll containers), so the chips stay
+// reachable however long the list grows.
+
+// Height the sticky strip occupies — sections set scroll-margin-top to
+// this so a jump never hides the section header underneath the strip.
+const JUMP_NAV_OFFSET = 56;
+
+function JumpNav({ items, onJump }) {
+  if (!items || items.length < 2) return null;
+  return (
+    <nav
+      className="no-scrollbar"
+      style={{
+        position: "sticky", top: 0, zIndex: 20,
+        display: "flex", alignItems: "center", gap: 6,
+        overflowX: "auto",
+        padding: "10px 0",
+        marginBottom: 10,
+        background: T.bg,
+        borderBottom: `1px solid ${T.border}`,
+      }}
+    >
+      {items.map(it => (
+        <button
+          key={it.id}
+          onClick={() => onJump(it.id)}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: T.surface, border: `1px solid ${T.border}`,
+            color: T.textDim, fontFamily: "inherit", fontSize: 11,
+            fontWeight: 600, padding: "5px 10px", cursor: "pointer",
+            textTransform: "uppercase", letterSpacing: "0.12em",
+            whiteSpace: "nowrap", flexShrink: 0,
+          }}
+          title={`Jump to ${it.label}`}
+        >
+          {it.icon}
+          {it.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+// Scroll a jump-nav target into view, compensating for the sticky
+// strip via the section's scroll-margin-top.
+function jumpToSection(domId) {
+  const el = document.getElementById(domId);
+  if (!el) return;
+  el.style.scrollMarginTop = `${JUMP_NAV_OFFSET}px`;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 // ─── Today ───────────────────────────────────────────────────────────────────
 
 function TodayTab({ data, currentUser, onChangeUser }) {
   const [scope, setScope] = useState("mine"); // "mine" | "all"
+  // Collapsed block groups (issue: long lists need folding). Persisted
+  // per session, keyed by block id ("anytime" for the no-block group).
+  const [collapsedBlocks, setCollapsedBlocks] = usePersistedState(
+    "chores:today-collapsed", []
+  );
+  const collapsedSet = useMemo(
+    () => new Set(collapsedBlocks), [collapsedBlocks]
+  );
+  const toggleCollapsed = (key) => setCollapsedBlocks(prev =>
+    prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+  );
   const today = useMemo(() => new Date(), []);
   const { rulesByChoreId, rulesByBlockId } = useChoreAssignmentRules();
   const instances = useMemo(
@@ -210,11 +279,31 @@ function TodayTab({ data, currentUser, onChangeUser }) {
         </EmptyCard>
       )}
 
+      {/* Sub-tab jump nav: one chip per block group. Tapping scrolls
+          that group into view (expanding it first if collapsed). */}
+      <JumpNav
+        items={visibleBlockKeys.map(blockKey => {
+          const block = blockKey ? blocks.find(b => b.id === blockKey) : null;
+          const Icon = blockIcon(block);
+          return {
+            id: blockKey || "anytime",
+            label: block ? block.name : "Anytime",
+            icon: <Icon size={12} style={{ flexShrink: 0 }} />,
+          };
+        })}
+        onJump={(id) => {
+          setCollapsedBlocks(prev => prev.filter(k => k !== id));
+          jumpToSection(`today-block-${id}`);
+        }}
+      />
+
       {visibleBlockKeys.map(blockKey => {
         const block = blockKey ? blocks.find(b => b.id === blockKey) : null;
+        const key = blockKey || "anytime";
         return (
           <BlockGroup
-            key={blockKey || "anytime"}
+            key={key}
+            domId={`today-block-${key}`}
             block={block}
             instances={blockGroups.get(blockKey)}
             roots={roots}
@@ -223,6 +312,8 @@ function TodayTab({ data, currentUser, onChangeUser }) {
             choreCtx={choreCtx}
             currentUserEmail={userEmail}
             blocks={blocks}
+            collapsed={collapsedSet.has(key)}
+            onToggleCollapsed={() => toggleCollapsed(key)}
           />
         );
       })}
@@ -241,18 +332,37 @@ function isWindowy(chore) {
 // resolved start time (handled by the parent); within the block,
 // chores group by the place tree — the same nesting + alphabetical
 // sorting as the All chores tab — with one checkable row per
-// (chore, place) obligation.
+// (chore, place) obligation. The whole header is a collapse toggle;
+// `domId` is the jump-nav scroll target.
 function BlockGroup({
-  block, instances, roots, childrenByParent, completions, choreCtx,
-  currentUserEmail, blocks,
+  block, domId, instances, roots, childrenByParent, completions, choreCtx,
+  currentUserEmail, blocks, collapsed, onToggleCollapsed,
 }) {
   const headerLabel = block ? block.name : "Anytime";
   const timeLabel = block
     ? displayBlockSide(block.startKind, block.startMinutes)
     : "";
   return (
-    <div style={{ marginBottom: 32 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8 }}>
+    <div
+      id={domId}
+      style={{
+        marginBottom: collapsed ? 16 : 32,
+        scrollMarginTop: JUMP_NAV_OFFSET,
+      }}
+    >
+      <button
+        onClick={onToggleCollapsed}
+        aria-expanded={!collapsed}
+        style={{
+          display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8,
+          width: "100%", background: "transparent", border: "none",
+          padding: 0, cursor: "pointer", fontFamily: "inherit",
+          textAlign: "left",
+        }}
+      >
+        {collapsed
+          ? <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />
+          : <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />}
         <div style={{
           fontFamily: T.uiLabel, fontSize: 14, color: T.text,
           textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700
@@ -263,16 +373,18 @@ function BlockGroup({
         <div style={{ fontSize: 11, color: T.textMuted, marginLeft: "auto" }}>
           {instances.length} {instances.length === 1 ? "chore" : "chores"}
         </div>
-      </div>
-      <TodayPlaceTree
-        instances={instances}
-        roots={roots}
-        childrenByParent={childrenByParent}
-        completions={completions}
-        choreCtx={choreCtx}
-        currentUserEmail={currentUserEmail}
-        blocks={blocks}
-      />
+      </button>
+      {!collapsed && (
+        <TodayPlaceTree
+          instances={instances}
+          roots={roots}
+          childrenByParent={childrenByParent}
+          completions={completions}
+          choreCtx={choreCtx}
+          currentUserEmail={currentUserEmail}
+          blocks={blocks}
+        />
+      )}
     </div>
   );
 }
@@ -553,6 +665,18 @@ function AllChoresTab({ data }) {
     return out;
   }, [defs, query, sort, blocks, choreCtx]);
 
+  // Jump-nav chips for the by-place view: the farm root's children,
+  // alphabetical — the same top-level ordering PlaceGroupedChores
+  // renders its sections in.
+  const topLevelNavItems = useMemo(() => {
+    const out = [];
+    for (const root of roots ?? []) {
+      out.push(...childrenOf(root.id, childrenByParent));
+    }
+    out.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    return out.map(p => ({ id: p.id, label: p.name }));
+  }, [roots, childrenByParent]);
+
   // Shared row-level handlers, threaded into both render modes.
   const userEmail = useCurrentUserEmail();
   const rowHandlers = {
@@ -588,6 +712,15 @@ function AllChoresTab({ data }) {
           </button>
         </ControlsActions>
       </ControlsBar>
+
+      {/* Sub-tab jump nav (by-place view): one chip per top-level
+          place; tapping scrolls that place's section into view. */}
+      {sort === "place" && !sitesLoading && (
+        <JumpNav
+          items={topLevelNavItems}
+          onJump={(placeId) => jumpToSection(`all-place-${placeId}`)}
+        />
+      )}
 
       {filtered.length === 0 ? (
         <EmptyCard title="No chores match">Try a different search term.</EmptyCard>
@@ -715,17 +848,23 @@ function PlaceGroupedChores({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {/* Each top-level place is a jump-nav scroll target. */}
       {topLevel.map(place => (
-        <PlaceTreeNode
+        <div
           key={place.id}
-          place={place}
-          depth={0}
-          childrenByParent={childrenByParent}
-          entriesByPlace={choresByPlace}
-          subtreeCounts={subtreeCounts}
-          renderEntry={renderDefinition}
-          keyOf={definitionKey}
-        />
+          id={`all-place-${place.id}`}
+          style={{ scrollMarginTop: JUMP_NAV_OFFSET }}
+        >
+          <PlaceTreeNode
+            place={place}
+            depth={0}
+            childrenByParent={childrenByParent}
+            entriesByPlace={choresByPlace}
+            subtreeCounts={subtreeCounts}
+            renderEntry={renderDefinition}
+            keyOf={definitionKey}
+          />
+        </div>
       ))}
       {rootChores.length > 0 && (
         <PlaceTreeSection

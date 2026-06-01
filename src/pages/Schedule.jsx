@@ -71,6 +71,14 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
 
   // Chore-block windows for the banded background on Day + Week.
   const { blocks } = useChoreBlocks();
+  // Show / hide the chore-block bands across every view (Day / Week
+  // bands, Month chips, Agenda rows). Chores aren't an event kind, so
+  // they get their own toggle next to the kind chips. Persisted for
+  // the session; preset screens share it (it's orthogonal to kinds).
+  const [showChores, setShowChores] = usePersistedState(
+    "schedule:show-chores", true
+  );
+  const visibleBlocks = showChores ? blocks : [];
   // Drag-to-reschedule + drag-to-resize commit handlers (Batch 14.2).
   const { moveOccurrence, resizeOccurrence } = useEventMutator();
 
@@ -167,13 +175,15 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
         kinds={data.events?.kinds ?? []}
         filters={filters}
         onFiltersChange={setFilters}
+        showChores={showChores}
+        onToggleChores={setShowChores}
         onNewEvent={onNewEvent}
       />
       {view === "day" && (
         <DayView
           date={date}
           occurrences={occurrences}
-          blocks={blocks}
+          blocks={visibleBlocks}
           today={today}
           onClickItem={onClickItem}
           onMoveOccurrence={handleMoveOccurrence}
@@ -185,7 +195,7 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
         <WeekView
           date={date}
           occurrences={occurrences}
-          blocks={blocks}
+          blocks={visibleBlocks}
           today={today}
           onClickItem={onClickItem}
           onMoveOccurrence={handleMoveOccurrence}
@@ -197,7 +207,7 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
         <MonthView
           date={date}
           occurrences={occurrences}
-          blocks={blocks}
+          blocks={visibleBlocks}
           today={today}
           onClickItem={onClickItem}
           onMoveOccurrence={handleMoveOccurrence}
@@ -207,7 +217,7 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
       {view === "agenda" && (
         <AgendaView
           occurrences={occurrences}
-          blocks={blocks}
+          blocks={visibleBlocks}
           today={today}
           onClickItem={onClickItem}
           range={{
@@ -238,6 +248,7 @@ function Controls({
   view, onViewChange,
   date, onDateChange, today,
   kinds, filters, onFiltersChange,
+  showChores, onToggleChores,
   onNewEvent,
 }) {
   return (
@@ -259,7 +270,13 @@ function Controls({
           <Plus size={13} className="shrink-0" /> New event
         </button>
       </div>
-      <FilterChips kinds={kinds} filters={filters} onChange={onFiltersChange} />
+      <FilterChips
+        kinds={kinds}
+        filters={filters}
+        onChange={onFiltersChange}
+        showChores={showChores}
+        onToggleChores={onToggleChores}
+      />
     </div>
   );
 }
@@ -358,7 +375,9 @@ function NavBtn({ onClick, ariaLabel, children }) {
   );
 }
 
-function FilterChips({ kinds, filters, onChange }) {
+function FilterChips({
+  kinds, filters, onChange, showChores, onToggleChores,
+}) {
   const chipDefs = (kinds ?? [])
     .map(k => ({
       id: k.id,
@@ -368,9 +387,13 @@ function FilterChips({ kinds, filters, onChange }) {
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
   const toggle = (id) => onChange({ ...filters, [id]: !filters[id] });
-  const allOn = chipDefs.every(c => filters[c.id]);
-  const setAll = (val) =>
+  // The chores toggle participates in All / None so one tap really
+  // does clear (or restore) the whole calendar.
+  const allOn = chipDefs.every(c => filters[c.id]) && showChores;
+  const setAll = (val) => {
     onChange(Object.fromEntries(chipDefs.map(c => [c.id, val])));
+    onToggleChores?.(val);
+  };
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
@@ -409,6 +432,25 @@ function FilterChips({ kinds, filters, onChange }) {
           </button>
         );
       })}
+      {/* Chores aren't an event kind, but the calendar shows their
+          block windows on every view — this chip shows / hides them. */}
+      <button
+        onClick={() => onToggleChores?.(!showChores)}
+        className={
+          "inline-flex items-center gap-1.5 font-[inherit] text-[10px] " +
+          "font-semibold uppercase tracking-[0.12em] px-2.5 py-1 " +
+          "cursor-pointer border " +
+          (showChores ? "bg-surface text-fg" : "bg-transparent text-dim")
+        }
+        style={{ borderColor: showChores ? T.cat.chore : undefined }}
+        title={showChores ? "Hide chore blocks" : "Show chore blocks"}
+      >
+        <span
+          className="w-2 h-2 rounded-full"
+          style={{ background: T.cat.chore }}
+        />
+        Chores
+      </button>
     </div>
   );
 }

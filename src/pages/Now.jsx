@@ -8,6 +8,7 @@ import { useChoreRuns, formatElapsed } from "../lib/data/useChoreRuns.js";
 import { computePlaceStatus } from "../lib/placeStatus.js";
 import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
+import { BlockBadgeList } from "../components/BlockBadge.jsx";
 import {
   PlaceTreeNode, PlaceTreeSection, groupByPlaceTree,
 } from "../components/PlaceTree.jsx";
@@ -71,8 +72,26 @@ export default function Now({ onOpenRounds }) {
     const sortByStart = (a, b) =>
       startOf(a) - startOf(b) ||
       (a.chore.title ?? "").localeCompare(b.chore.title ?? "");
-    const overdue = status.obligations
+    // Consolidate overdue rows: the same chore title at the same place
+    // missed in more than one block ("Fill feeders" exists as separate
+    // Morning / Afternoon definitions) collapses into one row carrying
+    // every missed block. The row's block badges then read as "missed
+    // N times". The first (earliest) obligation stays the row's
+    // identity, so tapping it opens the earliest missed block.
+    const overdueRaw = status.obligations
       .filter(o => o.status === "overdue").sort(sortByStart);
+    const byKey = new Map();
+    for (const o of overdueRaw) {
+      const key =
+        `${(o.chore.title ?? "").trim().toLowerCase()}|${o.placeId ?? ""}`;
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, { ...o, blocks: o.block ? [o.block] : [] });
+      } else if (o.block) {
+        existing.blocks.push(o.block);
+      }
+    }
+    const overdue = [...byKey.values()];
     const due = status.obligations
       .filter(o => o.status === "due").sort(sortByStart);
     const done = status.obligations
@@ -397,10 +416,12 @@ function ObligationGroup({
 // the chore's block — the doing surface is where ticking happens; Now
 // is the read-and-go list. The place is carried by the tree header
 // above, so the row stays lean for phone widths: checkbox, title,
-// block name, chevron.
+// block badge(s), chevron. The block reads as an icon-only badge
+// (BlockBadge) instead of its name; consolidated overdue rows carry
+// one badge per missed block.
 function ObligationRow({ obligation: o, completions, onOpenRounds }) {
   const queued = completions.isQueued?.(o.chore.id, o.placeId) ?? false;
-  const block = o.block;
+  const blocks = o.blocks ?? (o.block ? [o.block] : []);
 
   return (
     <button
@@ -443,11 +464,10 @@ function ObligationRow({ obligation: o, completions, onOpenRounds }) {
           />
         )}
       </span>
-      {block && (
-        <span className="shrink-0 text-[11px] text-dim">
-          {block.name}
-        </span>
-      )}
+      <BlockBadgeList
+        blocks={blocks}
+        tone={o.status === "overdue" ? "warn" : "default"}
+      />
       <ChevronRight size={14} className="shrink-0 text-muted" />
     </button>
   );

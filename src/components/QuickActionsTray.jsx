@@ -66,10 +66,14 @@ export default function QuickActionsTray({
 
   return (
     <>
+      {/* Pinned to the viewport bottom: the Rounds surface scrolls as
+          a normal document, so `sticky bottom-0` keeps the tray
+          reachable however tall the chore list is (and however much
+          browser chrome iOS shows). */}
       <nav
         className={
-          "shrink-0 flex items-stretch border-t border-line bg-surface " +
-          "divide-x divide-line"
+          "sticky bottom-0 z-30 shrink-0 flex items-stretch " +
+          "border-t border-line bg-surface divide-x divide-line"
         }
       >
         <TrayButton
