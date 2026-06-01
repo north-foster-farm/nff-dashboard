@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Clock, CheckCircle2, ArrowUpRight,
   FolderKanban, Receipt, Newspaper, Activity as ActivityIcon,
-  MapPin, User
+  MapPin, User, CloudOff
 } from "lucide-react";
 import { T } from "../theme.js";
 import { formatTime12h } from "../lib/dates.js";
@@ -664,6 +664,11 @@ function UpcomingChoreRow({
   const { done, total } = completions.doneCountForChore(chore.id, placeIds);
   const allDone = total > 0 && done === total;
   const fanned = total > 1;
+  // Batch 16.2 — any obligation still queued in the device-local
+  // outbox (offline tick waiting for signal).
+  const queued = placeIds.some(
+    pid => completions.isQueued?.(chore.id, pid) ?? false
+  );
 
   // Main checkbox: single-obligation chores toggle that one
   // obligation; fanned chores bulk-complete all remaining (or
@@ -702,6 +707,13 @@ function UpcomingChoreRow({
             (allDone ? "text-faint line-through" : "text-fg")
           }>
             <span>{chore.title}</span>
+            {queued && (
+              <CloudOff
+                size={12}
+                className="shrink-0 text-warn"
+                aria-label="Saved on this device — not synced yet"
+              />
+            )}
             {fanned && (
               <button
                 onClick={() => setExpanded(e => !e)}

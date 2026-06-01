@@ -7,9 +7,12 @@ import { descendantIds } from "../lib/places.js";
 
 // Bottom-pinned tray for the Rounds doing surface. Quick actions —
 // Note, MASH, Mortality — each opens a sheet that writes a typed Run
-// Event via `logRunEvent` (RPC log_run_event). Move + Sweep retired
-// from the tray in Batch 10: cohort moves are planned events, and
-// sweep is just bulk-tick on the doing surface itself.
+// Event via `logRunEvent` / `logMortality`. Since Batch 16.2 those
+// helpers append to the device-local outbox (lib/outbox.js) rather
+// than calling Supabase directly, so a capture in a dead zone saves
+// instantly and syncs when signal returns. Move + Sweep retired from
+// the tray in Batch 10: cohort moves are planned events, and sweep is
+// just bulk-tick on the doing surface itself.
 //
 // Place context defaults from Rounds: selectedPlaceId (the drilled
 // child if set, else the top-level place) seeds the sheet; "" means
@@ -47,7 +50,7 @@ export default function QuickActionsTray({
   recentConditionsByPlace,
   repeatWindowDays,
   onLogRunEvent,
-  onMoveOutOccupant,
+  onLogMortality,
 }) {
   const [open, setOpen] = useState(null);
   // 'note' | 'mash' | 'mortality'
@@ -111,8 +114,7 @@ export default function QuickActionsTray({
           placeOptions={placeOptions}
           childrenByParent={childrenByParent}
           placementsByPlaceId={placementsByPlaceId}
-          onLogRunEvent={onLogRunEvent}
-          onMoveOutOccupant={onMoveOutOccupant}
+          onLogMortality={onLogMortality}
           onClose={() => setOpen(null)}
         />
       )}
@@ -469,7 +471,7 @@ function MashSheet({
 // ── Mortality sheet ───────────────────────────────────────────────────
 function MortalitySheet({
   runId, seedPlaceId, placeOptions, childrenByParent, placementsByPlaceId,
-  onLogRunEvent, onMoveOutOccupant, onClose,
+  onLogMortality, onClose,
 }) {
   const [placeId, setPlaceId] = useState(seedPlaceId);
   const [groupId, setGroupId] = useState(null);
@@ -538,35 +540,17 @@ function MortalitySheet({
     setError(null);
     try {
       const groupLabel = groupLabels.get(groupId)?.label ?? groupId;
-      await onLogRunEvent({
-        kind: "mortality_observed",
-        payload: {
-          livestock_group_id: groupId,
-          group_label: groupLabel,
-          count,
-        },
+      // Batch 16.2: one call queues the observation row plus an
+      // ADDITIVE count decrement (a delta, applied against the count
+      // at sync time). The auto move-out for emptied cohorts happens
+      // in the outbox executor when the decrement actually lands.
+      await onLogMortality({
+        groupId,
+        groupLabel,
+        count,
         runId,
         placeId: placeId ?? null,
       });
-      // Auto-decrement the cohort count. Best-effort: ignore errors so
-      // a count-out-of-sync doesn't lose the activity_log entry.
-      const current = groupLabels.get(groupId)?.count;
-      let nextCount = null;
-      if (typeof current === "number") {
-        nextCount = Math.max(0, current - count);
-        await supabase
-          .from("livestock_groups")
-          .update({ count: nextCount })
-          .eq("id", groupId);
-      }
-      // 8.3 — auto move-out: when a cohort empties to zero, close its
-      // open placement(s) so it stops surfacing in pickers.
-      if (nextCount === 0 && onMoveOutOccupant) {
-        const open = batchPlacements.filter(pl => pl.occupantId === groupId);
-        await Promise.all(
-          open.map(pl => onMoveOutOccupant(pl.id).catch(() => {}))
-        );
-      }
       onClose();
     } catch (e) {
       setError(e.message ?? "Couldn't log mortality.");

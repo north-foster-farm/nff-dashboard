@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { supabase } from "../supabase.js";
+import { enqueueOp } from "../outbox.js";
 
 // Run Events live in `activity_log` (typed rows tagged with run_id +
 // place context) plus the `activity_log_condition_states` child table
 // for the multi-select MASH-intake action. Quick actions in Rounds
-// write through `logRunEvent` which calls the SECURITY DEFINER RPC
-// `log_run_event`. The activity feed picks them up via the same
-// realtime subscription that powers `useActivityLog`.
+// write through `logRunEvent`, which (since Batch 16.2) appends a
+// `run_event` op to the device-local outbox; the sync engine calls the
+// SECURITY DEFINER RPC `log_run_event` whenever there's connectivity.
+// The activity feed picks synced rows up via the same realtime
+// subscription that powers `useActivityLog`.
 //
 // `recentConditionsByPlace` lets the MASH sheet flag repeat
 // observations ("Brooder 1: 2 off-feed calls in the last 7 days").
@@ -136,6 +139,10 @@ export function useRunEvents() {
     return out;
   }, [recent]);
 
+  // Outbox-first (Batch 16.2): append locally, sync engine pushes.
+  // Offline captures survive an app kill and sync when signal returns.
+  // The original capture time rides in the payload (`captured_at`)
+  // since the RPC stamps occurred_at at sync time.
   const logRunEvent = useCallback(async ({
     kind,
     payload = {},
@@ -143,19 +150,47 @@ export function useRunEvents() {
     placeId = null,
     conditions = null,
   }) => {
-    const { data, error: rpcErr } = await supabase.rpc("log_run_event", {
-      p_kind: kind,
-      p_payload: payload,
-      p_run_id: runId,
-      p_place_id: placeId,
-      p_conditions: conditions,
+    return enqueueOp("run_event", {
+      kind,
+      payload: { ...payload, captured_at: new Date().toISOString() },
+      runId,
+      placeId,
+      conditions,
     });
-    if (rpcErr) throw rpcErr;
-    return data;
+  }, []);
+
+  // Mortality fast-path: one observation row + one ADDITIVE count
+  // decrement. The decrement op carries a delta (never an absolute
+  // count), so two offline phones each logging "1 dead" sum to 2 at
+  // sync time instead of clobbering each other. The executor also
+  // handles the auto move-out when a cohort empties to zero.
+  const logMortality = useCallback(async ({
+    groupId,
+    groupLabel,
+    count,
+    runId = null,
+    placeId = null,
+  }) => {
+    await enqueueOp("run_event", {
+      kind: "mortality_observed",
+      payload: {
+        livestock_group_id: groupId,
+        group_label: groupLabel,
+        count,
+        captured_at: new Date().toISOString(),
+      },
+      runId,
+      placeId,
+    });
+    await enqueueOp("mortality_decrement", {
+      groupId,
+      delta: count,
+    });
   }, []);
 
   return {
     logRunEvent,
+    logMortality,
     recentConditionsByPlace,
     repeatWindowDays: REPEAT_WINDOW_DAYS,
     loading: recent === null,

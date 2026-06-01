@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
-  Plus, Search, Copy, Pencil, Trash2, ChevronDown, ChevronRight,
+  Plus, Search, Copy, Pencil, Trash2, ChevronDown, ChevronRight, CloudOff,
 } from "lucide-react";
 import { T } from "../theme.js";
 import {
@@ -289,6 +289,11 @@ function TodayChoreRow({
   const { done, total } = completions.doneCountForChore(chore.id, placeIds);
   const allDone = total > 0 && done === total;
   const fanned = total > 1;
+  // Batch 16.2 — any obligation still sitting in the device-local
+  // outbox (offline tick waiting for signal).
+  const queued = placeIds.some(
+    pid => completions.isQueued?.(chore.id, pid) ?? false
+  );
 
   // Main checkbox: single-obligation chores toggle that obligation;
   // fanned chores bulk-complete all remaining (or un-complete all).
@@ -330,6 +335,13 @@ function TodayChoreRow({
             display: "flex", alignItems: "center", gap: 8
           }}>
             <span>{chore.title}</span>
+            {queued && (
+              <CloudOff
+                size={12}
+                style={{ color: T.warn, flexShrink: 0 }}
+                aria-label="Saved on this device — not synced yet"
+              />
+            )}
             {fanned && (
               <button
                 onClick={() => setExpanded(e => !e)}
@@ -390,6 +402,7 @@ function PlaceObligationRow({ choreId, placeId, placesById, completions }) {
   const place = placeId ? placesById?.get(placeId) : null;
   const { name, parentName } = displayPlace(place, placesById);
   const isDone = completions.isDone(choreId, placeId);
+  const queued = completions.isQueued?.(choreId, placeId) ?? false;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <button
@@ -407,13 +420,21 @@ function PlaceObligationRow({ choreId, placeId, placesById, completions }) {
       <div style={{
         fontSize: 12,
         color: isDone ? T.textFaint : T.text,
-        textDecoration: isDone ? "line-through" : "none"
+        textDecoration: isDone ? "line-through" : "none",
+        display: "flex", alignItems: "center", gap: 6
       }}>
         {name || "This chore"}
         {parentName && (
           <span style={{ color: T.textDim }}>
             {" · "}<strong>{parentName}</strong>
           </span>
+        )}
+        {queued && (
+          <CloudOff
+            size={11}
+            style={{ color: T.warn, flexShrink: 0 }}
+            aria-label="Saved on this device — not synced yet"
+          />
         )}
       </div>
     </div>

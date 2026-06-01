@@ -1274,6 +1274,87 @@ from restore.
 "queued / not synced" indicator, guaranteed sync, and the additive
 mortality merge policy.
 
+### Batch 16.2 — Offline outbox · `v0.10.12-alpha`
+2026-06-01. Closes Batch 16 (Farm map: per-place completion + offline
+outbox). Client-only — no migrations, no DB reset needed. Every field
+write (chore ticks, Notes, MASH intakes, mortality) now goes through a
+device-local, append-only IndexedDB outbox instead of straight to
+Supabase, so capture works with no signal and never silently loses
+data.
+
+**`lib/outbox.js`** (new). The core module — IndexedDB store
+(`nff-outbox` / `ops`, auto-increment key = FIFO order), an in-memory
+mirror, a subscriber API, and a sync engine:
+- Op kinds: `completion_insert`, `completion_insert_many`,
+  `completion_delete`, `completion_delete_chore`, `run_event`,
+  `mortality_decrement`. Executors live in the module; `enqueueOp` is
+  the only write entry point the rest of the app uses.
+- Flush triggers: immediately after enqueue, on the `online` event, on
+  visibilitychange → visible, and on an exponential-backoff retry
+  timer (5s → 60s cap) while pending ops remain. The Web Locks API
+  serializes flushes across tabs so two open tabs never double-replay
+  an op; the flush pass re-reads IndexedDB inside the lock.
+- Error classification: connectivity failures stop the pass and leave
+  everything pending (retry later); permanent errors (RLS /
+  constraint) mark the op `failed` and keep going. Failed ops stay
+  visible in the indicator with Retry / Discard — never silently
+  dropped.
+- In-memory queue fallback when IndexedDB is unavailable (private
+  browsing) — no reload survival, but the session still works.
+
+**Conflict policy** (per the going-in spec — deliberately not a CRDT):
+- *Completions are idempotent row-presence inserts/deletes.* A unique
+  violation on replay means another device already did it → the
+  executor returns the existing row as success. Batched inserts
+  select-then-insert-missing, with a per-row fallback on races.
+- *Counts (mortality) merge ADDITIVELY.* The op carries a delta, and
+  the executor applies it against the cohort count read at sync time —
+  two offline phones each logging "1 dead" sum to 2. The Batch 8.3
+  auto-move-out (cohort empties → close open placements) moved into
+  the executor so it happens when the decrement actually lands.
+- *Run events are append-only* activity_log rows, at-least-once
+  delivery; the original capture time rides in `payload.captured_at`
+  since the RPC stamps `occurred_at` at sync time.
+
+**`useChoreCompletions` rewritten** (write path). Toggles never call
+Supabase directly anymore — `toggle` / `toggleMany` append ops and
+return immediately. Displayed state = server rows (initial load +
+realtime) overlaid with the queue's not-yet-synced ops, replayed in
+order so check-then-uncheck-offline nets out correctly. The old
+silent-revert-on-network-error behavior is gone. New `isQueued(chore,
+place)` read. Reconciliation details:
+- When an op syncs, its confirmed rows fold straight into the server
+  map so nothing flickers in the gap before the realtime echo.
+- Realtime doesn't replay events missed while offline, so server rows
+  refetch on reconnect — but only after this date's queued ops finish
+  syncing, so a stale fetch can't clobber reconciled rows.
+
+**`useRunEvents`**: `logRunEvent` now enqueues; new `logMortality`
+helper queues the observation row + the additive decrement as a pair.
+`QuickActionsTray`'s MortalitySheet drops its direct
+`livestock_groups` UPDATE + move-out logic and calls `logMortality`.
+
+**"Queued / not synced" indicator** (new `<OutboxIndicator>` +
+`useOutbox` hook). Mounted in the TopBar (global), the Rounds doing-
+surface status bar, and the Rounds cold open. States: "Offline · N
+queued" (warn), "Syncing N…", "N not synced" (tap to flush now), and
+"N couldn't sync" with Retry / Discard. Per-row: a small CloudOff
+glyph next to any chore title whose tick is still sitting in the
+outbox (Rounds check rows, Chores Today rows + place sub-rows,
+dashboard Upcoming rows).
+
+**Rounds auto-done guard.** Offline ticks now make a block read
+"all done" while `chore_runs` writes still fail, which would have made
+the auto-flip effect loop (fail → revert → re-render → retry). A
+failed auto-flip now blocks further attempts until connectivity
+returns. Full offline run-lifecycle support (start/end/cancel through
+the outbox) is Batch 17 — hardened Rounds.
+
+**Out of scope:** offline page *load* (app-shell caching is Batch 36 —
+the outbox guarantees writes survive, but a hard refresh with no
+signal still can't boot the app), and offline `chore_runs` lifecycle
+writes (Batch 17).
+
 ---
 
 ## Upcoming
@@ -1436,9 +1517,9 @@ Collisions resolved (recorded here for the record):
 ### Batch 15 — Farm map: place-model foundation ✅ SHIPPED
 Shipped `v0.10.10-alpha` (2026-05-31) — see the Shipped section above.
 
-### Batch 16 — Farm map: per-place completion + offline outbox
+### Batch 16 — Farm map: per-place completion + offline outbox ✅ SHIPPED
 The rollout's beating heart — Dad working in the field, offline. Split
-into 16.1 / 16.2 when the batch started.
+into 16.1 / 16.2 when the batch started; both halves now shipped.
 
 **16.1 ✅ SHIPPED** (`v0.10.11-alpha`, 2026-05-31 — see Shipped above):
 re-keyed `chore_completions` to `(chore_id, place_id, date)` and fanned
@@ -1446,18 +1527,12 @@ place-scoped chores into per-place obligations via occupancy-driven
 fan-out (so "tractor 3 fed, 4 not" is representable, and the map can
 show "3 of 5 fed").
 
-**16.2 (next):** the offline outbox. Build a device-local **append-only
-IndexedDB outbox**; replace today's silent-revert toggle
-(`useChoreCompletions.toggle` reverts on network error — a tick behind the
-broiler pasture silently un-ticks) with optimistic local apply + a visible
-**"queued / not synced"** indicator + guaranteed sync. Conflict policy:
-completions are **idempotent** row-presence inserts; **counts (mortality)
-merge ADDITIVELY** (two offline phones each logging "1 dead" sum to 2 —
-non-negotiable); field **edits are clocked last-write-wins** with the
-append-only `activity_log` as audit. No full CRDT (shape it to grow).
-
-Ships value: capture works with no signal and never silently loses data;
-per-place completion lights up the rest of the design.
+**16.2 ✅ SHIPPED** (`v0.10.12-alpha`, 2026-06-01 — see Shipped above):
+the offline outbox. Device-local append-only IndexedDB outbox replacing
+the silent-revert toggle with optimistic local apply + a visible
+"queued / not synced" indicator + guaranteed sync. Completions are
+idempotent row-presence inserts; mortality counts merge additively;
+run events are append-only with capture time preserved.
 
 ### Batch 17 — Farm map: Now surface + hardened Rounds
 The phone rollout. **Now** is the phone landing (decision 1): the

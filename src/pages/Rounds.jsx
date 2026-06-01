@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  X, Check, ChevronLeft,
+  X, Check, ChevronLeft, CloudOff,
 } from "lucide-react";
 import { useChoreBlocks, formatMinutesOfDay } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
@@ -13,6 +13,7 @@ import { useRunEvents } from "../lib/data/useRunEvents.js";
 import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
 import QuickActionsTray from "../components/QuickActionsTray.jsx";
 import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
+import OutboxIndicator from "../components/OutboxIndicator.jsx";
 
 // Full-screen takeover for actually doing chores. Bypasses the
 // normal layout (no TopBar, no Sidebar, no SectionHeader).
@@ -30,11 +31,10 @@ export default function Rounds({ data, onClose }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const {
     places, placesById, childrenByParent, placementsByPlaceId,
-    moveOutOccupant,
     loading: sitesLoading,
   } = useSites();
   const {
-    logRunEvent, recentConditionsByPlace, repeatWindowDays,
+    logRunEvent, logMortality, recentConditionsByPlace, repeatWindowDays,
   } = useRunEvents();
   const {
     definitions, loading: defsLoading,
@@ -166,11 +166,11 @@ export default function Rounds({ data, onClose }) {
       definitions={definitions}
       completions={completions}
       logRunEvent={logRunEvent}
+      logMortality={logMortality}
       onCancelRun={async () => {
         if (!activeRun) return;
         await cancelRun(activeRun.id);
       }}
-      moveOutOccupant={moveOutOccupant}
       recentConditionsByPlace={recentConditionsByPlace}
       repeatWindowDays={repeatWindowDays}
       selectedPlaceId={selectedPlaceId}
@@ -221,6 +221,10 @@ function ColdOpen({
   return (
     <div className="bg-bg text-fg min-h-screen flex flex-col font-body relative overflow-y-auto">
       <CloseButton onClose={onClose} />
+      {/* Queued / not-synced indicator (Batch 16.2) */}
+      <div className="absolute top-5 left-4 sm:left-6">
+        <OutboxIndicator />
+      </div>
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6 pt-16 max-w-[480px] mx-auto w-full">
         <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
           Rounds
@@ -416,7 +420,7 @@ function DoingSurface({
   run, block, blocks, places, placesById, childrenByParent,
   switcherPlaces, switcherIdOf, placementsByPlaceId,
   definitions, completions,
-  logRunEvent, moveOutOccupant, onCancelRun,
+  logRunEvent, logMortality, onCancelRun,
   recentConditionsByPlace, repeatWindowDays,
   selectedPlaceId, onSelectPlace,
   selectedChildId, onSelectChild,
@@ -467,9 +471,22 @@ function DoingSurface({
   // saw the transition (would double-flip). Only fires on local
   // edits; remote echoes go through the same path harmlessly thanks
   // to the no-op guard.
+  //
+  // Offline guard (Batch 16.2): completion ticks now apply locally via
+  // the outbox even with no signal, so allDone can become true while
+  // chore_runs writes still fail. A failed auto-flip blocks further
+  // attempts (otherwise revert → re-render → retry would loop forever)
+  // until connectivity returns. Full offline run-lifecycle support is
+  // Batch 17 (hardened Rounds).
   const writingRef = useRef(false);
+  const [autoFlipBlocked, setAutoFlipBlocked] = useState(false);
   useEffect(() => {
-    if (writingRef.current) return;
+    const onOnline = () => setAutoFlipBlocked(false);
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
+  useEffect(() => {
+    if (writingRef.current || autoFlipBlocked) return;
     if (!run) return;
     if (blockObligations.length === 0) return;
     if (completions.loading) return;
@@ -479,18 +496,22 @@ function DoingSurface({
     const allDone = completed === blockObligations.length;
     if (allDone && run.state === "in_progress") {
       writingRef.current = true;
-      Promise.resolve(onAutoDone()).finally(() => {
-        writingRef.current = false;
-      });
+      Promise.resolve(onAutoDone())
+        .catch(() => setAutoFlipBlocked(true))
+        .finally(() => {
+          writingRef.current = false;
+        });
     } else if (!allDone && run.state === "done") {
       writingRef.current = true;
-      Promise.resolve(onAutoUndone()).finally(() => {
-        writingRef.current = false;
-      });
+      Promise.resolve(onAutoUndone())
+        .catch(() => setAutoFlipBlocked(true))
+        .finally(() => {
+          writingRef.current = false;
+        });
     }
   }, [
     blockObligations, completions.isDone, completions.loading, run,
-    onAutoDone, onAutoUndone,
+    onAutoDone, onAutoUndone, autoFlipBlocked,
   ]);
 
   // Group obligations by their top-level place for the all-places
@@ -544,6 +565,10 @@ function DoingSurface({
             {formatElapsed(elapsed)}
           </div>
         </div>
+        {/* Queued / not-synced indicator (Batch 16.2) — the field
+            surface is exactly where offline capture happens, so it
+            gets the loudest placement. */}
+        <OutboxIndicator />
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={async () => {
@@ -612,7 +637,7 @@ function DoingSurface({
         recentConditionsByPlace={recentConditionsByPlace}
         repeatWindowDays={repeatWindowDays}
         onLogRunEvent={logRunEvent}
-        onMoveOutOccupant={moveOutOccupant}
+        onLogMortality={logMortality}
       />
     </div>
   );
@@ -921,6 +946,9 @@ function SelectedPlaceView({
 // disabled state automatically.
 function ChoreCheckRow({ chore, placeId, placeLabel, blocks, completions }) {
   const done = completions.isDone(chore.id, placeId);
+  // Batch 16.2 — true while this row's tick is sitting in the
+  // device-local outbox waiting for connectivity.
+  const queued = completions.isQueued?.(chore.id, placeId) ?? false;
   const [pending, setPending] = useState(false);
 
   const onToggle = async () => {
@@ -963,6 +991,13 @@ function ChoreCheckRow({ chore, placeId, placeLabel, blocks, completions }) {
         }>
           <span className="truncate">{chore.title}</span>
           <ChoreRemainingPill chore={chore} blocks={blocks} />
+          {queued && (
+            <CloudOff
+              size={12}
+              className="shrink-0 text-warn"
+              aria-label="Saved on this device — not synced yet"
+            />
+          )}
         </div>
         {placeLabel && (
           <div className="text-[11px] text-faint mt-0.5">{placeLabel}</div>

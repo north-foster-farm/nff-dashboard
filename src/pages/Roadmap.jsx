@@ -141,8 +141,10 @@ const ITEMS = [
   },
   {
     title: "Works offline",
-    body: "Mutations queue locally when the connection drops and sync " +
-      "when it comes back. Assets cached so the app still loads.",
+    body: "Field captures — chore ticks, notes, mortality — already " +
+      "queue on this device and sync when signal returns. Still to " +
+      "come: the rest of the app's writes, plus cached assets so the " +
+      "app loads with no signal at all.",
   },
   {
     title: "Pasture simulator",
