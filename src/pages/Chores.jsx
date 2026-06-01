@@ -26,6 +26,9 @@ import ChoresPerformanceTab from "../components/ChoresPerformanceTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 import AssignmentRulesEditor from "../components/AssignmentRulesEditor.jsx";
+import {
+  PlaceTreeNode, PlaceTreeSection,
+} from "../components/PlaceTree.jsx";
 import { useRoute, navigate, usePersistedState } from "../lib/router.js";
 
 // The page renders its own header (title + tabs) in place of the generic
@@ -349,20 +352,22 @@ function TodayPlaceTree({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {topLevel
-        .filter(place => (subtreeCounts.get(place.id) ?? 0) > 0)
-        .map(place => (
-          <PlaceTreeNode
-            key={place.id}
-            place={place}
-            depth={0}
-            childrenByParent={childrenByParent}
-            entriesByPlace={entriesByPlace}
-            subtreeCounts={subtreeCounts}
-            renderEntry={renderEntry}
-            keyOf={keyOf}
-          />
-        ))}
+      {/* hideEmpty: places with nothing to do today don't render a
+          header at all — only the All chores tab keeps empty places
+          visible. */}
+      {topLevel.map(place => (
+        <PlaceTreeNode
+          key={place.id}
+          place={place}
+          depth={0}
+          childrenByParent={childrenByParent}
+          entriesByPlace={entriesByPlace}
+          subtreeCounts={subtreeCounts}
+          renderEntry={renderEntry}
+          keyOf={keyOf}
+          hideEmpty
+        />
+      ))}
       {farmEntries.length > 0 && (
         <PlaceTreeSection
           title="Whole farm"
@@ -748,139 +753,8 @@ function PlaceGroupedChores({
   );
 }
 
-// One place in the tree: accordion header + (when open) its own
-// entries followed by its child places. Auto-folds when the whole
-// subtree is empty; the header stays so every layer of the farm is
-// visible. Generic over what an "entry" is — the All chores tab
-// renders definition rows, the Today tab renders obligation rows.
-function PlaceTreeNode({
-  place, depth, childrenByParent, entriesByPlace, subtreeCounts,
-  renderEntry, keyOf,
-}) {
-  const subtreeCount = subtreeCounts.get(place.id) ?? 0;
-  // User toggle overrides the default (open when there's something to
-  // show). Defaults re-derive when data changes: an empty header that
-  // gains a chore pops open on its own.
-  const [userOpen, setUserOpen] = useState(null);
-  const open = userOpen ?? subtreeCount > 0;
-
-  const ownEntries = entriesByPlace.get(place.id) ?? [];
-  const children = [...childrenOf(place.id, childrenByParent)]
-    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
-
-  return (
-    <div style={{ marginLeft: depth === 0 ? 0 : 18 }}>
-      <button
-        onClick={() => setUserOpen(o => (o == null ? !(subtreeCount > 0) : !o))}
-        style={{
-          display: "flex", alignItems: "center", gap: 8, width: "100%",
-          background: "transparent", border: "none", cursor: "pointer",
-          padding: "8px 0", fontFamily: "inherit", textAlign: "left",
-        }}
-        aria-expanded={open}
-      >
-        {open
-          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
-          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0 }} />}
-        <span style={{
-          fontFamily: T.uiLabel, fontSize: depth === 0 ? 13 : 12,
-          color: subtreeCount > 0 ? T.text : T.textDim,
-          textTransform: "uppercase", letterSpacing: "0.12em",
-          fontWeight: depth === 0 ? 700 : 600,
-        }}>
-          {place.name}
-        </span>
-        <span style={{ fontSize: 11, color: T.textMuted }}>
-          {subtreeCount > 0
-            ? `${subtreeCount} ${subtreeCount === 1 ? "chore" : "chores"}`
-            : "no chores"}
-        </span>
-      </button>
-      {open && (
-        <div style={{
-          borderLeft: `1px solid ${T.border}`,
-          marginLeft: 6, paddingLeft: 12,
-          display: "flex", flexDirection: "column", gap: 2,
-        }}>
-          {ownEntries.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
-              {ownEntries.map(entry => (
-                <div key={keyOf(entry, place.id)}>
-                  {renderEntry(entry, place.id)}
-                </div>
-              ))}
-            </div>
-          )}
-          {children.map(child => (
-            <PlaceTreeNode
-              key={child.id}
-              place={child}
-              depth={depth + 1}
-              childrenByParent={childrenByParent}
-              entriesByPlace={entriesByPlace}
-              subtreeCounts={subtreeCounts}
-              renderEntry={renderEntry}
-              keyOf={keyOf}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Flat titled section used for the "Whole farm" / "Dormant" buckets.
-function PlaceTreeSection({
-  title, subtitle, entries, renderEntry, keyOf, defaultOpen = true,
-  dimmed = false,
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: "flex", alignItems: "center", gap: 8, width: "100%",
-          background: "transparent", border: "none", cursor: "pointer",
-          padding: "8px 0", fontFamily: "inherit", textAlign: "left",
-        }}
-        aria-expanded={open}
-      >
-        {open
-          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
-          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0 }} />}
-        <span style={{
-          fontFamily: T.uiLabel, fontSize: 13,
-          color: dimmed ? T.textDim : T.text,
-          textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700,
-        }}>
-          {title}
-        </span>
-        {subtitle && (
-          <span style={{ fontSize: 11, color: T.textMuted }}>{subtitle}</span>
-        )}
-        <span style={{ fontSize: 11, color: T.textMuted, marginLeft: "auto" }}>
-          {entries.length} {entries.length === 1 ? "chore" : "chores"}
-        </span>
-      </button>
-      {open && (
-        <div style={{
-          borderLeft: `1px solid ${T.border}`,
-          marginLeft: 6, paddingLeft: 12,
-          opacity: dimmed ? 0.7 : 1,
-        }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
-            {entries.map(entry => (
-              <div key={keyOf(entry, null)}>
-                {renderEntry(entry, null)}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+// PlaceTreeNode + PlaceTreeSection moved to components/PlaceTree.jsx
+// (shared with the Now surface).
 
 // Adapt the tab-level handler bag to the per-row prop shape
 // ChoreDefinitionRow expects.

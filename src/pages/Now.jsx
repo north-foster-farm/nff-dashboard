@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, CloudOff, Play } from "lucide-react";
+import { Check, ChevronRight, CloudOff, Play, Square } from "lucide-react";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
@@ -8,29 +8,31 @@ import { useChoreRuns, formatElapsed } from "../lib/data/useChoreRuns.js";
 import { computePlaceStatus } from "../lib/placeStatus.js";
 import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
-import PlaceTag from "../components/PlaceTag.jsx";
+import {
+  PlaceTreeNode, PlaceTreeSection, groupByPlaceTree,
+} from "../components/PlaceTree.jsx";
 
 // The Now surface (Batch 17) — the phone landing. Time-anchored: the
 // active-or-next round as one fat primary button, then a farm-wide
 // due / overdue list derived from the place_status projection
-// (lib/placeStatus.js). Every row is tagged with its place — name +
-// bold parent (D1) — and deep-links into the round for that chore's
-// block.
+// (lib/placeStatus.js). Chores group by the place tree — the same
+// nesting as the Chores Today tab — so the list reads place by place
+// instead of as one long flat run of rows.
 //
 // D2: when a round is in progress (on any device), a loud
-// "round in progress — tap to resume" bar sits at the top. This
-// replaces the old quiet "rejoin from the sidebar" path as the
-// canonical way back into a running round.
+// "round in progress — tap to resume" bar sits at the top, with a
+// Stop affordance beside it so a forgotten run can be killed without
+// re-entering the Rounds surface.
 
 export default function Now({ onOpenRounds }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const {
-    placesById, choreCtx,
+    roots, childrenByParent, choreCtx,
     loading: sitesLoading,
   } = useSites();
   const { definitions, loading: defsLoading } = useChoreDefinitions();
   const {
-    activeRun, nextBlock, loading: runsLoading,
+    activeRun, nextBlock, loading: runsLoading, cancelRun,
   } = useChoreRuns({ blocks });
 
   const today = useMemo(() => new Date(), []);
@@ -111,6 +113,14 @@ export default function Now({ onOpenRounds }) {
               run={activeRun}
               block={activeBlock}
               onResume={() => onOpenRounds(activeRun.blockId)}
+              onStop={async () => {
+                const ok = window.confirm(
+                  "Stop this round? Ticked chores stay ticked; the run " +
+                  "is marked canceled instead of done."
+                );
+                if (!ok) return;
+                await cancelRun(activeRun.id);
+              }}
             />
           ) : nextBlock ? (
             <StartRoundCta
@@ -127,10 +137,11 @@ export default function Now({ onOpenRounds }) {
             </div>
           )}
 
-          {/* Farm-wide due / overdue list */}
+          {/* Farm-wide due / overdue list, grouped by place */}
           <ObligationList
             buckets={buckets}
-            placesById={placesById}
+            roots={roots}
+            childrenByParent={childrenByParent}
             completions={completions}
             onOpenRounds={onOpenRounds}
           />
@@ -140,8 +151,8 @@ export default function Now({ onOpenRounds }) {
   );
 }
 
-// ── D2 resume bar ─────────────────────────────────────────────────────
-function ResumeBar({ run, block, onResume }) {
+// ── D2 resume bar (+ stop) ────────────────────────────────────────────
+function ResumeBar({ run, block, onResume, onStop }) {
   // Live elapsed tick — this is the loudest element on the surface, so
   // it earns the per-second timer.
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -152,30 +163,47 @@ function ResumeBar({ run, block, onResume }) {
   const elapsed = run.startedAt ? nowMs - run.startedAt.getTime() : 0;
 
   return (
-    <button
-      onClick={onResume}
-      className={
-        "w-full flex items-center gap-4 bg-accent text-on-accent " +
-        "border-0 px-5 py-5 cursor-pointer text-left font-[inherit]"
-      }
-    >
-      <span className="relative flex h-3 w-3 shrink-0">
-        <span className="animate-ping absolute inline-flex h-full w-full bg-on-accent opacity-60" />
-        <span className="relative inline-flex h-3 w-3 bg-on-accent" />
-      </span>
-      <span className="flex flex-col flex-1 min-w-0 gap-0.5">
-        <span className="font-ui text-[10px] uppercase tracking-[0.16em] font-semibold opacity-80">
-          Round in progress
+    <div className="flex items-stretch gap-2">
+      <button
+        onClick={onResume}
+        className={
+          "flex-1 min-w-0 flex items-center gap-4 bg-accent text-on-accent " +
+          "border-0 px-5 py-5 cursor-pointer text-left font-[inherit]"
+        }
+      >
+        <span className="relative flex h-3 w-3 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full bg-on-accent opacity-60" />
+          <span className="relative inline-flex h-3 w-3 bg-on-accent" />
         </span>
-        <span className="font-heading text-[22px] font-bold -tracking-[0.02em] leading-tight">
-          {block?.name ?? "Rounds"} · {formatElapsed(elapsed)}
+        <span className="flex flex-col flex-1 min-w-0 gap-0.5">
+          <span className="font-ui text-[10px] uppercase tracking-[0.16em] font-semibold opacity-80">
+            Round in progress
+          </span>
+          <span className="font-heading text-[22px] font-bold -tracking-[0.02em] leading-tight">
+            {block?.name ?? "Rounds"} · {formatElapsed(elapsed)}
+          </span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] opacity-90 inline-flex items-center gap-1">
+            Tap to resume
+            <ChevronRight size={12} />
+          </span>
         </span>
-      </span>
-      <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.12em]">
-        Tap to resume
-        <ChevronRight size={14} />
-      </span>
-    </button>
+      </button>
+      <button
+        onClick={onStop}
+        title="Stop this round"
+        aria-label="Stop this round"
+        className={
+          "shrink-0 flex flex-col items-center justify-center gap-1.5 " +
+          "bg-surface border border-warn text-warn px-4 cursor-pointer " +
+          "font-[inherit]"
+        }
+      >
+        <Square size={18} fill="currentColor" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em]">
+          Stop
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -220,7 +248,7 @@ function formatBlockDuration(minutes) {
 
 // ── Due / overdue / done list ─────────────────────────────────────────
 function ObligationList({
-  buckets, placesById, completions, onOpenRounds,
+  buckets, roots, childrenByParent, completions, onOpenRounds,
 }) {
   const { overdue, due, done } = buckets;
   const [showDone, setShowDone] = useState(false);
@@ -242,7 +270,8 @@ function ObligationList({
           title="Overdue"
           tone="warn"
           obligations={overdue}
-          placesById={placesById}
+          roots={roots}
+          childrenByParent={childrenByParent}
           completions={completions}
           onOpenRounds={onOpenRounds}
         />
@@ -251,7 +280,8 @@ function ObligationList({
         <ObligationGroup
           title="To do"
           obligations={due}
-          placesById={placesById}
+          roots={roots}
+          childrenByParent={childrenByParent}
           completions={completions}
           onOpenRounds={onOpenRounds}
         />
@@ -279,7 +309,8 @@ function ObligationList({
           {showDone && (
             <ObligationGroup
               obligations={done}
-              placesById={placesById}
+              roots={roots}
+              childrenByParent={childrenByParent}
               completions={completions}
               onOpenRounds={onOpenRounds}
             />
@@ -290,11 +321,33 @@ function ObligationList({
   );
 }
 
+// One status bucket (Overdue / To do / Done), with its obligations
+// grouped by the place tree — the same nesting as the Chores Today
+// tab. Places with nothing in this bucket don't render at all.
 function ObligationGroup({
-  title, tone, obligations, placesById, completions, onOpenRounds,
+  title, tone, obligations, roots, childrenByParent,
+  completions, onOpenRounds,
 }) {
+  const grouped = useMemo(() => groupByPlaceTree({
+    entries: obligations,
+    getPlaceId: (o) => o.placeId,
+    roots,
+    childrenByParent,
+    sortEntries: (a, b) =>
+      (a.chore.title ?? "").localeCompare(b.chore.title ?? ""),
+  }), [obligations, roots, childrenByParent]);
+
+  const renderEntry = (o) => (
+    <ObligationRow
+      obligation={o}
+      completions={completions}
+      onOpenRounds={onOpenRounds}
+    />
+  );
+  const keyOf = (o) => `${o.chore.id}|${o.placeId ?? "farm"}`;
+
   return (
-    <section className="flex flex-col gap-2">
+    <section className="flex flex-col gap-1">
       {title && (
         <div
           className={
@@ -307,97 +360,95 @@ function ObligationGroup({
           {obligations.length}
         </div>
       )}
-      <ul
+      <div
         className={
-          "m-0 p-0 list-none bg-surface border " +
+          "flex flex-col gap-0.5 border-l-2 pl-3 " +
           (tone === "warn" ? "border-warn" : "border-line")
         }
       >
-        {obligations.map(o => (
-          <ObligationRow
-            key={`${o.chore.id}|${o.placeId ?? ""}`}
-            obligation={o}
-            placesById={placesById}
-            completions={completions}
-            onOpenRounds={onOpenRounds}
+        {grouped.topLevel.map(place => (
+          <PlaceTreeNode
+            key={place.id}
+            place={place}
+            depth={0}
+            childrenByParent={childrenByParent}
+            entriesByPlace={grouped.entriesByPlace}
+            subtreeCounts={grouped.subtreeCounts}
+            renderEntry={renderEntry}
+            keyOf={keyOf}
+            hideEmpty
           />
         ))}
-      </ul>
+        {grouped.farmEntries.length > 0 && (
+          <PlaceTreeSection
+            title="Whole farm"
+            subtitle="Not tied to any one place"
+            entries={grouped.farmEntries}
+            renderEntry={renderEntry}
+            keyOf={keyOf}
+          />
+        )}
+      </div>
     </section>
   );
 }
 
 // One (chore, place) obligation. Tapping it deep-links into Rounds for
 // the chore's block — the doing surface is where ticking happens; Now
-// is the read-and-go list.
-function ObligationRow({
-  obligation: o, placesById, completions, onOpenRounds,
-}) {
-  const place = o.placeId ? placesById.get(o.placeId) : null;
+// is the read-and-go list. The place is carried by the tree header
+// above, so the row stays lean for phone widths: checkbox, title,
+// block name, chevron.
+function ObligationRow({ obligation: o, completions, onOpenRounds }) {
   const queued = completions.isQueued?.(o.chore.id, o.placeId) ?? false;
   const block = o.block;
 
   return (
-    <li className="border-b border-line last:border-b-0">
-      <button
-        onClick={() => onOpenRounds(o.chore.blockId ?? null)}
+    <button
+      onClick={() => onOpenRounds(o.chore.blockId ?? null)}
+      className={
+        "w-full flex items-center gap-3 px-3 py-3 bg-surface " +
+        "border-0 cursor-pointer text-left font-[inherit] " +
+        "hover:bg-row-hover transition-colors duration-100 " +
+        (o.done ? "opacity-60" : "")
+      }
+    >
+      <span
         className={
-          "w-full flex items-center gap-3 px-4 py-3 bg-transparent " +
-          "border-0 cursor-pointer text-left font-[inherit] " +
-          "hover:bg-row-hover transition-colors duration-100 " +
-          (o.done ? "opacity-60" : "")
+          "shrink-0 w-5 h-5 border-2 inline-flex items-center " +
+          "justify-center " +
+          (o.done
+            ? "bg-resolved border-resolved text-on-accent"
+            : o.status === "overdue"
+              ? "border-warn text-transparent"
+              : "border-line text-transparent")
         }
+        aria-hidden
       >
+        <Check size={12} strokeWidth={3} />
+      </span>
+      <span className="flex-1 min-w-0 flex items-center gap-2">
         <span
           className={
-            "shrink-0 w-5 h-5 border-2 inline-flex items-center " +
-            "justify-center " +
-            (o.done
-              ? "bg-resolved border-resolved text-on-accent"
-              : o.status === "overdue"
-                ? "border-warn text-transparent"
-                : "border-line text-transparent")
+            "text-[14px] leading-snug " +
+            (o.done ? "text-muted line-through" : "text-fg font-medium")
           }
-          aria-hidden
         >
-          <Check size={12} strokeWidth={3} />
+          {o.chore.title}
         </span>
-        <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-          <span
-            className={
-              "text-[14px] flex items-center gap-2 " +
-              (o.done ? "text-muted line-through" : "text-fg font-medium")
-            }
-          >
-            <span className="truncate">{o.chore.title}</span>
-            {queued && (
-              <CloudOff
-                size={12}
-                className="shrink-0 text-warn"
-                aria-label="Saved on this device — not synced yet"
-              />
-            )}
-          </span>
-          {place && (
-            <PlaceTag
-              place={place}
-              placesById={placesById}
-              className="text-[11px] text-faint"
-            />
-          )}
+        {queued && (
+          <CloudOff
+            size={12}
+            className="shrink-0 text-warn"
+            aria-label="Saved on this device — not synced yet"
+          />
+        )}
+      </span>
+      {block && (
+        <span className="shrink-0 text-[11px] text-dim">
+          {block.name}
         </span>
-        {o.status === "overdue" && (
-          <span className="shrink-0 inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.12em] px-1.5 py-0.5 leading-none border bg-surface-alt border-warn text-warn">
-            Overdue
-          </span>
-        )}
-        {block && (
-          <span className="shrink-0 text-[11px] text-dim">
-            {block.name}
-          </span>
-        )}
-        <ChevronRight size={14} className="shrink-0 text-muted" />
-      </button>
-    </li>
+      )}
+      <ChevronRight size={14} className="shrink-0 text-muted" />
+    </button>
   );
 }
