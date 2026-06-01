@@ -10,6 +10,9 @@ import { parseFarmMapSvg, bindLayersToPlaces } from "../lib/farmMap.js";
 import FarmMap, { MapLegend } from "../components/FarmMap.jsx";
 import PlaceSearch, { pushRecent } from "../components/PlaceSearch.jsx";
 import PlacePage from "./PlacePage.jsx";
+import {
+  useRoute, navigate, navigateBack, usePersistedState,
+} from "../lib/router.js";
 
 // The Farm map page (Batch 18.2) — the desktop landing (decision 2 of
 // the farm-map workshop). One dataset, two renderers: this is the
@@ -92,14 +95,21 @@ export default function MapPage({ data, onOpenRounds, onNavigate }) {
   }), [definitions, blocks, choreCtx, completions.isDone, today]);
 
   // ── Navigation state ────────────────────────────────────────────────
-  // zoomedPlaceId — which zone the map is zoomed into (null = whole farm)
-  // openPlaceId   — which place page is open (null = the map)
-  const [zoomedPlaceId, setZoomedPlaceId] = useState(null);
-  const [openPlaceId, setOpenPlaceId] = useState(null);
+  // openPlaceId   — which place page is open (null = the map). Lives in
+  //                 the URL (/place/:id) so place pages deep-link,
+  //                 reload, and respond to the back button.
+  // zoomedPlaceId — which zone the map is zoomed into (null = whole
+  //                 farm). Session-persisted so leaving and returning
+  //                 to the map keeps the same zoom.
+  const route = useRoute();
+  const openPlaceId = route.placeId ?? null;
+  const [zoomedPlaceId, setZoomedPlaceId] = usePersistedState(
+    "map:zoomed-place", null
+  );
 
   const openPlace = (placeId) => {
     pushRecent(placeId);
-    setOpenPlaceId(placeId);
+    navigate(`/place/${placeId}`);
   };
 
   // ── Place page takes over the section body ──────────────────────────
@@ -108,7 +118,7 @@ export default function MapPage({ data, onOpenRounds, onNavigate }) {
       <PlacePage
         placeId={openPlaceId}
         data={data}
-        onBack={() => setOpenPlaceId(null)}
+        onBack={() => navigateBack("/map")}
         onOpenPlace={(id) => openPlace(id)}
         onOpenRounds={onOpenRounds}
         onNavigate={onNavigate}
@@ -135,7 +145,7 @@ export default function MapPage({ data, onOpenRounds, onNavigate }) {
             placesById={placesById}
             groupsById={groupsById}
             placementsByPlaceId={placementsByPlaceId}
-            onOpenPlace={(id) => setOpenPlaceId(id)}
+            onOpenPlace={(id) => openPlace(id)}
             className="flex-1 sm:flex-none sm:w-[320px]"
           />
           <button

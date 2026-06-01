@@ -26,6 +26,7 @@ import ChoresPerformanceTab from "../components/ChoresPerformanceTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 import AssignmentRulesEditor from "../components/AssignmentRulesEditor.jsx";
+import { useRoute, navigate, usePersistedState } from "../lib/router.js";
 
 // The page renders its own header (title + tabs) in place of the generic
 // SectionHeader, so it can fit a tab bar + inline actions.
@@ -43,7 +44,14 @@ const TABS = [
 const USERS = ["James", "Jim"];
 
 export default function Chores({ data }) {
-  const [tab, setTab] = useState("today");
+  // The active tab lives in the URL (/chores/<tab>) so reloads and the
+  // back button keep the user on the same tab.
+  const route = useRoute();
+  const tab = TABS.some(t => t.id === route.choresTab)
+    ? route.choresTab
+    : "today";
+  const setTab = (id) =>
+    navigate(id === "today" ? "/chores" : `/chores/${id}`);
   const [currentUser, setCurrentUser] = useState("James");
 
   return (
@@ -468,8 +476,9 @@ function Toggle({ active, onClick, children }) {
 
 function AllChoresTab({ data }) {
   const [query, setQuery] = useState("");
-  // "place" (default — recursive place-tree accordions) | alpha | time
-  const [sort, setSort] = useState("place");
+  // "place" (default — recursive place-tree accordions) | alpha | time.
+  // Session-persisted so flipping between screens keeps the chosen sort.
+  const [sort, setSort] = usePersistedState("chores:all-sort", "place");
   const [expanded, setExpanded] = useState(() => new Set());
   const [editing, setEditing] = useState(null); // chore_id currently in edit mode
   const {

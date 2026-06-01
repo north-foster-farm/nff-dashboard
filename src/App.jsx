@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { findSection, findFlyoutParentForChild } from "./sections.jsx";
 import NFF_DATA from "./data/nff-data.json";
 import TopBar from "./components/TopBar.jsx";
@@ -10,6 +10,9 @@ import RecordsDrawer from "./components/RecordsDrawer.jsx";
 import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
+import {
+  useRoute, navigate, navigateBack, pathForSection,
+} from "./lib/router.js";
 
 // Phone-width media query — used once at boot to pick the landing
 // section (farm-map workshop decisions 1 + 2: phones land on Now,
@@ -23,12 +26,17 @@ function isPhone() {
   );
 }
 
+function defaultPath() {
+  return isPhone() ? "/now" : "/map";
+}
+
 // `session` is always non-null here — LoginGate only renders <App /> after
 // the user is authenticated AND passes the admins check.
 export default function App({ session }) {
-  const [currentSection, setCurrentSection] = useState(() =>
-    isPhone() ? "now" : "map"
-  );
+  // All primary navigation lives in the URL (lib/router.js): the
+  // current section, the Rounds takeover, place pages, and the Chores
+  // tab. Reload reopens the same screen; back/forward walk history.
+  const route = useRoute();
   // EventEditor seed — null when closed; otherwise carries the edit/new
   // mode and (for edits) the seriesId + occurrence date that was clicked.
   const [eventSeed, setEventSeed] = useState(null);
@@ -37,11 +45,6 @@ export default function App({ session }) {
   // the EventEditor's "Open processing details →" link; cleared by
   // the workspace's Back button.
   const [processingTarget, setProcessingTarget] = useState(null);
-  // Rounds is a full-screen takeover — when open, the rest of the
-  // app (TopBar / Sidebar / SectionHeader) gets out of the way.
-  // null = closed; { blockId } = open (blockId optionally deep-links
-  // the cold open to a specific block — used by the Now surface).
-  const [roundsTarget, setRoundsTarget] = useState(null);
   // Phone nav drawer (Batch 17). The fixed sidebar is desktop-only;
   // on phones it opens as an overlay from the TopBar hamburger.
   const [navOpen, setNavOpen] = useState(false);
@@ -49,8 +52,15 @@ export default function App({ session }) {
   // Animals / resource lists + Settings, off the header avatar.
   const [recordsOpen, setRecordsOpen] = useState(false);
 
+  // "/" lands on the device-appropriate default screen.
+  useEffect(() => {
+    if (route.kind === "home") {
+      navigate(defaultPath(), { replace: true });
+    }
+  }, [route.kind]);
+
   const openRounds = (blockId) =>
-    setRoundsTarget({ blockId: blockId ?? null });
+    navigate(blockId ? `/rounds/${blockId}` : "/rounds");
 
   // Live reference data from Postgres. Keys that haven't loaded yet come
   // back as `null`; the merge below only overrides JSON for keys that HAVE
@@ -66,7 +76,18 @@ export default function App({ session }) {
     return merged;
   }, [refData]);
 
-  const section = findSection(currentSection) || findSection("overview");
+  const currentSection = route.kind === "section" ? route.sectionId : null;
+  const section =
+    findSection(currentSection ?? (isPhone() ? "now" : "map")) ||
+    findSection("overview");
+
+  // Browser history entries get readable titles per screen.
+  useEffect(() => {
+    document.title = route.kind === "rounds"
+      ? "Rounds — North Foster Farm"
+      : `${section.label} — North Foster Farm`;
+  }, [route.kind, section.label]);
+
   const isSpeciesPage = section.id.startsWith("livestock_");
   // Pages that render their own header row (title + tabs/actions inline) or
   // are full-page takeovers (Settings, ComingSoon stubs) that don't want any
@@ -83,18 +104,18 @@ export default function App({ session }) {
   // (it carries its own header). Treat it as self-headered too.
   const inProcessingWorkspace = !!processingTarget;
 
-  if (roundsTarget) {
+  if (route.kind === "rounds") {
     return (
       <Rounds
         data={data}
-        initialBlockId={roundsTarget.blockId}
-        onClose={() => setRoundsTarget(null)}
+        initialBlockId={route.blockId}
+        onClose={() => navigateBack(defaultPath())}
       />
     );
   }
 
   const handleSelect = (id) => {
-    setCurrentSection(id);
+    navigate(pathForSection(id));
     setNavOpen(false);
     setRecordsOpen(false);
   };
@@ -120,7 +141,7 @@ export default function App({ session }) {
         {/* Desktop sidebar */}
         <div className="hidden sm:flex shrink-0">
           <Sidebar
-            current={currentSection}
+            current={section.id}
             onSelect={handleSelect}
             onOpenRounds={handleOpenRounds}
             data={data}
@@ -131,7 +152,7 @@ export default function App({ session }) {
           <div className="fixed inset-0 z-40 flex sm:hidden">
             <div className="flex h-full bg-bg shadow-[2px_0_24px_rgba(0,0,0,0.4)]">
               <Sidebar
-                current={currentSection}
+                current={section.id}
                 onSelect={handleSelect}
                 onOpenRounds={handleOpenRounds}
                 data={data}
@@ -149,7 +170,7 @@ export default function App({ session }) {
             <SectionHeader
               section={section}
               parent={findFlyoutParentForChild(section.id)}
-              onNavigate={setCurrentSection}
+              onNavigate={handleSelect}
               noBottomBorder={isSpeciesPage}
             />
           )}
@@ -164,7 +185,7 @@ export default function App({ session }) {
               section={section}
               data={data}
               onOpenEvent={setEventSeed}
-              onNavigate={setCurrentSection}
+              onNavigate={handleSelect}
               onOpenRounds={openRounds}
             />
           )}
@@ -182,7 +203,7 @@ export default function App({ session }) {
       />
       <RecordsDrawer
         open={recordsOpen}
-        current={currentSection}
+        current={section.id}
         data={data}
         session={session}
         onSelect={handleSelect}

@@ -12,6 +12,7 @@ import {
   DayView, WeekView, MonthView, AgendaView,
 } from "../components/CalendarViews.jsx";
 import DateTyperPopover from "../components/DateTyperPopover.jsx";
+import { usePersistedState } from "../lib/router.js";
 
 // Schedule (Batch 14.1). Single page hosting the four-up Day / Week
 // / Month / Agenda view toggle, the clickable date-typer header,
@@ -30,22 +31,43 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
     t.setHours(0, 0, 0, 0);
     return t;
   }, []);
+  // Preset instances (per-kind sidebar children / events_all) force
+  // their own view + filter; the plain Schedule screen persists what
+  // the user last picked across navigation + reload.
+  const isPreset = !!(initialView || initialFilter);
+
   // Default view is mobile-aware: Day on narrow screens, Month
   // otherwise. The toggle is sticky after the first user interaction
   // — we don't auto-flip on resize to avoid jumping mid-task.
-  const [view, setView] = useState(() => initialView ?? defaultView());
+  const [localView, setLocalView] = useState(() => initialView ?? defaultView());
+  const [savedView, setSavedView] = usePersistedState("schedule:view", null);
+  const view = isPreset ? localView : (savedView ?? defaultView());
+  const setView = isPreset ? setLocalView : setSavedView;
+
   const [date, setDate] = useState(today);
+
   // Filters: every kind starts on by default. When the parent passes
   // `initialFilter` (e.g. clicking a per-kind preset in the sidebar),
   // start with only that kind enabled — the user can re-enable
-  // others via the chip strip.
-  const [filters, setFilters] = useState(() => {
-    const all = Object.fromEntries((data.events?.kinds ?? []).map(k => [k.id, true]));
+  // others via the chip strip. The plain Schedule persists its filter
+  // selection for the session.
+  const kinds = data.events?.kinds ?? [];
+  const [localFilters, setLocalFilters] = useState(() => {
+    const all = Object.fromEntries(kinds.map(k => [k.id, true]));
     if (!initialFilter) return all;
     const limited = Object.fromEntries(Object.keys(all).map(k => [k, false]));
     limited[initialFilter] = true;
     return limited;
   });
+  const [savedFilters, setSavedFilters] = usePersistedState(
+    "schedule:filters", null
+  );
+  const filters = useMemo(() => {
+    if (isPreset) return localFilters;
+    const all = Object.fromEntries(kinds.map(k => [k.id, true]));
+    return { ...all, ...(savedFilters ?? {}) };
+  }, [isPreset, localFilters, savedFilters, kinds]);
+  const setFilters = isPreset ? setLocalFilters : setSavedFilters;
 
   // Chore-block windows for the banded background on Day + Week.
   const { blocks } = useChoreBlocks();
