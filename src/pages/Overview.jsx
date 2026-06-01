@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Clock, CheckCircle2, ArrowUpRight,
   FolderKanban, Receipt, Newspaper, Activity as ActivityIcon,
-  MapPin, User, CloudOff
+  MapPin, User, CloudOff, Sparkles, X
 } from "lucide-react";
 import { T } from "../theme.js";
 import { formatTime12h } from "../lib/dates.js";
@@ -22,6 +22,7 @@ import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
+import { useAutomationEmissions } from "../lib/data/useAutomations.js";
 import { useSites } from "../lib/data/useSites.js";
 import { sunMinutesOfDay } from "../lib/sunTimes.js";
 import { Sunrise, Sunset } from "lucide-react";
@@ -58,6 +59,9 @@ export default function Overview({ data, onNavigate }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Row 0: the Heads-up lane. Only renders when an automation has
+          fired and nobody has acknowledged / dismissed it yet. */}
+      <HeadsUpLane onNavigate={onNavigate} />
       {/* Row 1: chores on the left; conditions stacked above the day's
           schedule on the right. */}
       <GridRow cols={2}>
@@ -94,6 +98,104 @@ function GridRow({ cols, children }) {
 // Vertical stack of cards inside a single grid column.
 function Stack({ children }) {
   return <div className="flex flex-col gap-4">{children}</div>;
+}
+
+// ─── Heads up (automation emissions) ─────────────────────────────────────────
+
+// Full-width lane listing automation firings nobody has triaged yet.
+// Each row: sparkle + summary + when, with "Got it" (acknowledge — keeps
+// what was created) and "Dismiss" (asks for a reason, tombstones the
+// created events / chores). Renders nothing when the lane is empty.
+function HeadsUpLane({ onNavigate }) {
+  const { emissions, acknowledge, dismiss } = useAutomationEmissions();
+  const [dismissingId, setDismissingId] = useState(null);
+  const [reason, setReason] = useState("");
+
+  if (!emissions || emissions.length === 0) return null;
+
+  const submitDismiss = async (id) => {
+    try {
+      await dismiss(id, reason.trim());
+    } finally {
+      setDismissingId(null);
+      setReason("");
+    }
+  };
+
+  return (
+    <Card title="Heads up" icon={Sparkles}
+      subtitle={`${emissions.length} automation${emissions.length === 1 ? "" : "s"} fired`}>
+      <ol className="m-0 p-0 list-none flex flex-col gap-2">
+        {emissions.map((em) => (
+          <li key={em.id}
+            className="flex flex-col gap-2 border border-line bg-row-active-dim px-3.5 py-3">
+            <div className="flex items-start gap-2.5">
+              <Sparkles size={14} className="text-accent-deep shrink-0 translate-y-0.5" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] text-fg leading-relaxed">
+                  {em.summary}
+                </div>
+                <div className="text-[11px] text-dim mt-1">
+                  {new Date(em.firedAt).toLocaleString("en-US", {
+                    weekday: "short", month: "short", day: "numeric",
+                    hour: "numeric", minute: "2-digit",
+                  })}
+                  {" · "}
+                  <button
+                    onClick={() => onNavigate?.("schedule")}
+                    className="bg-transparent border-0 p-0 text-accent-deep cursor-pointer font-[inherit] text-[11px] underline underline-offset-2"
+                  >
+                    See schedule
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => acknowledge(em.id)}
+                  className="bg-accent text-on-accent border-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
+                >
+                  Got it
+                </button>
+                <button
+                  onClick={() => { setDismissingId(em.id); setReason(""); }}
+                  className="bg-transparent text-dim border border-line px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            {dismissingId === em.id && (
+              <div className="flex items-center gap-2 pl-6">
+                <input
+                  autoFocus
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submitDismiss(em.id);
+                    if (e.key === "Escape") setDismissingId(null);
+                  }}
+                  placeholder="Why dismiss? (e.g. batch canceled, ordered already)"
+                  className="flex-1 bg-surface border border-line px-2.5 py-1.5 text-[12px] text-fg font-[inherit] outline-none"
+                />
+                <button
+                  onClick={() => submitDismiss(em.id)}
+                  className="bg-warn text-on-accent border-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
+                >
+                  Dismiss + remove
+                </button>
+                <button
+                  onClick={() => setDismissingId(null)}
+                  className="bg-transparent text-dim border-0 p-1 cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </Card>
+  );
 }
 
 // ─── Activity (capped + link) ───────────────────────────────────────────────

@@ -1593,6 +1593,77 @@ place pages; place pages deep-link into Rounds), and the cmd-K
 cross-entity palette (Batch 33 — place search here is the thin
 slice).
 
+### Batch 19 — Triggers (automations engine) · `v0.10.16-alpha`
+2026-06-01. The automations half of the old "Triggers + GCal push"
+batch. **GCal push is deferred** (folded into Batch 31) — James's
+call mid-batch; the dirty-row watcher and push job ship there
+instead. This batch also marks the production cutover: **the linked
+DB is live**, migrations are additive-only from here on (CLAUDE.md
+updated), and the linked project never gets reset again.
+
+Migration `0015_automations.sql` (the engine lives in Postgres so
+rules fire no matter which client writes the triggering row):
+
+- **`automation_emissions`** — one row per firing: trigger payload,
+  human summary, `status` (active / acknowledged / dismissed) +
+  who/when/why columns. Provenance columns
+  (`automation_emission_id`) on `event_series` and
+  `chore_definitions` point everything a firing created back at it.
+- **Seeded rules** (in the `automations` table from 0013, idempotent
+  by name):
+  * **Broiler batch lifecycle** (`batch_created`): AFTER INSERT on
+    `livestock_groups` for the configured species → arrival event +
+    pasture-move event (+3 weeks, configurable) + processing event
+    (kind `processing_days`, +8 weeks, configurable, payload carries
+    batchId/batchSize/breed) + brooder cleanout chore (move + 1 day),
+    all linked to the batch via `event_links` roles
+    arrival/pasture_move/processing.
+  * **Feed reorder** (`inventory_reorder`): AFTER INSERT/UPDATE OF
+    `on_hand` on `feed_types`; edge-triggered on crossing
+    `on_hand <= reorder_point` and never stacks while an active
+    emission exists for the same feed → "Place feed order" chore +
+    "Receive feed delivery" event (today + lead_time_days), linked
+    to the feed (`inventory_item`) and the chore.
+- **One-time chores**: new `once` frequency type
+  (`{"type":"once","date":...}`) — active from its date until
+  completed; completion retires the chore (`retired_at`, set by a
+  new trigger on `chore_completions`); the hooks filter retired
+  rows out everywhere. New `one_time` chore category.
+- **`feed_types.on_hand`** jsonb (+ `on_hand_updated_at`) so the
+  reorder rule has a number to compare; editable on the Feeds page.
+- **RPCs**: `acknowledge_automation_emission` (drops out of the
+  Heads-up lane) and `dismiss_automation_emission` (reason logged to
+  `activity_log`, emitted events end + occurrences skip, emitted
+  chores retire).
+- **Realtime**: `automations`, `automation_emissions`, plus
+  `feed_types` / `chore_definitions` / `livestock_groups` join the
+  publication (the chore_definitions realtime subscription had been
+  silently dead).
+
+UI:
+
+- **"Heads up" lane** (`Overview.jsx`): full-width row-0 card, only
+  renders when an automation has fired and nobody has triaged it.
+  Sparkle + summary + fired-at per row; **Got it** acknowledges,
+  **Dismiss** asks for a reason and tombstones what was created.
+- **Sparkle provenance icons** on auto-created rows: chore rows
+  (Chores Today + All-chores tree, Now obligations) and calendar
+  events (day/week blocks, month chips, agenda rows).
+- **Settings → Automations**: per-rule enable toggle, last-fired
+  timestamp, and inline week-offset editors (pasture move /
+  processing) for the broiler rule.
+- **Feeds page**: editable on-hand amount per feed + "Reorder" warn
+  badge when at/below the reorder point.
+- **Species page → Add batch**: minimal create-batch form (name /
+  count / arrival date) so the lifecycle automation has a UI
+  trigger; full lifecycle pages are Batch 20. Hooks:
+  `useAutomations` / `useAutomationEmissions`.
+
+**Out of scope / deferred:** GCal push (→ Batch 31), per-breed
+config overrides on the lifecycle rule (single species-level config
+for now), automation rule creation UI (the two rules are seeded;
+new rules are a migration).
+
 ---
 
 ## Upcoming
@@ -1804,26 +1875,12 @@ restructure (sidebar slims to Now · Farm map · Dashboard · Planning ·
 Other; records move to the avatar drawer; the Resources flyout
 dissolves). Desktop lands on the map.
 
-### Batch 19 — Triggers + GCal push
-`automations` table seeded with two rules. (1) Feed reorder
-fires when `inventory.on_hand <= reorder_point`; emits a "Place
-feed order" chore + a "Receive feed delivery" event linked via
-`event_links`. (2) Broiler batch lifecycle fires on
-`batch_created`; emits the arrival event + the pasture-move
-event (~3 weeks later, configurable per breed) + the processing
-event (kind=processing_days, ~8–10 weeks for Cornish Cross,
-configurable) + the brooder cleanout chore (day after pasture
-move). Processing dates are static-by-default (set with the
-hatchery before deposit) but editable as a fallback. Auto-row
-visual treatment: sparkle icon, dismissable with reason logged,
-"Heads up" lane on the dashboard. GCal push-only sync: a
-Postgres function or edge job watches `event_occurrences` for
-dirty rows and emits create/update/cancel calls; per-occurrence
-event IDs preserved across updates; logs to `gcal_pushes`.
-
-Ships value: automation closes the loop on
-inventory + livestock + chores; phone calendar shows farm
-events.
+### Batch 19 — Triggers (automations engine) ✅ SHIPPED
+Shipped `v0.10.16-alpha` (2026-06-01) — see the Shipped section
+above. The GCal push half of the original "Triggers + GCal push"
+scope was deferred mid-batch (James's call) and folds into
+Batch 31; everything else (the two seeded rules, sparkle
+treatment, Heads-up lane, dismissal flow) shipped.
 
 ### Batch 20 — Animal lifecycle pages
 Batch detail page (broiler batches first; layers + sheep follow
@@ -1975,16 +2032,21 @@ shipment creation from order (integration scoped here).
 Stripe (cards / online payments); Venmo (where API exists);
 QuickBooks (accounting sync). E-comm front-end if needed.
 
-### Batch 31 — Two-way Google Calendar sync (deferred)
-Push-only sync ships in Batch 15. This batch is reserved for the
-two-way case if it ever becomes a real need — e.g., editing on
-the phone calendar app and having those edits flow back to the
-dashboard. James's stated stance: "If that use case crops up
-down the road we can revisit it." Until then, this is a
-placeholder so the slot doesn't get reused for something else
-and so the design constraints (idempotent change ledger,
-per-field merge rules, conflict resolver UI) are remembered if
-it ever lands.
+### Batch 31 — Google Calendar sync (push-only first; two-way deferred)
+Now owns the **push-only sync** originally scoped into Batch 19
+and deferred when that batch shipped (2026-06-01): a Postgres
+function or edge job watches `event_occurrences` for dirty rows
+and emits create/update/cancel calls; per-occurrence event IDs
+preserved across updates; logs to `gcal_pushes` (table already
+exists, schema-only, from 0013). Requires Google API credentials
+(service account or OAuth) wired as Supabase secrets.
+
+The two-way case stays deferred — e.g., editing on the phone
+calendar app and having those edits flow back to the dashboard.
+James's stated stance: "If that use case crops up down the road
+we can revisit it." The design constraints (idempotent change
+ledger, per-field merge rules, conflict resolver UI) are
+remembered here if it ever lands.
 
 ### Batch 32 — Farm updates / Social / Content calendar
 Farm updates: list-targeting, markdown editor, file uploads, email

@@ -64,9 +64,31 @@ export function isChoreActiveOn(chore, date) {
       return isInLastWeekOfMonth(date)
         && dow >= (f.preferredDay ?? 1)
         && dow <= (f.latestDay ?? 5);
+    case "once":
+      // One-time chores (auto-created by automations) fire on their
+      // date and keep nagging until completed. Completion retires the
+      // chore row (DB trigger sets retired_at), which drops it from
+      // the definitions list entirely — so "active forever after its
+      // date" never outlives the chore being done.
+      return Boolean(f.date) && localISODate(date) >= f.date;
     default:
       return false;
   }
+}
+
+// Local-time "YYYY-MM-DD" for a Date (no UTC shift).
+function localISODate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// Parse "YYYY-MM-DD" as a local-time start-of-day Date.
+function parseLocalISODate(iso) {
+  const [y, m, d] = (iso || "").split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
 }
 
 // Combine a date + "HH:MM" string into a local Date.
@@ -229,6 +251,13 @@ export function describeFrequency(chore) {
       return `Weekly — ${DOW[f.preferredDay]} preferred, by ${DOW[f.latestDay]}`;
     case "monthly_last_week_window":
       return `Monthly (last week) — ${DOW[f.preferredDay]} preferred, by ${DOW[f.latestDay]}`;
+    case "once": {
+      const d = parseLocalISODate(f.date);
+      if (!d) return "One-time";
+      const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `One-time — ${MON[d.getMonth()]} ${d.getDate()}`;
+    }
     default: return "—";
   }
 }
@@ -364,10 +393,11 @@ export function choreDaysRemaining(chore, now = new Date(), blocks = []) {
   const f = chore.frequency;
   const hasWindow =
     f?.type === "weekly_window" || f?.type === "monthly_last_week_window";
+  const isOnce = f?.type === "once";
   const isAnytime = !chore.blockId;
   // Daily / specific_days chores with a fixed block aren't "windowy" —
   // they fire on a specific day in a specific block, so no pill.
-  if (!hasWindow && !isAnytime) return null;
+  if (!hasWindow && !isOnce && !isAnytime) return null;
 
   const deadlineBlock = chore.lastChanceBlockId
     ? (blocks ?? []).find(b => b.id === chore.lastChanceBlockId)
@@ -375,7 +405,12 @@ export function choreDaysRemaining(chore, now = new Date(), blocks = []) {
 
   const today = startOfDay(now);
   let deadlineDate;
-  if (hasWindow) {
+  if (isOnce) {
+    // One-time chores: the deadline is their date — past it, the pill
+    // reads "overran" until the chore is completed (and retired).
+    deadlineDate = parseLocalISODate(f.date);
+    if (!deadlineDate) return null;
+  } else if (hasWindow) {
     deadlineDate = windowDeadlineDate(f, today);
     if (!deadlineDate) return null;
   } else {

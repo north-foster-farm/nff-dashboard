@@ -97,6 +97,48 @@ export function useReferenceData() {
     return () => { cancelled = true; supabase.removeChannel(channel); };
   }, []);
 
+  // Keep feeds / chores / livestock live too (Batch 19). Automations
+  // write to all three out-of-band (a new batch creates auto chores;
+  // editing a feed's on-hand can fire the reorder rule), so the
+  // dashboard and records pages need to pick the changes up without a
+  // hard refresh.
+  useEffect(() => {
+    let cancelled = false;
+    const debounced = (loader, key) => {
+      let scheduled = false;
+      return () => {
+        if (scheduled) return;
+        scheduled = true;
+        setTimeout(async () => {
+          scheduled = false;
+          const v = await loader();
+          if (!cancelled && v) setState(s => ({ ...s, [key]: v }));
+        }, 120);
+      };
+    };
+    const refreshFeeds = debounced(loadFeeds, "feeds");
+    const refreshChores = debounced(loadChores, "chores");
+    const refreshLivestock = debounced(loadLivestock, "livestock");
+    const channel = realtimeChannel("refdata:automations:stream")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "feed_types" },
+        refreshFeeds
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "chore_definitions" },
+        refreshChores
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "livestock_groups" },
+        refreshLivestock
+      )
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(channel); };
+  }, []);
+
   return state;
 }
 
@@ -138,7 +180,9 @@ async function loadFeeds() {
   const { data, error } = await supabase
     .from("feed_types")
     .select(
-      "id, name, description, supplier_id, unit, package_size, cost_per_unit, reorder_point, reorder_quantity, lead_time_days, notes"
+      "id, name, description, supplier_id, unit, package_size, " +
+      "cost_per_unit, reorder_point, reorder_quantity, lead_time_days, " +
+      "notes, on_hand, on_hand_updated_at"
     )
     .order("name");
   if (error) { console.error("loadFeeds:", error); return null; }
@@ -153,7 +197,9 @@ async function loadFeeds() {
     reorderPoint: row.reorder_point,
     reorderQuantity: row.reorder_quantity,
     leadTimeDays: row.lead_time_days,
-    notes: row.notes
+    notes: row.notes,
+    onHand: row.on_hand,
+    onHandUpdatedAt: row.on_hand_updated_at
   }));
 }
 
@@ -269,8 +315,9 @@ async function loadChores() {
       "id, title, category, description, frequency, period, start_time, " +
       "deadline, assignment, tags, place_id, block_id, sort_order, " +
       "anchor_type, anchor_kind_tag, anchor_species_id, anchor_batch_id, " +
-      "at_place_id"
+      "at_place_id, retired_at, automation_emission_id"
     )
+    .is("retired_at", null)
     .order("sort_order")
     .order("category");
   if (error) { console.error("loadChores:", error); return null; }
@@ -294,6 +341,8 @@ async function loadChores() {
       anchorSpeciesId: c.anchor_species_id,
       anchorBatchId: c.anchor_batch_id,
       atPlaceId: c.at_place_id,
+      retiredAt: c.retired_at,
+      automationEmissionId: c.automation_emission_id,
     })),
     completions: [],
     modelNotes: []
@@ -324,7 +373,7 @@ async function loadEvents() {
       .select(
         "id, legacy_instance_id, kind_id, label, subtitle, location, " +
         "rrule, dtstart, until, duration_minutes, season_window, " +
-        "status, payload, notes"
+        "status, payload, notes, automation_emission_id"
       )
       .eq("status", "active"),
     supabase
@@ -391,6 +440,7 @@ async function loadEvents() {
       seasonWindow: s.season_window,
       payload: s.payload,
       notes: s.notes,
+      automationEmissionId: s.automation_emission_id,
       occurrences,
       // Back-compat: pre-13.1 callers read `date` / `startTime` /
       // `endTime` / `processing` directly off the instance.

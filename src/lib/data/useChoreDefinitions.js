@@ -24,8 +24,10 @@ export function useChoreDefinitions() {
         "id, title, description, frequency, period, start_time, deadline, " +
         "assignment, tags, category, place_id, block_id, " +
         "last_chance_block_id, sort_order, anchor_type, anchor_kind_tag, " +
-        "anchor_species_id, anchor_batch_id, at_place_id"
+        "anchor_species_id, anchor_batch_id, at_place_id, retired_at, " +
+        "automation_emission_id"
       )
+      .is("retired_at", null)
       .order("sort_order", { ascending: true })
       .order("title", { ascending: true })
       .then((res) => {
@@ -52,8 +54,10 @@ export function useChoreDefinitions() {
             "id, title, description, frequency, period, start_time, deadline, " +
             "assignment, tags, category, place_id, block_id, " +
             "last_chance_block_id, sort_order, anchor_type, anchor_kind_tag, " +
-            "anchor_species_id, anchor_batch_id, at_place_id"
+            "anchor_species_id, anchor_batch_id, at_place_id, retired_at, " +
+            "automation_emission_id"
           )
+          .is("retired_at", null)
           .order("sort_order", { ascending: true })
           .order("title", { ascending: true });
         if (!res.error) setDefs(res.data ?? []);
@@ -85,6 +89,8 @@ export function useChoreDefinitions() {
     anchorSpeciesId: c.anchor_species_id,
     anchorBatchId: c.anchor_batch_id,
     atPlaceId: c.at_place_id,
+    retiredAt: c.retired_at,
+    automationEmissionId: c.automation_emission_id,
   })), [defs]);
 
   const updateDefinition = useCallback(async (id, patch) => {

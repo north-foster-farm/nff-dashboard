@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Plus, Sparkles } from "lucide-react";
 import { T } from "../theme.js";
 import { TabStrip, DataField, Subsection } from "../components/primitives.jsx";
 import { computeAge, formatDate } from "../lib/dates.js";
 import { computeStageCost } from "../lib/feedCost.js";
+import { supabase } from "../lib/supabase.js";
 import {
   getAllChoreDefinitions, describeFrequency, displayStartTime, CHORE_CATEGORIES
 } from "../lib/chores.js";
@@ -35,14 +37,182 @@ export default function SpeciesPage({ species, data }) {
 }
 
 function GroupsTab({ species }) {
-  if (species.groups.length === 0) {
-    return <div style={{ fontSize: 12, color: T.textMuted, fontStyle: "italic", padding: "32px 0", textAlign: "center" }}>No groups recorded yet.</div>;
-  }
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
-      {species.groups.map(g => <GroupCard key={g.id} group={g} species={species} />)}
+    <div>
+      <AddBatchForm species={species} />
+      {species.groups.length === 0 ? (
+        <div style={{ fontSize: 12, color: T.textMuted, fontStyle: "italic", padding: "32px 0", textAlign: "center" }}>No groups recorded yet.</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+          {species.groups.map(g => <GroupCard key={g.id} group={g} species={species} />)}
+        </div>
+      )}
     </div>
   );
+}
+
+// Minimal create-batch form (Batch 19). For broilers, inserting a row
+// fires the broiler-lifecycle automation server-side: arrival /
+// pasture-move / processing events + a brooder cleanout chore, all
+// surfaced in the dashboard "Heads up" lane. Full lifecycle pages are
+// Batch 20.
+function AddBatchForm({ species }) {
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState("");
+  const [count, setCount] = useState("");
+  const [arrival, setArrival] = useState(
+    () => new Date().toISOString().slice(0, 10)
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const hasAutomation = species.id === "broilers";
+
+  const reset = () => {
+    setOpen(false);
+    setLabel("");
+    setCount("");
+    setError(null);
+  };
+
+  const submit = async () => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    setError(null);
+    const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    const maxOrdinal = Math.max(
+      0, ...species.groups.map(g => g.ordinal ?? 0)
+    );
+    const { error: err } = await supabase.from("livestock_groups").insert({
+      id: `${species.id}_${slug}`,
+      species_id: species.id,
+      label: trimmed,
+      ordinal: maxOrdinal + 1,
+      count: count === "" ? null : Number(count),
+      arrival_date: arrival || null,
+    });
+    setSaving(false);
+    if (err) {
+      setError(err.code === "23505"
+        ? new Error(`A group named "${trimmed}" already exists.`)
+        : err);
+      return;
+    }
+    reset();
+  };
+
+  if (!open) {
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <button
+          onClick={() => setOpen(true)}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: T.accent, color: "var(--c-on-accent)",
+            border: "none", padding: "7px 14px", fontSize: 11,
+            fontWeight: 600, fontFamily: "inherit", cursor: "pointer",
+            textTransform: "uppercase", letterSpacing: "0.12em",
+          }}
+        >
+          <Plus size={13} /> Add {species.trackingModel === "batch" ? "batch" : "group"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "16px 18px", marginBottom: 14 }}>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <FormField label="Name">
+          <input
+            autoFocus
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+            placeholder={species.trackingModel === "batch" ? "Batch 3" : "Group name"}
+            style={inputStyle({ width: 160 })}
+          />
+        </FormField>
+        <FormField label="Count">
+          <input
+            type="number"
+            min={0}
+            value={count}
+            onChange={(e) => setCount(e.target.value)}
+            placeholder="—"
+            style={inputStyle({ width: 80 })}
+          />
+        </FormField>
+        <FormField label="Arrival date">
+          <input
+            type="date"
+            value={arrival}
+            onChange={(e) => setArrival(e.target.value)}
+            style={inputStyle({ width: 150 })}
+          />
+        </FormField>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={submit}
+            disabled={saving || !label.trim()}
+            style={{
+              background: T.accent, color: "var(--c-on-accent)", border: "none",
+              padding: "7px 14px", fontSize: 11, fontWeight: 600,
+              fontFamily: "inherit",
+              cursor: saving || !label.trim() ? "not-allowed" : "pointer",
+              opacity: saving || !label.trim() ? 0.5 : 1,
+              textTransform: "uppercase", letterSpacing: "0.12em",
+            }}
+          >
+            {saving ? "Adding…" : "Add"}
+          </button>
+          <button
+            onClick={reset}
+            style={{
+              background: "transparent", color: T.textDim,
+              border: `1px solid ${T.border}`, padding: "7px 14px",
+              fontSize: 11, fontWeight: 600, fontFamily: "inherit",
+              cursor: "pointer", textTransform: "uppercase",
+              letterSpacing: "0.12em",
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+      {hasAutomation && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.textDim, marginTop: 12, lineHeight: 1.5 }}>
+          <Sparkles size={12} style={{ color: T.accentDeep, flexShrink: 0 }} />
+          Adding a batch fires the broiler lifecycle automation: arrival,
+          pasture-move, and processing events plus a brooder cleanout chore.
+        </div>
+      )}
+      {error && (
+        <div style={{ fontSize: 11, color: T.warn, marginTop: 10 }}>
+          {error.message ?? String(error)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FormField({ label, children }) {
+  return (
+    <div>
+      <div style={{ fontSize: 9, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function inputStyle({ width }) {
+  return {
+    width, fontSize: 13, color: T.text, background: T.surfaceAlt,
+    border: `1px solid ${T.border}`, padding: "6px 8px",
+    fontFamily: "inherit", outline: "none",
+  };
 }
 
 function GroupCard({ group, species }) {

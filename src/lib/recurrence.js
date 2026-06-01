@@ -132,6 +132,9 @@ function buildEntry(series, kind, dateIso, override, recurring) {
     recurring,
     occurrenceId: override?.id ?? null,
     status: override?.status ?? "scheduled",
+    // Sparkle treatment: occurrences of automation-created series
+    // carry the emission id so calendar rows can render the icon.
+    automationEmissionId: series.automationEmissionId ?? null,
   };
 }
 

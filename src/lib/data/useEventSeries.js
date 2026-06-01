@@ -27,7 +27,7 @@ import { realtimeChannel, supabase } from "../supabase.js";
 const SELECT_COLS =
   "id, legacy_instance_id, kind_id, label, subtitle, location, " +
   "rrule, dtstart, until, duration_minutes, season_window, " +
-  "status, payload, notes";
+  "status, payload, notes, automation_emission_id";
 
 export function useEventSeries() {
   const instanceId = useId();
@@ -197,6 +197,7 @@ function toCamel(r) {
     status: r.status,
     payload: r.payload,
     notes: r.notes,
+    automationEmissionId: r.automation_emission_id,
   };
 }
 

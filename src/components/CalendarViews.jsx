@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
 import {
   DEFAULT_RAIL, railHourLabels, railHeight,
   blockToBand, eventToBlock, layoutOverlappingEvents,
@@ -698,6 +699,9 @@ function EventBlock({ occurrence, columnIndex, columnCount, rail, bands, drag, d
       )}
       <div className="flex flex-col gap-0.5 h-full">
         <span className="truncate font-bold">
+          {occurrence.automationEmissionId && (
+            <Sparkles size={9} className="inline mr-0.5 -translate-y-px" aria-label="Created by an automation" />
+          )}
           {formatTime12h(occurrence.startTime).replace(" ", "")} {occurrence.instanceLabel}
         </span>
         {occurrence.location?.name && (heightOverride ?? block.height) > 30 && (
@@ -858,6 +862,9 @@ const MonthCell = forwardRef(function MonthCell({
             }}
             title={it.instanceLabel}
           >
+            {it.automationEmissionId && (
+              <Sparkles size={9} className="inline mr-0.5 -translate-y-px" aria-label="Created by an automation" />
+            )}
             {formatTime12h(it.startTime).replace(" ", "")} {it.instanceLabel}
           </button>
         ))}
@@ -950,6 +957,9 @@ function AgendaGroup({ group, blocks, today, onClickItem }) {
               </span>
               <span className="flex-1 min-w-0">
                 <span className="text-[13px] text-fg font-medium block truncate">
+                  {row.ev.automationEmissionId && (
+                    <Sparkles size={11} className="inline mr-1 -translate-y-px text-accent-deep" aria-label="Created by an automation" />
+                  )}
                   {row.ev.instanceLabel}
                 </span>
                 {row.ev.subtitle && (

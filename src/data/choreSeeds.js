@@ -231,7 +231,11 @@ export const CHORE_CATEGORIES = {
   sheep: { label: "Sheep", order: 2 },
   chicken_tractors: { label: "Chicken tractors", order: 3 },
   brooders: { label: "Brooders", order: 4 },
-  wash_eggs: { label: "Wash eggs", order: 5 }
+  wash_eggs: { label: "Wash eggs", order: 5 },
+  // One-time chores created by automations (feed orders, brooder
+  // cleanouts after a batch moves to pasture). They retire on
+  // completion instead of recurring.
+  one_time: { label: "One-time", order: 6 }
 };
 
 // Period display metadata.

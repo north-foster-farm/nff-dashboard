@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   Plus, Search, Copy, Pencil, Trash2, ChevronDown, ChevronRight, CloudOff,
+  Sparkles,
 } from "lucide-react";
 import { T } from "../theme.js";
 import {
@@ -533,6 +534,13 @@ function TodayObligationRow({
             display: "flex", alignItems: "center", gap: 8
           }}>
             <span>{chore.title}</span>
+            {chore.automationEmissionId && (
+              <Sparkles
+                size={12}
+                style={{ color: T.accentDeep, flexShrink: 0 }}
+                aria-label="Created by an automation"
+              />
+            )}
             {queued && (
               <CloudOff
                 size={12}
@@ -977,6 +985,13 @@ function ChoreDefinitionRow({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: T.text, display: "flex", alignItems: "baseline", gap: 8 }}>
             <span>{chore.title}</span>
+            {chore.automationEmissionId && (
+              <Sparkles
+                size={12}
+                style={{ color: T.accentDeep, flexShrink: 0, alignSelf: "center" }}
+                aria-label="Created by an automation"
+              />
+            )}
             {fannedCount > 1 && (
               <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 400 }}>
                 1 of {fannedCount} places

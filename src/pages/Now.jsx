@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, CloudOff, Play, Square } from "lucide-react";
+import {
+  Check, ChevronRight, CloudOff, Play, Sparkles, Square,
+} from "lucide-react";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
@@ -456,6 +458,13 @@ function ObligationRow({ obligation: o, completions, onOpenRounds }) {
         >
           {o.chore.title}
         </span>
+        {o.chore.automationEmissionId && (
+          <Sparkles
+            size={12}
+            className="shrink-0 text-accent-deep"
+            aria-label="Created by an automation"
+          />
+        )}
         {queued && (
           <CloudOff
             size={12}
