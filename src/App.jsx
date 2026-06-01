@@ -103,15 +103,20 @@ export default function App({ session }) {
     setNavOpen(false);
   };
 
+  // Layout note: the page scrolls as one normal document — no
+  // h-screen / overflow-hidden inner-scroll trickery. The pinned
+  // ("sticky") TopBar + scrolling <main> combination was buggy on iOS
+  // (viewport-height jumps, scroll chaining), so the whole chrome
+  // simply scrolls away with the content for now.
   return (
-    <div className="bg-bg text-fg h-screen flex flex-col overflow-hidden font-body text-[13px]">
+    <div className="bg-bg text-fg min-h-screen flex flex-col font-body text-[13px]">
       <TopBar
         data={data}
         session={session}
         onOpenRecords={() => setRecordsOpen((o) => !o)}
         onToggleNav={() => setNavOpen((o) => !o)}
       />
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 items-stretch">
         {/* Desktop sidebar */}
         <div className="hidden sm:flex shrink-0">
           <Sidebar
@@ -139,7 +144,7 @@ export default function App({ session }) {
             />
           </div>
         )}
-        <main className="flex-1 px-4 py-5 sm:px-10 sm:py-8 overflow-y-auto min-w-0">
+        <main className="flex-1 px-4 py-5 sm:px-10 sm:py-8 min-w-0">
           {!isSelfHeadered && !inProcessingWorkspace && (
             <SectionHeader
               section={section}

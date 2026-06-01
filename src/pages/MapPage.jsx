@@ -120,7 +120,7 @@ export default function MapPage({ data, onOpenRounds, onNavigate }) {
   const loading = sitesLoading || (!svg && !svgError);
 
   return (
-    <div className="h-full flex flex-col gap-4 min-h-0">
+    <div className="flex flex-col gap-4">
       {/* Header: title + search + legend */}
       <header className="flex items-start justify-between gap-4 flex-wrap shrink-0">
         <div>
@@ -155,8 +155,10 @@ export default function MapPage({ data, onOpenRounds, onNavigate }) {
         </div>
       </header>
 
-      {/* The map */}
-      <div className="flex-1 min-h-[420px] bg-surface border border-line relative">
+      {/* The map. Height is viewport-based (the page scrolls as a
+          normal document now) so the map still fills most of the
+          screen without an inner scroll container. */}
+      <div className="h-[calc(100dvh-280px)] min-h-[420px] bg-surface border border-line relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-[12px] text-muted uppercase tracking-[0.16em]">
