@@ -28,8 +28,10 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "NFF Admin";
   const opts = {
     body: payload.body || "",
-    icon: "/logo.svg",
-    badge: "/logo.svg",
+    // PNG app icon — SVG notification icons aren't supported on every
+    // platform (Android Chrome in particular).
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
     tag: payload.runId ? `run:${payload.runId}` : "run",
     renotify: false,
     data: payload,
