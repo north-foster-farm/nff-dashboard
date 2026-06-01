@@ -203,11 +203,20 @@ body {
   &::-webkit-scrollbar { display: none; }
 }
 
-/* Text density. `compact` is the design baseline (zoom 1). `comfortable`
-   and `spacious` scale the whole UI up — easier to read for users who'd
-   otherwise need browser zoom. We apply via CSS `zoom` on body so every
-   fixed-px utility (`text-[11px]`, `gap-4`, etc.) scales proportionally
-   without per-component changes. zoom is supported in Chrome, Safari,
-   and Firefox 126+ as of 2024. */
-html[data-density="comfortable"] body { zoom: 1.15; }
-html[data-density="spacious"]    body { zoom: 1.30; }
+/* Text density. The whole UI gets a global baseline bump (zoom 1.10) —
+   the original compact sizing read too small in the field — and
+   `comfortable` / `spacious` scale further up from there. We apply via
+   CSS `zoom` on body so every fixed-px utility (`text-[11px]`, `gap-4`,
+   etc.) scales proportionally without per-component changes. zoom is
+   supported in Chrome, Safari, and Firefox 126+ as of 2024. */
+body { zoom: 1.10; }
+html[data-density="comfortable"] body { zoom: 1.25; }
+html[data-density="spacious"]    body { zoom: 1.40; }
+
+/* Inverse-zoom wrapper: content that must keep its true physical size
+   regardless of the user's text-size setting (the farm map) sits
+   inside this. Nested zoom factors multiply, so each density level's
+   inverse cancels the body zoom exactly (e.g. 1.10 × 0.9090909 ≈ 1). */
+.density-exempt { zoom: 0.9090909; }
+html[data-density="comfortable"] .density-exempt { zoom: 0.8; }
+html[data-density="spacious"]    .density-exempt { zoom: 0.7142857; }

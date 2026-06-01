@@ -157,8 +157,10 @@ export default function MapPage({ data, onOpenRounds, onNavigate }) {
 
       {/* The map. Height is viewport-based (the page scrolls as a
           normal document now) so the map still fills most of the
-          screen without an inner scroll container. */}
-      <div className="h-[calc(100dvh-280px)] min-h-[420px] bg-surface border border-line relative">
+          screen without an inner scroll container. density-exempt
+          cancels the user's text-size zoom so the map's physical size
+          never changes when text size is adjusted. */}
+      <div className="density-exempt h-[calc(100dvh-280px)] min-h-[420px] bg-surface border border-line relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-[12px] text-muted uppercase tracking-[0.16em]">
