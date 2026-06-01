@@ -191,11 +191,15 @@ function summarize(row) {
   switch (row.kind) {
     case "chore_completed": {
       const title = choreTitleFor(p.chore_id) ?? p.chore_id;
-      return `completed ${title}`;
+      // Per-place completions (Batch 16.1) carry a denormalized
+      // place_name in the trigger payload — no join needed.
+      const at = p.place_name ? ` · ${p.place_name}` : "";
+      return `completed ${title}${at}`;
     }
     case "chore_uncompleted": {
       const title = choreTitleFor(p.chore_id) ?? p.chore_id;
-      return `un-checked ${title}`;
+      const at = p.place_name ? ` · ${p.place_name}` : "";
+      return `un-checked ${title}${at}`;
     }
     case "batch_assigned":
       return `assigned batch ${p.batch_id} to processing day ${p.event_instance_id}`;

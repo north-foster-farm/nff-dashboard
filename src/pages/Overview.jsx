@@ -12,14 +12,17 @@ import {
   displayDeadlineConcrete,
   getBlockTimeLabelForPeriod, getBlockStartMinutesForPeriod,
   getEarliestChoreInPeriod,
-  formatTime12hShort, resolveAssignee
+  formatTime12hShort, resolveAssignee,
+  obligationPlaceIds
 } from "../lib/chores.js";
+import { displayPlace } from "../lib/places.js";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
+import { useSites } from "../lib/data/useSites.js";
 import { sunMinutesOfDay } from "../lib/sunTimes.js";
 import { Sunrise, Sunset } from "lucide-react";
 import CurrentConditionsCard from "../components/WeatherWidget.jsx";
@@ -563,12 +566,27 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
   // Live completion subscription: realtime checkbox flips on the
   // dashboard mirror what's happening in Rounds + the Today tab.
   const completions = useChoreCompletions(today);
+  // Place tree + occupancy for per-place obligation fan-out
+  // (Batch 16.1) — a fanned chore shows "N of M" progress with
+  // expandable per-place sub-checkboxes.
+  const {
+    placesById, childrenByParent, placementsByPlaceId,
+  } = useSites();
   const now = today.getTime();
-  // Drop completed chores from the upcoming list — once the user
-  // has ticked them off, they shouldn't crowd the dashboard.
+  // Drop fully-completed chores from the upcoming list — once every
+  // obligation is ticked off, the chore shouldn't crowd the dashboard.
+  // Partially-done fanned chores stay (there's still work to do).
   const upcoming = instances
     .filter(i => i.deadlineAt.getTime() >= now)
-    .filter(i => !completions.completedSet?.has(i.chore.id))
+    .filter(i => {
+      const placeIds = obligationPlaceIds(
+        i.chore, childrenByParent, placementsByPlaceId
+      );
+      const { done, total } = completions.doneCountForChore(
+        i.chore.id, placeIds
+      );
+      return done < total;
+    })
     .slice(0, UPCOMING_LIMIT);
 
   const byPeriod = {};
@@ -592,6 +610,9 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
               instances={byPeriod[p]}
               blocks={blocks}
               completions={completions}
+              placesById={placesById}
+              childrenByParent={childrenByParent}
+              placementsByPlaceId={placementsByPlaceId}
             />
           ))}
         </div>
@@ -600,7 +621,10 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
   );
 }
 
-function UpcomingPeriodGroup({ period, instances, blocks, completions }) {
+function UpcomingPeriodGroup({
+  period, instances, blocks, completions, placesById, childrenByParent,
+  placementsByPlaceId,
+}) {
   const meta = CHORE_PERIODS[period];
   const timeLabel = getBlockTimeLabelForPeriod(instances, period, blocks) || meta?.hint || "";
   return (
@@ -615,6 +639,9 @@ function UpcomingPeriodGroup({ period, instances, blocks, completions }) {
             key={inst.choreId}
             inst={inst}
             completions={completions}
+            placesById={placesById}
+            childrenByParent={childrenByParent}
+            placementsByPlaceId={placementsByPlaceId}
           />
         ))}
       </div>
@@ -622,35 +649,122 @@ function UpcomingPeriodGroup({ period, instances, blocks, completions }) {
   );
 }
 
-function UpcomingChoreRow({ inst, completions }) {
+function UpcomingChoreRow({
+  inst, completions, placesById, childrenByParent, placementsByPlaceId,
+}) {
   const { chore } = inst;
-  const done = completions.completedSet?.has(chore.id) ?? false;
   const [pending, setPending] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  // Per-place obligations (Batch 16.1).
+  const placeIds = useMemo(
+    () => obligationPlaceIds(chore, childrenByParent, placementsByPlaceId),
+    [chore, childrenByParent, placementsByPlaceId]
+  );
+  const { done, total } = completions.doneCountForChore(chore.id, placeIds);
+  const allDone = total > 0 && done === total;
+  const fanned = total > 1;
+
+  // Main checkbox: single-obligation chores toggle that one
+  // obligation; fanned chores bulk-complete all remaining (or
+  // un-complete all when everything is done).
   const onToggle = async () => {
     if (pending) return;
     setPending(true);
     try {
-      await completions.toggle(chore.id, done);
+      if (fanned) {
+        await completions.toggleMany(chore.id, placeIds, !allDone);
+      } else {
+        await completions.toggle(chore.id, placeIds[0] ?? null, allDone);
+      }
     } finally {
       setPending(false);
     }
   };
+
   return (
-    <div className="flex gap-2.5 items-center py-1 text-xs">
+    <div className="py-1 text-xs">
+      <div className="flex gap-2.5 items-center">
+        <button
+          onClick={onToggle}
+          disabled={pending}
+          aria-label={allDone ? "Mark incomplete" : "Mark complete"}
+          className={
+            "w-4 h-4 shrink-0 cursor-pointer p-0 border-[1.5px] " +
+            (allDone
+              ? "bg-accent border-accent"
+              : "bg-transparent border-line")
+          }
+        />
+        <div className="flex-1 min-w-0">
+          <div className={
+            "flex items-center gap-2 " +
+            (allDone ? "text-faint line-through" : "text-fg")
+          }>
+            <span>{chore.title}</span>
+            {fanned && (
+              <button
+                onClick={() => setExpanded(e => !e)}
+                className={
+                  "bg-transparent border-0 cursor-pointer p-0 " +
+                  "text-[11px] font-semibold " +
+                  (done > 0 && !allDone ? "text-accent" : "text-muted")
+                }
+                aria-label={expanded ? "Collapse places" : "Expand places"}
+              >
+                {done} of {total} {expanded ? "▾" : "▸"}
+              </button>
+            )}
+          </div>
+          <div className="text-[12px] text-muted mt-px">
+            {CHORE_CATEGORIES[chore.category]?.label ?? chore.category} · {displayDeadlineConcrete(chore)}
+          </div>
+        </div>
+      </div>
+      {fanned && expanded && (
+        <div className="flex flex-col gap-1 mt-1.5 ml-[26px]">
+          {placeIds.map(pid => (
+            <UpcomingPlaceRow
+              key={pid ?? "general"}
+              choreId={chore.id}
+              placeId={pid}
+              placesById={placesById}
+              completions={completions}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Per-place sub-row inside an expanded fanned chore on the dashboard:
+// checkbox + place name + bold parent (D1 disambiguation).
+function UpcomingPlaceRow({ choreId, placeId, placesById, completions }) {
+  const place = placeId ? placesById?.get(placeId) : null;
+  const { name, parentName } = displayPlace(place, placesById);
+  const isDone = completions.isDone(choreId, placeId);
+  return (
+    <div className="flex gap-2 items-center">
       <button
-        onClick={onToggle}
-        disabled={pending}
-        aria-label={done ? "Mark incomplete" : "Mark complete"}
+        onClick={() => completions.toggle(choreId, placeId, isDone)}
+        aria-label={isDone ? "Mark incomplete" : "Mark complete"}
         className={
-          "w-4 h-4 shrink-0 cursor-pointer p-0 border-[1.5px] " +
-          (done ? "bg-accent border-accent" : "bg-transparent border-line")
+          "w-3.5 h-3.5 shrink-0 cursor-pointer p-0 border-[1.5px] " +
+          (isDone
+            ? "bg-accent border-accent"
+            : "bg-transparent border-line")
         }
       />
-      <div className="flex-1 min-w-0">
-        <div className={done ? "text-faint line-through" : "text-fg"}>{chore.title}</div>
-        <div className="text-[12px] text-muted mt-px">
-          {CHORE_CATEGORIES[chore.category]?.label ?? chore.category} · {displayDeadlineConcrete(chore)}
-        </div>
+      <div className={
+        "text-[12px] " + (isDone ? "text-faint line-through" : "text-fg")
+      }>
+        {name || "This chore"}
+        {parentName && (
+          <span className="text-muted">
+            {" · "}<strong>{parentName}</strong>
+          </span>
+        )}
       </div>
     </div>
   );

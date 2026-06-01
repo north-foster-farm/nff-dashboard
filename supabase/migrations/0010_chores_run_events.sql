@@ -140,3 +140,119 @@ begin
          || 'public.activity_log_condition_states';
   end if;
 end $$;
+
+
+-- ── Chore completion triggers: place awareness (Batch 16.1) ──────────
+-- chore_completions gained a place_id column in 0009 (per-place
+-- completion grain) and activity_log gained its place_id column above.
+-- Redefine both completion trigger functions — last defined in 0002
+-- (log_chore_completion) and 0007 (log_chore_uncompletion, debounce) —
+-- so the feed rows carry the place that was completed:
+--
+--   * activity_log.place_id is populated from the completion row.
+--   * payload gains place_id + a denormalized place_name so renderers
+--     need no join ("completed Feed mobile coops · MC1").
+--   * the 10s check↔uncheck debounce from 0007 now also matches on
+--     place (NULL-safe), so un-checking MC1 never cancels the feed
+--     entry for a fresh MC2 check.
+
+create or replace function public.log_chore_completion()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_place_name text;
+begin
+  select name into v_place_name
+  from public.places where id = new.place_id;
+
+  insert into public.activity_log
+    (actor_email, kind, payload, place_id, occurred_at)
+  values (
+    new.completed_by_email,
+    'chore_completed',
+    jsonb_build_object(
+      'chore_id', new.chore_id,
+      'completion_date', new.completion_date,
+      'notes', new.notes,
+      'place_id', new.place_id,
+      'place_name', v_place_name
+    ),
+    new.place_id,
+    new.completed_at
+  );
+  return new;
+end;
+$$;
+
+create or replace function public.log_chore_uncompletion()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor text;
+  v_place_name text;
+  recent_completion_id uuid;
+begin
+  actor := coalesce((auth.jwt() ->> 'email')::text, old.completed_by_email);
+
+  -- Debounce: a matching chore_completed row (same chore, same place,
+  -- same day) logged within the last 10 seconds means this was a
+  -- misclick — strip both legs of the pair instead of logging.
+  select id into recent_completion_id
+  from public.activity_log
+  where kind = 'chore_completed'
+    and (payload ->> 'chore_id') = old.chore_id
+    and (payload ->> 'completion_date') = old.completion_date::text
+    and (payload ->> 'place_id') is not distinct from (old.place_id::text)
+    and occurred_at > now() - interval '10 seconds'
+  order by occurred_at desc
+  limit 1;
+
+  if recent_completion_id is not null then
+    delete from public.activity_log where id = recent_completion_id;
+    return old;
+  end if;
+
+  select name into v_place_name
+  from public.places where id = old.place_id;
+
+  insert into public.activity_log (actor_email, kind, payload, place_id)
+  values (
+    actor,
+    'chore_uncompleted',
+    jsonb_build_object(
+      'chore_id', old.chore_id,
+      'completion_date', old.completion_date,
+      'originally_completed_by', old.completed_by_email,
+      'place_id', old.place_id,
+      'place_name', v_place_name
+    ),
+    old.place_id
+  );
+  return old;
+end;
+$$;
+
+-- Re-bind the triggers (function names unchanged, but re-issue for
+-- clarity, matching the 0007 precedent).
+drop trigger if exists chore_completion_logged on public.chore_completions;
+create trigger chore_completion_logged
+  after insert on public.chore_completions
+  for each row execute function public.log_chore_completion();
+
+drop trigger if exists chore_uncompletion_logged on public.chore_completions;
+create trigger chore_uncompletion_logged
+  after delete on public.chore_completions
+  for each row execute function public.log_chore_uncompletion();
+
+-- Trigger-only functions; re-revoke EXECUTE after redefinition so they
+-- aren't exposed as PostgREST RPCs.
+revoke execute on function public.log_chore_completion()
+  from public, anon, authenticated;
+revoke execute on function public.log_chore_uncompletion()
+  from public, anon, authenticated;

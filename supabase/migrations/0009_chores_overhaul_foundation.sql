@@ -382,6 +382,34 @@ create index if not exists chore_definitions_last_chance_block_idx
   where last_chance_block_id is not null;
 
 
+-- ── chore_completions: per-place grain (Batch 16.1) ──────────────────
+-- A chore scoped to a parent place fans out into one obligation per
+-- occupied descendant place (computed client-side via
+-- lib/chores.js → obligationPlaceIds). Each obligation completes
+-- independently, so "tractor 3 fed, tractor 4 not" is representable.
+--
+-- The table is created in 0002 (before `places` exists) WITHOUT a
+-- uniqueness constraint; the place column + uniqueness land here.
+--
+-- place_id NULL == a chore-level completion (chores with no place, or
+-- legacy rows restored from a pre-16.1 backup). Two partial unique
+-- indexes express "one completion per chore+place+day" with NULL-safe
+-- semantics — a plain unique constraint would treat NULL place_ids as
+-- distinct and allow duplicate chore-level rows.
+alter table public.chore_completions
+  add column if not exists place_id uuid
+    references public.places(id) on delete set null;
+
+create unique index if not exists chore_completions_uniq_placed
+  on public.chore_completions (chore_id, place_id, completion_date)
+  where place_id is not null;
+create unique index if not exists chore_completions_uniq_unplaced
+  on public.chore_completions (chore_id, completion_date)
+  where place_id is null;
+create index if not exists chore_completions_place_idx
+  on public.chore_completions (place_id) where place_id is not null;
+
+
 -- ── seed: chore_blocks ────────────────────────────────────────────────
 -- Three plain fixed-time blocks. Editable in the Blocks tab on the
 -- Chores page. What matters is having something here so the legacy

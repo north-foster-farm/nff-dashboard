@@ -7,6 +7,7 @@ import {
   CHORE_CATEGORIES, CHORE_PERIODS,
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete,
+  obligationPlaceIds,
 } from "../lib/chores.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
@@ -14,7 +15,7 @@ import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useSites } from "../lib/data/useSites.js";
-import { buildPlaceTree } from "../lib/places.js";
+import { buildPlaceTree, displayPlace } from "../lib/places.js";
 import {
   useChoreBlocks, formatMinutesOfDay,
 } from "../lib/data/useChoreBlocks.js";
@@ -159,9 +160,17 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   // just because one had fewer chores.
   const [setWidthRef, cols] = useColumnCount(960);
 
-  // One subscription for the whole tab. The Set + toggle propagate down to
-  // each TodayChoreRow as props — see PeriodGroup → TodayChoreRow below.
-  const { completedSet, toggle: toggleCompletion } = useChoreCompletions(today);
+  // One subscription for the whole tab. The completions hook + the
+  // place tree propagate down to each TodayChoreRow as props — see
+  // BlockGroup → TodayChoreRow below.
+  const completions = useChoreCompletions(today);
+
+  // Place tree + occupancy for per-place obligation fan-out
+  // (Batch 16.1). A chore scoped to a parent place renders as a
+  // progress row ("2 of 3") with expandable per-place sub-checkboxes.
+  const {
+    placesById, childrenByParent, placementsByPlaceId,
+  } = useSites();
 
   const isEmpty = orderedBlockKeys.length === 0;
 
@@ -190,8 +199,10 @@ function TodayTab({ data, currentUser, onChangeUser }) {
             block={block}
             instances={blockGroups.get(blockKey)}
             cols={cols}
-            completedSet={completedSet}
-            onToggle={toggleCompletion}
+            completions={completions}
+            placesById={placesById}
+            childrenByParent={childrenByParent}
+            placementsByPlaceId={placementsByPlaceId}
             currentUserEmail={userEmail}
             blocks={blocks}
           />
@@ -208,7 +219,10 @@ function isWindowy(chore) {
   return (t === "weekly_window" || t === "monthly_last_week_window") ? 1 : 0;
 }
 
-function BlockGroup({ block, instances, cols, completedSet, onToggle, currentUserEmail, blocks }) {
+function BlockGroup({
+  block, instances, cols, completions, placesById, childrenByParent,
+  placementsByPlaceId, currentUserEmail, blocks,
+}) {
   const headerLabel = block ? block.name : "Anytime";
   const timeLabel = block
     ? displayBlockSide(block.startKind, block.startMinutes)
@@ -234,8 +248,10 @@ function BlockGroup({ block, instances, cols, completedSet, onToggle, currentUse
         renderItem={inst => (
           <TodayChoreRow
             inst={inst}
-            done={completedSet?.has(inst.chore.id) ?? false}
-            onToggle={onToggle}
+            completions={completions}
+            placesById={placesById}
+            childrenByParent={childrenByParent}
+            placementsByPlaceId={placementsByPlaceId}
             currentUserEmail={currentUserEmail}
             blocks={blocks}
           />
@@ -245,11 +261,45 @@ function BlockGroup({ block, instances, cols, completedSet, onToggle, currentUse
   );
 }
 
-function TodayChoreRow({ inst, done, onToggle, currentUserEmail, blocks }) {
+function TodayChoreRow({
+  inst, completions, placesById, childrenByParent, placementsByPlaceId,
+  currentUserEmail, blocks,
+}) {
   const { chore, assignees } = inst;
-  // Persistence happens through onToggle (Supabase via useChoreCompletions).
-  // The Set arrives via realtime so re-rendering on success is automatic.
-  const handleClick = () => onToggle?.(chore.id, done);
+  const [expanded, setExpanded] = useState(false);
+
+  // Per-place obligations (Batch 16.1). A chore scoped to a parent
+  // place fans into one checkbox per occupied descendant place; the
+  // main checkbox bulk-completes whatever is left.
+  const placeIds = useMemo(
+    () => obligationPlaceIds(chore, childrenByParent, placementsByPlaceId),
+    [chore, childrenByParent, placementsByPlaceId]
+  );
+  const sortedPlaceIds = useMemo(() => {
+    return [...placeIds].sort((a, b) => {
+      const pa = a ? placesById?.get(a) : null;
+      const pb = b ? placesById?.get(b) : null;
+      return (
+        (pa?.sortOrder ?? 0) - (pb?.sortOrder ?? 0) ||
+        (pa?.name ?? "").localeCompare(pb?.name ?? "")
+      );
+    });
+  }, [placeIds, placesById]);
+
+  const { done, total } = completions.doneCountForChore(chore.id, placeIds);
+  const allDone = total > 0 && done === total;
+  const fanned = total > 1;
+
+  // Main checkbox: single-obligation chores toggle that obligation;
+  // fanned chores bulk-complete all remaining (or un-complete all).
+  const handleClick = () => {
+    if (fanned) {
+      completions.toggleMany(chore.id, placeIds, !allDone);
+    } else {
+      completions.toggle(chore.id, placeIds[0] ?? null, allDone);
+    }
+  };
+
   // Right-column metadata: explicit assignees + deadline. If no
   // assignees, show only the deadline — no "unassigned" label.
   // Multi-assignee rules render names joined with " · ".
@@ -258,43 +308,114 @@ function TodayChoreRow({ inst, done, onToggle, currentUserEmail, blocks }) {
   metaParts.push(displayDeadlineConcrete(chore));
 
   return (
-    <div style={{ background: T.surface, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={{ background: T.surface }}>
+      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+        <button
+          onClick={handleClick}
+          aria-label={allDone ? "Mark incomplete" : "Mark complete"}
+          style={{
+            width: 20, height: 20, flexShrink: 0,
+            background: allDone ? T.accent : "transparent",
+            border: `1.5px solid ${allDone ? T.accent : T.border}`,
+            cursor: "pointer",
+            padding: 0,
+            transition: "background-color 120ms ease, border-color 120ms ease"
+          }}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 13, fontWeight: 500,
+            color: allDone ? T.textFaint : T.text,
+            textDecoration: allDone ? "line-through" : "none",
+            display: "flex", alignItems: "center", gap: 8
+          }}>
+            <span>{chore.title}</span>
+            {fanned && (
+              <button
+                onClick={() => setExpanded(e => !e)}
+                style={{
+                  background: "transparent", border: "none", cursor: "pointer",
+                  color: done > 0 && !allDone ? T.accent : T.textDim,
+                  fontSize: 11, fontWeight: 600, padding: 0,
+                  display: "inline-flex", alignItems: "center", gap: 2,
+                  fontFamily: "inherit"
+                }}
+                aria-label={expanded ? "Collapse places" : "Expand places"}
+              >
+                {done} of {total}
+                {expanded
+                  ? <ChevronDown size={12} />
+                  : <ChevronRight size={12} />}
+              </button>
+            )}
+          </div>
+          {chore.description && (
+            <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{chore.description}</div>
+          )}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
+          <div style={{ fontSize: 12, color: T.textDim }}>{CHORE_CATEGORIES[chore.category]?.label ?? chore.category}</div>
+          <div style={{ fontSize: 12, color: T.textFaint, display: "flex", alignItems: "center", gap: 6 }}>
+            <ChoreRemainingPill chore={chore} blocks={blocks} />
+            <span>{metaParts.join(" · ")}</span>
+          </div>
+        </div>
+        <ChoreMessageButton
+          choreId={chore.id}
+          choreTitle={chore.title}
+          currentUserEmail={currentUserEmail}
+        />
+      </div>
+      {fanned && expanded && (
+        <div style={{ padding: "0 16px 12px 48px", display: "flex", flexDirection: "column", gap: 6 }}>
+          {sortedPlaceIds.map(pid => (
+            <PlaceObligationRow
+              key={pid ?? "general"}
+              choreId={chore.id}
+              placeId={pid}
+              placesById={placesById}
+              completions={completions}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One per-place sub-row inside an expanded fanned chore: checkbox +
+// place name + bold parent name (D1 disambiguation — "Mobile Coop 1"
+// exists under more than one pasture).
+function PlaceObligationRow({ choreId, placeId, placesById, completions }) {
+  const place = placeId ? placesById?.get(placeId) : null;
+  const { name, parentName } = displayPlace(place, placesById);
+  const isDone = completions.isDone(choreId, placeId);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <button
-        onClick={handleClick}
-        aria-label={done ? "Mark incomplete" : "Mark complete"}
+        onClick={() => completions.toggle(choreId, placeId, isDone)}
+        aria-label={isDone ? "Mark incomplete" : "Mark complete"}
         style={{
-          width: 20, height: 20, flexShrink: 0,
-          background: done ? T.accent : "transparent",
-          border: `1.5px solid ${done ? T.accent : T.border}`,
+          width: 16, height: 16, flexShrink: 0,
+          background: isDone ? T.accent : "transparent",
+          border: `1.5px solid ${isDone ? T.accent : T.border}`,
           cursor: "pointer",
           padding: 0,
           transition: "background-color 120ms ease, border-color 120ms ease"
         }}
       />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 13, fontWeight: 500,
-          color: done ? T.textFaint : T.text,
-          textDecoration: done ? "line-through" : "none"
-        }}>
-          {chore.title}
-        </div>
-        {chore.description && (
-          <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{chore.description}</div>
+      <div style={{
+        fontSize: 12,
+        color: isDone ? T.textFaint : T.text,
+        textDecoration: isDone ? "line-through" : "none"
+      }}>
+        {name || "This chore"}
+        {parentName && (
+          <span style={{ color: T.textDim }}>
+            {" · "}<strong>{parentName}</strong>
+          </span>
         )}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-        <div style={{ fontSize: 12, color: T.textDim }}>{CHORE_CATEGORIES[chore.category]?.label ?? chore.category}</div>
-        <div style={{ fontSize: 12, color: T.textFaint, display: "flex", alignItems: "center", gap: 6 }}>
-          <ChoreRemainingPill chore={chore} blocks={blocks} />
-          <span>{metaParts.join(" · ")}</span>
-        </div>
-      </div>
-      <ChoreMessageButton
-        choreId={chore.id}
-        choreTitle={chore.title}
-        currentUserEmail={currentUserEmail}
-      />
     </div>
   );
 }

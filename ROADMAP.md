@@ -1207,6 +1207,73 @@ offline outbox, the Now surface + hardened Rounds, and the
 map renderer + place pages + nav restructure. `place_geometry`
 ships empty until the authored SVG lands in 18.
 
+### Batch 16.1 — Per-place completions + occupancy fan-out · `v0.10.11-alpha`
+2026-05-31. First half of Batch 16 (Farm map: per-place completion +
+offline outbox), split when the batch started so the destructive
+schema re-key lands separately from the client-only IndexedDB outbox
+(16.2). Migrations 0002/0009/0010 amended in place per the
+pre-production rule (backup → reset → restore loop run; all priority
+tables verified non-empty before reset).
+
+**Schema.** `chore_completions` re-keyed from one-row-per-(chore, day)
+to per-place grain:
+- 0002: the inline `unique (chore_id, completion_date)` constraint is
+  removed from the create-table (uniqueness now lives in 0009, where
+  `places` exists).
+- 0009: `chore_completions.place_id` (nullable FK → places, on delete
+  set null) + two partial unique indexes —
+  `(chore_id, place_id, completion_date) where place_id is not null`
+  and `(chore_id, completion_date) where place_id is null` — so both
+  placed and chore-level rows get NULL-safe one-per-day semantics.
+- 0010: both completion trigger functions redefined (supersedes the
+  0002 / 0007 versions): `activity_log.place_id` is populated, the
+  payload carries `place_id` + a denormalized `place_name` (renderers
+  need no join), and the 10s check↔uncheck debounce now matches on
+  place too (`is not distinct from`, NULL-safe) so un-checking MC1
+  never cancels the feed entry for a fresh MC2 check.
+
+**Occupancy-driven fan-out** (the design decision of the batch). A
+chore scoped to place P fans into the places in P's subtree (incl. P)
+that currently host a livestock batch (open `placements` row,
+`occupant_type = 'batch'`). Machines never create obligations; an
+unoccupied subtree falls back to a single obligation at P; placeless
+chores keep one NULL-place obligation. Chores follow the animals —
+move a batch and its obligations move with it. New pure helper
+`obligationPlaceIds()` in `lib/chores.js`, reused by Rounds, Today,
+the dashboard, and (Batches 17–18) place_status + the map tint.
+
+**`useChoreCompletions` rewritten** to composite `(chore, place)`
+keying: `isDone(choreId, placeId)`, `doneCountForChore(choreId,
+placeIds)`, `toggle(choreId, placeId, done)`, and a batched
+`toggleMany(choreId, placeIds, makeDone)` (one INSERT for all
+remaining places / one DELETE for uncheck-all — replaces the old
+sequential await loops). Optimistic + revert + realtime preserved.
+
+**Surfaces:**
+- **Rounds** — each (chore, place) obligation is its own check row
+  under its place section; "X/Y done" headers and the run auto-done
+  derivation count obligations; "All taken care of" uses the batched
+  toggleMany.
+- **Chores → Today tab + dashboard Upcoming card** — fanned chores
+  render as one row with an "N of M" progress chip; expanding reveals
+  per-place sub-checkboxes labeled name + bold parent (D1
+  disambiguation). The main checkbox bulk-completes all remaining
+  places (or un-completes all). Single-obligation chores look and
+  behave exactly as before.
+- **Activity feed** — completion lines read "completed Check / fill
+  waterer · Chicken tractor 1".
+
+Mid-flight: the restore-script bugs this reset exposed were fixed in
+`scripts/restore-db.mjs` — `product_kinds` now inserts after
+`livestock_species` (FK order; the cascade-delete + wrong order had
+emptied it), `user_preferences` / `admins` get correct PK overrides
+for the delete-all step, and the `timeline_items` view is excluded
+from restore.
+
+**Out of scope — Batch 16.2:** the device-local IndexedDB outbox,
+"queued / not synced" indicator, guaranteed sync, and the additive
+mortality merge policy.
+
 ---
 
 ## Upcoming
@@ -1370,11 +1437,17 @@ Collisions resolved (recorded here for the record):
 Shipped `v0.10.10-alpha` (2026-05-31) — see the Shipped section above.
 
 ### Batch 16 — Farm map: per-place completion + offline outbox
-The rollout's beating heart — Dad working in the field, offline. Re-key
-`chore_completions` to `(chore_id, place_id, date)` and **fan site-scoped
-chores into per-place obligations** (so "tractor 3 fed, 4 not" is
-representable, and the map can show "3 of 5 fed"). Build a device-local
-**append-only IndexedDB outbox**; replace today's silent-revert toggle
+The rollout's beating heart — Dad working in the field, offline. Split
+into 16.1 / 16.2 when the batch started.
+
+**16.1 ✅ SHIPPED** (`v0.10.11-alpha`, 2026-05-31 — see Shipped above):
+re-keyed `chore_completions` to `(chore_id, place_id, date)` and fanned
+place-scoped chores into per-place obligations via occupancy-driven
+fan-out (so "tractor 3 fed, 4 not" is representable, and the map can
+show "3 of 5 fed").
+
+**16.2 (next):** the offline outbox. Build a device-local **append-only
+IndexedDB outbox**; replace today's silent-revert toggle
 (`useChoreCompletions.toggle` reverts on network error — a tick behind the
 broiler pasture silently un-ticks) with optimistic local apply + a visible
 **"queued / not synced"** indicator + guaranteed sync. Conflict policy:
@@ -1382,7 +1455,6 @@ completions are **idempotent** row-presence inserts; **counts (mortality)
 merge ADDITIVELY** (two offline phones each logging "1 dead" sum to 2 —
 non-negotiable); field **edits are clocked last-write-wins** with the
 append-only `activity_log` as audit. No full CRDT (shape it to grow).
-(May split 16.1 grain / 16.2 outbox when the batch starts.)
 
 Ships value: capture works with no signal and never silently loses data;
 per-place completion lights up the rest of the design.

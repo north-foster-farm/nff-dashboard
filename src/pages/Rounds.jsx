@@ -7,6 +7,7 @@ import { useSites } from "../lib/data/useSites.js";
 import { descendantIds, placePath } from "../lib/places.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
+import { obligationPlaceIds } from "../lib/chores.js";
 import { useChoreRuns, formatElapsed } from "../lib/data/useChoreRuns.js";
 import { useRunEvents } from "../lib/data/useRunEvents.js";
 import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
@@ -435,7 +436,31 @@ function DoingSurface({
     [definitions, block]
   );
 
-  // Auto-derive run completion: every chore checked → done; any
+  // Fan each chore into per-place obligations (Batch 16.1). A chore
+  // scoped to a parent place produces one independently completable
+  // { chore, placeId } entry per occupied descendant place. Within a
+  // chore, obligations sort by place sortOrder then name so render
+  // order is stable.
+  const blockObligations = useMemo(() => {
+    const out = [];
+    for (const chore of blockChores) {
+      const placeIds = obligationPlaceIds(
+        chore, childrenByParent, placementsByPlaceId
+      );
+      const sorted = [...placeIds].sort((a, b) => {
+        const pa = a ? placesById.get(a) : null;
+        const pb = b ? placesById.get(b) : null;
+        return (
+          (pa?.sortOrder ?? 0) - (pb?.sortOrder ?? 0) ||
+          (pa?.name ?? "").localeCompare(pb?.name ?? "")
+        );
+      });
+      for (const placeId of sorted) out.push({ chore, placeId });
+    }
+    return out;
+  }, [blockChores, childrenByParent, placementsByPlaceId, placesById]);
+
+  // Auto-derive run completion: every obligation checked → done; any
   // un-checked while done → resume. Guard against the trivial 0/0
   // case (no chores in the block) — never auto-flip then.
   // useRef ensures we don't fire writes during the same render that
@@ -446,12 +471,12 @@ function DoingSurface({
   useEffect(() => {
     if (writingRef.current) return;
     if (!run) return;
-    if (blockChores.length === 0) return;
-    if (!completions.completedSet) return;
-    const completed = blockChores.filter(c =>
-      completions.completedSet.has(c.id)
+    if (blockObligations.length === 0) return;
+    if (completions.loading) return;
+    const completed = blockObligations.filter(o =>
+      completions.isDone(o.chore.id, o.placeId)
     ).length;
-    const allDone = completed === blockChores.length;
+    const allDone = completed === blockObligations.length;
     if (allDone && run.state === "in_progress") {
       writingRef.current = true;
       Promise.resolve(onAutoDone()).finally(() => {
@@ -464,46 +489,48 @@ function DoingSurface({
       });
     }
   }, [
-    blockChores, completions.completedSet, run, onAutoDone, onAutoUndone,
+    blockObligations, completions.isDone, completions.loading, run,
+    onAutoDone, onAutoUndone,
   ]);
 
-  // Group chores by their top-level place for the all-places view.
-  // Each chore lands under the switcher place its place_id rolls up to;
-  // chores with no place go into a "general" bucket.
-  const choresBySwitcher = useMemo(() => {
+  // Group obligations by their top-level place for the all-places
+  // view. Each obligation lands under the switcher place its own
+  // place rolls up to (a Pasture-A chore fanned into CT1 lands under
+  // Pastures); obligations with no place go into a "general" bucket.
+  const obligationsBySwitcher = useMemo(() => {
     const out = new Map();
     const general = [];
-    for (const def of blockChores) {
-      const sid = switcherIdOf(def.placeId);
+    for (const o of blockObligations) {
+      const sid = switcherIdOf(o.placeId ?? o.chore.placeId);
       if (sid) {
         if (!out.has(sid)) out.set(sid, []);
-        out.get(sid).push(def);
+        out.get(sid).push(o);
       } else {
-        general.push(def);
+        general.push(o);
       }
     }
     return { out, general };
-  }, [blockChores, switcherIdOf]);
+  }, [blockObligations, switcherIdOf]);
 
-  // Within the selected top-level place, group chores by their actual
-  // place (subtree). Chores scoped exactly to the selected place land
-  // in the "anywhere in X" bucket.
+  // Within the selected top-level place, group obligations by their
+  // actual place (subtree). Obligations sitting exactly at the
+  // selected place land in the "anywhere in X" bucket.
   const groupedForSelected = useMemo(() => {
     if (!selectedPlaceId) return null;
     const subtree = descendantIds(selectedPlaceId, childrenByParent);
-    const groups = new Map(); // placeId → chores[]
+    const groups = new Map(); // placeId → obligations[]
     const anywhere = [];
-    for (const def of blockChores) {
-      if (!def.placeId || !subtree.has(def.placeId)) continue;
-      if (def.placeId === selectedPlaceId) {
-        anywhere.push(def);
+    for (const o of blockObligations) {
+      if (!o.placeId || !subtree.has(o.placeId)) continue;
+      if (o.placeId === selectedPlaceId) {
+        anywhere.push(o);
       } else {
-        if (!groups.has(def.placeId)) groups.set(def.placeId, []);
-        groups.get(def.placeId).push(def);
+        if (!groups.has(o.placeId)) groups.set(o.placeId, []);
+        groups.get(o.placeId).push(o);
       }
     }
     return { groups, anywhere };
-  }, [selectedPlaceId, blockChores, childrenByParent]);
+  }, [selectedPlaceId, blockObligations, childrenByParent]);
 
   return (
     <div className="bg-bg text-fg h-screen flex flex-col font-body">
@@ -554,8 +581,8 @@ function DoingSurface({
         {!selectedPlaceId ? (
           <AllPlacesView
             switcherPlaces={switcherPlaces}
-            chores={blockChores}
-            choresBySwitcher={choresBySwitcher}
+            obligations={blockObligations}
+            obligationsBySwitcher={obligationsBySwitcher}
             placesById={placesById}
             blocks={blocks}
             completions={completions}
@@ -634,10 +661,10 @@ function SwitcherChip({ active, onClick, children }) {
 
 // ── All-places view ───────────────────────────────────────────────────
 function AllPlacesView({
-  switcherPlaces, chores, choresBySwitcher, placesById, blocks, completions,
-  onSelectPlace,
+  switcherPlaces, obligations, obligationsBySwitcher, placesById, blocks,
+  completions, onSelectPlace,
 }) {
-  if (chores.length === 0) {
+  if (obligations.length === 0) {
     return (
       <div className="bg-surface border border-line py-10 px-6 text-center max-w-[520px] mx-auto">
         <div className="text-[13px] text-muted font-medium mb-1">
@@ -653,22 +680,22 @@ function AllPlacesView({
   return (
     <div className="flex flex-col gap-4 max-w-[680px] mx-auto">
       {switcherPlaces
-        .filter(p => choresBySwitcher.out.has(p.id))
+        .filter(p => obligationsBySwitcher.out.has(p.id))
         .map(p => (
           <PlaceSection
             key={p.id}
             place={p}
-            chores={choresBySwitcher.out.get(p.id)}
+            obligations={obligationsBySwitcher.out.get(p.id)}
             placesById={placesById}
             blocks={blocks}
             completions={completions}
             onTitleClick={() => onSelectPlace(p.id)}
           />
         ))}
-      {choresBySwitcher.general.length > 0 && (
+      {obligationsBySwitcher.general.length > 0 && (
         <PlaceSection
           place={{ id: null, name: "Other" }}
-          chores={choresBySwitcher.general}
+          obligations={obligationsBySwitcher.general}
           placesById={placesById}
           blocks={blocks}
           completions={completions}
@@ -678,8 +705,12 @@ function AllPlacesView({
   );
 }
 
-function PlaceSection({ place, chores, placesById, blocks, completions, onTitleClick }) {
-  const completed = chores.filter(c => completions.completedSet?.has(c.id)).length;
+function PlaceSection({
+  place, obligations, placesById, blocks, completions, onTitleClick,
+}) {
+  const completed = obligations.filter(o =>
+    completions.isDone(o.chore.id, o.placeId)
+  ).length;
   return (
     <section className="bg-surface border border-line">
       <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
@@ -694,20 +725,21 @@ function PlaceSection({ place, chores, placesById, blocks, completions, onTitleC
           <span className="text-[14px] font-semibold text-fg">{place.name}</span>
         )}
         <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
-          {completed}/{chores.length} done
+          {completed}/{obligations.length} done
         </span>
-        <AllDoneButton chores={chores} completions={completions} />
+        <AllDoneButton obligations={obligations} completions={completions} />
       </header>
       <ul className="m-0 p-0 list-none">
-        {chores.map(c => {
-          // Show the chore's specific place under the title when it's
-          // deeper than this section's top-level place.
-          const cp = c.placeId ? placesById.get(c.placeId) : null;
-          const subLabel = cp && cp.id !== place.id ? cp.name : null;
+        {obligations.map(o => {
+          // Show the obligation's specific place under the title when
+          // it's deeper than this section's top-level place.
+          const op = o.placeId ? placesById.get(o.placeId) : null;
+          const subLabel = op && op.id !== place.id ? op.name : null;
           return (
             <ChoreCheckRow
-              key={c.id}
-              chore={c}
+              key={`${o.chore.id}|${o.placeId ?? ""}`}
+              chore={o.chore}
+              placeId={o.placeId}
               placeLabel={subLabel}
               blocks={blocks}
               completions={completions}
@@ -720,22 +752,31 @@ function PlaceSection({ place, chores, placesById, blocks, completions, onTitleC
 }
 
 // Bulk-tick affordance for a section. Folds in what the old Sweep
-// quick-action did: per-site "all taken care of" → mark every chore
-// in this section done in one tap. Disabled while a tick is in
-// flight so back-to-back taps don't double-fire on contention.
-function AllDoneButton({ chores, completions }) {
+// quick-action did: per-site "all taken care of" → mark every
+// obligation in this section done in one tap. Batched per chore (one
+// INSERT per chore covering all its remaining places) instead of one
+// round-trip per row. Disabled while a tick is in flight so
+// back-to-back taps don't double-fire on contention.
+function AllDoneButton({ obligations, completions }) {
   const [pending, setPending] = useState(false);
-  const undone = chores.filter(c => !completions.completedSet?.has(c.id));
-  if (undone.length === 0 || chores.length === 0) return null;
+  const undone = obligations.filter(o =>
+    !completions.isDone(o.chore.id, o.placeId)
+  );
+  if (undone.length === 0 || obligations.length === 0) return null;
   const onClick = async () => {
     if (pending) return;
     setPending(true);
     try {
-      // toggle takes the current done state; pass false because every
-      // chore in `undone` is currently not-done.
-      for (const c of undone) {
+      // Group remaining obligations by chore → one batched insert per
+      // chore.
+      const byChore = new Map();
+      for (const o of undone) {
+        if (!byChore.has(o.chore.id)) byChore.set(o.chore.id, []);
+        byChore.get(o.chore.id).push(o.placeId);
+      }
+      for (const [choreId, placeIds] of byChore) {
         // eslint-disable-next-line no-await-in-loop
-        await completions.toggle(c.id, false);
+        await completions.toggleMany(choreId, placeIds, true);
       }
     } finally {
       setPending(false);
@@ -810,15 +851,26 @@ function SelectedPlaceView({
               Anywhere in {place?.name?.toLowerCase()}
             </span>
             <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
-              {grouped.anywhere.filter(c => completions.completedSet?.has(c.id)).length}
+              {grouped.anywhere.filter(o =>
+                completions.isDone(o.chore.id, o.placeId)
+              ).length}
               /
               {grouped.anywhere.length} done
             </span>
-            <AllDoneButton chores={grouped.anywhere} completions={completions} />
+            <AllDoneButton
+              obligations={grouped.anywhere}
+              completions={completions}
+            />
           </header>
           <ul className="m-0 p-0 list-none">
-            {grouped.anywhere.map(c => (
-              <ChoreCheckRow key={c.id} chore={c} blocks={blocks} completions={completions} />
+            {grouped.anywhere.map(o => (
+              <ChoreCheckRow
+                key={`${o.chore.id}|${o.placeId ?? ""}`}
+                chore={o.chore}
+                placeId={o.placeId}
+                blocks={blocks}
+                completions={completions}
+              />
             ))}
           </ul>
         </section>
@@ -827,20 +879,31 @@ function SelectedPlaceView({
       {childPlaces
         .filter(c => selectedChildId === null || selectedChildId === c.id)
         .map(c => {
-          const chores = grouped?.groups?.get(c.id) ?? [];
-          const completed = chores.filter(x => completions.completedSet?.has(x.id)).length;
+          const obligations = grouped?.groups?.get(c.id) ?? [];
+          const completed = obligations.filter(o =>
+            completions.isDone(o.chore.id, o.placeId)
+          ).length;
           return (
             <section key={c.id} className="bg-surface border border-line">
               <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
                 <span className="text-[14px] font-semibold text-fg">{c.name}</span>
                 <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
-                  {completed}/{chores.length} done
+                  {completed}/{obligations.length} done
                 </span>
-                <AllDoneButton chores={chores} completions={completions} />
+                <AllDoneButton
+                  obligations={obligations}
+                  completions={completions}
+                />
               </header>
               <ul className="m-0 p-0 list-none">
-                {chores.map(x => (
-                  <ChoreCheckRow key={x.id} chore={x} blocks={blocks} completions={completions} />
+                {obligations.map(o => (
+                  <ChoreCheckRow
+                    key={`${o.chore.id}|${o.placeId ?? ""}`}
+                    chore={o.chore}
+                    placeId={o.placeId}
+                    blocks={blocks}
+                    completions={completions}
+                  />
                 ))}
               </ul>
             </section>
@@ -851,19 +914,20 @@ function SelectedPlaceView({
 }
 
 // ── Chore checkbox row ────────────────────────────────────────────────
-// Wraps an existing chore_completions toggle with fat tap targets and
-// the realtime-contention "✓ + disabled" treatment. The completedSet
-// updates from the realtime channel within ~80ms of any other user's
-// click; that flips the disabled state automatically.
-function ChoreCheckRow({ chore, placeLabel, blocks, completions }) {
-  const done = completions.completedSet?.has(chore.id) ?? false;
+// One row per (chore, place) obligation. Wraps the chore_completions
+// toggle with fat tap targets and the realtime-contention "✓ +
+// disabled" treatment. Completion state updates from the realtime
+// channel within ~80ms of any other user's click; that flips the
+// disabled state automatically.
+function ChoreCheckRow({ chore, placeId, placeLabel, blocks, completions }) {
+  const done = completions.isDone(chore.id, placeId);
   const [pending, setPending] = useState(false);
 
   const onToggle = async () => {
     if (pending) return;
     setPending(true);
     try {
-      await completions.toggle(chore.id, done);
+      await completions.toggle(chore.id, placeId, done);
     } finally {
       setPending(false);
     }

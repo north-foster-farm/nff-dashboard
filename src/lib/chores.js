@@ -4,6 +4,7 @@
 
 import { CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS } from "../data/choreSeeds.js";
 import { sunMinutesOfDay } from "./sunTimes.js";
+import { descendantIds } from "./places.js";
 
 export { CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS };
 
@@ -498,4 +499,41 @@ export function displayDeadlineConcrete(chore) {
     case "end_of_month_week_friday": return "by sunset Friday (last week)";
     default: return "—";
   }
+}
+
+// ── Per-place obligations (Batch 16.1) ───────────────────────────────
+// A chore scoped to a place applies to that place's whole subtree, but
+// it only demands *doing* at the places where animals currently live —
+// occupancy-driven fan-out. "Feed chicken tractors" scoped to Pasture A
+// becomes one obligation per tractor that hosts a batch right now, so
+// "tractor 3 fed, tractor 4 not" is representable and the map can show
+// "3 of 5 fed". Chores follow the animals: move a batch and the
+// obligation moves with it.
+//
+// Returns the list of place ids the chore fans out into:
+//   - placeId null           → [null]   (one chore-level obligation)
+//   - no occupied descendant → [placeId] (one obligation at the chore's
+//                                          own place — fallback)
+//   - otherwise              → every place in the subtree (incl. the
+//                               root) hosting a livestock batch via an
+//                               open `placements` row. Machines parked
+//                               somewhere never create feed obligations.
+//
+// Pure + id-only; callers sort for display via placesById. Reused by
+// Rounds, the Today tab, the dashboard Upcoming card, and (Batches
+// 17–18) the place_status projection + map tint.
+export function obligationPlaceIds(
+  chore, childrenByParent, placementsByPlaceId
+) {
+  const root = chore?.placeId ?? null;
+  if (root == null) return [null];
+  const subtree = descendantIds(root, childrenByParent); // includes root
+  const hosting = [];
+  for (const id of subtree) {
+    const occupants = placementsByPlaceId?.get(id) ?? [];
+    if (occupants.some((o) => o.occupantType === "batch")) {
+      hosting.push(id);
+    }
+  }
+  return hosting.length > 0 ? hosting : [root];
 }

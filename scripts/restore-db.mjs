@@ -105,8 +105,10 @@ const headers = {
 // post-Batch-15 schemas so the same script works across the boundary.
 const INSERT_ORDER = [
   "admins", "suppliers", "feed_types", "machines", "trailers",
-  "product_kinds", "event_kinds",
+  "event_kinds",
   "livestock_species", "livestock_groups",
+  // product_kinds AFTER livestock_species — source_species_id FK
+  "product_kinds",
   "feed_schedules", "feed_schedule_stages",
   // place model (post-Batch-15) …
   "places", "placements", "place_geometry",
@@ -124,7 +126,14 @@ const INSERT_ORDER = [
 ];
 
 // Primary key per table for the "delete all rows" filter. Default 'id'.
-const PK = { place_geometry: "place_id" };
+const PK = {
+  place_geometry: "place_id",
+  user_preferences: "user_email",
+  admins: "email",
+};
+
+// Backed-up names that aren't real tables (views) — never restorable.
+const NOT_TABLES = new Set(["timeline_items"]);
 
 const CHUNK = 500;
 
@@ -135,6 +144,7 @@ function readBackupTables() {
   const byName = new Map();
   for (const f of files) {
     const name = f.replace(/\.json$/, "");
+    if (NOT_TABLES.has(name)) continue;
     if (only && !only.has(name)) continue;
     try {
       const rows = JSON.parse(readFileSync(join(backupDir, f), "utf8"));

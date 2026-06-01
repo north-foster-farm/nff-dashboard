@@ -17,18 +17,21 @@
 
 
 -- ── chore_completions ───────────────────────────────────────────────────────
--- One row per (chore, day). The unique constraint expresses the binary "done /
--- not done" model — a chore can only be completed once per day. Re-checking
--- after un-checking creates a new row with a new completed_at timestamp; we
--- don't keep history of toggles (the activity_log captures that anyway).
+-- One row per (chore, place, day). Re-checking after un-checking creates a
+-- new row with a new completed_at timestamp; we don't keep history of
+-- toggles (the activity_log captures that anyway).
+--
+-- Uniqueness is NOT defined here: the per-place grain needs a `place_id`
+-- FK to `places`, which doesn't exist until migration 0009. That migration
+-- adds the column and the partial unique indexes that key completions to
+-- (chore_id, place_id, completion_date).
 create table if not exists public.chore_completions (
   id uuid primary key default gen_random_uuid(),
   chore_id text not null,
   completion_date date not null,
   completed_by_email text not null,
   completed_at timestamptz not null default now(),
-  notes text,
-  unique (chore_id, completion_date)
+  notes text
 );
 
 create index if not exists chore_completions_date_idx
@@ -229,7 +232,8 @@ create trigger batch_assignment_logged
 -- role needs EXECUTE. Revoke it so they aren't exposed as PostgREST RPCs
 -- (Supabase grants anon/authenticated execute by default; `revoke from
 -- public` alone doesn't remove those explicit grants).
--- log_chore_uncompletion is redefined + revoked in 0007.
+-- log_chore_uncompletion is redefined + revoked in 0007; both completion
+-- trigger functions are redefined again in 0010 (place awareness).
 revoke execute on function public.log_chore_completion()
   from public, anon, authenticated;
 revoke execute on function public.log_batch_assignment()
