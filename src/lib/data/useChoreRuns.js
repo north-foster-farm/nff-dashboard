@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { supabase } from "../supabase.js";
 import { resolveBlockMinutes } from "../sunTimes.js";
+import {
+  enqueueOp, initOutbox, outboxOps, subscribeOutbox,
+} from "../outbox.js";
 
 // Loads chore_runs for today + a rolling history window and exposes
 // lifecycle mutations for the Rounds takeover.
@@ -9,6 +12,15 @@ import { resolveBlockMinutes } from "../sunTimes.js";
 // row is identified by (block_id, run_date). We materialize the row
 // lazily — Start rounds is what creates it, and All done flips it
 // to state='done'. Cancel-current flips it to state='canceled'.
+//
+// Outbox-backed (Batch 17 — hardened Rounds): mutations never call
+// Supabase directly. Each one appends an op to the device-local outbox
+// (lib/outbox.js); displayed state is the server rows (initial load +
+// realtime) overlaid with the queue's not-yet-synced ops, so starting,
+// finishing, or canceling a run works with no signal and survives an
+// app kill. Offline-created runs carry a client-generated uuid; the
+// sync executors reconcile against the natural (block_id, run_date)
+// key so they merge cleanly with rows other devices created.
 //
 // Returned shape:
 //   {
@@ -31,9 +43,94 @@ const SELECT_COLS =
   "id, block_id, run_date, state, started_at, ended_at, " +
   "started_by_email, ended_by_email";
 
+const RUN_OP_KINDS = new Set([
+  "run_start", "run_end", "run_resume", "run_cancel",
+]);
+
+// Natural-key map key for a run.
+function runKey(blockId, runDate) {
+  return `${blockId}|${runDate}`;
+}
+
+// Replay not-yet-synced run ops over the server rows. Returns a
+// Map<runKey, snake_case row> — synthetic rows for offline-created
+// runs, patched rows for offline state flips.
+function applyRunOps(serverRows, ops) {
+  const byKey = new Map();
+  for (const r of serverRows) byKey.set(runKey(r.block_id, r.run_date), r);
+  for (const op of ops) {
+    if (op.status !== "pending" && op.status !== "failed") continue;
+    if (!RUN_OP_KINDS.has(op.opKind)) continue;
+    const p = op.payload;
+    const key = runKey(p.blockId, p.runDate);
+    const existing = byKey.get(key);
+    switch (op.opKind) {
+      case "run_start":
+        if (existing) {
+          byKey.set(key, {
+            ...existing,
+            state: "in_progress",
+            started_at: existing.started_at ?? p.startedAt,
+            started_by_email: existing.started_by_email ?? p.email,
+            ended_at: null,
+            ended_by_email: null,
+          });
+        } else {
+          byKey.set(key, {
+            id: p.id,
+            block_id: p.blockId,
+            run_date: p.runDate,
+            state: "in_progress",
+            started_at: p.startedAt,
+            ended_at: null,
+            started_by_email: p.email,
+            ended_by_email: null,
+          });
+        }
+        break;
+      case "run_end":
+        if (existing) {
+          byKey.set(key, {
+            ...existing,
+            state: "done",
+            ended_at: p.endedAt,
+            ended_by_email: p.email,
+          });
+        }
+        break;
+      case "run_resume":
+        if (existing) {
+          byKey.set(key, {
+            ...existing,
+            state: "in_progress",
+            ended_at: null,
+            ended_by_email: null,
+          });
+        }
+        break;
+      case "run_cancel":
+        if (existing) {
+          byKey.set(key, {
+            ...existing,
+            state: "canceled",
+            ended_at: p.endedAt,
+            ended_by_email: p.email,
+          });
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  return byKey;
+}
+
 export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
   const instanceId = useId();
   const [runs, setRuns] = useState(null);
+  // Bumped on any outbox change touching run ops so the overlay
+  // recomputes; the ops themselves are read from the module mirror.
+  const [outboxTick, setOutboxTick] = useState(0);
   const [error, setError] = useState(null);
 
   const todayISO = useMemo(() => isoLocalDate(new Date()), []);
@@ -53,7 +150,14 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
       .order("started_at", { ascending: false })
       .then((res) => {
         if (cancelled) return;
-        if (res.error) { setError(res.error); setRuns([]); return; }
+        if (res.error) {
+          // Offline page-load: server state is unknown but the outbox
+          // overlay still renders this device's own runs. Treat the
+          // server side as empty rather than blocking the UI.
+          setError(res.error);
+          setRuns([]);
+          return;
+        }
         setRuns(res.data ?? []);
       });
     return () => { cancelled = true; };
@@ -81,8 +185,43 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
     return () => { supabase.removeChannel(channel); };
   }, [instanceId, sinceISO]);
 
+  // ── Outbox subscription + synced-op reconciliation ────────────────
+  // When a run op lands on the server, fold its confirmed row straight
+  // into the server rows so state never flickers in the gap before the
+  // realtime echo.
+  useEffect(() => {
+    let cancelled = false;
+    initOutbox().then(() => {
+      if (cancelled) return;
+      setOutboxTick((t) => t + 1);
+    });
+    const unsub = subscribeOutbox((event) => {
+      if (event?.type === "synced" && RUN_OP_KINDS.has(event.op?.opKind)) {
+        const confirmed = event.result?.run;
+        if (confirmed) {
+          setRuns((prev) => {
+            if (!prev) return prev;
+            const key = runKey(confirmed.block_id, confirmed.run_date);
+            const without = prev.filter(
+              (r) => runKey(r.block_id, r.run_date) !== key
+            );
+            return [...without, confirmed];
+          });
+        }
+      }
+      setOutboxTick((t) => t + 1);
+    });
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
+
   const shaped = useMemo(() => {
-    const list = (runs ?? []).map(r => ({
+    // Server rows + outbox overlay → effective rows.
+    void outboxTick; // dependency: recompute when the queue changes
+    const merged = applyRunOps(runs ?? [], outboxOps());
+    const list = [...merged.values()].map(r => ({
       id: r.id,
       blockId: r.block_id,
       runDate: r.run_date,
@@ -92,12 +231,16 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
       startedByEmail: r.started_by_email,
       endedByEmail: r.ended_by_email,
     }));
+    list.sort((a, b) => {
+      if (a.runDate !== b.runDate) return a.runDate < b.runDate ? 1 : -1;
+      return (b.startedAt?.getTime() ?? 0) - (a.startedAt?.getTime() ?? 0);
+    });
     const todayRuns = list.filter(r => r.runDate === todayISO);
     const historicalRuns = list.filter(r => r.runDate !== todayISO);
     const runByBlockId = new Map(todayRuns.map(r => [r.blockId, r]));
     const activeRun = todayRuns.find(r => r.state === "in_progress") ?? null;
     return { todayRuns, historicalRuns, runByBlockId, activeRun };
-  }, [runs, todayISO]);
+  }, [runs, todayISO, outboxTick]);
 
   // Pick the next block to open: open-now first, otherwise the
   // soonest-future block whose run isn't already done.
@@ -134,123 +277,64 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
     return remaining[0] ?? null;
   }, [blocks, shaped.runByBlockId]);
 
-  // ── Mutations ─────────────────────────────────────────────────────
+  // All loaded runs (today + history) for the lookups the by-id
+  // mutations need.
+  const allRuns = useMemo(
+    () => [...shaped.todayRuns, ...shaped.historicalRuns],
+    [shaped.todayRuns, shaped.historicalRuns]
+  );
+
+  // ── Mutations (outbox-first) ──────────────────────────────────────
   const startRun = useCallback(async (blockId) => {
     if (!blockId) throw new Error("Need a blockId to start a run.");
-    const email = await getCurrentEmail();
+    const email = await getSessionEmail();
     const existing = shaped.runByBlockId.get(blockId);
-    if (existing) {
-      // Resume a prior run for this block today.
-      const patch = { state: "in_progress" };
-      if (!existing.startedAt) {
-        patch.started_at = new Date().toISOString();
-        patch.started_by_email = email;
-      }
-      const prev = runs ? [...runs] : null;
-      setRuns((cur) =>
-        cur ? cur.map(r => r.id === existing.id
-          ? { ...r, state: "in_progress",
-              started_at: r.started_at ?? patch.started_at,
-              started_by_email: r.started_by_email ?? patch.started_by_email,
-              ended_at: null, ended_by_email: null }
-          : r
-        ) : cur
-      );
-      const { data, error: err } = await supabase
-        .from("chore_runs")
-        .update({ ...patch, ended_at: null, ended_by_email: null })
-        .eq("id", existing.id)
-        .select()
-        .single();
-      if (err) {
-        setRuns(prev);
-        throw err;
-      }
-      return data;
-    }
-    // Create a fresh run for (block, today).
-    const startedAt = new Date().toISOString();
-    const { data, error: err } = await supabase
-      .from("chore_runs")
-      .insert({
-        block_id: blockId,
-        run_date: todayISO,
-        state: "in_progress",
-        started_at: startedAt,
-        started_by_email: email,
-      })
-      .select()
-      .single();
-    if (err) throw err;
-    setRuns((prev) => prev ? [...prev, data] : prev);
-    return data;
-  }, [shaped.runByBlockId, runs, todayISO]);
+    const id = existing?.id ?? newUuid();
+    await enqueueOp("run_start", {
+      id,
+      blockId,
+      runDate: todayISO,
+      startedAt: new Date().toISOString(),
+      email,
+    });
+    return { id, block_id: blockId, run_date: todayISO };
+  }, [shaped.runByBlockId, todayISO]);
 
   const endRun = useCallback(async (runId) => {
-    const email = await getCurrentEmail();
-    const endedAt = new Date().toISOString();
-    const prev = runs ? [...runs] : null;
-    setRuns((cur) =>
-      cur ? cur.map(r => r.id === runId
-        ? { ...r, state: "done", ended_at: endedAt, ended_by_email: email }
-        : r
-      ) : cur
-    );
-    const { error: err } = await supabase
-      .from("chore_runs")
-      .update({ state: "done", ended_at: endedAt, ended_by_email: email })
-      .eq("id", runId);
-    if (err) {
-      setRuns(prev);
-      throw err;
-    }
-    // Fire the push trigger (Batch 11.3). Best-effort — the function
-    // is idempotent on its own (notified_at lock), so a missed call
-    // here just means nobody got notified for this run; the run
-    // itself is already persisted.
-    fireRunDoneNotification(runId);
-  }, [runs]);
+    const run = allRuns.find(r => r.id === runId);
+    if (!run) throw new Error("Run not found.");
+    const email = await getSessionEmail();
+    await enqueueOp("run_end", {
+      blockId: run.blockId,
+      runDate: run.runDate,
+      endedAt: new Date().toISOString(),
+      email,
+    });
+  }, [allRuns]);
 
   const resumeRun = useCallback(async (runId) => {
-    const prev = runs ? [...runs] : null;
-    setRuns((cur) =>
-      cur ? cur.map(r => r.id === runId
-        ? { ...r, state: "in_progress", ended_at: null, ended_by_email: null }
-        : r
-      ) : cur
-    );
-    const { error: err } = await supabase
-      .from("chore_runs")
-      .update({ state: "in_progress", ended_at: null, ended_by_email: null })
-      .eq("id", runId);
-    if (err) {
-      setRuns(prev);
-      throw err;
-    }
-  }, [runs]);
+    const run = allRuns.find(r => r.id === runId);
+    if (!run) throw new Error("Run not found.");
+    await enqueueOp("run_resume", {
+      blockId: run.blockId,
+      runDate: run.runDate,
+    });
+  }, [allRuns]);
 
   // Cancel a run that's in progress (or scheduled). Records ended_at
   // so wrap-card math + history list still know when it stopped, but
   // distinguishes cancellation from completion via the state column.
   const cancelRun = useCallback(async (runId) => {
-    const email = await getCurrentEmail();
-    const endedAt = new Date().toISOString();
-    const prev = runs ? [...runs] : null;
-    setRuns((cur) =>
-      cur ? cur.map(r => r.id === runId
-        ? { ...r, state: "canceled", ended_at: endedAt, ended_by_email: email }
-        : r
-      ) : cur
-    );
-    const { error: err } = await supabase
-      .from("chore_runs")
-      .update({ state: "canceled", ended_at: endedAt, ended_by_email: email })
-      .eq("id", runId);
-    if (err) {
-      setRuns(prev);
-      throw err;
-    }
-  }, [runs]);
+    const run = allRuns.find(r => r.id === runId);
+    if (!run) throw new Error("Run not found.");
+    const email = await getSessionEmail();
+    await enqueueOp("run_cancel", {
+      blockId: run.blockId,
+      runDate: run.runDate,
+      endedAt: new Date().toISOString(),
+      email,
+    });
+  }, [allRuns]);
 
   return {
     runs: shaped.todayRuns,
@@ -276,30 +360,30 @@ function isoLocalDate(d) {
   return `${y}-${m}-${day}`;
 }
 
-async function getCurrentEmail() {
+// getSession reads the locally-cached session, so this works offline
+// too — exactly what the outbox needs (getUser() round-trips to the
+// auth server and fails in a dead zone).
+async function getSessionEmail() {
   try {
-    const { data } = await supabase.auth.getUser();
-    return data?.user?.email ?? null;
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.user?.email ?? null;
   } catch {
     return null;
   }
 }
 
-// Fire-and-forget POST to the Netlify function that fans out the push.
-// Called from endRun; failures are logged but never re-thrown — the
-// run-state UPDATE already succeeded by the time we get here, so the
-// user-facing flow shouldn't break on a notification miss.
-function fireRunDoneNotification(runId) {
-  try {
-    void fetch("/.netlify/functions/notify-run-done", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ runId }),
-      keepalive: true,
-    }).catch((e) => console.warn("[notify-run-done] post failed", e));
-  } catch (e) {
-    console.warn("[notify-run-done] fetch threw", e);
+// Client-generated run ids let an offline run exist before the server
+// ever hears about it. crypto.randomUUID needs a secure context; the
+// fallback covers plain-http LAN testing.
+function newUuid() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
   }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 // Format an elapsed milliseconds delta as MM:SS or H:MM:SS.

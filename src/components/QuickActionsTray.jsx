@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  X, MessageSquare, AlertTriangle, Skull, ChevronDown,
+  X, MessageSquare, AlertTriangle, Skull, ChevronDown, MapPin,
 } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { descendantIds } from "../lib/places.js";
+import PlaceTag from "./PlaceTag.jsx";
 
 // Bottom-pinned tray for the Rounds doing surface. Quick actions —
 // Note, MASH, Mortality — each opens a sheet that writes a typed Run
@@ -16,9 +17,11 @@ import { descendantIds } from "../lib/places.js";
 //
 // Place context defaults from Rounds: selectedPlaceId (the drilled
 // child if set, else the top-level place) seeds the sheet; "" means
-// general (no place) and the user can still pick in-sheet. Quick
-// actions write to `activity_log` with `run_id` + `place_id` set so
-// the Observation Log can group them.
+// general (no place) and the user can still pick in-sheet. The
+// resolved place is displayed prominently — name + bold parent (D1,
+// Batch 17) — above the form so what's about to be saved is never
+// ambiguous. Quick actions write to `activity_log` with `run_id` +
+// `place_id` set so the Observation Log can group them.
 
 const CONDITION_STATES = [
   "Listless", "Unthrifty", "Off-feed",
@@ -91,6 +94,7 @@ export default function QuickActionsTray({
           runId={runId}
           seedPlaceId={seedPlaceId}
           placeOptions={placeOptions}
+          placesById={placesById}
           onLogRunEvent={onLogRunEvent}
           onClose={() => setOpen(null)}
         />
@@ -112,6 +116,7 @@ export default function QuickActionsTray({
           runId={runId}
           seedPlaceId={seedPlaceId}
           placeOptions={placeOptions}
+          placesById={placesById}
           childrenByParent={childrenByParent}
           placementsByPlaceId={placementsByPlaceId}
           onLogMortality={onLogMortality}
@@ -186,6 +191,35 @@ function Sheet({ title, onClose, children, footer }) {
   );
 }
 
+// ── Place context banner (shared) ─────────────────────────────────────
+// D1 (Batch 17): the resolved place is displayed prominently — its own
+// name plus its parent in bold — so what's about to be saved is never
+// ambiguous in the field. Sits above the picker in every sheet.
+function PlaceContextBanner({ placeId, placesById }) {
+  const place = placeId ? placesById?.get(placeId) : null;
+  return (
+    <div className="flex items-center gap-2.5 bg-surface-alt border border-line px-3 py-2.5">
+      <MapPin size={16} className="shrink-0 text-accent" />
+      <div className="flex flex-col min-w-0">
+        <span className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+          Logging at
+        </span>
+        {place ? (
+          <PlaceTag
+            place={place}
+            placesById={placesById}
+            className="text-[15px] text-fg"
+          />
+        ) : (
+          <span className="text-[15px] text-fg">
+            General — whole farm
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Place picker (shared) ─────────────────────────────────────────────
 function PlacePicker({ placeId, placeOptions, onChange }) {
   return (
@@ -252,7 +286,7 @@ function PrimaryButton({ children, disabled, onClick }) {
 
 // ── Note sheet ────────────────────────────────────────────────────────
 function NoteSheet({
-  runId, seedPlaceId, placeOptions,
+  runId, seedPlaceId, placeOptions, placesById,
   onLogRunEvent, onClose,
 }) {
   const [text, setText] = useState("");
@@ -289,6 +323,7 @@ function NoteSheet({
       }
     >
       <div className="flex flex-col gap-4">
+        <PlaceContextBanner placeId={placeId} placesById={placesById} />
         <PlacePicker
           placeId={placeId}
           placeOptions={placeOptions}
@@ -410,6 +445,7 @@ function MashSheet({
       }
     >
       <div className="flex flex-col gap-4">
+        <PlaceContextBanner placeId={placeId} placesById={placesById} />
         <PlacePicker
           placeId={placeId}
           placeOptions={placeOptions}
@@ -470,7 +506,8 @@ function MashSheet({
 
 // ── Mortality sheet ───────────────────────────────────────────────────
 function MortalitySheet({
-  runId, seedPlaceId, placeOptions, childrenByParent, placementsByPlaceId,
+  runId, seedPlaceId, placeOptions, placesById,
+  childrenByParent, placementsByPlaceId,
   onLogMortality, onClose,
 }) {
   const [placeId, setPlaceId] = useState(seedPlaceId);
@@ -576,6 +613,7 @@ function MortalitySheet({
       }
     >
       <div className="flex flex-col gap-4">
+        <PlaceContextBanner placeId={placeId} placesById={placesById} />
         <PlacePicker
           placeId={placeId}
           placeOptions={placeOptions}

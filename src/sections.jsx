@@ -4,7 +4,7 @@ import {
   FolderKanban, Workflow, NotebookPen, MessageCircleQuestion,
   Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
   CalendarRange, Layers, Tractor, Container, Caravan, TreePine,
-  Store, Cog, Box,
+  Store, Cog, Box, Sunrise,
   UserPlus, ClipboardList, CalendarDays, Newspaper, Map, MapPin, Eye
 } from "lucide-react";
 
@@ -25,6 +25,10 @@ function countUpdatesNeedingAttention(d) {
 // `comingSoon: true` flags a section that should render the ComingSoon
 // placeholder when navigated to.
 export const SECTIONS = [
+  // The Now surface (Batch 17) — the time-anchored landing. Phones land
+  // here by default (App.jsx); desktop keeps the Dashboard until the
+  // map renderer becomes the desktop landing in Batch 18.
+  { id: "now", group: null, label: "Now", icon: Sunrise, description: "What needs doing right now — the active round plus every due and overdue chore, tagged with its place.", getCount: () => null },
   { id: "overview", group: null, label: "Dashboard", icon: Home, description: "Single-glance state of the farm", getCount: () => null },
 
   { id: "schedule", group: "Planning", label: "Schedule", icon: Calendar, description: "Calendar and timeline view of everything date-bound", getCount: () => null },

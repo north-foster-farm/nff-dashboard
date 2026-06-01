@@ -1355,6 +1355,90 @@ the outbox guarantees writes survive, but a hard refresh with no
 signal still can't boot the app), and offline `chore_runs` lifecycle
 writes (Batch 17).
 
+### Batch 17 — Farm map: Now surface + hardened Rounds · `v0.10.13-alpha`
+2026-06-01. The phone rollout. Client-only — no migrations, no DB
+reset. Phones now land on a time-anchored **Now** surface; the Rounds
+takeover is hardened into the primary phone path with a fully offline
+run lifecycle; and the derived `place_status` projection that will
+drive the Batch 18 map tint ships as a pure client-side module.
+
+**`lib/placeStatus.js`** (new). The `place_status` projection as pure
+functions — no table, no view. `computePlaceStatus()` folds chore
+definitions + occupancy fan-out (`obligationPlaceIds`) + today's
+completions into per-obligation status (`due` / `overdue` / `done`)
+and a per-place rollup propagated up the place tree (an obligation at
+Mobile Coop 1 also counts toward Pasture B and the farm root), plus a
+`flagOf(placeId)` accessor for the Batch 18 zone tint. Overdue =
+window chores past their last-chance block (`choreDaysRemaining` →
+overran) or daily block chores whose block window has fully passed.
+
+**`pages/Now.jsx`** (new) — the phone landing (decision 1):
+- **D2 resume bar.** When a run is in progress on any device, a loud
+  full-width accent bar ("Round in progress · Morning · 14:23 — tap
+  to resume") with a live elapsed tick sits at the top and re-enters
+  the takeover. This replaces the orphaned "rejoin from the sidebar"
+  path as the canonical way back into a running round.
+- **Fat start button.** No active run → one big "Start morning
+  rounds" CTA driven by the same `nextBlock` logic Rounds uses,
+  showing the block's start (sun-event aware) + duration.
+- **Farm-wide due/overdue list.** Every (chore, place) obligation
+  active today, bucketed Overdue → To do → Done (collapsed), sorted
+  by block start time within each bucket. Each row carries its place
+  as a **D1** tag (name + bold parent via the new shared
+  `<PlaceTag>`), the per-row CloudOff queued glyph, and deep-links
+  into Rounds for that chore's block.
+- New `now` section in `sections.jsx` (lucide `Sunrise`, top of the
+  sidebar above Dashboard); self-headered. `App.jsx` picks the boot
+  landing by viewport: phone (`max-width: 639px`) → Now, desktop →
+  Dashboard (the map becomes the desktop landing in Batch 18).
+
+**Offline run lifecycle** (closes the Batch 16.2 deferral). Four new
+outbox op kinds — `run_start` / `run_end` / `run_resume` /
+`run_cancel` — and `useChoreRuns` rewritten outbox-first with the
+same overlay pattern as completions:
+- Mutations never call Supabase directly; they enqueue and return.
+  Displayed state = server rows (load + realtime) overlaid with
+  pending ops, so starting / finishing / canceling a run works in a
+  dead zone, survives an app kill, and syncs when signal returns.
+- Offline-created runs carry a client-generated uuid; executors
+  reconcile against the natural `(block_id, run_date)` key, so a run
+  started offline merges cleanly with a row another device created
+  for the same block + day (unique-violation → update-existing).
+- The run-done push notification now fires from the `run_end`
+  executor at sync time (when the run actually persists) instead of
+  from the hook.
+- Rounds' Batch 16.2 auto-flip offline guard (`autoFlipBlocked`) is
+  deleted — the auto-derive effect just works offline now.
+- Email resolution switched `getUser()` (network round-trip) →
+  `getSession()` (local cache) so lifecycle writes work offline.
+
+**Hardened Rounds:**
+- **Group-by toggle on the Switcher** (decision 4). "Place" (top-
+  level place chips — geography, the default) or "Kind" (place
+  `kind_tag` chips — "sweep all coops"). Kind mode groups
+  obligations by tag with the same progress chips + bulk "All taken
+  care of" affordance; selecting a kind drills to one section per
+  specific place. Each axis keeps its own selection.
+- **D1 capture context.** Every quick-action sheet (Note / MASH /
+  Mortality) now leads with a prominent "Logging at" banner showing
+  the resolved place as name + bold parent (or "General — whole
+  farm"), above the existing picker. Check-row place sublabels
+  switched to the same `<PlaceTag>` treatment.
+- **Deep-linking.** `<Rounds initialBlockId>` lands the cold open on
+  a specific block — how Now's list rows open the right round.
+- Exit button copy updated: "run keeps going — resume from Now."
+
+**Phone shell** (minimal slice; the full nav restructure is Batch 18).
+The fixed sidebar is now desktop-only (`hidden sm:flex`); phones get
+a TopBar hamburger that opens the same sidebar as an overlay drawer.
+Main content padding tightened on phone widths; the version label
+hides on phone to keep the TopBar uncluttered.
+
+**Out of scope — Batch 18:** the map renderer + `farm-map_v1.svg`,
+place pages, place search, the nav restructure to Now · Map/Places ·
+Schedule · Do rounds, and the records drawer. The `place_status`
+rollup ships here but nothing tints by it until the map exists.
+
 ---
 
 ## Upcoming
@@ -1534,23 +1618,14 @@ the silent-revert toggle with optimistic local apply + a visible
 idempotent row-presence inserts; mortality counts merge additively;
 run events are append-only with capture time preserved.
 
-### Batch 17 — Farm map: Now surface + hardened Rounds
-The phone rollout. **Now** is the phone landing (decision 1): the
-active-or-next round as a fat primary button (`nextBlock` logic), then a
-farm-wide **due/overdue** list (`ChoreRemainingPill` logic), each row
-tagged with its place (**D1** bold parent) and deep-linking into the round
-or place; overdue sorts to the top. **D2** loud "round in progress — tap
-to resume" bar sits on Now (replacing the orphaned "rejoin from the
-sidebar" path — verified `Rounds.jsx:531`). The shipped **Rounds**
-takeover is promoted to the primary phone path; its Site Switcher gains a
-**group-by-zone OR group-by-kind** toggle (decision 4; geography default,
-Dad moves by place); mid-round capture pre-seeds and **prominently
-displays** the resolved place before save (**D1**). A derived
-**`place_status`** projection feeds the Now sort/flags (and the map tint
-in Batch 18).
-
-Ships value: Dad opens the app and his work is handed to him — nothing
-silently lost, no menu-hunting.
+### Batch 17 — Farm map: Now surface + hardened Rounds ✅ SHIPPED
+Shipped `v0.10.13-alpha` (2026-06-01) — see the Shipped section above.
+The phone rollout: Now as the phone landing (D2 resume bar, fat
+start-round button, farm-wide due/overdue list with D1 place tags),
+offline `chore_runs` lifecycle through the outbox, the group-by-place /
+group-by-kind Switcher toggle, prominent D1 capture context in the
+quick-action sheets, and the client-side `place_status` projection the
+Batch 18 map tint will consume.
 
 ### Batch 18 — Farm map: map renderer + place pages + nav restructure
 The desktop landing (decision 2) and the IA overhaul that started the

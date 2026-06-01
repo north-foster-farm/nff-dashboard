@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sprout, Sun, Moon, LogOut, ALargeSmall } from "lucide-react";
+import { Sprout, Sun, Moon, LogOut, ALargeSmall, Menu } from "lucide-react";
 import UserAvatarMenu from "./UserAvatarMenu.jsx";
 import { supabase } from "../lib/supabase.js";
 import { useUserPreferences } from "../lib/data/useUserPreferences.js";
@@ -13,7 +13,7 @@ function nextDensity(d) {
   return DENSITY_ORDER[(i + 1) % DENSITY_ORDER.length];
 }
 
-export default function TopBar({ data, session, onOpenSettings }) {
+export default function TopBar({ data, session, onOpenSettings, onToggleNav }) {
   const { theme, density, setTheme, setDensity } = useUserPreferences();
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
@@ -24,10 +24,21 @@ export default function TopBar({ data, session, onOpenSettings }) {
   };
 
   return (
-    <header className="border-b border-line py-3 px-6 flex justify-between items-center bg-bg shrink-0 gap-[18px]">
+    <header className="border-b border-line py-3 px-4 sm:px-6 flex justify-between items-center bg-bg shrink-0 gap-[18px]">
       <div className="flex items-center gap-3.5 min-w-0">
+        {/* Phone-only nav hamburger (Batch 17) — the fixed sidebar is
+            desktop-only; phones open it as an overlay drawer. */}
+        {onToggleNav && (
+          <button
+            onClick={onToggleNav}
+            aria-label="Open navigation"
+            className="sm:hidden bg-transparent border-0 text-dim p-1.5 cursor-pointer flex items-center justify-center"
+          >
+            <Menu size={18} />
+          </button>
+        )}
         <LogoMark />
-        <span className="font-ui text-[11px] text-dim uppercase tracking-[0.12em] font-semibold">
+        <span className="hidden sm:inline font-ui text-[11px] text-dim uppercase tracking-[0.12em] font-semibold">
           Admin · v{data.meta.version}
         </span>
       </div>

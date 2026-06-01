@@ -1,6 +1,7 @@
 import { getSpeciesFromSectionId, getEventKindFromSectionId } from "../sections.jsx";
 import ComingSoon from "./ComingSoon.jsx";
 import { T } from "../theme.js";
+import Now from "../pages/Now.jsx";
 import Overview from "../pages/Overview.jsx";
 import Machines from "../pages/Machines.jsx";
 import Suppliers from "../pages/Suppliers.jsx";
@@ -18,7 +19,9 @@ import Settings from "../pages/Settings.jsx";
 import Roadmap from "../pages/Roadmap.jsx";
 import SitesPage from "../pages/SitesPage.jsx";
 
-export default function SectionContent({ section, data, onOpenEvent, onNavigate }) {
+export default function SectionContent({
+  section, data, onOpenEvent, onNavigate, onOpenRounds,
+}) {
   // Sections explicitly flagged with comingSoon get the full-page placeholder.
   if (section.comingSoon) return <ComingSoon featureName={section.label} />;
 
@@ -46,6 +49,7 @@ export default function SectionContent({ section, data, onOpenEvent, onNavigate 
     />;
   }
   switch (section.id) {
+    case "now": return <Now onOpenRounds={onOpenRounds} />;
     case "overview": return <Overview data={data} onNavigate={onNavigate} />;
     case "machines":
     case "resources_machinery":

@@ -10,10 +10,24 @@ import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
 
+// Phone-width media query — used once at boot to pick the landing
+// section (decision 1 of the Farm Map workshop: phones land on Now,
+// desktop keeps the Dashboard until the map lands in Batch 18).
+const PHONE_QUERY = "(max-width: 639px)";
+
+function isPhone() {
+  return (
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.(PHONE_QUERY)?.matches
+  );
+}
+
 // `session` is always non-null here — LoginGate only renders <App /> after
 // the user is authenticated AND passes the admins check.
 export default function App({ session }) {
-  const [currentSection, setCurrentSection] = useState("overview");
+  const [currentSection, setCurrentSection] = useState(() =>
+    isPhone() ? "now" : "overview"
+  );
   // EventEditor seed — null when closed; otherwise carries the edit/new
   // mode and (for edits) the seriesId + occurrence date that was clicked.
   const [eventSeed, setEventSeed] = useState(null);
@@ -24,7 +38,15 @@ export default function App({ session }) {
   const [processingTarget, setProcessingTarget] = useState(null);
   // Rounds is a full-screen takeover — when open, the rest of the
   // app (TopBar / Sidebar / SectionHeader) gets out of the way.
-  const [roundsOpen, setRoundsOpen] = useState(false);
+  // null = closed; { blockId } = open (blockId optionally deep-links
+  // the cold open to a specific block — used by the Now surface).
+  const [roundsTarget, setRoundsTarget] = useState(null);
+  // Phone nav drawer (Batch 17). The fixed sidebar is desktop-only;
+  // on phones it opens as an overlay from the TopBar hamburger.
+  const [navOpen, setNavOpen] = useState(false);
+
+  const openRounds = (blockId) =>
+    setRoundsTarget({ blockId: blockId ?? null });
 
   // Live reference data from Postgres. Keys that haven't loaded yet come
   // back as `null`; the merge below only overrides JSON for keys that HAVE
@@ -46,6 +68,7 @@ export default function App({ session }) {
   // are full-page takeovers (Settings, ComingSoon stubs) that don't want any
   // SectionHeader chrome.
   const isSelfHeadered =
+    section.id === "now" ||
     section.id === "overview" ||
     section.id === "chores" ||
     section.id === "settings" ||
@@ -55,9 +78,24 @@ export default function App({ session }) {
   // (it carries its own header). Treat it as self-headered too.
   const inProcessingWorkspace = !!processingTarget;
 
-  if (roundsOpen) {
-    return <Rounds data={data} onClose={() => setRoundsOpen(false)} />;
+  if (roundsTarget) {
+    return (
+      <Rounds
+        data={data}
+        initialBlockId={roundsTarget.blockId}
+        onClose={() => setRoundsTarget(null)}
+      />
+    );
   }
+
+  const handleSelect = (id) => {
+    setCurrentSection(id);
+    setNavOpen(false);
+  };
+  const handleOpenRounds = (blockId) => {
+    openRounds(blockId);
+    setNavOpen(false);
+  };
 
   return (
     <div className="bg-bg text-fg h-screen flex flex-col overflow-hidden font-body text-[13px]">
@@ -65,15 +103,37 @@ export default function App({ session }) {
         data={data}
         session={session}
         onOpenSettings={() => setCurrentSection("settings")}
+        onToggleNav={() => setNavOpen((o) => !o)}
       />
       <div className="flex flex-1 min-h-0">
-        <Sidebar
-          current={currentSection}
-          onSelect={setCurrentSection}
-          onOpenRounds={() => setRoundsOpen(true)}
-          data={data}
-        />
-        <main className="flex-1 px-10 py-8 overflow-y-auto min-w-0">
+        {/* Desktop sidebar */}
+        <div className="hidden sm:flex shrink-0">
+          <Sidebar
+            current={currentSection}
+            onSelect={handleSelect}
+            onOpenRounds={handleOpenRounds}
+            data={data}
+          />
+        </div>
+        {/* Phone nav drawer (Batch 17) */}
+        {navOpen && (
+          <div className="fixed inset-0 z-40 flex sm:hidden">
+            <div className="flex h-full bg-bg shadow-[2px_0_24px_rgba(0,0,0,0.4)]">
+              <Sidebar
+                current={currentSection}
+                onSelect={handleSelect}
+                onOpenRounds={handleOpenRounds}
+                data={data}
+              />
+            </div>
+            <div
+              className="flex-1 bg-black/60"
+              onClick={() => setNavOpen(false)}
+              aria-hidden
+            />
+          </div>
+        )}
+        <main className="flex-1 px-4 py-5 sm:px-10 sm:py-8 overflow-y-auto min-w-0">
           {!isSelfHeadered && !inProcessingWorkspace && (
             <SectionHeader
               section={section}
@@ -94,6 +154,7 @@ export default function App({ session }) {
               data={data}
               onOpenEvent={setEventSeed}
               onNavigate={setCurrentSection}
+              onOpenRounds={openRounds}
             />
           )}
         </main>

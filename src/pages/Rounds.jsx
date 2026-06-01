@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   X, Check, ChevronLeft, CloudOff,
 } from "lucide-react";
+import pluralize from "pluralize";
 import { useChoreBlocks, formatMinutesOfDay } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
 import { descendantIds, placePath } from "../lib/places.js";
@@ -14,6 +15,7 @@ import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
 import QuickActionsTray from "../components/QuickActionsTray.jsx";
 import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
+import PlaceTag from "../components/PlaceTag.jsx";
 
 // Full-screen takeover for actually doing chores. Bypasses the
 // normal layout (no TopBar, no Sidebar, no SectionHeader).
@@ -26,8 +28,12 @@ import OutboxIndicator from "../components/OutboxIndicator.jsx";
 // 8.1 ships the lifecycle, the Site Switcher (kind → location), and
 // per-task checkboxes that read/write chore_completions with
 // realtime contention. Quick actions tray + Run Events land in 8.2.
+// Batch 17 hardens the surface: the run lifecycle goes through the
+// outbox (works offline), the place switcher gains a group-by-place /
+// group-by-kind toggle, and `initialBlockId` lets the Now surface
+// deep-link straight to a specific block's cold open.
 
-export default function Rounds({ data, onClose }) {
+export default function Rounds({ data, initialBlockId, onClose }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const {
     places, placesById, childrenByParent, placementsByPlaceId,
@@ -46,14 +52,19 @@ export default function Rounds({ data, onClose }) {
   } = useChoreRuns({ blocks });
 
   // The block this Rounds session is targeting. Active run wins over
-  // the inferred next block, so reopening Rounds while a run is going
-  // always lands on that run's block.
+  // everything (you can't run two blocks at once); a deep-linked
+  // initialBlockId (from the Now surface) wins over the inferred next
+  // block.
   const targetBlock = useMemo(() => {
     if (activeRun) {
       return blocks.find(b => b.id === activeRun.blockId) ?? null;
     }
+    if (initialBlockId) {
+      const linked = blocks.find(b => b.id === initialBlockId);
+      if (linked) return linked;
+    }
     return nextBlock?.block ?? null;
-  }, [activeRun, nextBlock, blocks]);
+  }, [activeRun, nextBlock, blocks, initialBlockId]);
 
   const today = useMemo(() => new Date(), []);
   const completions = useChoreCompletions(today);
@@ -64,6 +75,11 @@ export default function Rounds({ data, onClose }) {
   // top-level place.
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
   const [selectedChildId, setSelectedChildId] = useState(null);
+  // Switcher grouping axis (Batch 17, decision 4): geography ("place",
+  // the default — Dad moves by place) or kind_tag ("kind" — sweep all
+  // coops at once). Each mode keeps its own selection.
+  const [groupMode, setGroupMode] = useState("place");
+  const [selectedKindTag, setSelectedKindTag] = useState(null);
 
   // The switcher operates at the top-level (depth-1: a child of the
   // farm root). Map any place to its top-level ancestor so a chore deep
@@ -180,6 +196,15 @@ export default function Rounds({ data, onClose }) {
       }}
       selectedChildId={selectedChildId}
       onSelectChild={setSelectedChildId}
+      groupMode={groupMode}
+      onChangeGroupMode={(mode) => {
+        setGroupMode(mode);
+        setSelectedPlaceId(null);
+        setSelectedChildId(null);
+        setSelectedKindTag(null);
+      }}
+      selectedKindTag={selectedKindTag}
+      onSelectKindTag={setSelectedKindTag}
       onAutoDone={async () => {
         if (!activeRun) return;
         await endRun(activeRun.id);
@@ -424,6 +449,8 @@ function DoingSurface({
   recentConditionsByPlace, repeatWindowDays,
   selectedPlaceId, onSelectPlace,
   selectedChildId, onSelectChild,
+  groupMode, onChangeGroupMode,
+  selectedKindTag, onSelectKindTag,
   onAutoDone, onAutoUndone, onClose,
 }) {
   // Live elapsed time tick.
@@ -472,21 +499,12 @@ function DoingSurface({
   // edits; remote echoes go through the same path harmlessly thanks
   // to the no-op guard.
   //
-  // Offline guard (Batch 16.2): completion ticks now apply locally via
-  // the outbox even with no signal, so allDone can become true while
-  // chore_runs writes still fail. A failed auto-flip blocks further
-  // attempts (otherwise revert → re-render → retry would loop forever)
-  // until connectivity returns. Full offline run-lifecycle support is
-  // Batch 17 (hardened Rounds).
+  // Since Batch 17 the run lifecycle goes through the outbox too, so
+  // the auto-flip applies locally even with no signal — the old
+  // "blocked until connectivity returns" guard is gone.
   const writingRef = useRef(false);
-  const [autoFlipBlocked, setAutoFlipBlocked] = useState(false);
   useEffect(() => {
-    const onOnline = () => setAutoFlipBlocked(false);
-    window.addEventListener("online", onOnline);
-    return () => window.removeEventListener("online", onOnline);
-  }, []);
-  useEffect(() => {
-    if (writingRef.current || autoFlipBlocked) return;
+    if (writingRef.current) return;
     if (!run) return;
     if (blockObligations.length === 0) return;
     if (completions.loading) return;
@@ -497,21 +515,21 @@ function DoingSurface({
     if (allDone && run.state === "in_progress") {
       writingRef.current = true;
       Promise.resolve(onAutoDone())
-        .catch(() => setAutoFlipBlocked(true))
+        .catch(() => {})
         .finally(() => {
           writingRef.current = false;
         });
     } else if (!allDone && run.state === "done") {
       writingRef.current = true;
       Promise.resolve(onAutoUndone())
-        .catch(() => setAutoFlipBlocked(true))
+        .catch(() => {})
         .finally(() => {
           writingRef.current = false;
         });
     }
   }, [
     blockObligations, completions.isDone, completions.loading, run,
-    onAutoDone, onAutoUndone, autoFlipBlocked,
+    onAutoDone, onAutoUndone,
   ]);
 
   // Group obligations by their top-level place for the all-places
@@ -553,6 +571,20 @@ function DoingSurface({
     return { groups, anywhere };
   }, [selectedPlaceId, blockObligations, childrenByParent]);
 
+  // Group obligations by their place's kind_tag (Batch 17, decision 4)
+  // — the "sweep all coops" axis. Places without a kind_tag (and
+  // placeless obligations) land under "other".
+  const obligationsByKind = useMemo(() => {
+    const out = new Map();
+    for (const o of blockObligations) {
+      const place = o.placeId ? placesById.get(o.placeId) : null;
+      const tag = place?.kindTag || "other";
+      if (!out.has(tag)) out.set(tag, []);
+      out.get(tag).push(o);
+    }
+    return out;
+  }, [blockObligations, placesById]);
+
   return (
     <div className="bg-bg text-fg h-screen flex flex-col font-body">
       {/* Status bar */}
@@ -587,7 +619,7 @@ function DoingSurface({
           <button
             onClick={onClose}
             className="text-muted hover:text-fg p-2 cursor-pointer bg-transparent border-0"
-            title="Exit (run keeps going — rejoin from the sidebar)"
+            title="Exit (run keeps going — resume from Now)"
           >
             <X size={16} />
           </button>
@@ -599,11 +631,25 @@ function DoingSurface({
         places={switcherPlaces}
         selectedPlaceId={selectedPlaceId}
         onSelect={onSelectPlace}
+        groupMode={groupMode}
+        onChangeGroupMode={onChangeGroupMode}
+        kindTags={[...obligationsByKind.keys()].sort()}
+        selectedKindTag={selectedKindTag}
+        onSelectKindTag={onSelectKindTag}
       />
 
       {/* Body */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
-        {!selectedPlaceId ? (
+        {groupMode === "kind" ? (
+          <KindView
+            obligationsByKind={obligationsByKind}
+            placesById={placesById}
+            blocks={blocks}
+            completions={completions}
+            selectedKindTag={selectedKindTag}
+            onSelectKindTag={onSelectKindTag}
+          />
+        ) : !selectedPlaceId ? (
           <AllPlacesView
             switcherPlaces={switcherPlaces}
             obligations={blockObligations}
@@ -644,25 +690,94 @@ function DoingSurface({
 }
 
 // ── Place Switcher ────────────────────────────────────────────────────
-function PlaceSwitcher({ places, selectedPlaceId, onSelect }) {
+// Two grouping axes (Batch 17, decision 4): geography (top-level place
+// chips — the default) or kind_tag ("sweep all coops"). The toggle on
+// the right flips between them; each axis keeps its own selection.
+function PlaceSwitcher({
+  places, selectedPlaceId, onSelect,
+  groupMode, onChangeGroupMode,
+  kindTags, selectedKindTag, onSelectKindTag,
+}) {
   return (
     <nav className="flex items-center gap-1 px-4 sm:px-6 py-2 border-b border-line bg-surface-alt overflow-x-auto no-scrollbar">
-      <SwitcherChip
-        active={selectedPlaceId === null}
-        onClick={() => onSelect(null)}
-      >
-        Everywhere
-      </SwitcherChip>
-      {places.map(p => (
-        <SwitcherChip
-          key={p.id}
-          active={selectedPlaceId === p.id}
-          onClick={() => onSelect(p.id)}
+      {groupMode === "kind" ? (
+        <>
+          <SwitcherChip
+            active={selectedKindTag === null}
+            onClick={() => onSelectKindTag(null)}
+          >
+            All kinds
+          </SwitcherChip>
+          {kindTags.map(tag => (
+            <SwitcherChip
+              key={tag}
+              active={selectedKindTag === tag}
+              onClick={() => onSelectKindTag(tag)}
+            >
+              {kindTagLabel(tag)}
+            </SwitcherChip>
+          ))}
+        </>
+      ) : (
+        <>
+          <SwitcherChip
+            active={selectedPlaceId === null}
+            onClick={() => onSelect(null)}
+          >
+            Everywhere
+          </SwitcherChip>
+          {places.map(p => (
+            <SwitcherChip
+              key={p.id}
+              active={selectedPlaceId === p.id}
+              onClick={() => onSelect(p.id)}
+            >
+              {p.name}
+            </SwitcherChip>
+          ))}
+        </>
+      )}
+      <div className="ml-auto flex items-center pl-3 shrink-0 gap-0">
+        <GroupModeButton
+          active={groupMode === "place"}
+          onClick={() => onChangeGroupMode("place")}
         >
-          {p.name}
-        </SwitcherChip>
-      ))}
+          Place
+        </GroupModeButton>
+        <GroupModeButton
+          active={groupMode === "kind"}
+          onClick={() => onChangeGroupMode("kind")}
+        >
+          Kind
+        </GroupModeButton>
+      </div>
     </nav>
+  );
+}
+
+// Display label for a kind_tag chip: "coop" → "Coops".
+function kindTagLabel(tag) {
+  if (!tag || tag === "other") return "Other";
+  const cap = tag.charAt(0).toUpperCase() + tag.slice(1);
+  return pluralize(cap);
+}
+
+function GroupModeButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "inline-flex items-center font-[inherit] text-[10px] " +
+        "font-semibold uppercase tracking-[0.12em] px-2.5 py-1.5 " +
+        "cursor-pointer border leading-none transition-colors " +
+        "duration-100 shrink-0 -ml-px first:ml-0 " +
+        (active
+          ? "bg-row-active border-fg text-fg"
+          : "bg-transparent border-line text-muted hover:text-fg")
+      }
+    >
+      {children}
+    </button>
   );
 }
 
@@ -757,9 +872,12 @@ function PlaceSection({
       <ul className="m-0 p-0 list-none">
         {obligations.map(o => {
           // Show the obligation's specific place under the title when
-          // it's deeper than this section's top-level place.
+          // it's deeper than this section's top-level place — D1
+          // disambiguated (name + bold parent).
           const op = o.placeId ? placesById.get(o.placeId) : null;
-          const subLabel = op && op.id !== place.id ? op.name : null;
+          const subLabel = op && op.id !== place.id
+            ? <PlaceTag place={op} placesById={placesById} />
+            : null;
           return (
             <ChoreCheckRow
               key={`${o.chore.id}|${o.placeId ?? ""}`}
@@ -773,6 +891,87 @@ function PlaceSection({
         })}
       </ul>
     </section>
+  );
+}
+
+// ── Kind view (group-by-kind_tag mode) ───────────────────────────────
+// "Sweep all coops": one section per kind_tag when nothing is
+// selected; selecting a kind drills to one section per specific place
+// of that kind. Reuses PlaceSection so progress chips + the bulk
+// "All taken care of" affordance work identically on both axes.
+function KindView({
+  obligationsByKind, placesById, blocks, completions,
+  selectedKindTag, onSelectKindTag,
+}) {
+  const tags = [...obligationsByKind.keys()].sort();
+  if (tags.length === 0) {
+    return (
+      <div className="bg-surface border border-line py-10 px-6 text-center max-w-[520px] mx-auto">
+        <div className="text-[13px] text-muted font-medium mb-1">
+          No chores in this block
+        </div>
+        <div className="text-[12px] text-faint leading-relaxed max-w-[420px] mx-auto">
+          Assign chores to this block in Chores → All chores or
+          add new ones.
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedKindTag === null) {
+    return (
+      <div className="flex flex-col gap-4 max-w-[680px] mx-auto">
+        {tags.map(tag => (
+          <PlaceSection
+            key={tag}
+            place={{ id: null, name: kindTagLabel(tag) }}
+            obligations={obligationsByKind.get(tag)}
+            placesById={placesById}
+            blocks={blocks}
+            completions={completions}
+            onTitleClick={() => onSelectKindTag(tag)}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Selected kind → one section per specific place of that kind.
+  const obligations = obligationsByKind.get(selectedKindTag) ?? [];
+  const byPlace = new Map();
+  for (const o of obligations) {
+    const key = o.placeId ?? null;
+    if (!byPlace.has(key)) byPlace.set(key, []);
+    byPlace.get(key).push(o);
+  }
+  const placeIds = [...byPlace.keys()].sort((a, b) => {
+    const pa = a ? placesById.get(a) : null;
+    const pb = b ? placesById.get(b) : null;
+    return (
+      (pa?.sortOrder ?? 0) - (pb?.sortOrder ?? 0) ||
+      (pa?.name ?? "").localeCompare(pb?.name ?? "")
+    );
+  });
+  return (
+    <div className="flex flex-col gap-4 max-w-[680px] mx-auto">
+      <button
+        onClick={() => onSelectKindTag(null)}
+        className="self-start inline-flex items-center gap-1 text-[11px] text-dim hover:text-fg uppercase tracking-[0.12em] font-semibold border-0 bg-transparent cursor-pointer"
+      >
+        <ChevronLeft size={12} className="shrink-0" />
+        {kindTagLabel(selectedKindTag)}
+      </button>
+      {placeIds.map(pid => (
+        <PlaceSection
+          key={pid ?? "other"}
+          place={pid ? placesById.get(pid) : { id: null, name: "Other" }}
+          obligations={byPlace.get(pid)}
+          placesById={placesById}
+          blocks={blocks}
+          completions={completions}
+        />
+      ))}
+    </div>
   );
 }
 

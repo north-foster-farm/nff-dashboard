@@ -27,7 +27,9 @@ export default function RoundsSidebarItem({ onOpen }) {
 
   return (
     <button
-      onClick={onOpen}
+      // Don't forward the click event — onOpen's first arg is an
+      // optional deep-link blockId (Batch 17).
+      onClick={() => onOpen()}
       className={
         "w-full text-left flex items-center gap-2.5 pl-6 pr-4 py-2 " +
         "border-l-2 transition-colors duration-100 cursor-pointer " +

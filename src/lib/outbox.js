@@ -1,13 +1,13 @@
 import { supabase } from "./supabase.js";
 
-// Device-local, append-only outbox (Batch 16.2).
+// Device-local, append-only outbox (Batch 16.2; run lifecycle 17).
 //
-// Every field write (chore completions, run events, mortality counts)
-// is appended here first; a sync engine then pushes ops to Supabase in
-// FIFO order. The UI reads pending ops as an overlay on top of server
-// state, so a tick in a dead zone applies instantly, survives an app
-// kill (IndexedDB), and syncs when signal returns — replacing the old
-// silent-revert-on-network-error behavior.
+// Every field write (chore completions, run events, mortality counts,
+// chore_runs lifecycle) is appended here first; a sync engine then
+// pushes ops to Supabase in FIFO order. The UI reads pending ops as an
+// overlay on top of server state, so a tick in a dead zone applies
+// instantly, survives an app kill (IndexedDB), and syncs when signal
+// returns — replacing the old silent-revert-on-network-error behavior.
 //
 // Conflict policy (per ROADMAP Batch 16.2 — deliberately not a CRDT):
 //   - Completions are idempotent row-presence inserts/deletes. A
@@ -18,6 +18,10 @@ import { supabase } from "./supabase.js";
 //     offline phones each logging "1 dead" sum to 2.
 //   - Run events are append-only activity_log rows — at-least-once
 //     delivery; the original capture time rides in the payload.
+//   - Run lifecycle (Batch 17) is last-write-wins on state, keyed by
+//     the natural (block_id, run_date) identity rather than the row
+//     uuid, so an offline-started run reconciles cleanly with a run
+//     another device created for the same block + day.
 //
 // Op lifecycle: pending → synced (removed) | failed (kept + surfaced
 // in the indicator with retry / discard).
@@ -299,6 +303,121 @@ async function execMortalityDecrement(p) {
   return { count: next };
 }
 
+// ── Run lifecycle executors (Batch 17 — hardened Rounds) ───────────
+// chore_runs writes go through the outbox so a run can start, finish,
+// or cancel with no signal. Updates key off the natural
+// (block_id, run_date) identity instead of the row uuid: an offline-
+// created run carries a client-generated uuid that may lose the race
+// to a row another device inserted for the same block + day, and the
+// natural key makes every later op land on whichever row won.
+
+const RUN_COLS =
+  "id, block_id, run_date, state, started_at, ended_at, " +
+  "started_by_email, ended_by_email";
+
+async function selectRun(blockId, runDate) {
+  const { data, error } = await supabase
+    .from("chore_runs")
+    .select(RUN_COLS)
+    .eq("block_id", blockId)
+    .eq("run_date", runDate);
+  if (error) throw asError(error);
+  return data?.[0] ?? null;
+}
+
+// Start (or resume) a run. Insert with the client-generated id; a
+// unique violation — on the pkey (replay of our own op) or on the
+// (block_id, run_date) index (another device created today's run) —
+// downgrades to an UPDATE of the existing row.
+async function execRunStart(p) {
+  const { data, error } = await supabase
+    .from("chore_runs")
+    .insert({
+      id: p.id,
+      block_id: p.blockId,
+      run_date: p.runDate,
+      state: "in_progress",
+      started_at: p.startedAt,
+      started_by_email: p.email,
+    })
+    .select(RUN_COLS);
+  if (!error) return { run: data?.[0] ?? null };
+  if (error.code !== UNIQUE_VIOLATION) throw asError(error);
+  const existing = await selectRun(p.blockId, p.runDate);
+  if (!existing) throw asError(error);
+  const patch = { state: "in_progress", ended_at: null, ended_by_email: null };
+  if (!existing.started_at) {
+    patch.started_at = p.startedAt;
+    patch.started_by_email = p.email;
+  }
+  const { data: updated, error: updErr } = await supabase
+    .from("chore_runs")
+    .update(patch)
+    .eq("id", existing.id)
+    .select(RUN_COLS);
+  if (updErr) throw asError(updErr);
+  return { run: updated?.[0] ?? existing };
+}
+
+// Shared shape for end / resume / cancel: update by natural key.
+// Matching zero rows means the run_start op for this run failed
+// permanently — treat as a no-op rather than wedging the queue.
+async function updateRunByKey(p, patch) {
+  const { data, error } = await supabase
+    .from("chore_runs")
+    .update(patch)
+    .eq("block_id", p.blockId)
+    .eq("run_date", p.runDate)
+    .select(RUN_COLS);
+  if (error) throw asError(error);
+  return { run: data?.[0] ?? null };
+}
+
+async function execRunEnd(p) {
+  const result = await updateRunByKey(p, {
+    state: "done",
+    ended_at: p.endedAt,
+    ended_by_email: p.email,
+  });
+  // Fire the push trigger (Batch 11.3) at sync time — the run is now
+  // actually persisted. Best-effort; the function is idempotent on its
+  // own (notified_at lock).
+  if (result.run) fireRunDoneNotification(result.run.id);
+  return result;
+}
+
+function execRunResume(p) {
+  return updateRunByKey(p, {
+    state: "in_progress",
+    ended_at: null,
+    ended_by_email: null,
+  });
+}
+
+function execRunCancel(p) {
+  return updateRunByKey(p, {
+    state: "canceled",
+    ended_at: p.endedAt,
+    ended_by_email: p.email,
+  });
+}
+
+// Fire-and-forget POST to the Netlify function that fans out the
+// run-done push. Failures are logged but never re-thrown — the run
+// state UPDATE already succeeded by the time this is called.
+function fireRunDoneNotification(runId) {
+  try {
+    void fetch("/.netlify/functions/notify-run-done", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ runId }),
+      keepalive: true,
+    }).catch((e) => console.warn("[notify-run-done] post failed", e));
+  } catch (e) {
+    console.warn("[notify-run-done] fetch threw", e);
+  }
+}
+
 const EXECUTORS = {
   completion_insert: execCompletionInsert,
   completion_insert_many: execCompletionInsertMany,
@@ -306,6 +425,10 @@ const EXECUTORS = {
   completion_delete_chore: execCompletionDeleteChore,
   run_event: execRunEvent,
   mortality_decrement: execMortalityDecrement,
+  run_start: execRunStart,
+  run_end: execRunEnd,
+  run_resume: execRunResume,
+  run_cancel: execRunCancel,
 };
 
 // ── Queue state + subscriptions ─────────────────────────────────────
