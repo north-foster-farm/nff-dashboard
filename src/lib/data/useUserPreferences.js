@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 
 // Per-user preferences. Source-of-truth split:
@@ -131,8 +131,7 @@ export function useUserPreferences() {
   // another tab / browser / phone, mirror the change here.
   useEffect(() => {
     if (!email) return;
-    const channel = supabase
-      .channel(`user_prefs:${email}:${instanceId}`)
+    const channel = realtimeChannel(`user_prefs:${email}:${instanceId}`)
       .on(
         "postgres_changes",
         {

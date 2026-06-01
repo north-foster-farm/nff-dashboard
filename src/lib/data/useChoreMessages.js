@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "./../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 
 // Sticky-note style messages pinned to chores. The UI scopes use of this
 // hook two ways:
@@ -48,8 +48,9 @@ export function useChoreMessages({ choreId, unaddressedOnly = false } = {}) {
     if (choreId) filterParts.push(`chore_id=eq.${choreId}`);
     const filter = filterParts.join(",") || undefined;
 
-    const channel = supabase
-      .channel(`chore_messages:${choreId ?? "all"}:${unaddressedOnly}:${instanceId}`)
+    const channel = realtimeChannel(
+      `chore_messages:${choreId ?? "all"}:${unaddressedOnly}:${instanceId}`
+    )
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chore_messages", ...(filter ? { filter } : {}) },

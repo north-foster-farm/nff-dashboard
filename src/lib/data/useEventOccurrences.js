@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 
 // CRUD on event_occurrences.
 //
@@ -62,8 +62,7 @@ export function useEventOccurrences({ seriesId } = {}) {
         if (!res.error) setRows(res.data ?? []);
       }, 80);
     };
-    const channel = supabase
-      .channel(`event_occurrences:stream:${instanceId}`)
+    const channel = realtimeChannel(`event_occurrences:stream:${instanceId}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "event_occurrences" },
         refresh,

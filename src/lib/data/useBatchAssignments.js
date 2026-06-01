@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 
 // Loads every batch assignment in one round-trip and exposes:
 //   - getBatchId(eventInstanceId) → string | null
@@ -34,8 +34,7 @@ export function useBatchAssignments() {
   // assigns a batch. Useful when one admin assigns from a phone while the
   // other is on the desktop.
   useEffect(() => {
-    const channel = supabase
-      .channel("batch_assignments:stream")
+    const channel = realtimeChannel("batch_assignments:stream")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "batch_assignments" },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 import { buildPlaceTree } from "../places.js";
 
 // Loads the recursive `places` tree + the `placements` occupancy edge in
@@ -130,8 +130,7 @@ export function useSites() {
         if (!g.error) setGroups(g.data ?? []);
       }, 80);
     };
-    const channel = supabase
-      .channel(`places:stream:${instanceId}`)
+    const channel = realtimeChannel(`places:stream:${instanceId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "places" },

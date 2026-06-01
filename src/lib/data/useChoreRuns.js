@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 import { resolveBlockMinutes } from "../sunTimes.js";
 import {
   enqueueOp, initOutbox, outboxOps, subscribeOutbox,
@@ -181,8 +181,7 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
         if (!res.error) setRuns(res.data ?? []);
       }, 80);
     };
-    const channel = supabase
-      .channel(`chore_runs:stream:${instanceId}`)
+    const channel = realtimeChannel(`chore_runs:stream:${instanceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "chore_runs" }, refresh)
       .subscribe();
     return () => { supabase.removeChannel(channel); };

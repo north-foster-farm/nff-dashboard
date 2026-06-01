@@ -33,3 +33,17 @@ export const supabase = createClient(url, publishableKey, {
     autoRefreshToken: true
   }
 });
+
+// Realtime channel factory for the data hooks. realtime-js dedupes
+// channels by topic and throws if `postgres_changes` callbacks are
+// added to a channel that has already subscribed — exactly what
+// happens when two mounted components run the same data hook at once
+// (e.g. MapPage keeps its hooks mounted while rendering PlacePage on
+// top of itself). The counter suffix makes every call's topic unique,
+// so each mount gets its own channel. Cleanup is unchanged:
+// supabase.removeChannel(channel).
+let channelSeq = 0;
+export function realtimeChannel(topic) {
+  channelSeq += 1;
+  return supabase.channel(`${topic}:${channelSeq}`);
+}

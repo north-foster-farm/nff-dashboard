@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 import NFF_DATA from "../../data/nff-data.json";
 
 // Loads every migrated reference table in parallel and returns them keyed
@@ -82,8 +82,7 @@ export function useReferenceData() {
         if (!cancelled && v) setState(s => ({ ...s, events: v }));
       }, 120);
     };
-    const channel = supabase
-      .channel("refdata:events:stream")
+    const channel = realtimeChannel("refdata:events:stream")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "event_series" },

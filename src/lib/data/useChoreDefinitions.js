@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 
 // Loads chore_definitions and exposes update + delete actions for the
 // in-place edit affordance on the All chores tab. A chore carries an
@@ -59,8 +59,7 @@ export function useChoreDefinitions() {
         if (!res.error) setDefs(res.data ?? []);
       }, 80);
     };
-    const channel = supabase
-      .channel(`chore_definitions:stream:${instanceId}`)
+    const channel = realtimeChannel(`chore_definitions:stream:${instanceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "chore_definitions" }, refresh)
       .subscribe();
     return () => { supabase.removeChannel(channel); };

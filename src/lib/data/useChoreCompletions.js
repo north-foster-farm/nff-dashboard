@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 import { toLocalDateString } from "./dateUtil.js";
 import {
   enqueueOp, initOutbox, outboxOps, subscribeOutbox,
@@ -208,8 +208,7 @@ export function useChoreCompletions(date) {
   // Filter pushes the date predicate down to the server so we don't get
   // pinged about every chore in history.
   useEffect(() => {
-    const channel = supabase
-      .channel(`chore_completions:${dateStr}`)
+    const channel = realtimeChannel(`chore_completions:${dateStr}`)
       .on(
         "postgres_changes",
         {

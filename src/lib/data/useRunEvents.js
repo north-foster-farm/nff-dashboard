@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 import { enqueueOp } from "../outbox.js";
 
 // Run Events live in `activity_log` (typed rows tagged with run_id +
@@ -101,8 +101,7 @@ export function useRunEvents() {
         );
       }, 120);
     };
-    const channel = supabase
-      .channel(`run_events:stream:${instanceId}`)
+    const channel = realtimeChannel(`run_events:stream:${instanceId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "activity_log" },

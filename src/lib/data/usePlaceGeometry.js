@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 
 // place_geometry — the binding between places and the authored farm-map
 // SVG (Batch 18.2). One row per place that maps onto an SVG layer:
@@ -57,8 +57,7 @@ export function usePlaceGeometry() {
         await load();
       }, 80);
     };
-    const channel = supabase
-      .channel(`place_geometry:stream:${instanceId}`)
+    const channel = realtimeChannel(`place_geometry:stream:${instanceId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "place_geometry" },

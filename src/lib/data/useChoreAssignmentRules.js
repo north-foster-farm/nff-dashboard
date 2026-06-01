@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 
 // Chore assignment rules engine (Batch 12).
 //
@@ -58,8 +58,9 @@ export function useChoreAssignmentRules() {
         if (!res.error) setRows(res.data ?? []);
       }, 80);
     };
-    const channel = supabase
-      .channel(`chore_assignment_rules:stream:${instanceId}`)
+    const channel = realtimeChannel(
+      `chore_assignment_rules:stream:${instanceId}`
+    )
       .on("postgres_changes",
         { event: "*", schema: "public", table: "chore_assignment_rules" },
         refresh,

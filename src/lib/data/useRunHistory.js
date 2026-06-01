@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 
 // Read-only history hook for the Performance sub-tab. Pulls
 // chore_runs for the last `days` calendar days (defaults to 30 — the
@@ -59,8 +59,7 @@ export function useRunHistory({ days = 30 } = {}) {
         if (!res.error) setRows(res.data ?? []);
       }, 80);
     };
-    const channel = supabase
-      .channel(`chore_runs:history:${instanceId}`)
+    const channel = realtimeChannel(`chore_runs:history:${instanceId}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "chore_runs" },
         refresh,

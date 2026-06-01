@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 import { CHORE_SEEDS } from "../../data/choreSeeds.js";
 
 // Loads activity_log rows ordered most-recent-first, with optional time
@@ -61,8 +61,7 @@ export function useActivityLog({
 
   // Realtime: prepend new rows, replace edited rows, remove deleted rows.
   useEffect(() => {
-    const channel = supabase
-      .channel(`activity_log:stream:${instanceId}`)
+    const channel = realtimeChannel(`activity_log:stream:${instanceId}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "activity_log" },

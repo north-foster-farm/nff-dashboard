@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 
 // Read-only hook over the `timeline_items` view (Batch 13.1).
 //
@@ -78,8 +78,7 @@ export function useTimelineItems({ fromISO, toISO } = {}) {
         if (!res.error) setRows(res.data ?? []);
       }, 80);
     };
-    const channel = supabase
-      .channel(`timeline_items:${instanceId}`)
+    const channel = realtimeChannel(`timeline_items:${instanceId}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "event_occurrences" },
         refresh)

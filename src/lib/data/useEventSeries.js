@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "../supabase.js";
 
 // CRUD on event_series + the split-series transaction that powers
 // the "This and following" branch of the EventEditor scope prompt.
@@ -61,8 +61,7 @@ export function useEventSeries() {
         if (!res.error) setRows(res.data ?? []);
       }, 80);
     };
-    const channel = supabase
-      .channel(`event_series:stream:${instanceId}`)
+    const channel = realtimeChannel(`event_series:stream:${instanceId}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "event_series" },
         refresh,
