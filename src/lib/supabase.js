@@ -34,6 +34,19 @@ export const supabase = createClient(url, publishableKey, {
   }
 });
 
+// ── Session lifetime ──────────────────────────────────────────────────
+// How long a sign-in lasts is controlled server-side, not here:
+//   Supabase Dashboard → Authentication → Sessions
+//     * "Time-box user sessions"  → Never (or ≥ 60 days)
+//     * "Inactivity timeout"      → Never (or ≥ 60 days)
+//     * "Refresh token reuse interval" → keep the default (10s)
+// With those settings, persistSession + autoRefreshToken above keep a
+// device signed in indefinitely; the policy target is "at least 60 days
+// without re-authentication". The frequent-sign-out bug was client-side
+// (LoginGate re-running the admin RPC on every token refresh and
+// treating transient failures as "not authorized") — fixed in
+// LoginGate.jsx, which now caches the per-user admin verdict.
+
 // Realtime channel factory for the data hooks. realtime-js dedupes
 // channels by topic and throws if `postgres_changes` callbacks are
 // added to a channel that has already subscribed — exactly what

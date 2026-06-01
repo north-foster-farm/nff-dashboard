@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { T } from "../theme.js";
 import { supabase } from "../lib/supabase.js";
 
@@ -13,23 +13,77 @@ import { supabase } from "../lib/supabase.js";
 // Children receive the current Supabase session via the `session` prop so
 // downstream components can show the user's email in the sidebar footer, etc.
 // A bare `<AuthContext>` is overkill given we only have one consumer.
+//
+// Resilience rules (the "no surprise sign-outs" contract):
+//
+//   * The admin RPC runs once per signed-in user, not once per auth
+//     event. Token refreshes (hourly) reuse the cached verdict instead
+//     of re-hitting the network — a flaky connection during a refresh
+//     can no longer bounce an already-authorized user.
+//   * A transient RPC failure (network down, DB unreachable) falls back
+//     to the last persisted verdict for that user instead of kicking
+//     them to the "Not authorized" screen.
+//   * Session lifetime itself is server-side: the Supabase project's
+//     Auth → Sessions settings control how long a refresh token chain
+//     stays valid. Leave time-box / inactivity timeout unset (or ≥ 60
+//     days) so signing in once lasts at least 60 days.
 export default function LoginGate({ children }) {
   const [state, setState] = useState({ status: "loading", session: null });
+  // Last admin verdict per user id — survives token refreshes within
+  // this tab. Persisted copy (localStorage) survives reloads.
+  const verdictRef = useRef({ userId: null, isAdmin: null });
 
   useEffect(() => {
-    // Initial check on mount. getSession() is synchronous against localStorage
-    // (fast) and will return null if nothing is cached.
-    supabase.auth.getSession().then(({ data }) => {
-      checkAdmin(data.session).then(setState);
+    let disposed = false;
+    const apply = (next) => {
+      if (!disposed) setState(next);
+    };
+
+    const resolve = async (session) => {
+      if (!session) {
+        verdictRef.current = { userId: null, isAdmin: null };
+        apply({ status: "signed-out", session: null });
+        return;
+      }
+      const userId = session.user?.id ?? null;
+      // Same user, verdict already known → reuse it. This is the path
+      // every TOKEN_REFRESHED event takes.
+      if (
+        verdictRef.current.userId === userId &&
+        verdictRef.current.isAdmin !== null
+      ) {
+        apply({
+          status: verdictRef.current.isAdmin ? "authorized" : "not-authorized",
+          session,
+        });
+        return;
+      }
+      const isAdmin = await checkAdmin(userId);
+      if (disposed) return;
+      verdictRef.current = { userId, isAdmin };
+      apply({ status: isAdmin ? "authorized" : "not-authorized", session });
+    };
+
+    // Subscribe first so no auth event can slip between the initial
+    // getSession() read and the listener attaching. The listener also
+    // receives INITIAL_SESSION, so getSession() below is just a fast
+    // path for the very first paint.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // USER_UPDATED / TOKEN_REFRESHED / SIGNED_IN with the same user
+      // all flow through resolve(), which short-circuits on the cached
+      // verdict. SIGNED_OUT clears it.
+      resolve(session);
     });
 
-    // Live updates whenever auth state changes (sign-in, sign-out, token
-    // refresh, and — critically — the PKCE code exchange that happens
-    // automatically after the OAuth redirect).
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      checkAdmin(session).then(setState);
+    supabase.auth.getSession().then(({ data }) => {
+      if (disposed) return;
+      resolve(data.session);
     });
-    return () => sub.subscription.unsubscribe();
+
+    return () => {
+      disposed = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   if (state.status === "loading") return <Splash label="Loading…" />;
@@ -39,20 +93,47 @@ export default function LoginGate({ children }) {
   return children(state.session);
 }
 
-// Runs the is-admin RPC against the current session and resolves to the
-// concrete UI state. Isolated here so both the initial load and the
-// onAuthStateChange handler can share the logic.
-async function checkAdmin(session) {
-  if (!session) return { status: "signed-out", session: null };
-  const { data, error } = await supabase.rpc("current_user_is_admin");
-  if (error) {
-    // Swallow the error as "not authorized" rather than crashing the UI —
-    // safer default if the function is missing or the DB is unreachable.
-    // The user can at least sign out and try again.
-    console.error("is-admin check failed:", error);
-    return { status: "not-authorized", session };
+// ─── Admin check (cached, failure-tolerant) ─────────────────────────────────
+
+const ADMIN_CACHE_KEY = "nff-admin-verdicts";
+
+function readAdminCache() {
+  try {
+    const raw = localStorage.getItem(ADMIN_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
   }
-  return { status: data ? "authorized" : "not-authorized", session };
+}
+
+function writeAdminCache(userId, isAdmin) {
+  try {
+    const cache = readAdminCache();
+    cache[userId] = isAdmin;
+    localStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // localStorage unavailable — in-memory verdict still applies.
+  }
+}
+
+// Runs the is-admin RPC for the given user. On a definitive answer the
+// verdict is persisted; on a transient failure (network, DB unreachable)
+// we fall back to the persisted verdict so connectivity blips never log
+// anyone out. Only a user we've never successfully verified defaults to
+// not-authorized.
+async function checkAdmin(userId) {
+  try {
+    const { data, error } = await supabase.rpc("current_user_is_admin");
+    if (error) throw error;
+    const isAdmin = !!data;
+    writeAdminCache(userId, isAdmin);
+    return isAdmin;
+  } catch (err) {
+    console.error("is-admin check failed (using cached verdict):", err);
+    const cached = readAdminCache()[userId];
+    return cached === true;
+  }
 }
 
 // ─── Sign-in view ───────────────────────────────────────────────────────────
@@ -77,15 +158,12 @@ function SignInView() {
         // which Supabase then surfaces as avatar_url / picture /
         // full_name on user_metadata. Without this, user_metadata comes
         // back almost empty (just email + sub).
-        scopes: "openid email profile",
-        // `prompt=consent` forces Google to show the consent screen on
-        // every sign-in instead of silently reusing a cached grant. We
-        // need this once after expanding scopes on the OAuth consent
-        // screen, otherwise users with an existing grant log in via the
-        // old narrower scope set and never receive the picture claim.
-        // Safe to leave on long-term: the friction is one extra click
-        // every few months when Google rotates session cookies.
-        queryParams: { prompt: "consent" }
+        //
+        // Note: we deliberately do NOT pass `prompt=consent` any more.
+        // It forced the full Google consent screen on every sign-in,
+        // which made each re-auth feel like setting up from scratch.
+        // Existing grants already include the profile scope.
+        scopes: "openid email profile"
       }
     });
     if (error) {
