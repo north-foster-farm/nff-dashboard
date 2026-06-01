@@ -206,7 +206,8 @@ export default function MapPage({ data, onOpenRounds, onNavigate }) {
       <div className="shrink-0 text-[11px] text-faint">
         {zoomedPlaceId
           ? "Tap a pin to open that place — tap the zone name for the zone itself. Tap outside to zoom back out."
-          : "Tap a zone to zoom in. Colors roll up everything inside a zone."}
+          : "Tap a zone to zoom in. Colors roll up everything inside a zone. " +
+            "Pinch or use the +/− controls to zoom freely; right-click zooms out."}
       </div>
     </div>
   );
