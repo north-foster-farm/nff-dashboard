@@ -15,6 +15,7 @@ import { useSites } from "../lib/data/useSites.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import ActivityRow from "../components/ActivityRow.jsx";
+import AutomationsPanel from "../components/AutomationsPanel.jsx";
 
 // One species' record page (Batch 25.2 rewrite — Tailwind, placements,
 // real activity log). Five tabs:
@@ -48,6 +49,9 @@ export default function SpeciesPage({ species, data }) {
     { id: "groups", label: `Groups · ${species.groups.length}` },
     { id: "feed", label: `Feed schedule · ${speciesSchedules.length}` },
     { id: "chores", label: `Chores · ${speciesChores.length}` },
+    // Automation rules that fire for this species (Batch 27.5 —
+    // relocated here from the Settings page).
+    { id: "automations", label: "Automations" },
     { id: "activity", label: "Activity log" },
     { id: "more", label: "More info" },
   ];
@@ -74,6 +78,12 @@ export default function SpeciesPage({ species, data }) {
       )}
       {tab === "chores" && (
         <SpeciesChoresTab species={species} chores={speciesChores} />
+      )}
+      {tab === "automations" && (
+        <AutomationsPanel
+          triggerKind="batch_created"
+          speciesId={species.id}
+        />
       )}
       {tab === "activity" && (
         <ActivityLogTab species={species} chores={speciesChores} />

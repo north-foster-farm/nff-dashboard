@@ -2350,6 +2350,39 @@ species/feed pages and emissions to the bell; 27.6 adds the
 processing-event batch picker, batch-referencing titles, and the
 feed supplier picker.
 
+### Batch 27.5 — Automations relocation + bell · `v0.10.30-alpha`
+2026-06-02. Second slice of the automations rework: the rules UI
+moves out of Settings to live next to what each rule is about,
+and automation firings become bell notifications. No schema
+changes.
+
+- **`components/AutomationsPanel.jsx`** (new, shared): rule cards
+  (enable toggle + per-rule config) + that rule's firing history.
+  The broiler-lifecycle card gains the two controls the 0025
+  trigger reads: a **pasture-move chore block picker** and a
+  **custom start-time override**, plus the cleanout-offset days
+  editor. Copy reflects the post-0025 behavior ("processing days
+  are not auto-created").
+- **Broilers page → Automations tab** — `batch_created` rules
+  whose species matches, between Chores and Activity log.
+- **Feed page → tabs** — "Feed types · N" (the existing
+  group-cards layout) | "Automations" (the `inventory_reorder`
+  rule).
+- **Settings** — Automations section removed (with its Toggle /
+  NumberSetting inputs, which moved into the panel).
+- **Bell (InboxBell)** — new "Automations" section at the top of
+  the dropdown: every active firing with **Clear** (acknowledge —
+  keeps what it created) and **Delete** (dismiss — tombstones the
+  created events/chores via the existing RPC; confirm dialog, no
+  reason prompt). Badge count includes active firings.
+- **Dashboard** — the Heads Up lane is retired; automation
+  firings live in the bell, and process expansions now create
+  chores that surface through the normal chore surfaces.
+
+**Out of scope — 27.6:** processing-event batch picker,
+batch-referencing schedule titles, feed supplier picker, and the
+place-page "View on timeline" fix.
+
 ---
 
 ## Overhaul design records
@@ -2594,21 +2627,21 @@ sale (Batch 28 POS); per-order sales (Batch 29).
 
 ### Batches 27.4–27.6 — Automations rework 🔨 IN PROGRESS
 James's 2026-06-02 feedback on the Batch 19/23 automations.
-**27.4 (lifecycle + prep-as-chores) shipped 2026-06-02**
-(`v0.10.29-alpha`) — see Shipped above.
+**27.4 (lifecycle + prep-as-chores, `v0.10.29-alpha`) and 27.5
+(relocation + bell, `v0.10.30-alpha`) shipped 2026-06-02** — see
+Shipped above.
 
 Remaining:
-- **27.5 — Relocation**: Automations tab on the species page
-  (broiler lifecycle rule + block/time pickers for the
-  pasture-move chore), Feed page tabs (Feed types | Automations),
-  Settings section removed, emissions move from the Heads Up lane
-  to the bell with clear/delete.
 - **27.6 — Pickers + titles**: batch picker on processing-day
   events, processing titles reference their batch in the
   Schedule, supplier picker on feed types, and the place-page
   "View on timeline" button made useful (today it opens the
   generic Schedule with no place context — James: "works but
   generic"; it should show that place's events).
+- **Prod cleanup tail (pending James finishing his testing):**
+  the leftover old-style prep projects + project-shaped expansion
+  rows from the 15:43–16:09 deploy-race window still need the
+  approved pattern-based sweep.
 
 ### Batch 28 — Inventory backend + Point of Sale
 Inventory schema + CRUD; on-hand by SKU/location. POS marks items

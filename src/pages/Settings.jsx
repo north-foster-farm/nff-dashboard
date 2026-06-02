@@ -1,10 +1,8 @@
-import { useState } from "react";
 import { useUserPreferences } from "../lib/data/useUserPreferences.js";
 import { usePushNotifications } from "../lib/data/usePushNotifications.js";
-import { useAutomations } from "../lib/data/useAutomations.js";
 import { supabase } from "../lib/supabase.js";
 import {
-  Sun, Moon, ALargeSmall, Bell, BellOff, Sparkles, LogOut,
+  Sun, Moon, ALargeSmall, Bell, BellOff, LogOut,
 } from "lucide-react";
 
 // User settings page. Stays focused — three settings, each with a tight
@@ -72,7 +70,10 @@ export default function Settings() {
 
       <NotificationsSection />
 
-      <AutomationsSection />
+      {/* Automations moved to where their subjects live (Batch 27.5):
+          the broiler-lifecycle rule is on the Broilers page's
+          Automations tab; the feed-reorder rule is on the Feed page's
+          Automations tab. */}
 
       {/* Sign out moved here from the TopBar (2026-06 chore-ux fixes). */}
       <Section title="Account">
@@ -91,152 +92,9 @@ export default function Settings() {
   );
 }
 
-// ── Automations section ──────────────────────────────────────────────
-// Lists the trigger rules (Batch 19). Each can be enabled/disabled;
-// the broiler-lifecycle rule's week offsets are editable inline.
-function AutomationsSection() {
-  const { automations, loading, setEnabled, updateConfig } = useAutomations();
-
-  return (
-    <Section
-      title="Automations"
-      subtitle={loading ? "Loading…" : null}
-    >
-      <p className="text-[12px] text-dim leading-relaxed m-0 -mt-2">
-        Rules that create events and chores for you. Anything they create
-        shows up with a <Sparkles size={11} className="inline -translate-y-px" /> sparkle
-        and lands in the dashboard's "Heads up" lane until someone
-        acknowledges it.
-      </p>
-      {automations.map((a) => (
-        <AutomationRow
-          key={a.id}
-          automation={a}
-          onToggle={(enabled) => setEnabled(a.id, enabled)}
-          onUpdateConfig={(cfg) => updateConfig(a.id, cfg)}
-        />
-      ))}
-      {!loading && automations.length === 0 && (
-        <div className="text-[12px] text-dim italic">
-          No automation rules found.
-        </div>
-      )}
-    </Section>
-  );
-}
-
-// Per-trigger-kind copy describing what the rule does.
-const AUTOMATION_COPY = {
-  batch_created: "When a new broiler batch is added, creates its arrival, "
-    + "pasture-move, and processing events plus a brooder cleanout chore.",
-  inventory_reorder: "When a feed's on-hand amount (Records → Feeds) drops "
-    + "to or below its reorder point, creates a feed-order chore and a "
-    + "delivery event.",
-};
-
-function AutomationRow({ automation: a, onToggle, onUpdateConfig }) {
-  const cfg = a.triggerConfig;
-  const lastFired = a.lastFiredAt
-    ? new Date(a.lastFiredAt).toLocaleString("en-US", {
-        month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-      })
-    : "never";
-
-  return (
-    <div className="border border-line bg-surface-alt p-4 flex flex-col gap-3">
-      <div className="flex items-start gap-3">
-        <Sparkles size={14} className="text-accent-deep shrink-0 translate-y-0.5" />
-        <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-semibold text-fg">{a.name}</div>
-          <p className="text-[12px] text-dim leading-relaxed m-0 mt-1">
-            {AUTOMATION_COPY[a.triggerKind] ?? a.triggerKind}
-          </p>
-          <div className="text-[11px] text-faint mt-1.5">
-            Last fired: {lastFired}
-          </div>
-        </div>
-        <Toggle checked={a.enabled} onChange={onToggle} />
-      </div>
-      {a.triggerKind === "batch_created" && (
-        <div className="flex items-center gap-4 flex-wrap pl-7">
-          <NumberSetting
-            label="Pasture move"
-            unit="weeks after arrival"
-            value={cfg.pasture_move_weeks ?? 3}
-            min={1} max={12}
-            onCommit={(v) =>
-              onUpdateConfig({ ...cfg, pasture_move_weeks: v })}
-          />
-          <NumberSetting
-            label="Processing"
-            unit="weeks after arrival"
-            value={cfg.processing_weeks ?? 8}
-            min={4} max={20}
-            onCommit={(v) =>
-              onUpdateConfig({ ...cfg, processing_weeks: v })}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Toggle({ checked, onChange }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={
-        "relative w-9 h-5 rounded-full border transition-colors cursor-pointer shrink-0 " +
-        (checked
-          ? "bg-accent border-accent"
-          : "bg-surface border-line")
-      }
-    >
-      <span
-        className={
-          "absolute top-0.5 w-3.5 h-3.5 rounded-full transition-transform " +
-          (checked
-            ? "left-0.5 translate-x-4 bg-on-accent"
-            : "left-0.5 bg-dim")
-        }
-      />
-    </button>
-  );
-}
-
-// Small inline number editor: label + stepper input + unit hint.
-// Commits on blur or Enter so half-typed numbers don't thrash the DB.
-function NumberSetting({ label, unit, value, min, max, onCommit }) {
-  const [draft, setDraft] = useState(null); // null = not editing
-
-  const commit = () => {
-    if (draft === null) return;
-    const n = Number(draft);
-    if (Number.isFinite(n) && n >= min && n <= max && n !== value) {
-      onCommit(Math.round(n));
-    }
-    setDraft(null);
-  };
-
-  return (
-    <label className="flex items-center gap-2">
-      <span className="text-[12px] text-fg font-medium">{label}</span>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        value={draft ?? value}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
-        className="w-14 bg-surface border border-line px-2 py-1 text-[12px] text-fg font-[inherit] outline-none text-center"
-      />
-      <span className="text-[11px] text-faint">{unit}</span>
-    </label>
-  );
-}
+// The Automations section moved to AutomationsPanel.jsx (Batch 27.5),
+// rendered on the species / feed pages — along with the Toggle /
+// NumberSetting inputs it used.
 
 // ── Notifications section ────────────────────────────────────────────
 function NotificationsSection() {

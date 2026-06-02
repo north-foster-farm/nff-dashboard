@@ -16,6 +16,7 @@ import {
   projectReorder, consolidationSummary, formatAmount, formatOrderDate,
 } from "../lib/feedConsumption.js";
 import { formatDate } from "../lib/dates.js";
+import AutomationsPanel from "../components/AutomationsPanel.jsx";
 
 // The Feed page (Batch 25.1) — group-cards layout.
 //
@@ -34,6 +35,7 @@ import { formatDate } from "../lib/dates.js";
 
 export default function Feeds({ data }) {
   const db = useFeeds();
+  const [tab, setTab] = useState("feeds");
 
   // Projection context: schedules + livestock come from the app-wide
   // reference data (already realtime-refreshed); feeds come from the
@@ -74,38 +76,76 @@ export default function Feeds({ data }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="text-[11px] text-muted leading-relaxed max-w-[700px]">
-        Feed types grouped by the animals that eat them, drag-orderable
-        within each group. Order dates are projected from the feed
-        schedules — what every batch eats per day, walked forward until
-        stock hits the reorder point — and snapped to the closest
-        business day before the trigger. Recording an order keeps the
-        price history that the &ldquo;last paid&rdquo; line reads from.
+      {/* Tabs (Batch 27.5): the feed types themselves, and the
+          feed-reorder automation rule that watches them. */}
+      <div className="flex items-center gap-1 border-b border-line -mb-1">
+        <FeedsTab
+          active={tab === "feeds"}
+          onClick={() => setTab("feeds")}
+          label={`Feed types · ${db.feeds.length}`}
+        />
+        <FeedsTab
+          active={tab === "automations"}
+          onClick={() => setTab("automations")}
+          label="Automations"
+        />
       </div>
 
-      {consolidation.anyDue && (
-        <ConsolidationBanner rows={consolidation.rows} />
-      )}
-
-      {groups.map(group => (
-        <SpeciesGroup
-          key={group.species?.id ?? "other"}
-          species={group.species}
-          feeds={group.feeds}
-          db={db}
-          ctx={ctx}
-          suppliers={data.suppliers ?? []}
-        />
-      ))}
-
-      {db.feeds.length === 0 && (
-        <div className="bg-surface border border-line px-6 py-10 text-center">
-          <div className="text-[13px] text-muted">
-            No feed types recorded yet.
+      {tab === "automations" ? (
+        <AutomationsPanel triggerKind="inventory_reorder" />
+      ) : (
+        <>
+          <div className="text-[11px] text-muted leading-relaxed max-w-[700px]">
+            Feed types grouped by the animals that eat them, drag-orderable
+            within each group. Order dates are projected from the feed
+            schedules — what every batch eats per day, walked forward until
+            stock hits the reorder point — and snapped to the closest
+            business day before the trigger. Recording an order keeps the
+            price history that the &ldquo;last paid&rdquo; line reads from.
           </div>
-        </div>
+
+          {consolidation.anyDue && (
+            <ConsolidationBanner rows={consolidation.rows} />
+          )}
+
+          {groups.map(group => (
+            <SpeciesGroup
+              key={group.species?.id ?? "other"}
+              species={group.species}
+              feeds={group.feeds}
+              db={db}
+              ctx={ctx}
+              suppliers={data.suppliers ?? []}
+            />
+          ))}
+
+          {db.feeds.length === 0 && (
+            <div className="bg-surface border border-line px-6 py-10 text-center">
+              <div className="text-[13px] text-muted">
+                No feed types recorded yet.
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
+  );
+}
+
+function FeedsTab({ active, onClick, label }) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "bg-transparent border-0 font-[inherit] text-[12px] font-semibold " +
+        "uppercase tracking-[0.12em] px-3 pb-2.5 pt-1 cursor-pointer " +
+        (active
+          ? "text-fg shadow-[inset_0_-2px_0_0_var(--c-accent)]"
+          : "text-dim hover:text-fg")
+      }
+    >
+      {label}
+    </button>
   );
 }
 

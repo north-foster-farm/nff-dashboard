@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Clock, CheckCircle2, ArrowUpRight,
   FolderKanban, Receipt, Newspaper, Activity as ActivityIcon,
-  MapPin, User, CloudOff, Sparkles, Workflow, X, Bird
+  MapPin, User, CloudOff, Workflow, Bird
 } from "lucide-react";
 import { T } from "../theme.js";
 import { formatTime12h } from "../lib/dates.js";
@@ -25,8 +25,6 @@ import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
-import { useAutomationEmissions } from "../lib/data/useAutomations.js";
-import { useProcesses } from "../lib/data/useProcesses.js";
 import { useChoreModifiers } from "../lib/data/useChoreModifiers.js";
 import { countModified } from "../lib/modifiers.js";
 import { useSites } from "../lib/data/useSites.js";
@@ -65,9 +63,10 @@ export default function Overview({ data, onNavigate }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Row 0: the Heads-up lane. Only renders when an automation has
-          fired and nobody has acknowledged / dismissed it yet. */}
-      <HeadsUpLane onNavigate={onNavigate} />
+      {/* The Heads-up lane lived here from Batch 19 until Batch 27.5 —
+          automation firings now surface as bell notifications
+          (InboxBell), and process expansions create chores that show
+          up in the normal chore surfaces. */}
       {/* Row 1: chores on the left; conditions stacked above the day's
           schedule on the right. */}
       <GridRow cols={2}>
@@ -108,152 +107,6 @@ function GridRow({ cols, children }) {
 // Vertical stack of cards inside a single grid column.
 function Stack({ children }) {
   return <div className="flex flex-col gap-4">{children}</div>;
-}
-
-// ─── Heads up (automation emissions + process expansions) ────────────────────
-
-// Full-width lane listing the things the system did that nobody has
-// triaged yet: automation firings (Batch 19) and process expansions
-// (Batch 23). Each row: icon + summary + when, with "Got it"
-// (acknowledge — keeps what was created) and "Dismiss" (asks for a
-// reason, tombstones / archives what was created). Renders nothing
-// when the lane is empty.
-function HeadsUpLane({ onNavigate }) {
-  const { emissions, acknowledge, dismiss } = useAutomationEmissions();
-  const {
-    activeExpansions, acknowledgeExpansion, dismissExpansion,
-  } = useProcesses();
-  const [dismissingId, setDismissingId] = useState(null);
-  const [reason, setReason] = useState("");
-
-  // Merge both sources into one chronological lane. Each entry carries
-  // its own accept / dismiss handlers so the row JSX stays shared.
-  const items = useMemo(() => {
-    const out = [];
-    for (const em of emissions ?? []) {
-      out.push({
-        id: em.id,
-        icon: Sparkles,
-        summary: em.summary,
-        at: em.firedAt,
-        projectId: null,
-        onAccept: () => acknowledge(em.id),
-        onDismiss: (why) => dismiss(em.id, why),
-        dismissLabel: "Dismiss + remove",
-      });
-    }
-    for (const exp of activeExpansions ?? []) {
-      out.push({
-        id: exp.id,
-        icon: Workflow,
-        summary: exp.summary,
-        at: exp.expandedAt,
-        projectId: exp.created?.project_id ?? null,
-        onAccept: () => acknowledgeExpansion(exp.id),
-        onDismiss: (why) => dismissExpansion(exp.id, why),
-        dismissLabel: "Dismiss + undo",
-      });
-    }
-    return out.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
-  }, [
-    emissions, activeExpansions, acknowledge, dismiss,
-    acknowledgeExpansion, dismissExpansion,
-  ]);
-
-  if (items.length === 0) return null;
-
-  const submitDismiss = async (item) => {
-    try {
-      await item.onDismiss(reason.trim());
-    } finally {
-      setDismissingId(null);
-      setReason("");
-    }
-  };
-
-  return (
-    <Card title="Heads up" icon={Sparkles}
-      subtitle={`${items.length} thing${items.length === 1 ? "" : "s"} the system did for you`}>
-      <ol className="m-0 p-0 list-none flex flex-col gap-2">
-        {items.map((item) => (
-          <li key={item.id}
-            className="flex flex-col gap-2 border border-line bg-row-active-dim px-3.5 py-3">
-            <div className="flex items-start gap-2.5">
-              <item.icon size={14} className="text-accent-deep shrink-0 translate-y-0.5" />
-              <div className="min-w-0 flex-1">
-                <div className="text-[13px] text-fg leading-relaxed">
-                  {item.summary}
-                </div>
-                <div className="text-[11px] text-dim mt-1">
-                  {new Date(item.at).toLocaleString("en-US", {
-                    weekday: "short", month: "short", day: "numeric",
-                    hour: "numeric", minute: "2-digit",
-                  })}
-                  {" · "}
-                  {item.projectId ? (
-                    <button
-                      onClick={() => navigate(pathForProject(item.projectId))}
-                      className="bg-transparent border-0 p-0 text-accent-deep cursor-pointer font-[inherit] text-[11px] underline underline-offset-2"
-                    >
-                      See the project
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onNavigate?.("schedule")}
-                      className="bg-transparent border-0 p-0 text-accent-deep cursor-pointer font-[inherit] text-[11px] underline underline-offset-2"
-                    >
-                      See schedule
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={item.onAccept}
-                  className="bg-accent text-on-accent border-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
-                >
-                  Got it
-                </button>
-                <button
-                  onClick={() => { setDismissingId(item.id); setReason(""); }}
-                  className="bg-transparent text-dim border border-line px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-            {dismissingId === item.id && (
-              <div className="flex items-center gap-2 pl-6">
-                <input
-                  autoFocus
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") submitDismiss(item);
-                    if (e.key === "Escape") setDismissingId(null);
-                  }}
-                  placeholder="Why dismiss? (e.g. batch canceled, ordered already)"
-                  className="flex-1 bg-surface border border-line px-2.5 py-1.5 text-[12px] text-fg font-[inherit] outline-none"
-                />
-                <button
-                  onClick={() => submitDismiss(item)}
-                  className="bg-warn text-on-accent border-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
-                >
-                  {item.dismissLabel}
-                </button>
-                <button
-                  onClick={() => setDismissingId(null)}
-                  className="bg-transparent text-dim border-0 p-1 cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-          </li>
-        ))}
-      </ol>
-    </Card>
-  );
 }
 
 // ─── Activity (capped + link) ───────────────────────────────────────────────

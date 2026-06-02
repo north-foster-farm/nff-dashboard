@@ -1,18 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, Check, Lightbulb, X, ArrowUpRight } from "lucide-react";
+import {
+  Bell, Check, Lightbulb, Sparkles, Trash2, X, ArrowUpRight,
+} from "lucide-react";
 import { useChoreMessages } from "../lib/data/useChoreMessages.js";
 import { useChoreLookup } from "../lib/data/useChoreLookup.js";
 import { useInboxItems } from "../lib/data/useInboxItems.js";
+import { useAutomationEmissions } from "../lib/data/useAutomations.js";
 import { navigate } from "../lib/router.js";
 
 // Top-bar notifications affordance. Shows a bell with a count badge of
-// unaddressed chore messages + unread inbox thoughts (Batch 21 — quiet
-// by design, no push). Click to open a dropdown listing both, with
-// quick address / mark-read actions.
+// automation firings + unaddressed chore messages + unread inbox
+// thoughts (Batch 21; automations added in Batch 27.5 when the Heads
+// Up lane retired). Click to open a dropdown listing all three, with
+// quick triage actions.
 export default function InboxBell() {
   const { messages, address } = useChoreMessages({ unaddressedOnly: true });
   const inbox = useInboxItems();
   const choreTitleFor = useChoreLookup();
+  // Active automation firings — "the system did something for you."
+  // Clear = acknowledge (keeps what was created); Delete = dismiss
+  // (tombstones the created events / chores via the dismiss RPC).
+  const { emissions, acknowledge, dismiss } = useAutomationEmissions();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -33,7 +41,8 @@ export default function InboxBell() {
     };
   }, [open]);
 
-  const count = messages.length + unreadThoughts.length;
+  const count =
+    messages.length + unreadThoughts.length + (emissions?.length ?? 0);
   const hasMessages = count > 0;
 
   return (
@@ -71,6 +80,56 @@ export default function InboxBell() {
               <X size={14} />
             </button>
           </div>
+          {/* Automation firings (Batch 27.5 — replaces the Heads Up
+              lane). Clear keeps what was created; the trash dismisses
+              and removes the created events / chores. */}
+          {(emissions?.length ?? 0) > 0 && (
+            <div className="border-b border-line">
+              <div className="px-4 pt-3 pb-1 font-ui text-[10px] text-faint uppercase tracking-[0.14em] font-semibold">
+                Automations
+              </div>
+              <ul className="m-0 p-0 list-none">
+                {emissions.map((em) => (
+                  <li key={em.id}
+                    className="px-4 py-2.5 border-b border-line last:border-b-0">
+                    <div className="flex items-start gap-2">
+                      <Sparkles size={13}
+                        className="shrink-0 text-accent-deep translate-y-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] text-fg break-words leading-relaxed">
+                          {em.summary}
+                        </div>
+                        <div className="text-[10px] text-faint mt-1 uppercase tracking-[0.12em]">
+                          {formatRelative(em.firedAt)}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => acknowledge(em.id).catch(reportErr)}
+                        title="Clear — keep what it created"
+                        aria-label="Clear"
+                        className="shrink-0 text-muted hover:text-resolved p-1 cursor-pointer bg-transparent border-0"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!window.confirm(
+                            "Delete this firing and everything it "
+                            + "created (its events and chores)?")) return;
+                          dismiss(em.id, null).catch(reportErr);
+                        }}
+                        title="Delete — remove what it created"
+                        aria-label="Delete"
+                        className="shrink-0 text-muted hover:text-warn p-1 cursor-pointer bg-transparent border-0"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {unreadThoughts.length > 0 && (
             <div className="border-b border-line">
               <div className="px-4 pt-3 pb-1 font-ui text-[10px] text-faint uppercase tracking-[0.14em] font-semibold flex items-center justify-between">
@@ -114,13 +173,15 @@ export default function InboxBell() {
               </ul>
             </div>
           )}
-          {messages.length === 0 && unreadThoughts.length === 0 ? (
+          {messages.length === 0 && unreadThoughts.length === 0
+            && (emissions?.length ?? 0) === 0 ? (
             <div className="px-4 py-6 text-[12px] text-dim text-center italic">
               Nothing needs attention right now.
             </div>
           ) : messages.length === 0 ? null : (
             <ul className="m-0 p-0 list-none">
-              {unreadThoughts.length > 0 && (
+              {(unreadThoughts.length > 0
+                || (emissions?.length ?? 0) > 0) && (
                 <li className="px-4 pt-3 pb-1 font-ui text-[10px] text-faint uppercase tracking-[0.14em] font-semibold">
                   Chore messages
                 </li>
