@@ -1,8 +1,9 @@
 # NFF Dashboard — Roadmap
 
 Living record of the multi-batch improvement plan: how it came to be,
-what has shipped, and what is still upcoming. Updated as part of every
-batch (final step of the per-batch checklist).
+what has shipped, the design records of the completed overhauls, and
+what is still upcoming. Updated as part of every batch (final step of
+the per-batch checklist).
 
 ## How this plan was formed
 
@@ -1835,26 +1836,19 @@ James/Jim, same as chore assignment rules).
 
 ---
 
-## Upcoming
+## Overhaul design records
 
-The remainder of the plan (originally 22 batches; renumbered to 23
-when Batch 6 was inserted to ship the in-app roadmap page; renumbered
-to 27 when the Chores overhaul was inserted as Batches 7–10
-on 2026-05-06; renumbered to 31 when the Events + Schedule overhaul
-was inserted as Batches 11–14, also 2026-05-06; renumbered to 35
-on 2026-05-07 after the roadmap-updates revision — a new Batch 10
-absorbs the Rounds polish + block-model + `chore_groups` removal
-carved out of 8.x, a new Batch 12 ships the chore assignment rules
-engine immediately after Performance, a new Batch 17 ships the
-Inbox "just a thought…" capture surface post-Events overhaul, and
-a new Batch 23 — Metrics & analytics — supersedes the broiler
-tracker and folds in any other data-visualization or reporting
-items the roadmap was tracking piecemeal); renumbered to 38 on 2026-05-31 when the Farm Map UI overhaul was inserted as Batches 15–18 right after 14.2 — pushing the Events-overhaul tail (Triggers, Animal lifecycle) to 19–20, absorbing the old Resources rethink (Batch 21) into the place-model collapse, re-pointing the old Pasture simulator (Batch 34) into the Rotation planner (Batch 37), and pulling a field slice of Offline (old 33), App-wide search (old 30), and the mobile pass (old 32) forward into the farm-map MVP. Sequencing is the
-proposal — locked in only when the batch starts.
+Three overhauls jumped the original plan's queue, each kicked off by
+a multi-agent design workshop. Every batch under them has now
+shipped (full entries in Shipped above); the write-ups stay here as
+the record of why each one jumped and what was decided.
 
-### Chores overhaul (Batches 7–12)
+### Chores overhaul (Batches 7–12) ✅ COMPLETE
+*All batches shipped as of 2026-05-08 (`v0.10.5-alpha`). One loose
+end remains open on purpose: the modifier-conflict UI, deferred to
+the Processes batch (Batch 23) — see the last bullet.*
 
-Why these jump the queue: chores + scheduling are the primary
+Why these jumped the queue: chores + scheduling are the primary
 problem the dashboard exists to solve. The current chores
 implementation became too tangled to keep extending. A four-agent
 design workshop on 2026-05-06 produced a unified model — captured
@@ -1895,11 +1889,13 @@ Highlights:
   Processes batch (now Batch 23) since it has nothing to render
   until then.
 
-### Events + Schedule overhaul (Batches 13–16; tail now 19–20)
+### Events + Schedule overhaul (Batches 13–14 + 19–20) ✅ COMPLETE
+*All batches shipped as of 2026-06-01 (`v0.10.17-alpha`). The tail
+landed as Batches 19–20 after the Farm Map overhaul was inserted as
+15–18. One bullet below didn't ship: push-only GCal sync was
+deferred mid-Batch-19 (James's call) and is now Batch 31.*
 
-*Sequencing note (2026-05-31): the Farm Map overhaul was inserted as Batches 15–18 right after 14.2, so this overhaul's two still-upcoming batches — Triggers + GCal push and Animal lifecycle pages — now land as Batches 19–20.*
-
-Why these jump ahead of Projects: events + schedule are the other
+Why these jumped ahead of Projects: events + schedule are the other
 half of the time-management problem chores tackles. The current
 events subsystem is read-only with no CRUD, weekly-only
 recurrence, a stub for processing-day batch assignment, two
@@ -1945,7 +1941,7 @@ chosen calendar rail at
 *All four batches shipped as of 2026-06-01 (`v0.10.15-alpha`). The
 write-up below is kept as the design record for the overhaul.*
 
-Why these jump the queue: navigation and the place model are the
+Why these jumped the queue: navigation and the place model are the
 structural problem the dashboard keeps running into. The sidebar is an
 arbitrary flat list with no wayfinding, it isn't responsive, and it's a
 friction point for a non-web-native operator (Dad) — and underneath it,
@@ -1994,82 +1990,35 @@ Collisions resolved (recorded here for the record):
   (the field write-path outbox, place search, and Tier-1 mobile
   respectively); the remainders stay as those later batches.
 
-### Batch 15 — Farm map: place-model foundation ✅ SHIPPED
-Shipped `v0.10.10-alpha` (2026-05-31) — see the Shipped section above.
+---
 
-### Batch 16 — Farm map: per-place completion + offline outbox ✅ SHIPPED
-The rollout's beating heart — Dad working in the field, offline. Split
-into 16.1 / 16.2 when the batch started; both halves now shipped.
+## Upcoming
 
-**16.1 ✅ SHIPPED** (`v0.10.11-alpha`, 2026-05-31 — see Shipped above):
-re-keyed `chore_completions` to `(chore_id, place_id, date)` and fanned
-place-scoped chores into per-place obligations via occupancy-driven
-fan-out (so "tractor 3 fed, 4 not" is representable, and the map can
-show "3 of 5 fed").
+The remainder of the plan, Batch 23 onward, plus the sequencing-TBD
+list at the bottom. Sequencing is the proposal — locked in only when
+a batch starts.
 
-**16.2 ✅ SHIPPED** (`v0.10.12-alpha`, 2026-06-01 — see Shipped above):
-the offline outbox. Device-local append-only IndexedDB outbox replacing
-the silent-revert toggle with optimistic local apply + a visible
-"queued / not synced" indicator + guaranteed sync. Completions are
-idempotent row-presence inserts; mortality counts merge additively;
-run events are append-only with capture time preserved.
+Numbering history (for anyone reading old commit messages):
 
-### Batch 17 — Farm map: Now surface + hardened Rounds ✅ SHIPPED
-Shipped `v0.10.13-alpha` (2026-06-01) — see the Shipped section above.
-The phone rollout: Now as the phone landing (D2 resume bar, fat
-start-round button, farm-wide due/overdue list with D1 place tags),
-offline `chore_runs` lifecycle through the outbox, the group-by-place /
-group-by-kind Switcher toggle, prominent D1 capture context in the
-quick-action sheets, and the client-side `place_status` projection the
-Batch 18 map tint will consume.
-
-### Batch 18 — Farm map: chore anchors + map renderer ✅ SHIPPED
-Split into 18.1 / 18.2 when the chore-ownership blocker surfaced
-mid-flight (2026-06-01); both halves now shipped, closing the Farm Map
-UI overhaul (Batches 15–18).
-
-**18.1 ✅ SHIPPED** (`v0.10.14-alpha`, 2026-06-01 — see Shipped above):
-chore anchors. The place-only chore model was a rollout blocker — chores
-vanished from Pasture B when the coops moved to Pasture C. Chores now
-belong to a place, an occupied place, every place of a kind, a species
-(optionally housed-in-filtered, optionally at a fixed work place), or
-one batch; obligations follow the animals. Plus the All-chores recursive
-place-tree view (the new default), the dormant section, and the
-"Belongs to" editor.
-
-**18.2 ✅ SHIPPED** (`v0.10.15-alpha`, 2026-06-01 — see Shipped above):
-the map renderer (`farm-map_v1.svg`, zones tinted by place_status, zoom
-→ structure pins → place pages), place search with recents, and the nav
-restructure (sidebar slims to Now · Farm map · Dashboard · Planning ·
-Other; records move to the avatar drawer; the Resources flyout
-dissolves). Desktop lands on the map.
-
-### Batch 19 — Triggers (automations engine) ✅ SHIPPED
-Shipped `v0.10.16-alpha` (2026-06-01) — see the Shipped section
-above. The GCal push half of the original "Triggers + GCal push"
-scope was deferred mid-batch (James's call) and folds into
-Batch 31; everything else (the two seeded rules, sparkle
-treatment, Heads-up lane, dismissal flow) shipped.
-
-### Batch 20 — Animal lifecycle pages ✅ SHIPPED
-Shipped `v0.10.17-alpha` (2026-06-01) — see the Shipped section
-above. The batch lifecycle page, the dates-inversion (batch owns
-its dates), delete-with-tombstone, and the processing-day
-batch-assign picker all landed; layers/sheep-specific milestone
-sets are deferred until those species need them.
-
-### Batch 21 — Inbox / "just a thought…" capture ✅ SHIPPED
-Shipped `v0.10.18-alpha` (2026-06-01) — see the Shipped section
-above. Top-bar lightbulb capture, the combined notifications
-bell, the Inbox page (pinning, drag ordering, archive, per-user
-read state), and promote-to-event all landed.
-
-### Batch 22 — Projects subsystem rewrite ✅ SHIPPED
-Shipped `v0.10.19-alpha` (2026-06-01) — see the Shipped section
-above. The full hierarchy (projects → phases → steps → checklists →
-items), the completeness rule, the Trello-style step modal with
-markdown + Storage uploads + assignees + dates, cross-linking, and
-the dependency date-shuffle all landed.
+- Originally 22 batches (2026-05-04).
+- → 23 when Batch 6 was inserted to ship the in-app roadmap page.
+- → 27 when the Chores overhaul was inserted as Batches 7–10
+  (2026-05-06).
+- → 31 when the Events + Schedule overhaul was inserted as
+  Batches 11–14 (2026-05-06).
+- → 35 after the 2026-05-07 revision: a new Batch 10 (Rounds polish
+  + block model, carved out of 8.x), a new Batch 12 (chore
+  assignment rules engine), a new Batch 17 (Inbox capture), and a
+  new Batch 23 (Metrics & analytics, superseding the broiler
+  tracker).
+- → 38 on 2026-05-31 when the Farm Map UI overhaul was inserted as
+  Batches 15–18 right after 14.2: the Events-overhaul tail
+  (Triggers, Animal lifecycle) moved to 19–20, the old Resources
+  rethink (21) was absorbed into the place-model collapse, the old
+  Pasture simulator (34) was re-pointed into the Rotation planner
+  (37), and slices of Offline (old 33), App-wide search (old 30),
+  and the mobile pass (old 32) were pulled forward into the
+  farm-map MVP.
 
 ### Batch 23 — Processes
 Process = template tied to an `event_kind`. Event instance lands on
@@ -2077,6 +2026,10 @@ schedule → process expands into project(s) / tasks anchored to the
 event date (e.g. "1 week before processing day → check trailer
 hitch and tires"). Schema: `processes`, `process_steps` (with
 `offset_days` from anchor event), `process_event_kind_links`.
+
+*Dependency note: the project substrate processes expand into —
+projects / phases / steps, plus `project_links` for tying the
+expansion back to its anchor event — shipped in Batch 22.*
 
 **Modifier UI ships with this batch** (deferred from the chores
 overhaul). When a process step targets a chore on a date, it
@@ -2215,7 +2168,9 @@ scheduling. Content calendar: calendar UI + auto-add to schedule.
 ### Batch 33 — App-wide search
 Cross-cutting; lands after most data models exist so the index is
 comprehensive. Likely Postgres `tsvector` + a client palette
-(cmd-K). **Re-scoped by the farm map:** a thin, place-only search with D1 disambiguation already ships in Batch 18 — this batch is the full cross-entity cmd-K palette.
+(cmd-K). **Re-scoped by the farm map:** a thin, place-only search
+with D1 disambiguation already shipped in Batch 18 — this batch is
+the full cross-entity cmd-K palette.
 
 ### Batch 34 — App-wide bookmarking
 Per-user bookmarks of arbitrary entities/pages, surfaced in nav.
@@ -2225,15 +2180,28 @@ sort_order)`.
 ### Batch 35 — iOS / mobile-responsive pass
 Audit every page for iPhone widths. PWA manifest + install prompt
 for Add to Home Screen. Lands after Tailwind so responsive
-utilities are available. **Re-scoped by the farm map:** the Tier-1 field surfaces (Now, Rounds, capture) are built mobile-first in Batches 16–17 — this batch is the broad audit of every *other* page.
+utilities are available. **Re-scoped by the farm map:** the Tier-1
+field surfaces (Now, Rounds, capture) were built mobile-first in
+Batches 16–17 — this batch is the broad audit of every *other*
+page.
 
 ### Batch 36 — Offline tolerance + resync
 IndexedDB write queue (idb / Dexie) wrapping the Supabase client;
 outbox pattern for mutations; conflict policy per table. Service
-worker for asset caching. Affects every data hook. **Re-scoped by the farm map:** the field write-path outbox (completions, observations, additive-merge mortality) ships in Batch 16 — this batch generalizes the outbox to every remaining hook and adds the service-worker asset cache.
+worker for asset caching. Affects every data hook. **Re-scoped by
+the farm map:** the field write-path outbox (completions,
+observations, additive-merge mortality) shipped in Batch 16 — this
+batch generalizes the outbox to every remaining hook and adds the
+service-worker asset cache.
 
 ### Batch 37 — Rotation planner (formerly Pasture visualization simulator)
-**Re-pointed by the farm map:** a sibling on the **shared place-geometry substrate** — it draws real structure/paddock geometry and *sets* tractor positions over time, while the nav map only *shows* current schematic pins. A rotation plan is a sequence of future `placements` rows on the same place tree (no longer a standalone map). Otherwise as specced below:
+**Re-pointed by the farm map:** a sibling on the **shared
+place-geometry substrate** — it draws real structure/paddock
+geometry and *sets* tractor positions over time, while the nav map
+only *shows* current schematic pins. A rotation plan is a sequence
+of future `placements` rows on the same place tree (no longer a
+standalone map). Otherwise as specced below:
+
 Standalone subsystem. Map / canvas with land outline; draw + name
 pasture boundaries; tractor pins (dims + capacity drive math);
 assign batch → tractor count needed; hypothetical-batch sandbox;

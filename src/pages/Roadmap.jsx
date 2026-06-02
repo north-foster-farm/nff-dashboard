@@ -7,7 +7,9 @@
 // "Chores, rebuilt", "Rounds", "Chore telemetry + push", "Chore
 // assignments", "Events + Schedule, rebuilt", "A working calendar",
 // "Resources, rethought" (dissolved into the farm map's place tree +
-// the records drawer in Batch 18.2), "Projects, rebuilt" (Batch 22).
+// the records drawer in Batch 18.2), "Triggers + animal-batch
+// lifecycles" (Batches 19–20), "Inbox" (Batch 21), "Projects,
+// rebuilt" (Batch 22).
 
 const ITEMS = [
   {
@@ -18,26 +20,6 @@ const ITEMS = [
       "Google Calendar reaches). The dashboard stays the source of " +
       "truth for edits — the phone copy is intentionally read-only so " +
       "there's no risk of two clocks disagreeing.",
-  },
-  {
-    title: "Triggers + animal-batch lifecycles",
-    body: "Two seed automations to start: feed dropping to its reorder " +
-      "point creates an order chore plus a \"receive delivery\" event, " +
-      "and creating a new broiler batch stamps its arrival, " +
-      "pasture-move, processing, and brooder-cleanout dates onto the " +
-      "calendar. Click any of those dates from the batch detail page " +
-      "to edit them in place. Auto-generated rows are flagged so you " +
-      "can sanity-check before the day arrives.",
-  },
-  {
-    title: "Inbox — \"just a thought…\"",
-    body: "A quiet capture surface for ideas that aren't yet projects " +
-      "or chores. Type-and-go from the top bar; new items land in the " +
-      "dashboard notifications widget without firing a push. A " +
-      "dedicated Inbox page lists every captured thought with " +
-      "drag-orderable, pinnable rows, an Archived tab for things " +
-      "you're done with, and per-user read/unread state so each of " +
-      "us can mark our own.",
   },
   {
     title: "Processes",
@@ -135,9 +117,10 @@ const ITEMS = [
       "app loads with no signal at all.",
   },
   {
-    title: "Pasture simulator",
-    body: "Draw the farm's pastures on a map, drop tractor pins with " +
-      "capacity, and assign batches. Scrub a timeline to see which " +
+    title: "Rotation planner",
+    body: "Plan pasture rotations on the same farm map the dashboard " +
+      "already draws: real paddock boundaries, tractor pins with " +
+      "capacity, and batch assignments. Scrub a timeline to see which " +
       "pastures are occupied or recovering on any given day, then " +
       "commit a movement plan that schedules the chore moves " +
       "automatically.",
