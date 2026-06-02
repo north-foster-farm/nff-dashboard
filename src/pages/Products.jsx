@@ -4,6 +4,7 @@ import {
   Plus, Tag, Trash2, X,
 } from "lucide-react";
 import { useProducts } from "../lib/data/useProducts.js";
+import PricingGrid from "../components/PricingGrid.jsx";
 import {
   CONTENT_SLOTS, currentPriceMap, fmtCents, groupProductsByAnimal,
   skuCostFloor, skuKey,
@@ -12,23 +13,27 @@ import {
   computeBroilerCostPerBird, computeBroilerCutCostPerLb, fmtUSD,
 } from "../lib/productCost.js";
 
-// The Products page (Batch 27.1) — the real catalog.
+// The Products page (Batch 27) — the real catalog.
 //
 //   Catalog tab — products grouped by animal (plus "Not animal-
 //   specific" and Bundles), each expandable into the full editor:
 //   photo (product-photos bucket), the four-slot description content,
-//   size brackets, sold-out flag.
+//   size brackets, sold-out flag. (Batch 27.1)
+//   Pricing tab — the bulk pricing grid: every SKU with live margin
+//   against its cost floor, compare-at, quick-fill, history.
+//   (Batch 27.2 — components/PricingGrid.jsx)
 //
 // Content patterns follow the 2026-06-02 research pass over Pat's
 // Pastured / Polyface / White Oak: fixed price per weight bracket,
 // products named "Animal, Cut", sold-out items stay visible, the
 // four-part description recipe.
 //
-// The Pricing tab (bulk grid + margins, Batch 27.2) and Sales tab
-// (record-a-sale + sales-over-time, Batch 27.3) land next.
+// The Sales tab (record-a-sale + sales-over-time, Batch 27.3) lands
+// next.
 
 export default function Products({ data }) {
   const db = useProducts();
+  const [tab, setTab] = useState("catalog");
   const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -52,32 +57,50 @@ export default function Products({ data }) {
 
   return (
     <div className="max-w-[920px] flex flex-col gap-5">
-      {/* header row */}
-      <div className="flex items-center gap-2 border-b border-line pb-2">
-        <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-fg px-1">
-          Catalog · {db.products.length}
-        </div>
-        <button
-          onClick={() => setShowArchived(s => !s)}
-          className={
-            "ml-auto shrink-0 font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 border cursor-pointer " +
-            (showArchived
-              ? "bg-surface-alt text-fg border-line"
-              : "bg-transparent text-dim border-line hover:text-fg")
-          }
-        >
-          Archived · {db.archived.length}
-        </button>
-        <button
-          onClick={() => setCreating(c => !c)}
-          className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
-        >
-          <Plus size={13} /> New product
-        </button>
+      {/* tabs + actions */}
+      <div className="flex items-center gap-1 border-b border-line">
+        <Tab
+          active={tab === "catalog"}
+          onClick={() => setTab("catalog")}
+          label={`Catalog · ${db.products.length}`}
+        />
+        <Tab
+          active={tab === "pricing"}
+          onClick={() => setTab("pricing")}
+          label="Pricing"
+        />
+        {tab === "catalog" && (
+          <>
+            <button
+              onClick={() => setShowArchived(s => !s)}
+              className={
+                "ml-auto shrink-0 font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 mb-2 border cursor-pointer " +
+                (showArchived
+                  ? "bg-surface-alt text-fg border-line"
+                  : "bg-transparent text-dim border-line hover:text-fg")
+              }
+            >
+              Archived · {db.archived.length}
+            </button>
+            <button
+              onClick={() => setCreating(c => !c)}
+              className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 mb-2 cursor-pointer"
+            >
+              <Plus size={13} /> New product
+            </button>
+          </>
+        )}
       </div>
 
       {db.loading ? (
         <div className="text-[12px] text-dim italic">Loading…</div>
+      ) : tab === "pricing" ? (
+        <PricingGrid
+          db={db}
+          products={db.products}
+          perBird={perBird}
+          cutCtx={cutCtx}
+        />
       ) : (
         <>
           {creating && (
@@ -118,6 +141,23 @@ export default function Products({ data }) {
         </>
       )}
     </div>
+  );
+}
+
+function Tab({ active, onClick, label }) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "bg-transparent border-0 font-[inherit] text-[12px] font-semibold " +
+        "uppercase tracking-[0.12em] px-3 pb-2 pt-1 cursor-pointer " +
+        (active
+          ? "text-fg shadow-[inset_0_-2px_0_0_var(--c-accent)]"
+          : "text-dim hover:text-fg")
+      }
+    >
+      {label}
+    </button>
   );
 }
 

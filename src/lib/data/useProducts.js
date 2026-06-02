@@ -19,6 +19,7 @@ import { slugifyProductId } from "../productCatalog.js";
 //     archiveProduct(id), unarchiveProduct(id), removeProduct(id),
 //     setPrice(productKindId, bracketId,
 //              { priceCents, compareAtCents, note }),
+//     setPrices([{ productKindId, bracketId, priceCents, ... }]),
 //     recordSale({ soldOn, productKindId, bracketId, quantity,
 //                  totalCents, channel, notes }),
 //     removeSale(id),
@@ -260,6 +261,28 @@ export function useProducts() {
     await fetchAll();
   }, [userEmail, fetchAll]);
 
+  // Bulk price update: one insert for many SKUs (the pricing grid's
+  // "save all" writes every dirty row at once). entries:
+  //   [{ productKindId, bracketId, priceCents, compareAtCents, note }]
+  const setPrices = useCallback(async (entries) => {
+    const rows = entries.map(e => ({
+      product_kind_id: e.productKindId,
+      bracket_id: e.bracketId ?? null,
+      price_cents: e.priceCents,
+      compare_at_cents: e.compareAtCents ?? null,
+      note: e.note ?? null,
+      created_by: userEmail,
+    }));
+    if (rows.some(r => r.price_cents == null || r.price_cents < 0)) {
+      throw new Error("Every price needs a non-negative amount.");
+    }
+    if (rows.length === 0) return;
+    const { error: err } = await supabase.from("product_prices")
+      .insert(rows);
+    if (err) throw err;
+    await fetchAll();
+  }, [userEmail, fetchAll]);
+
   // ── sales ──────────────────────────────────────────────────────────
   const recordSale = useCallback(async ({
     soldOn, productKindId, bracketId = null, quantity = 1,
@@ -332,6 +355,7 @@ export function useProducts() {
     unarchiveProduct,
     removeProduct,
     setPrice,
+    setPrices,
     recordSale,
     removeSale,
     uploadPhoto,

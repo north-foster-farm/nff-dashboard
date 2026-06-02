@@ -2230,6 +2230,40 @@ margin, below-floor warnings, price history view) is 27.2; the
 Sales tab (record-a-sale + sales-over-time chart) and bundle
 contents UI are 27.3.
 
+### Batch 27.2 — Pricing grid · `v0.10.27-alpha`
+2026-06-02. The pricing surface over the 27.1 foundation: the
+Pricing tab on the Products page. No new schema (27.1's
+migration covered the whole batch).
+
+**Pricing tab** (`components/PricingGrid.jsx`):
+- **One sheet, every SKU** — rows grouped by product, one row per
+  size bracket (bracket-less products and bundles get a single
+  row). Columns: cost floor, current price (with strike-through
+  compare-at), editable new price, editable compare-at, margin %,
+  profit per unit.
+- **Live margin** (the Shopify-admin pattern): the margin and
+  profit columns recompute on every keystroke against the SKU's
+  cost floor — bundle floors sum their components'. Margin =
+  (price − floor) / price.
+- **Below-floor warning**: a draft price under its cost floor
+  turns the input border, margin, and profit the warn color with
+  a triangle icon.
+- **Quick fill** (Faire's keystone rule adapted to cost floors):
+  type a target margin %, and every un-priced SKU with a known
+  floor gets price = floor / (1 − margin) filled into its input.
+- **Save all** — one append-only `product_prices` insert for all
+  dirty rows (`useProducts.setPrices` bulk mutation); per-row
+  discard before saving.
+- **Price history** — per-SKU expandable list of every past
+  price (amount, compare-at, date, who set it). Reads the same
+  append-only table; nothing extra to maintain.
+
+**Hook**: `useProducts` gains `setPrices(entries)` (bulk insert,
+one refetch).
+
+**Out of scope — 27.3:** the Sales tab (record-a-sale +
+sales-over-time chart) and the bundle contents picker.
+
 ---
 
 ## Overhaul design records
@@ -2456,15 +2490,13 @@ data-viz items (sales charts, feed analytics) land in this
 subsystem when their batches ship.
 
 ### Batch 27 — Products + pricing 🔨 IN PROGRESS
-Shipping in three slices. **27.1 (catalog + content) shipped
-2026-06-02** (`v0.10.26-alpha`) — see Shipped above for the
-workshop decisions (per-bracket fixed pricing, grid + editor,
-manual sales entry, all four research extras) and the schema.
+Shipping in three slices. **27.1 (catalog + content) and 27.2
+(pricing grid) shipped 2026-06-02** (`v0.10.26-alpha` /
+`v0.10.27-alpha`) — see Shipped above for the workshop decisions
+(per-bracket fixed pricing, grid + editor, manual sales entry,
+all four research extras), the schema, and the pricing surface.
 
 Remaining:
-- **27.2 — Pricing UI**: the Pricing tab — bulk grid over every
-  SKU (price / compare-at / cost floor / live margin %, profit
-  per unit, fill-down), below-floor warnings, price history view.
 - **27.3 — Sales + bundles**: the Sales tab — record-a-sale form
   + sales-over-time chart (channel + product-group breakdowns);
   bundle contents picker with component-derived cost floors.
