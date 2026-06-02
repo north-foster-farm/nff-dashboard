@@ -339,13 +339,13 @@ export default function FarmMap({
                   fill="var(--c-text)"
                   style={{
                     fontFamily: "var(--font-ui)",
-                    fontSize: 26 / scale,
+                    fontSize: 38 / scale,
                     fontWeight: 700,
                     letterSpacing: "0.06em",
                     textTransform: "uppercase",
                     paintOrder: "stroke",
                     stroke: "var(--c-bg)",
-                    strokeWidth: 5 / scale,
+                    strokeWidth: 7 / scale,
                     strokeLinejoin: "round",
                   }}
                 >
@@ -354,17 +354,17 @@ export default function FarmMap({
                 {due > 0 && (
                   <text
                     x={cx}
-                    y={cy + 30 / scale}
+                    y={cy + 42 / scale}
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="var(--c-text-dim)"
                     style={{
                       fontFamily: "var(--font-ui)",
-                      fontSize: 18 / scale,
+                      fontSize: 26 / scale,
                       fontWeight: 600,
                       paintOrder: "stroke",
                       stroke: "var(--c-bg)",
-                      strokeWidth: 4 / scale,
+                      strokeWidth: 5.5 / scale,
                       strokeLinejoin: "round",
                     }}
                   >
@@ -381,7 +381,7 @@ export default function FarmMap({
               {/* Name plate above the zone — click → place page */}
               <text
                 x={zoomedBbox.x + zoomedBbox.width / 2}
-                y={zoomedBbox.y - 14 / scale}
+                y={zoomedBbox.y - 18 / scale}
                 textAnchor="middle"
                 fill="var(--c-text)"
                 className="cursor-pointer"
@@ -391,14 +391,14 @@ export default function FarmMap({
                 }}
                 style={{
                   fontFamily: "var(--font-ui)",
-                  fontSize: 24 / scale,
+                  fontSize: 34 / scale,
                   fontWeight: 700,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                   textDecoration: "underline",
                   paintOrder: "stroke",
                   stroke: "var(--c-bg)",
-                  strokeWidth: 5 / scale,
+                  strokeWidth: 7 / scale,
                   strokeLinejoin: "round",
                 }}
               >
@@ -443,7 +443,7 @@ export default function FarmMap({
 // the zoom scale) so pins stay readable at any zoom level.
 function StructurePin({ place, x, y, scale, flag, due, onClick }) {
   const tint = tintForFlag(flag);
-  const r = 16 / scale;
+  const r = 24 / scale;
   return (
     <g
       className="cursor-pointer"
@@ -461,7 +461,7 @@ function StructurePin({ place, x, y, scale, flag, due, onClick }) {
         fill={tint.fill}
         fillOpacity={Math.min(tint.fillOpacity + 0.3, 1)}
         stroke="var(--c-bg)"
-        strokeWidth={2.5 / scale}
+        strokeWidth={3.5 / scale}
       />
       {/* Due-count inside the disc */}
       <text
@@ -473,7 +473,7 @@ function StructurePin({ place, x, y, scale, flag, due, onClick }) {
         pointerEvents="none"
         style={{
           fontFamily: "var(--font-ui)",
-          fontSize: 14 / scale,
+          fontSize: 21 / scale,
           fontWeight: 700,
         }}
       >
@@ -482,17 +482,17 @@ function StructurePin({ place, x, y, scale, flag, due, onClick }) {
       {/* Label under the pin */}
       <text
         x={x}
-        y={y + r + 14 / scale}
+        y={y + r + 20 / scale}
         textAnchor="middle"
         fill="var(--c-text)"
         pointerEvents="none"
         style={{
           fontFamily: "var(--font-ui)",
-          fontSize: 13 / scale,
+          fontSize: 19 / scale,
           fontWeight: 600,
           paintOrder: "stroke",
           stroke: "var(--c-bg)",
-          strokeWidth: 3.5 / scale,
+          strokeWidth: 5 / scale,
           strokeLinejoin: "round",
         }}
       >

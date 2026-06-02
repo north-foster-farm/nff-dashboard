@@ -19,10 +19,10 @@ function countUpdatesNeedingAttention(d) {
 // Restructured in Batch 18.2 (the farm-map IA overhaul): the sidebar
 // carries the spatial/temporal surfaces — Now · Farm map · Dashboard,
 // then Planning (Schedule / Events / Chores / Do rounds / Projects /
-// Processes), the Other log pages, and the record-keeping groups
-// (Products / Sales / Animals / CRM / Communication / Resources),
-// which moved back here from the avatar records drawer in the 2026-06
-// chore-ux fixes.
+// Processes), the record-keeping groups (Products / Sales / Animals /
+// CRM / Communication / Resources), which moved back here from the
+// avatar records drawer in the 2026-06 chore-ux fixes, and finally
+// the Other log pages (kept last in the menu).
 //
 // `kind`:
 //   "page"    → normal navigation item (default)
@@ -37,7 +37,7 @@ function countUpdatesNeedingAttention(d) {
 export const SECTIONS = [
   // The Now surface (Batch 17) — the time-anchored landing. Phones land
   // here by default (App.jsx).
-  { id: "now", group: null, label: "Now", icon: Sunrise, description: "What needs doing right now — the active round plus every due and overdue chore, tagged with its place.", getCount: () => null },
+  { id: "now", group: null, label: "Now", icon: Sunrise, description: "What needs doing right now — the active round plus every overdue chore, tagged with its place.", getCount: () => null },
   // The Farm map (Batch 18.2) — the place-anchored landing. Desktop
   // lands here by default (decision 2 of the farm-map workshop).
   { id: "map", group: null, label: "Farm map", icon: Map, description: "The farm from above — every zone tinted by what needs doing inside it. Click to drill into any place.", getCount: () => null },
@@ -81,13 +81,6 @@ export const SECTIONS = [
   },
   { id: "processes", group: "Planning", label: "Processes", icon: Workflow, description: "Templates tied to event kinds — when a matching event lands on the schedule, the process expands into prep tasks and chore changes around it.", getCount: () => null },
 
-  { id: "inbox", group: "Other", label: "Inbox", icon: Lightbulb, description: "Just-a-thought capture — ideas that aren't yet projects or chores. Pin, archive, or promote them to events.", getCount: () => null },
-  { id: "roadmap", group: "Other", label: "What's coming", icon: Telescope, description: "Features on deck for upcoming releases.", getCount: () => null },
-  { id: "activity", group: "Other", label: "Activity", icon: Activity, description: "Every action logged across the farm — chore completions, temperature readings, weight logs, sales, and more.", getCount: () => null },
-  { id: "observations", group: "Other", label: "Observations", icon: Eye, description: "Notes, condition flags, mortality, cohort moves, and infra sweeps logged from Rounds — filterable by site, kind, date, and author.", getCount: () => null },
-  { id: "notes", group: "Other", label: "Notes", icon: NotebookPen, description: "Uncategorized brain dumps", getCount: () => null },
-  { id: "threads", group: "Other", label: "Threads", icon: MessageCircleQuestion, description: "Open questions and resolved decisions", getCount: (d) => d.threads.filter(t => t.status === "open").length },
-
   // ── Records (back in the sidebar, 2026-06 chore-ux fixes) ───────────
   // These lived in the avatar records drawer from Batch 18.2 until
   // James asked for them back in the left nav. Same ids, so every
@@ -120,6 +113,14 @@ export const SECTIONS = [
   { id: "resources_trailers", group: "Resources", label: "Trailers", icon: Truck, description: "Towable trailers used for transport.", getCount: () => null },
   { id: "resources_sites", group: "Resources", label: "Places", icon: MapPin, description: "The recursive place tree — every zone, area, and structure on the farm. The map renders this.", getCount: () => null },
   { id: "resources_equipment", group: "Resources", label: "Equipment", icon: Wrench, description: "General equipment — egg washer, processing tools, etc. Placeholder.", comingSoon: true, getCount: () => null },
+
+  // ── Other — kept last in the menu (2026-06 chore-ux fixes) ──────────
+  { id: "inbox", group: "Other", label: "Inbox", icon: Lightbulb, description: "Just-a-thought capture — ideas that aren't yet projects or chores. Pin, archive, or promote them to events.", getCount: () => null },
+  { id: "roadmap", group: "Other", label: "What's coming", icon: Telescope, description: "Features on deck for upcoming releases.", getCount: () => null },
+  { id: "activity", group: "Other", label: "Activity", icon: Activity, description: "Every action logged across the farm — chore completions, temperature readings, weight logs, sales, and more.", getCount: () => null },
+  { id: "observations", group: "Other", label: "Observations", icon: Eye, description: "Notes, condition flags, mortality, cohort moves, and infra sweeps logged from Rounds — filterable by site, kind, date, and author.", getCount: () => null },
+  { id: "notes", group: "Other", label: "Notes", icon: NotebookPen, description: "Uncategorized brain dumps", getCount: () => null },
+  { id: "threads", group: "Other", label: "Threads", icon: MessageCircleQuestion, description: "Open questions and resolved decisions", getCount: (d) => d.threads.filter(t => t.status === "open").length },
 
   // Reachable via the header avatar.
   { id: "settings", kind: "hidden", label: "Settings", description: "Per-user preferences" }

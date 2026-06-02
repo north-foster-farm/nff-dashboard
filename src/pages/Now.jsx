@@ -17,10 +17,15 @@ import {
 
 // The Now surface (Batch 17) — the phone landing. Time-anchored: the
 // active-or-next round as one fat primary button, then a farm-wide
-// due / overdue list derived from the place_status projection
+// overdue list derived from the place_status projection
 // (lib/placeStatus.js). Chores group by the place tree — the same
 // nesting as the Chores Today tab — so the list reads place by place
 // instead of as one long flat run of rows.
+//
+// Due-but-not-overdue chores intentionally don't render here (2026-06
+// chore-ux fixes): they belong to a round that hasn't ended yet, so
+// they'd just duplicate what the round button at the top is for. The
+// list is for what slipped past its window.
 //
 // D2: when a round is in progress (on any device), a loud
 // "round in progress — tap to resume" bar sits at the top, with a
@@ -83,8 +88,9 @@ export default function Now({ onOpenRounds }) {
     blocksLoading || sitesLoading || defsLoading || runsLoading ||
     completions.loading;
 
-  // Bucket + sort: overdue first, then due (both by block start time
-  // ascending so the list reads in do-it order), done at the bottom.
+  // Bucket + sort: overdue (by block start time ascending so the list
+  // reads in do-it order), done at the bottom. Due-but-not-overdue
+  // chores are left out entirely — see the header comment.
   const buckets = useMemo(() => {
     const startOf = (o) => {
       if (!o.block) return Infinity;
@@ -116,11 +122,9 @@ export default function Now({ onOpenRounds }) {
       }
     }
     const overdue = [...byKey.values()];
-    const due = status.obligations
-      .filter(o => o.status === "due").sort(sortByStart);
     const done = status.obligations
       .filter(o => o.status === "done").sort(sortByStart);
-    return { overdue, due, done };
+    return { overdue, done };
   }, [status.obligations, now]);
 
   const activeBlock = activeRun
@@ -179,7 +183,7 @@ export default function Now({ onOpenRounds }) {
             </div>
           )}
 
-          {/* Farm-wide due / overdue list, grouped by place */}
+          {/* Farm-wide overdue list, grouped by place */}
           <ObligationList
             buckets={buckets}
             roots={roots}
@@ -311,18 +315,18 @@ function formatBlockDuration(minutes) {
   return `${h}h ${m}m`;
 }
 
-// ── Due / overdue / done list ─────────────────────────────────────────
+// ── Overdue / done list ───────────────────────────────────────────────
 function ObligationList({
   buckets, roots, childrenByParent, completions, onCheckOff,
 }) {
-  const { overdue, due, done } = buckets;
+  const { overdue, done } = buckets;
   const [showDone, setShowDone] = useState(false);
 
-  if (overdue.length === 0 && due.length === 0 && done.length === 0) {
+  if (overdue.length === 0 && done.length === 0) {
     return (
       <div className="bg-surface border border-line px-5 py-8 text-center">
         <div className="text-[13px] text-muted">
-          Nothing on the list today.
+          Nothing overdue — everything else rides with its round.
         </div>
       </div>
     );
@@ -341,15 +345,12 @@ function ObligationList({
           onCheckOff={onCheckOff}
         />
       )}
-      {due.length > 0 && (
-        <ObligationGroup
-          title="To do"
-          obligations={due}
-          roots={roots}
-          childrenByParent={childrenByParent}
-          completions={completions}
-          onCheckOff={onCheckOff}
-        />
+      {overdue.length === 0 && (
+        <div className="bg-surface border border-line px-5 py-6 text-center">
+          <div className="text-[13px] text-muted">
+            Nothing overdue — everything else rides with its round.
+          </div>
+        </div>
       )}
       {done.length > 0 && (
         <div className="flex flex-col gap-2">
