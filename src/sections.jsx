@@ -96,7 +96,7 @@ export const SECTIONS = [
   { id: "livestock_layers", group: "Animals", label: "Layers", icon: Egg, getCount: () => null },
   { id: "livestock_broilers", group: "Animals", label: "Broilers", icon: Bird, getCount: () => null },
   { id: "livestock_sheep", group: "Animals", label: "Sheep", icon: PawPrint, getCount: () => null },
-  { id: "manage_feed_schedule", group: "Animals", label: "Manage feed", icon: Wheat, kind: "action", description: "Edit the per-species feed schedule by week of life. Placeholder.", getCount: () => null },
+  { id: "manage_feed_schedule", group: "Animals", label: "Manage feed", icon: Wheat, kind: "action", description: "The feed programs by species — what each group eats, how much per day, and when the amounts change as the animals age. The Feed page's reorder projections run on these numbers.", getCount: () => null },
 
   { id: "customers", group: "CRM", label: "Customers", icon: Users, description: "The customer directory — names, emails, phones, and notes, searchable and editable.", getCount: () => null },
   { id: "manage_lists", group: "CRM", label: "Lists", icon: ClipboardList, description: "Named customer lists — mailing groups, egg-drop regulars, wholesale accounts.", getCount: () => null },

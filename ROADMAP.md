@@ -2006,6 +2006,58 @@ migration of SpeciesPage). The schedule editor is what makes the
 projections here fully accurate — today most production stages
 are free-choice/TBD, so cards lean on the caveat line.
 
+### Batch 25.2 — Animals pages rethink · `v0.10.23-alpha`
+2026-06-02. Closes the Animals & Feed UI overhaul (Batch 25). The
+animals pages get a real activity log, the feed schedule editor
+the 25.1 projections depend on, placement-aware group cards, and
+a full Tailwind migration.
+
+Migration `0022_feed_schedules_realtime.sql` (publication-only —
+no schema or data changes): adds `feed_schedules` +
+`feed_schedule_stages` to the realtime publication so editor
+changes stream live to the Feed page projections on every open
+client.
+
+**Feed schedule editor** (`pages/FeedSchedulesPage.jsx` +
+`lib/data/useFeedSchedules.js`) — replaces the "Manage feed"
+coming-soon placeholder under Animals:
+- Per-species schedule cards: inline rename, delete, description,
+  and assigned-groups toggle chips (new schedules default to
+  every current group).
+- Stage rows expand into an inline editor: name, day range
+  (from/to, blank = ongoing), feed type picker, consumption
+  segmented control (Metered / Free choice / TBD; metered →
+  amount + unit + per-batch/per-bird basis), notes. Non-metered
+  stages get a "can't be projected" nudge.
+- Stage ordinals re-derive from start_day on every write —
+  chronological order is the only order.
+- `describeConsumption` helper added to lib/feedConsumption.js,
+  shared by the editor, species pages, and Feed page.
+
+**SpeciesPage rewrite** (Tailwind, all five tabs):
+- **Groups** — cards read where each group actually lives from
+  `placements` (the dead currentLocation column is finally
+  unread); place name links to its place page. Add-batch form
+  notes that the arrival date anchors the feed schedule.
+- **Feed schedule** — Tailwind read view + "Edit schedules"
+  button into the new editor.
+- **Chores** — now also picks up chores anchored via
+  anchor_species_id / anchor_batch_id, not just tag matches.
+- **Activity log** — real implementation (was a stub):
+  chore completions on species chores, mortality + cohort moves
+  on its groups, MASH intakes + notes at places its groups
+  currently live. Same ActivityRow edit/delete affordances as
+  the global Activity page.
+- **More info** — Tailwind.
+
+`useReferenceData` keeps `data.feedSchedules` live (subscribes to
+both schedule tables) so the Feed page's projections update the
+moment a schedule is edited.
+
+**Out of scope:** BatchPage already shipped mostly-Tailwind in
+Batch 20 and was left alone. Per-batch metrics (FCR, ADG,
+mortality trend) remain Batch 26 (Metrics & analytics).
+
 ---
 
 ## Overhaul design records
@@ -2204,27 +2256,15 @@ Shipped `v0.10.21-alpha` (2026-06-02) — see the Shipped section
 above. The directory (basics-only fields), named lists with member
 management, and the seeded 65-contact mailing list all landed.
 
-### Batch 25 — Animals & Feed UI overhaul
-Split into two slices (locked 2026-06-02):
+### Batch 25 — Animals & Feed UI overhaul ✅ SHIPPED
+Shipped in two slices (both 2026-06-02) — see the Shipped section
+above:
+- **25.1** — Feed page group-cards redesign (`v0.10.22-alpha`).
+- **25.2** — Animals pages rethink (`v0.10.23-alpha`).
 
-**25.1 — Feed page group-cards redesign ✅ SHIPPED**
-`v0.10.22-alpha` (2026-06-02) — see the Shipped section above.
-
-**25.2 — Animals pages rethink (next up)**
-- Activity Log tab for real: read activity_log (mortality, MASH
-  intakes, notes) filtered to the species' batches +
-  species-tagged chores.
-- Feed schedule editor replacing the "Manage feed" coming-soon
-  placeholder — per-species stages (day ranges, feed type,
-  metered consumption), persisting to feed_schedules /
-  feed_schedule_stages. This is what makes the 25.1 reorder
-  projections fully accurate.
-- Group cards read current location from placements (farm-map
-  place tree) instead of the dead currentLocation column.
-- Tailwind migration of SpeciesPage + all its tabs.
-- Broiler tracker stays carved out into Batch 26 (Metrics &
-  analytics); the metric definitions and cross-batch comparison
-  view ship there.
+The broiler tracker stays carved out into Batch 26 (Metrics &
+analytics); the metric definitions and cross-batch comparison
+view ship there.
 
 ### Batch 26 — Metrics & analytics
 New first-class subsystem that owns metric definitions, their

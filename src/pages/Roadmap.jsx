@@ -10,9 +10,9 @@
 // the records drawer in Batch 18.2), "Triggers + animal-batch
 // lifecycles" (Batches 19–20), "Inbox" (Batch 21), "Projects,
 // rebuilt" (Batch 22), "Processes" (Batch 23), "Customers and
-// lists" (Batch 24), and the Feed-page half of "Animals & feed,
-// overhauled" (Batch 25.1 — the item below now covers only the
-// animal-pages half, Batch 25.2).
+// lists" (Batch 24), "Animals & feed, overhauled" (Batches
+// 25.1–25.2 — the Feed page group-cards redesign and the animal
+// pages rethink with the feed schedule editor).
 
 const ITEMS = [
   {
@@ -23,16 +23,6 @@ const ITEMS = [
       "Google Calendar reaches). The dashboard stays the source of " +
       "truth for edits — the phone copy is intentionally read-only so " +
       "there's no risk of two clocks disagreeing.",
-  },
-  {
-    title: "Animal pages, rethought",
-    body: "The animal pages (Layers / Broilers / Sheep) get a real " +
-      "activity log, an editor for the per-species feed schedules " +
-      "(the numbers the new Feed page's reorder projections run on), " +
-      "and group cards that know where each batch actually lives on " +
-      "the farm map. The per-batch numbers (FCR, weight gain, " +
-      "mortality, feed cost) live in the Metrics & analytics " +
-      "subsystem below rather than being bolted on here.",
   },
   {
     title: "Metrics & analytics",

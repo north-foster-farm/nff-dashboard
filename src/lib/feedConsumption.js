@@ -267,6 +267,20 @@ export function formatAmount(jsonAmount) {
   return `${formatted} ${jsonAmount.unit ?? ""}`.trim();
 }
 
+// Human-readable line for a stage's consumption jsonb. Shared by the
+// schedule editor, the species pages, and the Feed page.
+export function describeConsumption(consumption) {
+  if (!consumption || consumption.type === "tbd") return "TBD";
+  if (consumption.type === "free_choice") return "Free choice";
+  if (consumption.type === "metered") {
+    const basis = consumption.basis === "bird" || consumption.basis === "head"
+      ? "per bird"
+      : "per batch";
+    return `${consumption.amount} ${consumption.unit ?? ""}/day ${basis}`;
+  }
+  return "Unknown";
+}
+
 // "Fri, Jun 5" / "today" / "tomorrow" for projection dates.
 export function formatOrderDate(iso) {
   if (!iso) return null;

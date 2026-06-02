@@ -98,11 +98,13 @@ export function useReferenceData() {
     return () => { cancelled = true; supabase.removeChannel(channel); };
   }, []);
 
-  // Keep feeds / chores / livestock live too (Batch 19). Automations
-  // write to all three out-of-band (a new batch creates auto chores;
-  // editing a feed's on-hand can fire the reorder rule), so the
-  // dashboard and records pages need to pick the changes up without a
-  // hard refresh.
+  // Keep feeds / chores / livestock / feed schedules live too
+  // (Batch 19, extended in Batch 25.2). Automations write to the first
+  // three out-of-band (a new batch creates auto chores; editing a
+  // feed's on-hand can fire the reorder rule), and the feed schedule
+  // editor writes schedules + stages that the Feed page's reorder
+  // projections read — so all of them need to pick changes up without
+  // a hard refresh.
   useEffect(() => {
     let cancelled = false;
     const debounced = (loader, key) => {
@@ -120,7 +122,8 @@ export function useReferenceData() {
     const refreshFeeds = debounced(loadFeeds, "feeds");
     const refreshChores = debounced(loadChores, "chores");
     const refreshLivestock = debounced(loadLivestock, "livestock");
-    const channel = realtimeChannel("refdata:automations:stream")
+    const refreshSchedules = debounced(loadFeedSchedules, "feedSchedules");
+    let channel = realtimeChannel("refdata:automations:stream")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "feed_types" },
@@ -135,8 +138,15 @@ export function useReferenceData() {
         "postgres_changes",
         { event: "*", schema: "public", table: "livestock_groups" },
         refreshLivestock
-      )
-      .subscribe();
+      );
+    for (const t of ["feed_schedules", "feed_schedule_stages"]) {
+      channel = channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: t },
+        refreshSchedules
+      );
+    }
+    channel = channel.subscribe();
     return () => { cancelled = true; supabase.removeChannel(channel); };
   }, []);
 

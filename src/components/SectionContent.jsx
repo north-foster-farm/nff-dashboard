@@ -26,6 +26,7 @@ import Projects from "../pages/Projects.jsx";
 import ProjectPage from "../pages/ProjectPage.jsx";
 import Processes from "../pages/Processes.jsx";
 import Customers from "../pages/Customers.jsx";
+import FeedSchedulesPage from "../pages/FeedSchedulesPage.jsx";
 
 export default function SectionContent({
   section, data, onOpenEvent, onNavigate, onOpenRounds,
@@ -90,6 +91,10 @@ export default function SectionContent({
     case "feeds":
     case "resources_feed":
       return <Feeds data={data} />;
+    // The feed schedule editor (Batch 25.2) — the "Manage feed"
+    // sidebar action under Animals.
+    case "manage_feed_schedule":
+      return <FeedSchedulesPage data={data} />;
     case "resources_trailers": return <Trailers data={data} />;
     case "products": return <Products data={data} />;
     case "inventory": return <Inventory data={data} />;
