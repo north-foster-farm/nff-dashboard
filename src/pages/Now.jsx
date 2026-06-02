@@ -425,11 +425,18 @@ function ObligationRow({ obligation: o, completions, onOpenRounds }) {
   const queued = completions.isQueued?.(o.chore.id, o.placeId) ?? false;
   const blocks = o.blocks ?? (o.block ? [o.block] : []);
 
+  // Layout note: the title cell is a single inline-flow box and the
+  // block badges / status icons live INSIDE it, flowing right after
+  // the last word of the title. That makes overlap impossible when a
+  // long title wraps on phone widths — Safari miscalculates flex item
+  // widths under the body `zoom` used for text density, which used to
+  // push wrapped title text underneath separately-positioned badges.
   return (
     <button
       onClick={() => onOpenRounds(o.chore.blockId ?? null)}
       className={
-        "w-full flex items-center gap-3 px-3 py-3 bg-surface " +
+        "w-full grid grid-cols-[auto_minmax(0,1fr)_auto] items-center " +
+        "gap-3 px-3 py-3 bg-surface " +
         "border-0 cursor-pointer text-left font-[inherit] " +
         "hover:bg-row-hover transition-colors duration-100 " +
         (o.done ? "opacity-60" : "")
@@ -449,11 +456,10 @@ function ObligationRow({ obligation: o, completions, onOpenRounds }) {
       >
         <Check size={12} strokeWidth={3} />
       </span>
-      <span className="flex-1 min-w-0 flex items-center gap-2">
+      <span className="min-w-0 text-[14px] leading-snug break-words">
         <span
           className={
-            "text-[14px] leading-snug " +
-            (o.done ? "text-muted line-through" : "text-fg font-medium")
+            o.done ? "text-muted line-through" : "text-fg font-medium"
           }
         >
           {o.chore.title}
@@ -461,22 +467,23 @@ function ObligationRow({ obligation: o, completions, onOpenRounds }) {
         {o.chore.automationEmissionId && (
           <Sparkles
             size={12}
-            className="shrink-0 text-accent-deep"
+            className="inline ml-1.5 align-middle text-accent-deep"
             aria-label="Created by an automation"
           />
         )}
         {queued && (
           <CloudOff
             size={12}
-            className="shrink-0 text-warn"
+            className="inline ml-1.5 align-middle text-warn"
             aria-label="Saved on this device — not synced yet"
           />
         )}
+        <BlockBadgeList
+          blocks={blocks}
+          tone={o.status === "overdue" ? "warn" : "default"}
+          className="ml-2 align-middle"
+        />
       </span>
-      <BlockBadgeList
-        blocks={blocks}
-        tone={o.status === "overdue" ? "warn" : "default"}
-      />
       <ChevronRight size={14} className="shrink-0 text-muted" />
     </button>
   );

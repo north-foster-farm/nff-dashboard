@@ -121,7 +121,10 @@ export function PlaceTreeNode({
         }}>
           {place.name}
         </span>
-        <span style={{ fontSize: 11, color: T.textMuted }}>
+        <span style={{
+          fontSize: 11, color: T.textMuted,
+          whiteSpace: "nowrap", flexShrink: 0,
+        }}>
           {subtreeCount > 0
             ? `${subtreeCount} ${subtreeCount === 1 ? countNoun : countNoun + "s"}`
             : `no ${countNoun}s`}
@@ -192,7 +195,10 @@ export function PlaceTreeSection({
         {subtitle && (
           <span style={{ fontSize: 11, color: T.textMuted }}>{subtitle}</span>
         )}
-        <span style={{ fontSize: 11, color: T.textMuted, marginLeft: "auto" }}>
+        <span style={{
+          fontSize: 11, color: T.textMuted, marginLeft: "auto",
+          whiteSpace: "nowrap", flexShrink: 0,
+        }}>
           {entries.length} {entries.length === 1 ? countNoun : countNoun + "s"}
         </span>
       </button>

@@ -57,7 +57,9 @@ export default function BlockBadge({
 // A row of badges — one per block, sorted by today's resolved start
 // time. Used by consolidated overdue rows on the Now surface, where
 // each badge marks one missed block.
-export function BlockBadgeList({ blocks, tone = "default", size = 13 }) {
+export function BlockBadgeList({
+  blocks, tone = "default", size = 13, className = "",
+}) {
   const today = new Date();
   const sorted = [...(blocks ?? [])].sort((a, b) => {
     const sa = resolveBlockMinutes(today, a.startKind, a.startMinutes) ?? 9999;
@@ -66,7 +68,9 @@ export function BlockBadgeList({ blocks, tone = "default", size = 13 }) {
   });
   if (sorted.length === 0) return null;
   return (
-    <span className="inline-flex items-center gap-1 shrink-0">
+    <span
+      className={"inline-flex items-center gap-1 shrink-0 " + className}
+    >
       {sorted.map((b, i) => (
         <BlockBadge key={b?.id ?? i} block={b} tone={tone} size={size} />
       ))}
