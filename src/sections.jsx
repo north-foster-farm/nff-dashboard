@@ -5,7 +5,7 @@ import {
   Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
   CalendarRange, Store, Cog, Sunrise, Telescope,
   UserPlus, ClipboardList, CalendarDays, Newspaper, Map, MapPin, Eye,
-  Lightbulb
+  Lightbulb, ChartLine
 } from "lucide-react";
 
 // Updates flagged as needing attention — anything sitting in or past review.
@@ -42,6 +42,9 @@ export const SECTIONS = [
   // lands here by default (decision 2 of the farm-map workshop).
   { id: "map", group: null, label: "Farm map", icon: Map, description: "The farm from above — every zone tinted by what needs doing inside it. Click to drill into any place.", getCount: () => null },
   { id: "overview", group: null, label: "Dashboard", icon: Home, description: "Single-glance state of the farm", getCount: () => null },
+  // The Metrics & analytics surface (Batch 26.2) — "how are we doing?"
+  // with numbers: cross-batch comparison sheets + the metric registry.
+  { id: "metrics", group: null, label: "Metrics", icon: ChartLine, description: "Performance numbers side by side — FCR, daily gain, uniformity, and mortality per broiler batch; hen-housed production and feed efficiency per layer flock.", getCount: () => null },
 
   { id: "schedule", group: "Planning", label: "Schedule", icon: Calendar, description: "Calendar and timeline view of everything date-bound", getCount: () => null },
   { id: "events_all_types", group: "Planning", label: "Events", flyoutTitle: "Events", icon: CalendarRange, kind: "flyout",

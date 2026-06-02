@@ -2131,6 +2131,47 @@ filter chip.
 cross-batch comparison sheet), the dashboard "broiler weeks
 remaining" widget, and feed-page metric embeds.
 
+### Batch 26.2 — Metrics page + comparison + dashboard widget · `v0.10.25-alpha`
+2026-06-02. Closes the Metrics & analytics subsystem (Batch 26).
+The cross-cutting surfaces over the 26.1 foundation: the Metrics
+page, the comparison sheets, and the dashboard weeks-remaining
+widget. No new schema.
+
+**Metrics page** (`pages/Metrics.jsx`, new top-level nav entry
+right under Dashboard — Now · Farm map · Dashboard · Metrics):
+- **Broiler batch comparison sheet** — one row per batch of every
+  meat species: placed / alive, weeks on farm, weeks left, feed
+  eaten (lb, schedule-projected), feed cost, mortality %, FCR,
+  daily gain, uniformity, cuts ordered. FCR over the pasture
+  target band and uniformity over 8% render in the warn color.
+  Rows deep-link to the batch page.
+- **Layer flock comparison sheet** — placed / alive, eggs
+  collected, hen-housed production, laying rate, feed per dozen,
+  feed per lb egg mass, body weight (with % change; condition
+  flags warn-colored), mortality %.
+- **Metric definitions registry** — the seeded `metrics` rows
+  grouped by family: name, unit, formula description, target
+  note. The "what does this number actually mean" reference.
+- "Cuts ordered" joins chicken_lots on the batch's processing
+  date (chicken_lots has no batch FK; the processing day is the
+  natural key).
+
+**Dashboard widget** (`Overview.jsx` → BroilerWeeksCard): one line
+per broiler batch still on the farm — `Batch 1 · week 5 · 2 weeks
+remaining` — sorted closest-to-processing first, deep-linking to
+the batch page. Counts down to the scheduled processing event
+when one exists, else arrival + target_process_weeks. Renders
+nothing when no meat batch is active. This retires the
+"Broiler-batch weeks remaining dashboard widget" item from
+Recently added.
+
+**Hooks**: `useMetricDefinitions` (registry + realtime),
+`useProcessingDates` (one query → Map<batchId, processing date>
+from event_links role='processing', shared by the comparison
+sheet and the widget).
+
+In-app Roadmap page: "Metrics & analytics" item retired.
+
 ---
 
 ## Overhaul design records
@@ -2339,66 +2380,22 @@ The broiler tracker stays carved out into Batch 26 (Metrics &
 analytics); the metric definitions and cross-batch comparison
 view ship there.
 
-### Batch 26 — Metrics & analytics (26.1 ✅ shipped · 26.2 remaining)
-New first-class subsystem that owns metric definitions, their
-underlying data plumbing, and every cross-cutting visualization
-or reporting surface in the app. **Supersedes the broiler
-tracker** (formerly bundled into the Animals & Feed batch) and
-folds in any other data-visualization or reporting items the
-roadmap was tracking piecemeal — animal-page reports, feed
-analytics, sales charts, mortality trend, dashboard metric
-cards. One subsystem, one registry, one front-end API.
+### Batch 26 — Metrics & analytics ✅ SHIPPED
+Shipped in two slices (both 2026-06-02) — see the Shipped section
+above:
+- **26.1** — Metrics foundation + capture (`v0.10.24-alpha`):
+  the metrics registry, weight_samples + egg_collections schema,
+  the metrics engine, the Rounds Eggs quick action, and the
+  per-cohort Performance / Production cards on BatchPage.
+- **26.2** — Metrics page + comparison + dashboard widget
+  (`v0.10.25-alpha`): the top-level Metrics page (comparison
+  sheets + metric registry) and the broiler weeks-remaining
+  dashboard widget.
 
-**26.1 shipped 2026-06-02 (`v0.10.24-alpha`)** — see the Shipped
-section above: metrics registry + weight_samples +
-egg_collections schema, the metrics engine, capture surfaces
-(Rounds Eggs quick action, weigh-in + egg log cards), and the
-per-cohort Performance / Production cards on BatchPage.
-
-**26.2 (remaining):** the top-level Metrics page — registry view
-with formulas + targets, the cross-batch comparison sheet (one
-row per broiler batch: weeks on farm, feed eaten, feed cost,
-mortality, FCR, ADG, uniformity, cuts ordered), the layer flock
-comparison — plus the "broiler weeks remaining" dashboard widget.
-
-Two seeded metric families to start, both grounded in the
-agricultural reality:
-
-- **Broiler batches (Cornish Cross).** Feed Conversion Ratio
-  (lbs feed ÷ lbs liveweight gain; pasture-raised target
-  2.2–3.0; commercial 1.7–1.9). Average Daily Gain via
-  random 10–20 bird sample weekly on a hanging or platform
-  scale. Uniformity = coefficient of variation across the
-  sample weights (under 8% = tight). Per-batch record sheet
-  (weeks on farm, move history, feed eaten, feed cost,
-  mortality, cuts ordered) optimized for cross-batch
-  comparison.
-- **Layer flocks (Red Sex-Link).** Hen-housed production —
-  cumulative eggs ÷ original hens placed; target ~280–320 in
-  the first laying year. Feed per dozen and feed per pound of
-  egg mass (egg mass = avg egg weight × egg count; the better
-  denominator for older flocks laying bigger eggs). Body weight
-  trend with condition flags — birds dropping weight while
-  laying are burning reserves and will crash; birds gaining fat
-  drop production and risk fatty liver.
-
-Architecture: a `metrics` registry table where each row defines
-a metric (id, name, formula description, units, applies-to
-entity), backed by per-metric materialized views or query
-helpers depending on data shape. Front-end consumes a single
-metrics API; entity pages (broiler batch detail, layer flock
-detail, feed page, dashboard) embed metric cards that pull from
-it. The "broiler weeks remaining" dashboard widget ships out of
-this subsystem too.
-
-Out of scope for v1: predictive models, anomaly detection,
-custom user-defined metrics. Just the registry, the seeded
-metrics, the tracker views, and the cross-batch comparison
-surface.
-
-Ships value: the dashboard finally answers "how are we doing?"
-with numbers, not vibes. Closes the data-visualization /
-reporting umbrella in one place.
+Out of scope for v1 (still true): predictive models, anomaly
+detection, custom user-defined metrics. Future reporting /
+data-viz items (sales charts, feed analytics) land in this
+subsystem when their batches ship.
 
 ### Batch 27 — Products + pricing
 Products CRUD with photos / descriptions / content (research
@@ -2517,23 +2514,12 @@ foundational batches land.
 These came up after the original 22-batch plan was set. Slot in
 once the user picks where they belong.
 
-### Broiler-batch "weeks remaining" dashboard widget
-Added 2026-05-05. Same card style as the other dashboard widgets;
-lists each active broiler batch in the format:
-
-> batch n | week x | y week(s) remaining
-
-Motivation: this is a stat James's dad already keeps tabs on
-day-to-day, so making it instantly visible on the dashboard saves
-him doing the math from scratch.
-
-Open question: does each batch already carry a `start_date` and a
-target weeks-to-process value, or do we need to add one? Natural
-home is the new Metrics & analytics batch (Batch 26), which owns
-broiler-batch metric definitions and cross-batch comparison —
-the widget is just a dashboard surface over the same underlying
-metric. If the data is already present, this could ship sooner
-as a small one-off batch on its own.
+### Broiler-batch "weeks remaining" dashboard widget ✅ SHIPPED
+Added 2026-05-05; shipped 2026-06-02 with Batch 26.2
+(`v0.10.25-alpha`). The open question resolved as: batches carry
+`arrival_date` (already present) and the species carries the new
+`target_process_weeks` (0023); a scheduled processing event
+overrides the target when one exists.
 
 ### Mileage tracker
 Added 2026-05-06. Track miles driven for farm-related trips —

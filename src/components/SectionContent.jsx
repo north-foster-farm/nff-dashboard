@@ -27,6 +27,7 @@ import ProjectPage from "../pages/ProjectPage.jsx";
 import Processes from "../pages/Processes.jsx";
 import Customers from "../pages/Customers.jsx";
 import FeedSchedulesPage from "../pages/FeedSchedulesPage.jsx";
+import Metrics from "../pages/Metrics.jsx";
 
 export default function SectionContent({
   section, data, onOpenEvent, onNavigate, onOpenRounds,
@@ -82,6 +83,8 @@ export default function SectionContent({
         onNavigate={onNavigate}
       />;
     case "overview": return <Overview data={data} onNavigate={onNavigate} />;
+    // The Metrics & analytics page (Batch 26.2).
+    case "metrics": return <Metrics data={data} />;
     case "machines":
     case "resources_machinery":
       return <Machines data={data} />;

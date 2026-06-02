@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Clock, CheckCircle2, ArrowUpRight,
   FolderKanban, Receipt, Newspaper, Activity as ActivityIcon,
-  MapPin, User, CloudOff, Sparkles, Workflow, X
+  MapPin, User, CloudOff, Sparkles, Workflow, X, Bird
 } from "lucide-react";
 import { T } from "../theme.js";
 import { formatTime12h } from "../lib/dates.js";
@@ -16,7 +16,9 @@ import {
   obligationPlaceIds
 } from "../lib/chores.js";
 import { displayPlace } from "../lib/places.js";
-import { navigate, pathForProject } from "../lib/router.js";
+import { navigate, pathForBatch, pathForProject } from "../lib/router.js";
+import { useProcessingDates } from "../lib/data/useProcessingDates.js";
+import { isMeatSpecies, weeksTimeline } from "../lib/metrics.js";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
@@ -72,6 +74,10 @@ export default function Overview({ data, onNavigate }) {
         <UpcomingChoresCard data={data} today={today} blocks={blocks} ruleOpts={ruleOpts} />
         <Stack>
           <CurrentConditionsCard />
+          {/* Broiler weeks-remaining widget (Batch 26.2) — the stat
+              James's dad keeps tabs on day to day. Renders nothing
+              when no broiler batch is on the farm. */}
+          <BroilerWeeksCard data={data} />
           <TodayScheduleCard data={data} today={today} blocks={blocks} ruleOpts={ruleOpts} />
         </Stack>
       </GridRow>
@@ -1053,6 +1059,79 @@ function Card({ title, subtitle, icon: Icon, children }) {
 
 function EmptyLine({ children }) {
   return <div className="text-xs text-dim italic leading-relaxed">{children}</div>;
+}
+
+// ─── Broiler weeks remaining (Batch 26.2) ────────────────────────────────────
+
+// One line per broiler batch still on the farm:
+//   Batch 1   ·   week 5   ·   2 weeks remaining
+// Counts down to the scheduled processing event when one exists,
+// otherwise to the species' target process week from arrival. Clicking
+// a row deep-links to the batch page. Renders nothing when no meat
+// batch is active.
+function BroilerWeeksCard({ data }) {
+  const { processingDateByBatchId } = useProcessingDates();
+
+  const rows = useMemo(() => {
+    const out = [];
+    for (const sp of data.livestock?.species ?? []) {
+      if (!isMeatSpecies(sp)) continue;
+      for (const batch of sp.groups ?? []) {
+        // Skip emptied / processed batches (count drained to zero) and
+        // batches with no arrival date to count from.
+        if (!batch.arrivalDate) continue;
+        if (typeof batch.count === "number" && batch.count <= 0) continue;
+        const weeks = weeksTimeline(
+          batch, sp, processingDateByBatchId.get(batch.id) ?? null);
+        if (weeks.weeksOnFarm == null) continue;
+        out.push({ speciesId: sp.id, batch, weeks });
+      }
+    }
+    // Closest to processing first.
+    out.sort((a, b) =>
+      (a.weeks.weeksRemaining ?? Infinity)
+      - (b.weeks.weeksRemaining ?? Infinity));
+    return out;
+  }, [data.livestock, processingDateByBatchId]);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <Card title="Broilers" icon={Bird} subtitle="weeks to processing">
+      <div className="flex flex-col">
+        {rows.map(({ speciesId, batch, weeks }) => {
+          const week = Math.floor(weeks.weeksOnFarm) + 1;
+          const remaining = weeks.weeksRemaining == null
+            ? null
+            : Math.max(0, Math.ceil(weeks.weeksRemaining));
+          return (
+            <button
+              key={batch.id}
+              onClick={() => navigate(pathForBatch(speciesId, batch.id))}
+              className={
+                "flex items-baseline gap-2 py-2 first:pt-0 last:pb-0 " +
+                "bg-transparent border-0 border-b border-line last:border-b-0 " +
+                "font-[inherit] text-left cursor-pointer group w-full"
+              }
+            >
+              <span className="text-[13px] font-semibold text-fg group-hover:text-accent-deep">
+                {batch.label}
+              </span>
+              <span className="text-[12px] text-dim">week {week}</span>
+              <span className="ml-auto text-[12px] text-fg whitespace-nowrap">
+                {remaining == null
+                  ? "no target"
+                  : remaining === 0
+                    ? "processing week"
+                    : `${remaining} week${remaining === 1 ? "" : "s"} remaining`}
+              </span>
+              <ArrowUpRight size={12} className="text-muted shrink-0 self-center" />
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
 }
 
 

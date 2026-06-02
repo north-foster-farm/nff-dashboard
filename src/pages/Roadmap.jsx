@@ -12,7 +12,11 @@
 // rebuilt" (Batch 22), "Processes" (Batch 23), "Customers and
 // lists" (Batch 24), "Animals & feed, overhauled" (Batches
 // 25.1–25.2 — the Feed page group-cards redesign and the animal
-// pages rethink with the feed schedule editor).
+// pages rethink with the feed schedule editor), "Metrics &
+// analytics" (Batches 26.1–26.2 — the metrics registry, weigh-in /
+// egg-count capture, the per-cohort cards on batch pages, the
+// Metrics comparison page, and the dashboard broiler
+// weeks-remaining widget).
 
 const ITEMS = [
   {
@@ -23,20 +27,6 @@ const ITEMS = [
       "Google Calendar reaches). The dashboard stays the source of " +
       "truth for edits — the phone copy is intentionally read-only so " +
       "there's no risk of two clocks disagreeing.",
-  },
-  {
-    title: "Metrics & analytics",
-    body: "A first-class home for every number the dashboard tries to " +
-      "answer questions with — and the subsystem all our reporting " +
-      "and data-viz lands in instead of getting scattered across " +
-      "individual pages. Two seeded metric families to start: " +
-      "broiler batches (Feed Conversion Ratio, Average Daily Gain " +
-      "from a weekly random sample, uniformity, weeks-remaining, " +
-      "cross-batch comparison sheet) and layer flocks (hen-housed " +
-      "production, feed per dozen, feed per pound of egg mass, body " +
-      "weight trend with the \"burning reserves vs. getting fat\" " +
-      "flags). One registry, one front-end API, one place to ask " +
-      "\"how are we doing?\" and get a real answer.",
   },
   {
     title: "Products and pricing",
