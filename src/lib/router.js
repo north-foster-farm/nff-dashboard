@@ -16,6 +16,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 //   /chores/<tab>          → Chores page with that tab selected
 //   /events/<kind>         → Schedule filtered to that event kind
 //   /livestock/<species>   → species record pages
+//   /livestock/<species>/<batchId>
+//                          → batch lifecycle page (renders inside the
+//                            species section)
 //   /place/<placeId>       → a place page (renders inside the map section)
 //   /rounds[/<blockId>]    → the full-screen Rounds takeover
 //
@@ -33,6 +36,11 @@ export function pathForSection(sectionId) {
     return "/livestock/" + dashed(sectionId.slice("livestock_".length));
   }
   return "/" + dashed(sectionId);
+}
+
+// Deep link to one batch's lifecycle page (Batch 20).
+export function pathForBatch(speciesId, batchId) {
+  return "/livestock/" + dashed(speciesId) + "/" + dashed(batchId);
 }
 
 function dashed(id) {
@@ -62,7 +70,9 @@ export function parseRoute(pathname) {
     return section("events_" + undashed(rest[0] ?? "all"));
   }
   if (head === "livestock" && rest[0]) {
-    return section("livestock_" + undashed(rest[0]));
+    return section("livestock_" + undashed(rest[0]), {
+      batchId: rest[1] ? undashed(rest[1]) : null,
+    });
   }
   if (head === "chores") {
     return section("chores", { choresTab: rest[0] ?? null });
@@ -76,6 +86,7 @@ function section(sectionId, extra = {}) {
     sectionId,
     placeId: null,
     choresTab: null,
+    batchId: null,
     ...extra,
   };
 }

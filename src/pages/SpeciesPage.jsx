@@ -5,6 +5,7 @@ import { TabStrip, DataField, Subsection } from "../components/primitives.jsx";
 import { computeAge, formatDate } from "../lib/dates.js";
 import { computeStageCost } from "../lib/feedCost.js";
 import { supabase } from "../lib/supabase.js";
+import { navigate, pathForBatch } from "../lib/router.js";
 import {
   getAllChoreDefinitions, describeFrequency, displayStartTime, CHORE_CATEGORIES
 } from "../lib/chores.js";
@@ -229,8 +230,19 @@ function GroupCard({ group, species }) {
     ...(!isSheep ? [{ label: "Arrived", value: arrivalDisplay }] : []),
     ...(!isSheep ? [{ label: "Location", value: locationValue, highlight: locationKnown }] : [])
   ];
+  // Clicking a card opens the batch lifecycle page (Batch 20).
   return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "14px 16px" }}>
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate(pathForBatch(species.id, group.id))}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate(pathForBatch(species.id, group.id));
+        }
+      }}
+      style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "14px 16px", cursor: "pointer" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
         <div>
           <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600, lineHeight: 1.2 }}>{group.label}</div>

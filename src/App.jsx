@@ -11,7 +11,7 @@ import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
 import {
-  useRoute, navigate, navigateBack, pathForSection,
+  useRoute, usePath, navigate, navigateBack, pathForSection,
 } from "./lib/router.js";
 
 // Phone-width media query — used once at boot to pick the landing
@@ -58,6 +58,15 @@ export default function App({ session }) {
       navigate(defaultPath(), { replace: true });
     }
   }, [route.kind]);
+
+  // The processing workspace renders in place of section content but
+  // isn't a URL of its own — any actual navigation (e.g. jumping to a
+  // batch's lifecycle page from the workspace's picker) should win
+  // over it.
+  const path = usePath();
+  useEffect(() => {
+    setProcessingTarget(null);
+  }, [path]);
 
   const openRounds = (blockId) =>
     navigate(blockId ? `/rounds/${blockId}` : "/rounds");
@@ -178,6 +187,7 @@ export default function App({ session }) {
             <Processing
               seriesId={processingTarget.seriesId}
               occursOn={processingTarget.occursOn}
+              data={data}
               onClose={() => setProcessingTarget(null)}
             />
           ) : (

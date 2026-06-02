@@ -1664,6 +1664,62 @@ config overrides on the lifecycle rule (single species-level config
 for now), automation rule creation UI (the two rules are seeded;
 new rules are a migration).
 
+### Batch 20 — Animal lifecycle pages · `v0.10.17-alpha`
+2026-06-01. The batch detail page and the batch ↔ events relationship
+inversion: the batch owns its dates, the events are derived. Client
+only — no migration; everything reads/writes through tables that
+already exist (event_links from 0013, batch_assignments from 0002,
+placements from 0009).
+
+**Batch lifecycle page** (`pages/BatchPage.jsx`, routed at
+`/livestock/<species>/<batchId>`):
+- **Lifespan timeline strip**: Arrival → Pasture move → Processing →
+  Brooder cleanout, read from `event_links` (target_type='batch')
+  with the series + occurrence embedded via one nested PostgREST
+  select (`lib/data/useEventLinks.js`, realtime-subscribed). The
+  cleanout milestone is the one-time chore, rendered as a chore pill.
+- **The inversion**: each milestone shows an editable date input —
+  editing it rewrites the underlying event (occurrence `occurs_on` +
+  series `dtstart`). Clicking a milestone name opens the EventEditor
+  for that event (the reciprocal wiring).
+- **Where**: the batch's current placement (place name + since-date,
+  deep link to the place page).
+- **Chores tied to this batch**: the auto cleanout chore + anything
+  anchored to the batch.
+- **Delete with tombstone**: confirm dialog lists exactly what will
+  happen — linked event series end + their scheduled occurrences
+  skip (rows kept as history), one-time chores retire, the open
+  placement closes, processing assignments delete, then the
+  `livestock_groups` row deletes. Orphaned `event_links` survive as
+  audit history.
+
+**Routing** (`lib/router.js`): `/livestock/<species>/<batchId>` +
+`pathForBatch()`; `SectionContent` renders BatchPage inside the
+species section; species GroupCards are clickable links to their
+batch page.
+
+**Processing workspace batch-assign picker** (`pages/Processing.jsx`):
+the real picker replacing the old EventKindPage stub. Lists every
+batch of batch-tracked species with count + current location (from
+placements); assigning upserts `batch_assignments` AND keeps the
+`event_links` row in sync (retarget or create, role='processing') so
+the batch's lifecycle strip shows the assigned processing day. A
+"Lifecycle page" deep link jumps from the workspace to the batch.
+App.jsx closes the workspace on any real navigation so deep links
+out of it work.
+
+Verified with a surgical live-DB test (16 checks: nested lifecycle
+read, milestone reschedule, assignment upsert + link sync,
+delete-tombstone semantics); all test rows cleaned up.
+
+**Out of scope / deferred:** layers + sheep lifecycle pages (the page
+renders for any species but the milestone strip assumes the broiler
+arrival/move/processing shape — species-specific milestone sets come
+with the species that need them), batch detail editing (count /
+label / arrival-date edits still happen at creation only), and the
+"add milestone" affordance for batches created before the automation
+existed.
+
 ---
 
 ## Upcoming
@@ -1882,22 +1938,12 @@ scope was deferred mid-batch (James's call) and folds into
 Batch 31; everything else (the two seeded rules, sparkle
 treatment, Heads-up lane, dismissal flow) shipped.
 
-### Batch 20 — Animal lifecycle pages
-Batch detail page (broiler batches first; layers + sheep follow
-the same shape). Lifespan timeline strip across the page —
-arrival → pasture move → milestones → processing → cleanout —
-reading from `event_links` polymorphic rows. Reciprocal "click
-arrival/processing date pill → opens EventEditor" wiring from
-the batch detail card. Inverts the batch ↔ processing-day
-relationship: the batch owns its dates, the events are derived.
-Deleting a batch tombstones the linked events with a confirm
-dialog. Implements the batch-assign UI properly (the stub at the
-old `EventKindPage.jsx:65` becomes a real picker on the
-processing-day workspace, populated from `site_residents`).
-
-Ships value: the day James clicks "Broiler batch 2" and sees its
-arrival, pasture-move, processing, and cleanout in one timeline
-strip — and can edit any of them in place.
+### Batch 20 — Animal lifecycle pages ✅ SHIPPED
+Shipped `v0.10.17-alpha` (2026-06-01) — see the Shipped section
+above. The batch lifecycle page, the dates-inversion (batch owns
+its dates), delete-with-tombstone, and the processing-day
+batch-assign picker all landed; layers/sheep-specific milestone
+sets are deferred until those species need them.
 
 ### Batch 21 — Inbox / "just a thought…" capture
 Lightweight capture surface for ideas that aren't yet projects

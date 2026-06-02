@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, Save, CheckCircle2 } from "lucide-react";
+import {
+  ChevronLeft, Save, CheckCircle2, Bird, ArrowUpRight,
+} from "lucide-react";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
+import { useBatchAssignments } from "../lib/data/useBatchAssignments.js";
+import { useSites } from "../lib/data/useSites.js";
+import { supabase } from "../lib/supabase.js";
+import { navigate, pathForBatch } from "../lib/router.js";
 
 // Processing-day workspace (Batch 14.2). Reachable only from the
 // EventEditor's "Open processing details →" link on a processing_days
@@ -24,7 +30,7 @@ import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
 // payload_override is upserted alongside so per-instance edits
 // persist (the recurrence reader prefers override fields).
 
-export default function Processing({ seriesId, occursOn, onClose }) {
+export default function Processing({ seriesId, occursOn, data, onClose }) {
   const { seriesById, updateSeries } = useEventSeries();
   const { occurrences, upsertOverride } = useEventOccurrences({ seriesId });
   const series = seriesId ? seriesById.get(seriesId) : null;
@@ -144,6 +150,8 @@ export default function Processing({ seriesId, occursOn, onClose }) {
         </div>
       </header>
 
+      <BatchAssignSection seriesId={seriesId} data={data} />
+
       <Section title="Cut sheet" subtitle="Cut sizes, packaging, anything the processor needs ahead of the day.">
         <textarea
           value={cutSheet}
@@ -206,6 +214,126 @@ export default function Processing({ seriesId, occursOn, onClose }) {
         )}
       </footer>
     </div>
+  );
+}
+
+// ── Batch assignment (Batch 20) ───────────────────────────────────────
+// The real picker replacing the old EventKindPage stub. Lists every
+// batch of batch-tracked species with its current location; assigning
+// writes batch_assignments (keyed by series id) AND keeps the
+// event_links row in sync so the batch's lifecycle page shows this
+// processing day.
+function BatchAssignSection({ seriesId, data }) {
+  const { getBatchId, assign, loading } = useBatchAssignments();
+  const { placesById, placements } = useSites();
+  const [pending, setPending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  // Candidate batches: batch-tracked species (broilers today; any
+  // future batch-tracked species shows up automatically).
+  const candidates = useMemo(() => {
+    const out = [];
+    for (const sp of data?.livestock?.species ?? []) {
+      if (sp.trackingModel !== "batch") continue;
+      for (const g of sp.groups ?? []) {
+        const placement = (placements ?? []).find(
+          (p) => p.occupantType === "batch"
+            && p.occupantId === g.id
+            && !p.movedOut
+        );
+        const place = placement ? placesById?.get(placement.placeId) : null;
+        out.push({
+          id: g.id,
+          label: `${sp.name} — ${g.label}`,
+          speciesId: sp.id,
+          count: g.count,
+          placeName: place?.name ?? null,
+        });
+      }
+    }
+    return out;
+  }, [data, placements, placesById]);
+
+  const assignedBatchId = getBatchId(seriesId);
+  const assigned = candidates.find((c) => c.id === assignedBatchId) ?? null;
+
+  const onAssign = async (batchId) => {
+    setPending(true);
+    setErrorMsg(null);
+    try {
+      if (batchId) {
+        const err = await assign(seriesId, batchId);
+        if (err) throw err;
+        // Keep event_links in sync: one batch link per processing
+        // series — retarget the existing link or create it.
+        const { data: existing, error: qErr } = await supabase
+          .from("event_links")
+          .select("id, target_id")
+          .eq("series_id", seriesId)
+          .eq("target_type", "batch");
+        if (qErr) throw qErr;
+        if (existing && existing.length > 0) {
+          const { error: uErr } = await supabase
+            .from("event_links")
+            .update({ target_id: batchId, role: "processing" })
+            .eq("id", existing[0].id);
+          if (uErr) throw uErr;
+        } else {
+          const { error: iErr } = await supabase
+            .from("event_links")
+            .insert({
+              series_id: seriesId,
+              target_type: "batch",
+              target_id: batchId,
+              role: "processing",
+            });
+          if (iErr) throw iErr;
+        }
+      }
+    } catch (e) {
+      setErrorMsg(e?.message ?? "Assignment failed.");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <Section
+      title="Batch"
+      subtitle="Which batch is being processed this day. Assigning links the event to the batch's lifecycle page."
+    >
+      <div className="flex items-center gap-3 flex-wrap">
+        <Bird size={15} className="text-dim shrink-0" />
+        <select
+          value={assignedBatchId ?? ""}
+          onChange={(e) => onAssign(e.target.value || null)}
+          disabled={pending || loading}
+          className="bg-surface border border-line text-fg text-[13px] px-3 py-2 outline-none focus:border-accent font-[inherit] disabled:opacity-50 min-w-[220px]"
+        >
+          <option value="">— no batch assigned —</option>
+          {candidates.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+              {c.count != null ? ` (${c.count} birds)` : ""}
+              {c.placeName ? ` · ${c.placeName}` : ""}
+            </option>
+          ))}
+        </select>
+        {assigned && (
+          <button
+            onClick={() =>
+              navigate(pathForBatch(assigned.speciesId, assigned.id))}
+            className="inline-flex items-center gap-1 bg-transparent border-0 p-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-deep cursor-pointer font-[inherit]"
+          >
+            Lifecycle page
+            <ArrowUpRight size={12} className="shrink-0" />
+          </button>
+        )}
+      </div>
+      {errorMsg && (
+        <div className="text-[11px] text-warn">{errorMsg}</div>
+      )}
+    </Section>
   );
 }
 

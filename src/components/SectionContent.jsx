@@ -1,6 +1,7 @@
 import { getSpeciesFromSectionId, getEventKindFromSectionId } from "../sections.jsx";
 import ComingSoon from "./ComingSoon.jsx";
 import { T } from "../theme.js";
+import { useRoute } from "../lib/router.js";
 import Now from "../pages/Now.jsx";
 import MapPage from "../pages/MapPage.jsx";
 import Overview from "../pages/Overview.jsx";
@@ -11,6 +12,7 @@ import Chores from "../pages/Chores.jsx";
 import Threads from "../pages/Threads.jsx";
 import Schedule from "../pages/Schedule.jsx";
 import SpeciesPage from "../pages/SpeciesPage.jsx";
+import BatchPage from "../pages/BatchPage.jsx";
 import Products from "../pages/Products.jsx";
 import Inventory from "../pages/Inventory.jsx";
 import Trailers from "../pages/Trailers.jsx";
@@ -23,12 +25,28 @@ import SitesPage from "../pages/SitesPage.jsx";
 export default function SectionContent({
   section, data, onOpenEvent, onNavigate, onOpenRounds,
 }) {
+  // Batch lifecycle deep links (/livestock/<species>/<batchId>) carry
+  // the batch id on the route.
+  const route = useRoute();
+
   // Sections explicitly flagged with comingSoon get the full-page placeholder.
   if (section.comingSoon) return <ComingSoon featureName={section.label} />;
 
   if (section.id.startsWith("livestock_")) {
     const sp = getSpeciesFromSectionId(section.id, data);
     if (!sp) return <ComingSoon featureName={section.label} />;
+    // Batch lifecycle page (Batch 20).
+    if (route.kind === "section" && route.batchId) {
+      const batch = sp.groups.find(g => g.id === route.batchId) ?? null;
+      return <BatchPage
+        batch={batch}
+        species={sp}
+        data={data}
+        onOpenEvent={onOpenEvent}
+        onNavigate={onNavigate}
+        key={route.batchId}
+      />;
+    }
     return <SpeciesPage species={sp} data={data} />;
   }
   if (section.id === "events_all") {
