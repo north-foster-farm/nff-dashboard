@@ -2264,6 +2264,36 @@ one refetch).
 **Out of scope — 27.3:** the Sales tab (record-a-sale +
 sales-over-time chart) and the bundle contents picker.
 
+### Batch 27.3 — Sales + bundles · `v0.10.28-alpha`
+2026-06-02. Closes Products + pricing (Batch 27). The Sales tab
+and the bundle contents picker, over the schema 27.1 already
+pushed. No new migration.
+
+**Sales tab** (`components/SalesTab.jsx`):
+- **Record a sale** — date / product / size / quantity / total /
+  channel / notes. The total pre-fills from the SKU's current
+  price × quantity (editable — markets round, bundles discount).
+  After saving, date + channel stick so logging a market's worth
+  of sales is rapid-fire.
+- **Sales-over-time chart** — stacked monthly bars (SVG, house
+  chart style), split by product group with hover tooltips,
+  per-month totals, gap months filled so the timeline reads
+  honestly. Source is `product_sales` — the same table POS
+  (Batch 28) and Orders (Batch 29) will write, so the chart
+  never changes source.
+- **Recent sales list** — newest first, per-row delete.
+
+**Bundle contents picker** (Products page editor, bundle
+products only): rows of component product + size + quantity;
+bundles can't nest bundles. The components' summed cost floor
+shows in the editor and drives the bundle's margin on the
+pricing grid.
+
+**Catalog lib additions**: `saleGroupKey` / `saleGroupLabel` /
+`salesByMonth` (month bucketing + group split + gap filling).
+
+In-app Roadmap page: "Products and pricing" item retired.
+
 ---
 
 ## Overhaul design records
@@ -2489,17 +2519,22 @@ detection, custom user-defined metrics. Future reporting /
 data-viz items (sales charts, feed analytics) land in this
 subsystem when their batches ship.
 
-### Batch 27 — Products + pricing 🔨 IN PROGRESS
-Shipping in three slices. **27.1 (catalog + content) and 27.2
-(pricing grid) shipped 2026-06-02** (`v0.10.26-alpha` /
-`v0.10.27-alpha`) — see Shipped above for the workshop decisions
-(per-bracket fixed pricing, grid + editor, manual sales entry,
-all four research extras), the schema, and the pricing surface.
+### Batch 27 — Products + pricing ✅ SHIPPED
+Shipped in three slices (all 2026-06-02) — see the Shipped
+section above:
+- **27.1** — Products catalog + content (`v0.10.26-alpha`): the
+  pricing workshop, migration 0024 (the whole batch's schema in
+  one push), the catalog CRUD with photos / four-slot
+  descriptions / brackets / sold-out.
+- **27.2** — Pricing grid (`v0.10.27-alpha`): the bulk pricing
+  sheet with live margins against cost floors, below-floor
+  warnings, quick-fill, compare-at, and price history.
+- **27.3** — Sales + bundles (`v0.10.28-alpha`): record-a-sale +
+  the sales-over-time chart, and the bundle contents picker.
 
-Remaining:
-- **27.3 — Sales + bundles**: the Sales tab — record-a-sale form
-  + sales-over-time chart (channel + product-group breakdowns);
-  bundle contents picker with component-derived cost floors.
+Out of scope (still true): e-commerce/storefront publishing of
+the catalog (no batch owns this yet); inventory decrement on
+sale (Batch 28 POS); per-order sales (Batch 29).
 
 ### Batch 28 — Inventory backend + Point of Sale
 Inventory schema + CRUD; on-hand by SKU/location. POS marks items

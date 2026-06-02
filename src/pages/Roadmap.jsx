@@ -16,7 +16,11 @@
 // analytics" (Batches 26.1–26.2 — the metrics registry, weigh-in /
 // egg-count capture, the per-cohort cards on batch pages, the
 // Metrics comparison page, and the dashboard broiler
-// weeks-remaining widget).
+// weeks-remaining widget), "Products and pricing" (Batches
+// 27.1–27.3 — the catalog with photos and the four-slot
+// descriptions, the pricing grid with live margins and price
+// history, bundles, and the record-a-sale + sales-over-time
+// surface).
 
 const ITEMS = [
   {
@@ -27,13 +31,6 @@ const ITEMS = [
       "Google Calendar reaches). The dashboard stays the source of " +
       "truth for edits — the phone copy is intentionally read-only so " +
       "there's no risk of two clocks disagreeing.",
-  },
-  {
-    title: "Products and pricing",
-    body: "Real product pages with photos, descriptions, and content, " +
-      "grouped by animal. Sales-over-time charts. A pricing UI " +
-      "workshopped against Shopify, Square, Faire, and GoodEggs as " +
-      "references.",
   },
   {
     title: "Inventory and point of sale",

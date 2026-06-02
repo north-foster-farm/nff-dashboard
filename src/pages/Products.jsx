@@ -5,9 +5,10 @@ import {
 } from "lucide-react";
 import { useProducts } from "../lib/data/useProducts.js";
 import PricingGrid from "../components/PricingGrid.jsx";
+import SalesTab from "../components/SalesTab.jsx";
 import {
-  CONTENT_SLOTS, currentPriceMap, fmtCents, groupProductsByAnimal,
-  skuCostFloor, skuKey,
+  CONTENT_SLOTS, bundleCostFloor, currentPriceMap, fmtCents,
+  groupProductsByAnimal, skuCostFloor, skuKey,
 } from "../lib/productCatalog.js";
 import {
   computeBroilerCostPerBird, computeBroilerCutCostPerLb, fmtUSD,
@@ -22,14 +23,13 @@ import {
 //   Pricing tab — the bulk pricing grid: every SKU with live margin
 //   against its cost floor, compare-at, quick-fill, history.
 //   (Batch 27.2 — components/PricingGrid.jsx)
+//   Sales tab — record-a-sale + the sales-over-time chart + recent
+//   sales. (Batch 27.3 — components/SalesTab.jsx)
 //
 // Content patterns follow the 2026-06-02 research pass over Pat's
 // Pastured / Polyface / White Oak: fixed price per weight bracket,
 // products named "Animal, Cut", sold-out items stay visible, the
 // four-part description recipe.
-//
-// The Sales tab (record-a-sale + sales-over-time, Batch 27.3) lands
-// next.
 
 export default function Products({ data }) {
   const db = useProducts();
@@ -69,6 +69,11 @@ export default function Products({ data }) {
           onClick={() => setTab("pricing")}
           label="Pricing"
         />
+        <Tab
+          active={tab === "sales"}
+          onClick={() => setTab("sales")}
+          label={`Sales · ${db.sales.length}`}
+        />
         {tab === "catalog" && (
           <>
             <button
@@ -101,6 +106,8 @@ export default function Products({ data }) {
           perBird={perBird}
           cutCtx={cutCtx}
         />
+      ) : tab === "sales" ? (
+        <SalesTab db={db} products={db.products} species={species} />
       ) : (
         <>
           {creating && (
@@ -312,6 +319,8 @@ function ProductEditor({ product: p, db, species, priceMap, perBird, cutCtx }) {
     p.averagePerPackage ?? "");
   const [content, setContent] = useState(p.content ?? {});
   const [brackets, setBrackets] = useState(p.sizeBrackets ?? []);
+  const [bundleContents, setBundleContents] = useState(
+    p.bundleContents ?? []);
   const [pending, setPending] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -321,7 +330,9 @@ function ProductEditor({ product: p, db, species, priceMap, perBird, cutCtx }) {
     || saleUnit !== (p.saleUnit ?? "")
     || avgPerPackage !== (p.averagePerPackage ?? "")
     || JSON.stringify(content) !== JSON.stringify(p.content ?? {})
-    || JSON.stringify(brackets) !== JSON.stringify(p.sizeBrackets ?? []);
+    || JSON.stringify(brackets) !== JSON.stringify(p.sizeBrackets ?? [])
+    || JSON.stringify(bundleContents)
+      !== JSON.stringify(p.bundleContents ?? []);
 
   const save = async () => {
     setPending(true);
@@ -334,6 +345,8 @@ function ProductEditor({ product: p, db, species, priceMap, perBird, cutCtx }) {
         averagePerPackage: avgPerPackage,
         content,
         sizeBrackets: brackets,
+        // Drop rows where no component was picked.
+        bundleContents: bundleContents.filter(c => c.productKindId),
       });
     } catch (err) {
       setErrorMsg(err?.message ?? "Save failed.");
@@ -421,8 +434,16 @@ function ProductEditor({ product: p, db, species, priceMap, perBird, cutCtx }) {
         </div>
       </div>
 
-      {/* size brackets */}
-      {!p.isBundle && (
+      {/* size brackets / bundle contents */}
+      {p.isBundle ? (
+        <BundleContentsEditor
+          db={db}
+          contents={bundleContents}
+          setContents={setBundleContents}
+          perBird={perBird}
+          cutCtx={cutCtx}
+        />
+      ) : (
         <BracketsEditor
           product={p}
           brackets={brackets}
@@ -644,6 +665,116 @@ function BracketsEditor({
       >
         <Plus size={13} /> Add bracket
       </button>
+    </div>
+  );
+}
+
+// ── bundle contents ────────────────────────────────────────────────────
+// What's inside a bundle: rows of (component product, bracket,
+// quantity). The bundle's cost floor is the sum of its components'
+// floors (null while any component floor is unknown), surfaced here
+// and used by the pricing grid's margin column.
+
+function BundleContentsEditor({ db, contents, setContents, perBird, cutCtx }) {
+  // Bundles can't nest bundles — keeps floor math non-recursive.
+  const candidates = db.products.filter(p => !p.isBundle);
+
+  const setItem = (i, patch) => {
+    setContents(list => list.map((item, idx) =>
+      idx === i ? { ...item, ...patch } : item));
+  };
+
+  const floorSum = bundleCostFloor(
+    { bundleContents: contents }, db.productsById, perBird, cutCtx);
+
+  return (
+    <div>
+      <div className="text-[10px] text-dim uppercase tracking-[0.12em] mb-2">
+        Bundle contents
+        <span className="normal-case tracking-normal text-faint">
+          {" "}— what's in the pack; the bundle gets one price on the
+          Pricing tab
+        </span>
+      </div>
+
+      {contents.length === 0 ? (
+        <div className="text-[12px] text-faint italic mb-2">
+          Nothing in this bundle yet.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-px bg-line border border-line mb-2">
+          {contents.map((item, i) => {
+            const component = db.productsById.get(item.productKindId);
+            const brackets = component?.sizeBrackets ?? [];
+            return (
+              <div
+                key={i}
+                className="bg-bg px-3 py-2 grid grid-cols-[1fr_150px_70px_auto] gap-2 items-center"
+              >
+                <select
+                  value={item.productKindId ?? ""}
+                  onChange={(e) => setItem(i, {
+                    productKindId: e.target.value, bracketId: null,
+                  })}
+                  className={inputCls + " !py-1.5 !text-[12px]"}
+                >
+                  <option value="">— pick a product —</option>
+                  {candidates.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={item.bracketId ?? ""}
+                  onChange={(e) => setItem(i, {
+                    bracketId: e.target.value || null,
+                  })}
+                  disabled={brackets.length === 0}
+                  className={inputCls + " !py-1.5 !text-[12px] disabled:opacity-40"}
+                >
+                  <option value="">
+                    {brackets.length === 0 ? "—" : "— any size —"}
+                  </option>
+                  {brackets.map(b => (
+                    <option key={b.id} value={b.id}>{b.label}</option>
+                  ))}
+                </select>
+                <input
+                  value={item.quantity ?? 1}
+                  onChange={(e) => setItem(i, {
+                    quantity: Number(e.target.value) || 1,
+                  })}
+                  type="number" min="1"
+                  className={inputCls + " !py-1.5 !text-[12px] text-right"}
+                />
+                <button
+                  onClick={() => setContents(list =>
+                    list.filter((_, idx) => idx !== i))}
+                  title="Remove from bundle"
+                  className="bg-transparent border-0 p-1 text-muted hover:text-warn cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          onClick={() => setContents(list =>
+            [...list, { productKindId: "", bracketId: null, quantity: 1 }])}
+          className={btnGhostCls + " inline-flex items-center gap-1.5"}
+        >
+          <Plus size={13} /> Add product
+        </button>
+        <span className="text-[11px] text-dim ml-auto">
+          Components cost floor:{" "}
+          <span className={floorSum != null ? "text-accent" : "text-faint"}>
+            {floorSum != null ? fmtUSD(floorSum) : "unknown"}
+          </span>
+        </span>
+      </div>
     </div>
   );
 }

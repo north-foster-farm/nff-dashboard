@@ -232,4 +232,61 @@ export function skuLabel(product, bracket) {
   return `${product.name} · ${bracket.label}`;
 }
 
+// ── sales aggregation ──────────────────────────────────────────────────
+// Bucket sales rows by calendar month for the sales-over-time chart,
+// split inside each month by product group (the same animal grouping
+// the catalog uses: species / not-animal-specific / bundles).
+
+export function saleGroupKey(product) {
+  if (!product) return "__none__";
+  if (product.isBundle) return "__bundles__";
+  return product.sourceSpeciesId ?? "__none__";
+}
+
+export function saleGroupLabel(key, species) {
+  if (key === "__bundles__") return "Bundles";
+  if (key === "__none__") return "Other";
+  return (species ?? []).find(s => s.id === key)?.name ?? key;
+}
+
+// → [{ month: "2026-06", label: "Jun ’26", totalCents,
+//      byGroup: Map<groupKey, cents> }], oldest first, with empty
+// months filled in so the chart reads as a real timeline.
+export function salesByMonth(sales, productsById) {
+  if (!sales || sales.length === 0) return [];
+  const byMonth = new Map();
+  for (const sale of sales) {
+    const month = (sale.soldOn ?? "").slice(0, 7);
+    if (!month) continue;
+    if (!byMonth.has(month)) {
+      byMonth.set(month, { month, totalCents: 0, byGroup: new Map() });
+    }
+    const bucket = byMonth.get(month);
+    const group = saleGroupKey(productsById.get(sale.productKindId));
+    bucket.totalCents += sale.totalCents;
+    bucket.byGroup.set(group,
+      (bucket.byGroup.get(group) ?? 0) + sale.totalCents);
+  }
+  // Fill the gap months between first and last so bars sit on a
+  // continuous timeline.
+  const months = [...byMonth.keys()].sort();
+  const out = [];
+  let [y, m] = months[0].split("-").map(Number);
+  const last = months[months.length - 1];
+  for (;;) {
+    const key = `${y}-${String(m).padStart(2, "0")}`;
+    out.push(byMonth.get(key) ?? { month: key, totalCents: 0, byGroup: new Map() });
+    if (key === last) break;
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  for (const bucket of out) {
+    const [yy, mm] = bucket.month.split("-").map(Number);
+    bucket.label = new Date(yy, mm - 1, 1)
+      .toLocaleDateString(undefined, { month: "short" })
+      + (mm === 1 || bucket === out[0] ? ` ’${String(yy).slice(2)}` : "");
+  }
+  return out;
+}
+
 export { bracketMidpointLb };
