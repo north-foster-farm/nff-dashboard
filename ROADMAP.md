@@ -2172,6 +2172,64 @@ sheet and the widget).
 
 In-app Roadmap page: "Metrics & analytics" item retired.
 
+### Batch 27.1 — Products catalog + content · `v0.10.26-alpha`
+2026-06-02. First slice of Products + pricing (Batch 27): the
+schema, the catalog CRUD, and the content surfaces. The pricing
+grid (27.2) and sales + bundles UI (27.3) come next.
+
+The batch opened with the two research passes the roadmap called
+for, then a four-question pricing workshop with James. Decisions:
+- **Fixed price per weight bracket** (the Pat's Pastured / White
+  Oak pattern — no farm storefront does true $/lb catch-weight).
+  Matches the existing `size_brackets` jsonb.
+- **Pricing UI = bulk grid + per-product editor** (grid for
+  prices with live margin, editor for content).
+- **Sales chart fed by a manual "record a sale" form** until POS
+  (Batch 28) / Orders (Batch 29) write the same table.
+- All four research extras in scope: bundles, compare-at pricing,
+  price history, the four-slot description template.
+
+Migration `0024_products_pricing.sql` (all of Batch 27's schema
+in one file — one prod push for the whole batch):
+- **`product_kinds` extended** — `content` jsonb (the four
+  description slots: what-it-is / cooking / sourcing /
+  nutrition), `photo_path`, `sold_out`, `is_bundle` +
+  `bundle_contents` jsonb, `average_per_package`, `archived_at`.
+- **`product_prices`** — append-only price log; the current
+  price of a SKU (product × bracket) is its newest row, so
+  price history falls out of the schema for free. Carries
+  `compare_at_cents` for strike-through "was" pricing.
+- **`product_sales`** — one row per sale line (date, SKU, qty,
+  total, channel). The 27.3 record-a-sale form, Batch 28 POS,
+  and Batch 29 Orders all write here.
+- **`product-photos` Storage bucket** + guarded policies (same
+  pattern as project-files in 0017).
+- Admin RLS + realtime on all three tables.
+
+**Catalog lib** (`lib/productCatalog.js`, pure): content slots,
+sale channels, money parsing/formatting, product-id slugs,
+current-price maps, margin math (Shopify-style price − floor),
+per-SKU + bundle cost floors, animal grouping, SKU expansion.
+
+**Hook** (`lib/data/useProducts.js`): CRUD + realtime over the
+three tables; photo upload / replace / remove against the
+product-photos bucket with batch signed-URL resolution.
+
+**Products page rebuild** (`pages/Products.jsx`): products
+grouped by animal (+ "Not animal-specific"; bundles last), each
+row expandable into the full editor — photo box, identity fields,
+sold-out toggle (stays visible in catalog, flagged), the
+four-slot description editor, and the size-brackets editor with
+per-bracket current price + cost floor. New-product form
+(name / animal / sale unit / bundle flag), archive / restore /
+delete (FK-protected), "From $X" price summaries on cards, and
+the compact broiler cost-floor reference.
+
+**Out of scope — next slices:** the Pricing tab (bulk grid, live
+margin, below-floor warnings, price history view) is 27.2; the
+Sales tab (record-a-sale + sales-over-time chart) and bundle
+contents UI are 27.3.
+
 ---
 
 ## Overhaul design records
@@ -2397,13 +2455,19 @@ detection, custom user-defined metrics. Future reporting /
 data-viz items (sales charts, feed analytics) land in this
 subsystem when their batches ship.
 
-### Batch 27 — Products + pricing
-Products CRUD with photos / descriptions / content (research
-Pat's etc. for content patterns first). Group by animal; allow
-"uncategorized / not animal-specific". Sales-over-time
-visualization. **Pricing UI** — workshop together at start of
-batch; reference apps to surface: Shopify admin, Square, Faire,
-GoodEggs vendor portal.
+### Batch 27 — Products + pricing 🔨 IN PROGRESS
+Shipping in three slices. **27.1 (catalog + content) shipped
+2026-06-02** (`v0.10.26-alpha`) — see Shipped above for the
+workshop decisions (per-bracket fixed pricing, grid + editor,
+manual sales entry, all four research extras) and the schema.
+
+Remaining:
+- **27.2 — Pricing UI**: the Pricing tab — bulk grid over every
+  SKU (price / compare-at / cost floor / live margin %, profit
+  per unit, fill-down), below-floor warnings, price history view.
+- **27.3 — Sales + bundles**: the Sales tab — record-a-sale form
+  + sales-over-time chart (channel + product-group breakdowns);
+  bundle contents picker with component-derived cost floors.
 
 ### Batch 28 — Inventory backend + Point of Sale
 Inventory schema + CRUD; on-hand by SKU/location. POS marks items

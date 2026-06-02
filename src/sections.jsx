@@ -88,7 +88,7 @@ export const SECTIONS = [
   // These lived in the avatar records drawer from Batch 18.2 until
   // James asked for them back in the left nav. Same ids, so every
   // deep link and SectionContent case keeps working unchanged.
-  { id: "products", group: "Products", label: "All products", icon: Tag, description: "What NFF sells — SKUs by size bracket, with cost-floor and pricing-recommendation surface", getCount: () => null },
+  { id: "products", group: "Products", label: "All products", icon: Tag, description: "What NFF sells — the catalog: photos, descriptions, size brackets, and prices, grouped by animal", getCount: () => null },
   { id: "inventory", group: "Products", label: "Inventory", icon: Boxes, description: "Current stock — egg cartons in the fridge, chicken lots in freezers, FIFO-ordered", getCount: () => null },
   { id: "add_to_inventory", group: "Products", label: "Add to inventory", icon: PackagePlus, kind: "action", description: "Quick form to record new lots — eggs collected, broiler lots after processing day. Placeholder.", getCount: () => null },
 
