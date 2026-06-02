@@ -4,6 +4,7 @@ import UserAvatarMenu from "./UserAvatarMenu.jsx";
 import { supabase } from "../lib/supabase.js";
 import { useUserPreferences } from "../lib/data/useUserPreferences.js";
 import InboxBell from "./InboxBell.jsx";
+import ThoughtCapture from "./ThoughtCapture.jsx";
 import OutboxIndicator from "./OutboxIndicator.jsx";
 
 const DENSITY_ORDER = ["compact", "comfortable", "spacious"];
@@ -45,6 +46,8 @@ export default function TopBar({ data, session, onOpenRecords, onToggleNav }) {
       <div className="flex items-center gap-1 shrink-0">
         {/* Queued / not-synced field writes (Batch 16.2) */}
         <OutboxIndicator className="mr-2" />
+        {/* "Just a thought…" capture (Batch 21) */}
+        <ThoughtCapture />
         <InboxBell />
         <UserAvatarMenu session={session} onClick={onOpenRecords} />
         <IconButton

@@ -440,7 +440,9 @@ function deriveInitial(seed, series, occurrence) {
     // to a one-hour block.
     const seedStart = seed?.startTime ?? "09:00";
     return {
-      label: "",
+      // label / notes seeds let other surfaces (e.g. the Inbox's
+      // "promote to event" action, Batch 21) prefill the form.
+      label: seed?.label ?? "",
       subtitle: "",
       kindId: seed?.kindId ?? "",
       locationName: "",
@@ -448,7 +450,7 @@ function deriveInitial(seed, series, occurrence) {
       date: seed?.occursOn ?? todayIso,
       startTime: seedStart,
       endTime: hhmmAfter(seedStart, 60),
-      notes: "",
+      notes: seed?.notes ?? "",
       recurrence: { rrule: null, until: null },
     };
   }

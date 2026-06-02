@@ -21,6 +21,7 @@ import Observations from "../pages/Observations.jsx";
 import Settings from "../pages/Settings.jsx";
 import Roadmap from "../pages/Roadmap.jsx";
 import SitesPage from "../pages/SitesPage.jsx";
+import Inbox from "../pages/Inbox.jsx";
 
 export default function SectionContent({
   section, data, onOpenEvent, onNavigate, onOpenRounds,
@@ -90,6 +91,7 @@ export default function SectionContent({
     case "inventory": return <Inventory data={data} />;
     case "schedule": return <Schedule data={data} onOpenEvent={onOpenEvent} />;
     case "chores": return <Chores data={data} />;
+    case "inbox": return <Inbox onOpenEvent={onOpenEvent} />;
     case "activity": return <Activity />;
     case "observations": return <Observations />;
     case "threads": return <Threads data={data} />;

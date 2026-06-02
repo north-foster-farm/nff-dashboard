@@ -1720,6 +1720,48 @@ label / arrival-date edits still happen at creation only), and the
 "add milestone" affordance for batches created before the automation
 existed.
 
+### Batch 21 — Inbox / "just a thought…" capture · `v0.10.18-alpha`
+2026-06-01. The lightweight capture surface for ideas that aren't yet
+projects or chores. Quiet by design — no push.
+
+Migration `0016_inbox.sql`:
+- **`inbox_items`** — body, created_by, created_at, `pinned`,
+  `archived_at`, `sort_order` (drag position; pinned and unpinned
+  groups have independent ordering spaces).
+- **`inbox_item_reads`** — per-user read receipts (`item_id`,
+  `user_email`, `read_at`); mark-unread deletes the row. RLS lets any
+  admin read receipts but each user only writes/removes their own.
+- Both tables join the realtime publication.
+
+UI:
+- **Top-bar capture** (`components/ThoughtCapture.jsx`): the
+  lightbulb button drops a small textarea; ⌘↵ or "Capture" saves.
+  The author's own read receipt is written automatically.
+- **Notifications bell** (`components/InboxBell.jsx`, extended): now
+  a combined dropdown — unread thoughts (with mark-read + a jump to
+  the Inbox) above unaddressed chore messages; the badge counts both.
+- **Inbox page** (`pages/Inbox.jsx`, sidebar → Other → Inbox):
+  * Inbox / Archived tabs, unread count.
+  * Pinned section on top; **drag-and-drop ordering** within each
+    group (@dnd-kit — first use of the dependency); pin/unpin drops
+    the item at the top of its destination group.
+  * Per-item actions: mark read/unread, pin/unpin, archive /
+    restore, delete-forever (archived + own items only), and
+    **Promote to event** — opens the EventEditor with the thought
+    prefilled (label + notes seeding added to the editor's new-mode
+    derivation).
+- New hook `lib/data/useInboxItems.js` (realtime, optimistic
+  reorder).
+
+Verified with a surgical live-DB test (10 checks: capture/ordering,
+read receipts, pin/archive/reorder persistence, delete cascade).
+
+**Out of scope / deferred:** editing a thought's text after capture,
+cross-promotion to chores/projects (events only for now — chores
+promotion makes sense once chore creation UI exists), and read-state
+sync to the dashboard Heads-up lane (the bell is the notification
+surface).
+
 ---
 
 ## Upcoming
@@ -1945,26 +1987,11 @@ its dates), delete-with-tombstone, and the processing-day
 batch-assign picker all landed; layers/sheep-specific milestone
 sets are deferred until those species need them.
 
-### Batch 21 — Inbox / "just a thought…" capture
-Lightweight capture surface for ideas that aren't yet projects
-or chores. A top-bar capture button drops a quick text input for
-on-the-fly thought-dumping. New items show up in the dashboard
-notifications widget (no push — these are quiet by design).
-
-A dedicated Inbox page lists every item with creator + creation
-time, drag-and-drop ordering, and pinning (pinned items stick
-to the top of the list, drag-orderable among themselves). Items
-are archivable and surface again on an Archived tab. Per-user
-read/unread state with explicit mark-read / mark-unread.
-
-Schema sketch: `inbox_items(id, body, created_by, created_at,
-pinned, archived_at, sort_order)` +
-`inbox_item_reads(user_email, item_id, read_at)`.
-
-Ships value: a place for every "just a thought…" that doesn't
-need to bottleneck through Projects or Chores. Slotted post-
-Events overhaul so a captured thought can later be promoted to
-a calendar event without a separate plumbing pass.
+### Batch 21 — Inbox / "just a thought…" capture ✅ SHIPPED
+Shipped `v0.10.18-alpha` (2026-06-01) — see the Shipped section
+above. Top-bar lightbulb capture, the combined notifications
+bell, the Inbox page (pinning, drag ordering, archive, per-user
+read state), and promote-to-event all landed.
 
 ### Batch 22 — Projects subsystem rewrite
 Hierarchy Project → Phase → Step → Checklist → Checklist item.

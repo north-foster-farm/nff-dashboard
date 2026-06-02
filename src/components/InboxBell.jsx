@@ -1,16 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, Check, X } from "lucide-react";
+import { Bell, Check, Lightbulb, X, ArrowUpRight } from "lucide-react";
 import { useChoreMessages } from "../lib/data/useChoreMessages.js";
 import { useChoreLookup } from "../lib/data/useChoreLookup.js";
+import { useInboxItems } from "../lib/data/useInboxItems.js";
+import { navigate } from "../lib/router.js";
 
-// Top-bar inbox affordance. Shows a bell with a count badge of unaddressed
-// chore messages. Click to open a small dropdown listing the unaddressed
-// items with quick "address" / dismiss actions.
+// Top-bar notifications affordance. Shows a bell with a count badge of
+// unaddressed chore messages + unread inbox thoughts (Batch 21 — quiet
+// by design, no push). Click to open a dropdown listing both, with
+// quick address / mark-read actions.
 export default function InboxBell() {
   const { messages, address } = useChoreMessages({ unaddressedOnly: true });
+  const inbox = useInboxItems();
   const choreTitleFor = useChoreLookup();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
+
+  const unreadThoughts = inbox.items.filter(i => !inbox.isRead(i.id));
 
   // Close on outside-click or Escape.
   useEffect(() => {
@@ -27,7 +33,7 @@ export default function InboxBell() {
     };
   }, [open]);
 
-  const count = messages.length;
+  const count = messages.length + unreadThoughts.length;
   const hasMessages = count > 0;
 
   return (
@@ -35,9 +41,9 @@ export default function InboxBell() {
       <button
         onClick={() => setOpen(o => !o)}
         aria-label={hasMessages
-          ? `${count} unaddressed chore message${count === 1 ? "" : "s"}`
-          : "No chore messages"}
-        title={hasMessages ? `${count} unaddressed` : "No unaddressed messages"}
+          ? `${count} notification${count === 1 ? "" : "s"}`
+          : "No notifications"}
+        title={hasMessages ? `${count} to look at` : "Nothing needs attention"}
         className="bg-transparent border-0 text-dim p-1.5 cursor-pointer flex items-center justify-center relative"
       >
         <Bell size={16} />
@@ -55,7 +61,7 @@ export default function InboxBell() {
         >
           <div className="px-4 py-3 border-b border-line flex items-center justify-between">
             <div className="font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-bold">
-              Unaddressed messages
+              Notifications
             </div>
             <button
               onClick={() => setOpen(false)}
@@ -65,12 +71,60 @@ export default function InboxBell() {
               <X size={14} />
             </button>
           </div>
-          {messages.length === 0 ? (
+          {unreadThoughts.length > 0 && (
+            <div className="border-b border-line">
+              <div className="px-4 pt-3 pb-1 font-ui text-[10px] text-faint uppercase tracking-[0.14em] font-semibold flex items-center justify-between">
+                <span>New thoughts</span>
+                <button
+                  onClick={() => { setOpen(false); navigate("/inbox"); }}
+                  className="inline-flex items-center gap-0.5 bg-transparent border-0 p-0 text-accent-deep cursor-pointer font-[inherit] text-[10px] font-semibold uppercase tracking-[0.12em]"
+                >
+                  Inbox <ArrowUpRight size={11} />
+                </button>
+              </div>
+              <ul className="m-0 p-0 list-none">
+                {unreadThoughts.slice(0, 5).map((t) => (
+                  <li key={t.id} className="px-4 py-2.5 border-b border-line last:border-b-0">
+                    <div className="flex items-start gap-2">
+                      <Lightbulb size={13} className="shrink-0 text-accent-deep translate-y-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] text-fg break-words leading-relaxed">
+                          {t.body.length > 120 ? t.body.slice(0, 117) + "…" : t.body}
+                        </div>
+                        <div className="text-[10px] text-faint mt-1 uppercase tracking-[0.12em]">
+                          {actorOf(t.createdBy)} · {formatRelative(t.createdAt)}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => inbox.markRead(t.id).catch(reportErr)}
+                        title="Mark read"
+                        aria-label="Mark read"
+                        className="shrink-0 text-muted hover:text-resolved p-1 cursor-pointer bg-transparent border-0"
+                      >
+                        <Check size={14} />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+                {unreadThoughts.length > 5 && (
+                  <li className="px-4 py-2 text-[11px] text-dim">
+                    +{unreadThoughts.length - 5} more in the Inbox
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+          {messages.length === 0 && unreadThoughts.length === 0 ? (
             <div className="px-4 py-6 text-[12px] text-dim text-center italic">
               Nothing needs attention right now.
             </div>
-          ) : (
+          ) : messages.length === 0 ? null : (
             <ul className="m-0 p-0 list-none">
+              {unreadThoughts.length > 0 && (
+                <li className="px-4 pt-3 pb-1 font-ui text-[10px] text-faint uppercase tracking-[0.14em] font-semibold">
+                  Chore messages
+                </li>
+              )}
               {messages.map((m) => (
                 <li key={m.id} className="px-4 py-3 border-b border-line last:border-b-0">
                   <div className="flex items-start gap-2">
