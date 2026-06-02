@@ -253,12 +253,12 @@ async function loadLivestock() {
     supabase
       .from("livestock_species")
       .select(
-        "id, name, purpose, breed, tracking_model, acquisition, processing_timeline, brooder_to_tractor_transition, feed_regimen, feed_note, lifecycle, constraints, feed_tracking, ordinal"
+        "id, name, purpose, breed, tracking_model, acquisition, processing_timeline, brooder_to_tractor_transition, feed_regimen, feed_note, lifecycle, constraints, feed_tracking, target_process_weeks, ordinal"
       )
       .order("ordinal"),
     supabase
       .from("livestock_groups")
-      .select("id, species_id, label, ordinal, count, arrival_date, known_age, cohabits")
+      .select("id, species_id, label, ordinal, count, placed_count, arrival_date, known_age, cohabits")
       .order("ordinal", { nullsLast: true })
   ]);
   if (speciesRes.error) { console.error("loadLivestock:species", speciesRes.error); return null; }
@@ -272,6 +272,10 @@ async function loadLivestock() {
       label: g.label,
       ordinal: g.ordinal,
       count: g.count,
+      // Birds the cohort started with (Batch 26.1) — the denominator
+      // for mortality % and hen-housed production. `count` is live
+      // (mortality decrements it).
+      placedCount: g.placed_count,
       arrivalDate: g.arrival_date,
       knownAge: g.known_age,
       // current_location was dropped in Batch 15 (place-model collapse);
@@ -299,6 +303,9 @@ async function loadLivestock() {
       lifecycle: s.lifecycle,
       constraints: s.constraints,
       feedTracking: s.feed_tracking,
+      // Target weeks-on-farm before processing (Batch 26.1) — drives
+      // the weeks-remaining metric and dashboard widget.
+      targetProcessWeeks: s.target_process_weeks,
       groups: groupsBySpecies.get(s.id) ?? []
     }))
   };

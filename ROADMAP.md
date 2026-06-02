@@ -2058,6 +2058,79 @@ moment a schedule is edited.
 Batch 20 and was left alone. Per-batch metrics (FCR, ADG,
 mortality trend) remain Batch 26 (Metrics & analytics).
 
+### Batch 26.1 — Metrics foundation + capture · `v0.10.24-alpha`
+2026-06-02. First slice of the Metrics & analytics subsystem
+(Batch 26): the data foundation, the capture surfaces, and the
+per-cohort metric cards. The Metrics page (registry view +
+cross-batch comparison) and the dashboard weeks-remaining widget
+are Batch 26.2.
+
+Migration `0023_metrics_foundation.sql`:
+- **`metrics`** — the metric registry: id, name, formula
+  description, unit, applies_to (broiler_batch / layer_flock),
+  target range, ordinal. Seeded with 10 definitions: broiler FCR
+  (pasture target 2.2–3.0), ADG, uniformity CV (under 8% = tight),
+  mortality, weeks remaining; layer hen-housed production (target
+  280–320/yr), feed per dozen, feed per lb egg mass, body weight
+  trend, mortality.
+- **`weight_samples`** — one row per weigh-in session; `weights`
+  is a jsonb array of individual bird weights (the uniformity /
+  CV metric needs the spread, never just the average).
+- **`egg_collections`** — one row per egg-count capture per flock.
+  Distinct from egg_lots (carton inventory): this is the
+  production record. Client-suppliable uuid so offline-outbox
+  replays are idempotent.
+- **`livestock_groups.placed_count`** — birds the cohort started
+  with; `count` is live (mortality decrements it), so metrics
+  need the original denominator. Backfilled as count + logged
+  mortality; the add-batch form now sets it on creation.
+- **`livestock_species.target_process_weeks`** — seeded to 7 for
+  broilers; drives weeks-remaining when no processing event is
+  scheduled.
+- Admin RLS + realtime on all three new tables.
+
+**Metrics engine** (`lib/metrics.js`, pure functions): FCR (feed
+projected from schedules ÷ liveweight gain; feed eaten by birds
+that died stays in the numerator), ADG (sample slope, or chick-
+weight anchor with one sample), uniformity (CV of latest sample),
+mortality stats, weeks timeline (processing event wins over
+species target), hen-housed production, laying rate, feed per
+dozen / per lb egg mass, body weight trend with the
+burning-reserves / getting-fat condition flags. Everything
+uncomputable surfaces as a caveat, never a wrong number (same
+philosophy as feedConsumption.js).
+
+**Hooks**: `useWeightSamples` / `useEggCollections` (CRUD +
+realtime), `useMortalityLog` (read-only view over
+mortality_observed activity rows).
+
+**Capture surfaces**:
+- **Eggs quick action in Rounds** — fourth tray button; sheet
+  picks place → layer flock → count. One submit queues two outbox
+  ops: an `eggs_collected` activity row (Observations/Activity
+  feeds) + an idempotent `egg_collections` insert (what metrics
+  read). Works offline like mortality.
+- **Weigh-ins card on BatchPage** — record a 10–20 bird sample as
+  free-typed weights; history list with per-sample avg + CV +
+  delete.
+- **Egg log card on layer BatchPage** — desktop date+count entry
+  + recent history.
+
+**Metric cards on BatchPage** (`components/BatchMetrics.jsx`,
+species-aware): Performance card for meat batches (FCR, daily
+gain, uniformity, mortality, weeks remaining, projected feed
+eaten + cost); Production card for layer flocks (hen-housed,
+laying rate, feed per dozen, feed per lb egg mass, mortality,
+body-weight strip with condition flags).
+
+`loadLivestock` in useReferenceData exposes placedCount +
+targetProcessWeeks app-wide; the Observations page gains an Eggs
+filter chip.
+
+**Out of scope — Batch 26.2:** the Metrics page (registry +
+cross-batch comparison sheet), the dashboard "broiler weeks
+remaining" widget, and feed-page metric embeds.
+
 ---
 
 ## Overhaul design records
@@ -2266,7 +2339,7 @@ The broiler tracker stays carved out into Batch 26 (Metrics &
 analytics); the metric definitions and cross-batch comparison
 view ship there.
 
-### Batch 26 — Metrics & analytics
+### Batch 26 — Metrics & analytics (26.1 ✅ shipped · 26.2 remaining)
 New first-class subsystem that owns metric definitions, their
 underlying data plumbing, and every cross-cutting visualization
 or reporting surface in the app. **Supersedes the broiler
@@ -2275,6 +2348,18 @@ folds in any other data-visualization or reporting items the
 roadmap was tracking piecemeal — animal-page reports, feed
 analytics, sales charts, mortality trend, dashboard metric
 cards. One subsystem, one registry, one front-end API.
+
+**26.1 shipped 2026-06-02 (`v0.10.24-alpha`)** — see the Shipped
+section above: metrics registry + weight_samples +
+egg_collections schema, the metrics engine, capture surfaces
+(Rounds Eggs quick action, weigh-in + egg log cards), and the
+per-cohort Performance / Production cards on BatchPage.
+
+**26.2 (remaining):** the top-level Metrics page — registry view
+with formulas + targets, the cross-batch comparison sheet (one
+row per broiler batch: weeks on farm, feed eaten, feed cost,
+mortality, FCR, ADG, uniformity, cuts ordered), the layer flock
+comparison — plus the "broiler weeks remaining" dashboard widget.
 
 Two seeded metric families to start, both grounded in the
 agricultural reality:

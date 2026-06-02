@@ -3,7 +3,8 @@ import { supabase } from "./supabase.js";
 // Device-local, append-only outbox (Batch 16.2; run lifecycle 17).
 //
 // Every field write (chore completions, run events, mortality counts,
-// chore_runs lifecycle) is appended here first; a sync engine then
+// egg collections, chore_runs lifecycle) is appended here first; a
+// sync engine then
 // pushes ops to Supabase in FIFO order. The UI reads pending ops as an
 // overlay on top of server state, so a tick in a dead zone applies
 // instantly, survives an app kill (IndexedDB), and syncs when signal
@@ -18,6 +19,9 @@ import { supabase } from "./supabase.js";
 //     offline phones each logging "1 dead" sum to 2.
 //   - Run events are append-only activity_log rows — at-least-once
 //     delivery; the original capture time rides in the payload.
+//   - Egg collections (Batch 26.1) are inserts with a client-generated
+//     uuid, so replays are idempotent on the primary key (a duplicate
+//     would inflate production metrics, unlike run events).
 //   - Run lifecycle (Batch 17) is last-write-wins on state, keyed by
 //     the natural (block_id, run_date) identity rather than the row
 //     uuid, so an offline-started run reconciles cleanly with a run
@@ -303,6 +307,25 @@ async function execMortalityDecrement(p) {
   return { count: next };
 }
 
+// Egg collection insert (Batch 26.1). The row id is generated client-
+// side when the op is queued, so a replay's unique violation means the
+// row already landed — success, not an error. recorded_by_email comes
+// from the session at sync time (same device, same user).
+async function execEggCollectionInsert(p) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const { error } = await supabase.from("egg_collections").insert({
+    id: p.id,
+    group_id: p.groupId,
+    collected_on: p.collectedOn,
+    count: p.count,
+    notes: p.notes ?? null,
+    recorded_by_email: session?.user?.email ?? null,
+  });
+  if (!error) return { inserted: true };
+  if (error.code === UNIQUE_VIOLATION) return { inserted: false };
+  throw asError(error);
+}
+
 // ── Run lifecycle executors (Batch 17 — hardened Rounds) ───────────
 // chore_runs writes go through the outbox so a run can start, finish,
 // or cancel with no signal. Updates key off the natural
@@ -445,6 +468,7 @@ const EXECUTORS = {
   completion_delete_chore: execCompletionDeleteChore,
   run_event: execRunEvent,
   mortality_decrement: execMortalityDecrement,
+  egg_collection_insert: execEggCollectionInsert,
   run_start: execRunStart,
   run_end: execRunEnd,
   run_resume: execRunResume,

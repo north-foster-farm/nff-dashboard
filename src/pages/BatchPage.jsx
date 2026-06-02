@@ -9,6 +9,7 @@ import { useEventLinks } from "../lib/data/useEventLinks.js";
 import { supabase } from "../lib/supabase.js";
 import { computeAge, formatDate } from "../lib/dates.js";
 import { navigate, pathForSection } from "../lib/router.js";
+import BatchMetricsSection from "../components/BatchMetrics.jsx";
 
 // The batch lifecycle page (Batch 20) — everything the dashboard knows
 // about one livestock batch: its lifespan timeline (arrival → pasture
@@ -94,6 +95,16 @@ export default function BatchPage({
       link: byRole.get(m.role) ?? null,
     }));
   }, [links]);
+
+  // The scheduled processing date (if any) — the metrics section uses
+  // it for FCR's feed window and the weeks-remaining countdown.
+  const processingISO = useMemo(() => {
+    const link = milestoneLinks.find((m) => m.role === "processing")?.link;
+    const occ = link?.series?.occurrences.find(
+      (o) => o.status !== "skipped"
+    ) ?? link?.series?.occurrences[0];
+    return occ?.occursOn ?? null;
+  }, [milestoneLinks]);
 
   // Links that aren't lifecycle milestones (e.g. a processing event
   // assigned via the workspace picker gets role 'processing' too, so
@@ -353,6 +364,14 @@ export default function BatchPage({
           event editor.
         </p>
       </Card>
+
+      {/* ── metrics: performance / production + capture (Batch 26.1) ── */}
+      <BatchMetricsSection
+        batch={batch}
+        species={species}
+        data={data}
+        processingISO={processingISO}
+      />
 
       {/* ── where + chores ── */}
       <div className="grid sm:grid-cols-2 gap-4">

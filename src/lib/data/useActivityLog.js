@@ -230,6 +230,11 @@ function summarize(row) {
       const noun = count === 1 ? "loss" : "losses";
       return `logged ${count} ${noun} on ${label}`;
     }
+    case "eggs_collected": {
+      const count = Number(p.count) || 0;
+      const label = p.group_label || p.livestock_group_id || "a flock";
+      return `collected ${count} egg${count === 1 ? "" : "s"} from ${label}`;
+    }
     case "cohort_moved": {
       const label = p.group_label || p.livestock_group_id || "a cohort";
       const from = p.from_location_name || "elsewhere";

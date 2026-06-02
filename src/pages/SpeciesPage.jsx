@@ -173,6 +173,9 @@ function AddBatchForm({ species }) {
       label: trimmed,
       ordinal: maxOrdinal + 1,
       count: count === "" ? null : Number(count),
+      // placed_count (Batch 26.1): the count a cohort starts with is
+      // its placed count — mortality decrements `count` but never this.
+      placed_count: count === "" ? null : Number(count),
       arrival_date: arrival || null,
     });
     setSaving(false);

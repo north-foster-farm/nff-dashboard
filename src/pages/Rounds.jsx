@@ -44,7 +44,8 @@ export default function Rounds({ data, initialBlockId, onClose }) {
     loading: sitesLoading,
   } = useSites();
   const {
-    logRunEvent, logMortality, recentConditionsByPlace, repeatWindowDays,
+    logRunEvent, logMortality, logEggCollection, recentConditionsByPlace,
+    repeatWindowDays,
   } = useRunEvents();
   const {
     definitions, loading: defsLoading,
@@ -195,6 +196,7 @@ export default function Rounds({ data, initialBlockId, onClose }) {
       completions={completions}
       logRunEvent={logRunEvent}
       logMortality={logMortality}
+      logEggCollection={logEggCollection}
       onCancelRun={async () => {
         if (!activeRun) return { ended: true, waitingOn: [] };
         return cancelRun(activeRun.id);
@@ -491,7 +493,8 @@ function DoingSurface({
   run, block, blocks, places, placesById, childrenByParent,
   switcherPlaces, switcherIdOf, placementsByPlaceId, choreCtx,
   definitions, completions,
-  logRunEvent, logMortality, onCancelRun, onFinishRun, onJoinRun,
+  logRunEvent, logMortality, logEggCollection,
+  onCancelRun, onFinishRun, onJoinRun,
   participants,
   recentConditionsByPlace, repeatWindowDays,
   selectedPlaceId, onSelectPlace,
@@ -779,6 +782,7 @@ function DoingSurface({
         repeatWindowDays={repeatWindowDays}
         onLogRunEvent={logRunEvent}
         onLogMortality={logMortality}
+        onLogEggCollection={logEggCollection}
       />
     </div>
   );

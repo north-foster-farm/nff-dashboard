@@ -187,12 +187,53 @@ export function useRunEvents() {
     });
   }, []);
 
+  // Egg collection (Batch 26.1): one observation row for the activity
+  // feed + one structured egg_collections insert for the metrics
+  // engine. The egg_collections row id is generated here so the
+  // outbox executor's insert is idempotent on replay (a duplicate row
+  // would inflate production metrics).
+  const logEggCollection = useCallback(async ({
+    groupId,
+    groupLabel,
+    count,
+    runId = null,
+    placeId = null,
+  }) => {
+    await enqueueOp("run_event", {
+      kind: "eggs_collected",
+      payload: {
+        livestock_group_id: groupId,
+        group_label: groupLabel,
+        count,
+        captured_at: new Date().toISOString(),
+      },
+      runId,
+      placeId,
+    });
+    await enqueueOp("egg_collection_insert", {
+      id: crypto.randomUUID(),
+      groupId,
+      count,
+      collectedOn: localDateString(new Date()),
+    });
+  }, []);
+
   return {
     logRunEvent,
     logMortality,
+    logEggCollection,
     recentConditionsByPlace,
     repeatWindowDays: REPEAT_WINDOW_DAYS,
     loading: recent === null,
     error,
   };
+}
+
+// Local YYYY-MM-DD (not UTC) — an evening collection should land on
+// the local calendar day it happened.
+function localDateString(date) {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }

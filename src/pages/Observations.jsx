@@ -16,6 +16,7 @@ const OBSERVATION_KINDS = [
   { id: "note_observed", label: "Notes" },
   { id: "mash_intake", label: "MASH" },
   { id: "mortality_observed", label: "Mortality" },
+  { id: "eggs_collected", label: "Eggs" },
   { id: "cohort_moved", label: "Moves" },
 ];
 

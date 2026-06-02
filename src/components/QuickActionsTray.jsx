@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  X, MessageSquare, AlertTriangle, Skull, ChevronDown, MapPin,
+  X, MessageSquare, AlertTriangle, Skull, Egg, ChevronDown, MapPin,
 } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { descendantIds } from "../lib/places.js";
 import PlaceTag from "./PlaceTag.jsx";
 
 // Bottom-pinned tray for the Rounds doing surface. Quick actions —
-// Note, MASH, Mortality — each opens a sheet that writes a typed Run
-// Event via `logRunEvent` / `logMortality`. Since Batch 16.2 those
-// helpers append to the device-local outbox (lib/outbox.js) rather
-// than calling Supabase directly, so a capture in a dead zone saves
-// instantly and syncs when signal returns. Move + Sweep retired from
-// the tray in Batch 10: cohort moves are planned events, and sweep is
-// just bulk-tick on the doing surface itself.
+// Note, MASH, Mortality, Eggs — each opens a sheet that writes a typed
+// Run Event via `logRunEvent` / `logMortality` / `logEggCollection`.
+// Since Batch 16.2 those helpers append to the device-local outbox
+// (lib/outbox.js) rather than calling Supabase directly, so a capture
+// in a dead zone saves instantly and syncs when signal returns. Move +
+// Sweep retired from the tray in Batch 10: cohort moves are planned
+// events, and sweep is just bulk-tick on the doing surface itself.
+// Eggs added in Batch 26.1: counts land in egg_collections (the
+// metrics engine's production record) plus an activity row.
 //
 // Place context defaults from Rounds: selectedPlaceId (the drilled
 // child if set, else the top-level place) seeds the sheet; "" means
@@ -54,9 +56,10 @@ export default function QuickActionsTray({
   repeatWindowDays,
   onLogRunEvent,
   onLogMortality,
+  onLogEggCollection,
 }) {
   const [open, setOpen] = useState(null);
-  // 'note' | 'mash' | 'mortality'
+  // 'note' | 'mash' | 'mortality' | 'eggs'
 
   const seedPlaceId = selectedPlaceId ?? null;
   const placeOptions = useMemo(
@@ -91,6 +94,11 @@ export default function QuickActionsTray({
           label="Mortality"
           onClick={() => setOpen("mortality")}
         />
+        <TrayButton
+          icon={Egg}
+          label="Eggs"
+          onClick={() => setOpen("eggs")}
+        />
       </nav>
 
       {open === "note" && (
@@ -124,6 +132,18 @@ export default function QuickActionsTray({
           childrenByParent={childrenByParent}
           placementsByPlaceId={placementsByPlaceId}
           onLogMortality={onLogMortality}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      {open === "eggs" && (
+        <EggsSheet
+          runId={runId}
+          seedPlaceId={seedPlaceId}
+          placeOptions={placeOptions}
+          placesById={placesById}
+          childrenByParent={childrenByParent}
+          placementsByPlaceId={placementsByPlaceId}
+          onLogEggCollection={onLogEggCollection}
           onClose={() => setOpen(null)}
         />
       )}
@@ -699,6 +719,199 @@ function MortalitySheet({
                 +
               </button>
             </div>
+          </div>
+        )}
+        {error && <div className="text-[12px] text-warn">{error}</div>}
+      </div>
+    </Sheet>
+  );
+}
+
+// ── Eggs sheet (Batch 26.1) ───────────────────────────────────────────
+// Field capture for "how many eggs did this flock just give us." Only
+// layer flocks (species whose purpose mentions eggs) are offered as
+// candidates. One submit queues two outbox ops: an eggs_collected
+// activity row (the feed / Observations record) and a structured
+// egg_collections insert (what the metrics engine reads).
+function EggsSheet({
+  runId, seedPlaceId, placeOptions, placesById,
+  childrenByParent, placementsByPlaceId,
+  onLogEggCollection, onClose,
+}) {
+  const [placeId, setPlaceId] = useState(seedPlaceId);
+  const [groupId, setGroupId] = useState(null);
+  const [count, setCount] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Layer groups only: join livestock_groups to livestock_species
+  // client-side and keep groups whose species purpose mentions eggs.
+  const [layerGroups, setLayerGroups] = useState(() => new Map());
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      supabase.from("livestock_groups").select("id, label, count, species_id"),
+      supabase.from("livestock_species").select("id, purpose"),
+    ]).then(([groupsRes, speciesRes]) => {
+      if (cancelled || groupsRes.error || speciesRes.error) return;
+      const eggSpecies = new Set(
+        (speciesRes.data ?? [])
+          .filter(s => /egg/i.test(s.purpose ?? ""))
+          .map(s => s.id)
+      );
+      const m = new Map();
+      for (const g of groupsRes.data ?? []) {
+        if (eggSpecies.has(g.species_id)) m.set(g.id, g);
+      }
+      setLayerGroups(m);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Current layer placements, flattened from the by-place map.
+  const layerPlacements = useMemo(() => {
+    const out = [];
+    for (const list of placementsByPlaceId?.values() ?? []) {
+      for (const pl of list) {
+        if (pl.occupantType === "batch" && layerGroups.has(pl.occupantId)) {
+          out.push(pl);
+        }
+      }
+    }
+    return out;
+  }, [placementsByPlaceId, layerGroups]);
+
+  // Flock candidates: scoped to the picked place's subtree when one is
+  // set, otherwise every layer flock on the farm.
+  const candidates = useMemo(() => {
+    if (placeId) {
+      const subtree = descendantIds(placeId, childrenByParent);
+      const inPlace = layerPlacements
+        .filter(pl => subtree.has(pl.placeId))
+        .map(pl => ({
+          id: pl.occupantId,
+          label: layerGroups.get(pl.occupantId)?.label ?? pl.occupantId,
+          count: layerGroups.get(pl.occupantId)?.count,
+        }));
+      // A place with no layer flock in it still gets the full list —
+      // eggs get carried around; don't make the user fight the picker.
+      if (inPlace.length > 0) return inPlace;
+    }
+    return Array.from(layerGroups.values()).map(g => ({
+      id: g.id,
+      label: g.label ?? g.id,
+      count: g.count,
+    }));
+  }, [placeId, layerPlacements, childrenByParent, layerGroups]);
+
+  // Single candidate → preselect it (the common one-flock-farm case).
+  useEffect(() => {
+    if (candidates.length === 1) setGroupId(candidates[0].id);
+  }, [candidates]);
+
+  const parsedCount = Number(count);
+  const canSubmit = groupId && Number.isFinite(parsedCount) && parsedCount > 0;
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const groupLabel = layerGroups.get(groupId)?.label ?? groupId;
+      await onLogEggCollection({
+        groupId,
+        groupLabel,
+        count: parsedCount,
+        runId,
+        placeId: placeId ?? null,
+      });
+      onClose();
+    } catch (e) {
+      setError(e.message ?? "Couldn't log eggs.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Sheet
+      title="Eggs"
+      onClose={onClose}
+      footer={
+        <PrimaryButton onClick={submit} disabled={saving || !canSubmit}>
+          {saving
+            ? "Saving…"
+            : canSubmit
+              ? `Log ${parsedCount} egg${parsedCount === 1 ? "" : "s"}`
+              : "Log eggs"}
+        </PrimaryButton>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <PlaceContextBanner placeId={placeId} placesById={placesById} />
+        <PlacePicker
+          placeId={placeId}
+          placeOptions={placeOptions}
+          onChange={setPlaceId}
+        />
+        {candidates.length === 0 && (
+          <div className="text-[12px] text-faint leading-relaxed">
+            No layer flocks on the farm yet.
+          </div>
+        )}
+        {candidates.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+              Flock
+            </label>
+            <div className="flex flex-col gap-1">
+              {candidates.map(c => {
+                const active = groupId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setGroupId(c.id)}
+                    className={
+                      "flex items-center gap-3 px-3 py-2.5 border " +
+                      "cursor-pointer text-left transition-colors " +
+                      (active
+                        ? "bg-row-active border-fg"
+                        : "bg-transparent border-line hover:bg-row-hover")
+                    }
+                  >
+                    <span className="text-[13px] font-medium text-fg flex-1">
+                      {c.label}
+                    </span>
+                    {typeof c.count === "number" && (
+                      <span className="text-[11px] text-muted">
+                        {c.count} hens
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {groupId && (
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+              How many eggs
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={count}
+              autoFocus
+              onChange={(e) => setCount(e.target.value)}
+              placeholder="0"
+              className={
+                "bg-surface border border-line text-fg " +
+                "text-[18px] font-bold text-center px-3 py-2 " +
+                "focus:outline-none focus:border-fg w-full"
+              }
+            />
           </div>
         )}
         {error && <div className="text-[12px] text-warn">{error}</div>}
