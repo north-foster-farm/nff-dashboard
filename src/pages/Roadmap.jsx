@@ -10,7 +10,9 @@
 // the records drawer in Batch 18.2), "Triggers + animal-batch
 // lifecycles" (Batches 19–20), "Inbox" (Batch 21), "Projects,
 // rebuilt" (Batch 22), "Processes" (Batch 23), "Customers and
-// lists" (Batch 24).
+// lists" (Batch 24), and the Feed-page half of "Animals & feed,
+// overhauled" (Batch 25.1 — the item below now covers only the
+// animal-pages half, Batch 25.2).
 
 const ITEMS = [
   {
@@ -23,14 +25,14 @@ const ITEMS = [
       "there's no risk of two clocks disagreeing.",
   },
   {
-    title: "Animals & feed, overhauled",
-    body: "The Feed page becomes a group-cards layout: grouped by " +
-      "animal, drag-orderable, with amount remaining and next order " +
-      "date front-and-center and last price paid as a secondary line. " +
-      "Broiler pages get persistence and a UI rethink across all " +
-      "subpages — the per-batch numbers (FCR, weight gain, mortality, " +
-      "feed cost) live in the Metrics & analytics subsystem below " +
-      "rather than being bolted on here.",
+    title: "Animal pages, rethought",
+    body: "The animal pages (Layers / Broilers / Sheep) get a real " +
+      "activity log, an editor for the per-species feed schedules " +
+      "(the numbers the new Feed page's reorder projections run on), " +
+      "and group cards that know where each batch actually lives on " +
+      "the farm map. The per-batch numbers (FCR, weight gain, " +
+      "mortality, feed cost) live in the Metrics & analytics " +
+      "subsystem below rather than being bolted on here.",
   },
   {
     title: "Metrics & analytics",

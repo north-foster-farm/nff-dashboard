@@ -1940,6 +1940,72 @@ owns the orders model), and de-duplication tooling (the seed has one
 likely duplicate — Renee Pepler appears under two addresses — left
 for James to merge by hand).
 
+### Batch 25.1 — Feed page group-cards redesign · `v0.10.22-alpha`
+2026-06-02. First slice of the Animals & Feed UI overhaul. The Feed
+page (Resources → Feed) becomes a group-cards layout grouped by
+animal, with schedule-driven reorder projections and a feed-order
+history. The Broilers/animals-pages half is Batch 25.2.
+
+Migration `0021_feeds_overhaul.sql`:
+- **`feed_types.species_id`** (FK livestock_species, nullable) +
+  **`sort_order`** — the Feed page groups by species and
+  drag-orders within each group. Seeded feeds backfilled
+  (broiler starter/grower/finisher → broilers, layer feed →
+  layers, sheep hay → sheep).
+- **`feed_orders`** — one row per order placed: ordered_on,
+  received_on, quantity jsonb, total_cost, supplier FK, notes.
+  Realtime + admin RLS + updated_at touch trigger. The source of
+  "last price paid" (total_cost ÷ quantity).
+- **`fire_feed_reorder_automations()` replaced** — the auto-created
+  order chore + delivery event now carry a snapshot of EVERY
+  feed's remaining stock (text lines in the chore description,
+  structured jsonb in the event payload), so orders get
+  consolidated into one delivery instead of paying freight twice.
+
+**Consumption + projection engine** (`lib/feedConsumption.js`):
+- Daily consumption per feed is derived from the feed schedules:
+  every assigned group's metered stage covering that group's age
+  on a given day (per James's spec — every batch of animals is on
+  a feed program; consumption is calculated, never guessed).
+- `projectReorder` walks stock forward day by day (consumption
+  changes as batches age through stages) until it crosses the
+  user-defined reorder point → trigger date → snapped to the
+  closest **business day on or before** the trigger (no weekend
+  orders).
+- Everything the schedules can't meter (free-choice stages, TBD
+  stages, missing arrival dates, unit mismatches like hay tracked
+  in bales but fed in flakes) surfaces as explicit caveats on the
+  card instead of silently reading as zero.
+
+**`useFeeds` hook** (`lib/data/useFeeds.js`): feed_types +
+feed_orders with realtime, `updateFeed`, `reorderFeeds` (persists
+sort_order, optimistic), `recordOrder` (optionally bumps on-hand
+by the ordered quantity), `updateOrder`, `removeOrder`.
+
+**Feed page rewrite** (`pages/Feeds.jsx`, Tailwind):
+- Species group sections (ordinal order) + an "Other" group for
+  non-animal-specific feeds; dnd-kit drag reorder within a group.
+- Cards lead with **amount remaining** (inline-editable, commits
+  on blur/Enter) and **next order date**; **last price paid** is
+  the secondary line (catalog price as fallback until orders
+  exist).
+- **Consolidation banner** when any feed is at/below its reorder
+  point or projected to hit it within 14 days — lists every
+  feed's stock so the order can be combined into one delivery.
+- Per-card "Record order" form (quantity, total cost, date,
+  supplier, notes, add-to-on-hand toggle) + expandable past-order
+  history with delete.
+
+`loadFeeds` in useReferenceData also exposes the new
+speciesId / sortOrder fields app-wide.
+
+**Out of scope — Batch 25.2:** the Broilers/animals pages
+(Activity Log tab, feed schedule editor replacing the "Manage
+feed" placeholder, placement fix on group cards, Tailwind
+migration of SpeciesPage). The schedule editor is what makes the
+projections here fully accurate — today most production stages
+are free-choice/TBD, so cards lean on the caveat line.
+
 ---
 
 ## Overhaul design records
@@ -2139,16 +2205,26 @@ above. The directory (basics-only fields), named lists with member
 management, and the seeded 65-contact mailing list all landed.
 
 ### Batch 25 — Animals & Feed UI overhaul
-- Feed page redesigned as a group-cards layout: group by animal
-  (animals list pulled from DB); drag-drop orderable within group;
-  cards lead with amount remaining + next order date, last price
-  paid secondary; past-order history view. (Originally specced as
-  "match the Chores page" — that comparison no longer holds after
-  the chores overhaul, so the pattern is described directly here.)
-- Broilers pages: persistence + UI rethink across all subpages.
-- Broiler tracker carved out into Batch 26 (Metrics & analytics);
-  this batch handles the page-shell + persistence work, the
-  metric definitions and cross-batch comparison view ship there.
+Split into two slices (locked 2026-06-02):
+
+**25.1 — Feed page group-cards redesign ✅ SHIPPED**
+`v0.10.22-alpha` (2026-06-02) — see the Shipped section above.
+
+**25.2 — Animals pages rethink (next up)**
+- Activity Log tab for real: read activity_log (mortality, MASH
+  intakes, notes) filtered to the species' batches +
+  species-tagged chores.
+- Feed schedule editor replacing the "Manage feed" coming-soon
+  placeholder — per-species stages (day ranges, feed type,
+  metered consumption), persisting to feed_schedules /
+  feed_schedule_stages. This is what makes the 25.1 reorder
+  projections fully accurate.
+- Group cards read current location from placements (farm-map
+  place tree) instead of the dead currentLocation column.
+- Tailwind migration of SpeciesPage + all its tabs.
+- Broiler tracker stays carved out into Batch 26 (Metrics &
+  analytics); the metric definitions and cross-batch comparison
+  view ship there.
 
 ### Batch 26 — Metrics & analytics
 New first-class subsystem that owns metric definitions, their

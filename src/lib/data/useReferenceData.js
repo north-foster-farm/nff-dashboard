@@ -208,10 +208,12 @@ async function loadFeeds() {
   const { data, error } = await supabase
     .from("feed_types")
     .select(
-      "id, name, description, supplier_id, unit, package_size, " +
-      "cost_per_unit, reorder_point, reorder_quantity, lead_time_days, " +
-      "notes, on_hand, on_hand_updated_at"
+      "id, name, description, supplier_id, species_id, sort_order, " +
+      "unit, package_size, cost_per_unit, reorder_point, " +
+      "reorder_quantity, lead_time_days, notes, on_hand, " +
+      "on_hand_updated_at"
     )
+    .order("sort_order")
     .order("name");
   if (error) { console.error("loadFeeds:", error); return null; }
   return data.map(row => ({
@@ -219,6 +221,8 @@ async function loadFeeds() {
     name: row.name,
     description: row.description,
     supplierId: row.supplier_id,
+    speciesId: row.species_id,
+    sortOrder: row.sort_order ?? 0,
     unit: row.unit,
     packageSize: row.package_size,
     costPerUnit: row.cost_per_unit,
