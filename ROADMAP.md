@@ -2294,6 +2294,62 @@ pricing grid.
 
 In-app Roadmap page: "Products and pricing" item retired.
 
+### Batch 27.4 — Automations rework: lifecycle + prep-as-chores · `v0.10.29-alpha`
+2026-06-02. First slice of the automations rework (Batches
+27.4–27.6), driven by James's feedback on the Batch 19/23
+automations after the broiler lifecycle fired in production.
+
+The core re-think: **calendar events are for things that happen at
+a time; chores are for work someone does.** The old automation
+created three events + a chore; prep processes created projects.
+Both now create chores where chores are the right shape.
+
+Migration `0025_automations_rework.sql`:
+- **`fire_batch_created_automations()` replaced** — new shape:
+  arrival event (unchanged) + pasture-move **chore** (was an
+  event; batch-anchored, block / start-time / period read from
+  `trigger_config`) + brooder cleanout chore (now batch-anchored
+  too). **No auto-created processing event** — processing days
+  are created manually with the batch picker (27.6) once the real
+  date is known.
+- **`chore_definitions.process_expansion_id`** — provenance FK
+  mirroring `projects.process_expansion_id`, so expansion
+  dismissal can retire exactly what it created.
+- **Seed rule updated** — actions jsonb reflects the new shape;
+  `processing_weeks` dropped from config;
+  `pasture_move_block_id` / `pasture_move_start_time` added
+  (edited from the Automations tab, 27.5).
+- **Surgical prod cleanup** — the three "Processing day prep"
+  projects + their expansions/modifiers/links deleted; stale
+  active emissions acknowledged; any automation-created
+  processing / pasture-move events tombstoned. Shipped as
+  **migration `0026_cleanup_prep_projects.sql`** (plain top-level
+  SQL): 0025's version ran inside a `do $$` block, whose DML
+  silently affects zero rows under the Supabase CLI's migration
+  login role — the lesson is recorded in 0026's header. After
+  cleanup the upcoming processing days re-expand as chores under
+  the new runner.
+
+**Process expansion → chores** (client):
+- `useProcessRunner.expandOne` writes one-time
+  `chore_definitions` rows (one per task step, dated event date +
+  offset, anchored to the event's linked batch when present)
+  instead of a project + phase + steps. Deterministic chore ids
+  (`process_<expansion>_<step>`) make partial-failure re-runs
+  idempotent.
+- `dismissExpansion` retires the created chores (legacy
+  project-archive path kept for pre-0025 expansion rows).
+- Processes page copy + expansion log updated (chore count chip;
+  legacy project link kept for old rows).
+- Process-created chores render the same provenance sparkle as
+  automation-created ones (`processExpansionId` now selected by
+  the chore hooks).
+
+**Out of scope — next slices:** 27.5 moves the rules UI to the
+species/feed pages and emissions to the bell; 27.6 adds the
+processing-event batch picker, batch-referencing titles, and the
+feed supplier picker.
+
 ---
 
 ## Overhaul design records
@@ -2535,6 +2591,24 @@ section above:
 Out of scope (still true): e-commerce/storefront publishing of
 the catalog (no batch owns this yet); inventory decrement on
 sale (Batch 28 POS); per-order sales (Batch 29).
+
+### Batches 27.4–27.6 — Automations rework 🔨 IN PROGRESS
+James's 2026-06-02 feedback on the Batch 19/23 automations.
+**27.4 (lifecycle + prep-as-chores) shipped 2026-06-02**
+(`v0.10.29-alpha`) — see Shipped above.
+
+Remaining:
+- **27.5 — Relocation**: Automations tab on the species page
+  (broiler lifecycle rule + block/time pickers for the
+  pasture-move chore), Feed page tabs (Feed types | Automations),
+  Settings section removed, emissions move from the Heads Up lane
+  to the bell with clear/delete.
+- **27.6 — Pickers + titles**: batch picker on processing-day
+  events, processing titles reference their batch in the
+  Schedule, supplier picker on feed types, and the place-page
+  "View on timeline" button made useful (today it opens the
+  generic Schedule with no place context — James: "works but
+  generic"; it should show that place's events).
 
 ### Batch 28 — Inventory backend + Point of Sale
 Inventory schema + CRUD; on-hand by SKU/location. POS marks items

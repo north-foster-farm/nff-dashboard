@@ -364,7 +364,8 @@ async function loadChores() {
       "id, title, category, description, frequency, period, start_time, " +
       "deadline, assignment, tags, place_id, block_id, sort_order, " +
       "anchor_type, anchor_kind_tag, anchor_species_id, anchor_batch_id, " +
-      "at_place_id, retired_at, automation_emission_id"
+      "at_place_id, retired_at, automation_emission_id, " +
+      "process_expansion_id"
     )
     .is("retired_at", null)
     .order("sort_order")
@@ -392,6 +393,7 @@ async function loadChores() {
       atPlaceId: c.at_place_id,
       retiredAt: c.retired_at,
       automationEmissionId: c.automation_emission_id,
+      processExpansionId: c.process_expansion_id,
     })),
     completions: [],
     modelNotes: []

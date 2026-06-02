@@ -551,7 +551,7 @@ function TodayObligationRow({
             display: "flex", alignItems: "center", gap: 8
           }}>
             <span>{effects.replaceText ?? chore.title}</span>
-            {chore.automationEmissionId && (
+            {(chore.automationEmissionId || chore.processExpansionId) && (
               <Sparkles
                 size={12}
                 style={{ color: T.accentDeep, flexShrink: 0 }}
@@ -1010,7 +1010,7 @@ function ChoreDefinitionRow({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: T.text, display: "flex", alignItems: "baseline", gap: 8 }}>
             <span>{chore.title}</span>
-            {chore.automationEmissionId && (
+            {(chore.automationEmissionId || chore.processExpansionId) && (
               <Sparkles
                 size={12}
                 style={{ color: T.accentDeep, flexShrink: 0, alignSelf: "center" }}

@@ -25,7 +25,7 @@ export function useChoreDefinitions() {
         "assignment, tags, category, place_id, block_id, " +
         "last_chance_block_id, sort_order, anchor_type, anchor_kind_tag, " +
         "anchor_species_id, anchor_batch_id, at_place_id, retired_at, " +
-        "automation_emission_id"
+        "automation_emission_id, process_expansion_id"
       )
       .is("retired_at", null)
       .order("sort_order", { ascending: true })
@@ -55,7 +55,7 @@ export function useChoreDefinitions() {
             "assignment, tags, category, place_id, block_id, " +
             "last_chance_block_id, sort_order, anchor_type, anchor_kind_tag, " +
             "anchor_species_id, anchor_batch_id, at_place_id, retired_at, " +
-            "automation_emission_id"
+            "automation_emission_id, process_expansion_id"
           )
           .is("retired_at", null)
           .order("sort_order", { ascending: true })
@@ -91,6 +91,7 @@ export function useChoreDefinitions() {
     atPlaceId: c.at_place_id,
     retiredAt: c.retired_at,
     automationEmissionId: c.automation_emission_id,
+    processExpansionId: c.process_expansion_id,
   })), [defs]);
 
   const updateDefinition = useCallback(async (id, patch) => {

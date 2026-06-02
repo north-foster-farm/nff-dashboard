@@ -313,13 +313,19 @@ export function useProcesses() {
     await fetchAll();
   }, [userEmail, fetchAll]);
 
-  // Dismissal tombstones what the expansion created: the project is
-  // archived (not deleted — it may have picked up real work), the
-  // modifier rows are deleted (date-bound overrides; deleting restores
-  // normal chores), and the event_links rows are deleted.
+  // Dismissal tombstones what the expansion created: chores are
+  // retired (0025+ expansions create chores; the legacy project_id
+  // path archives the project for pre-0025 rows), the modifier rows
+  // are deleted (date-bound overrides; deleting restores normal
+  // chores), and the event_links rows are deleted.
   const dismissExpansion = useCallback(async (id, reason) => {
     const expansion = (tables?.expansions ?? []).find(e => e.id === id);
     const created = expansion?.created ?? {};
+    for (const choreId of created.chore_ids ?? []) {
+      await supabase.from("chore_definitions")
+        .update({ retired_at: new Date().toISOString() })
+        .eq("id", choreId);
+    }
     if (created.project_id) {
       await dbUpdate("projects", created.project_id, {
         archived_at: new Date().toISOString(),

@@ -2,10 +2,11 @@ import { useEffect, useRef } from "react";
 import { supabase } from "../supabase.js";
 import { useProcessTables } from "./useProcesses.js";
 import {
-  planExpansions, splitSteps, expansionProjectTitle, occurrenceIsCurrent,
+  planExpansions, splitSteps, processChoreRow, occurrenceIsCurrent,
 } from "../processes.js";
 
-// The process expansion engine (Batch 23). Mounted once in App.jsx.
+// The process expansion engine (Batch 23; reworked in the 0025
+// automations rework). Mounted once in App.jsx.
 //
 // Watches active processes + the events slice; whenever an upcoming
 // occurrence of a linked event kind has no expansion yet, it expands:
@@ -14,14 +15,16 @@ import {
 //      unique (process_id, series_id, occurs_on) constraint means two
 //      clients racing produce exactly one expansion; the loser's
 //      insert conflicts and it skips.
-//   2. insert a project (+ one phase + a step per task-type process
-//      step, dated event date + offset_days)
-//   3. project_links  (project → its anchor event series)
-//   4. event_links    (series → project, role 'process')
-//   5. chore_modifiers for modifier-type steps (source 'process')
+//   2. insert one-time chore_definitions — one per task-type process
+//      step, dated event date + offset_days, anchored to the event's
+//      batch when the event has a batch link. (Pre-0025 this created
+//      a project + steps; James's call: prep work is chores, not a
+//      project.)
+//   3. event_links    (series → each chore, role 'process')
+//   4. chore_modifiers for modifier-type steps (source 'process')
 //      + event_links (series → chore, role 'process_modifier') so the
 //      modifier shows from the event side too
-//   6. write everything created back onto the expansion row, so
+//   5. write everything created back onto the expansion row, so
 //      dismissal can tombstone exactly that set
 //
 // All writes are sequential client-side inserts — same trade-off as
@@ -88,76 +91,59 @@ async function expandOne(plan) {
     throw expErr;
   }
 
-  const created = { project_id: null, modifier_ids: [], link_ids: [] };
+  const created = { chore_ids: [], modifier_ids: [], link_ids: [] };
   const { tasks, modifiers } = splitSteps(steps, occurrence.date);
 
-  // ── 2. project + phase + steps ──────────────────────────────────────
+  // ── 2. one-time chores ──────────────────────────────────────────────
   if (tasks.length > 0) {
-    const { data: project, error: projErr } = await supabase
-      .from("projects")
-      .insert({
-        title: expansionProjectTitle(process, occurrence),
-        description: process.description,
-        status: "in_progress",
-        target_date: occurrence.date,
-        created_by: "process",
-        process_expansion_id: expansion.id,
-      })
-      .select("id")
-      .single();
-    if (projErr) throw projErr;
-    created.project_id = project.id;
-
-    const { data: phase, error: phaseErr } = await supabase
-      .from("project_phases")
-      .insert({
-        project_id: project.id,
-        title: process.title,
-        target_date: occurrence.date,
-      })
-      .select("id")
-      .single();
-    if (phaseErr) throw phaseErr;
-
-    const stepRows = tasks.map((t, i) => ({
-      project_id: project.id,
-      phase_id: phase.id,
-      title: t.title,
-      body_md: t.bodyMd ?? null,
-      target_date: t.targetDate,
-      sort_order: i,
-      assignees: [],
-    }));
-    const { error: stepsErr } = await supabase
-      .from("project_steps").insert(stepRows);
-    if (stepsErr) throw stepsErr;
-
-    // ── 3. project → event link ───────────────────────────────────────
-    const { error: plinkErr } = await supabase.from("project_links")
-      .insert({
-        project_id: project.id,
-        target_kind: "event_series",
-        target_id: occurrence.instanceId,
-        label: occurrence.instanceLabel,
-      });
-    if (plinkErr) throw plinkErr;
-
-    // ── 4. event → project link ───────────────────────────────────────
-    const { data: elink, error: elinkErr } = await supabase
+    // If the anchor event is linked to a batch (processing days created
+    // with the batch picker are), the chores inherit that anchor so
+    // they show on the batch page and in batch-scoped rounds.
+    const { data: batchLinks } = await supabase
       .from("event_links")
-      .insert({
-        series_id: occurrence.instanceId,
-        target_type: "project",
-        target_id: project.id,
-        role: "process",
-      })
-      .select("id")
-      .single();
-    if (elinkErr) throw elinkErr;
-    created.link_ids.push(elink.id);
+      .select("id, target_id")
+      .eq("series_id", occurrence.instanceId)
+      .eq("target_type", "batch")
+      .limit(1);
+    const batchLink = batchLinks?.[0]
+      ? { targetId: batchLinks[0].target_id }
+      : null;
+
+    for (let i = 0; i < tasks.length; i++) {
+      const row = processChoreRow({
+        expansionId: expansion.id,
+        task: tasks[i],
+        index: i,
+        process,
+        occurrence,
+        batchLink,
+      });
+      const { data: chore, error: choreErr } = await supabase
+        .from("chore_definitions")
+        .upsert(row, { onConflict: "id", ignoreDuplicates: true })
+        .select("id")
+        .maybeSingle();
+      if (choreErr) throw choreErr;
+      const choreId = chore?.id ?? row.id;
+      created.chore_ids.push(choreId);
+
+      // ── 3. event → chore link ─────────────────────────────────────
+      const { data: elink, error: elinkErr } = await supabase
+        .from("event_links")
+        .insert({
+          series_id: occurrence.instanceId,
+          target_type: "chore",
+          target_id: choreId,
+          role: "process",
+        })
+        .select("id")
+        .single();
+      if (elinkErr) throw elinkErr;
+      created.link_ids.push(elink.id);
+    }
   }
 
-  // ── 5. chore modifiers ──────────────────────────────────────────────
+  // ── 4. chore modifiers ──────────────────────────────────────────────
   for (const mod of modifiers) {
     const { data: row, error: modErr } = await supabase
       .from("chore_modifiers")
@@ -189,7 +175,7 @@ async function expandOne(plan) {
     created.link_ids.push(mlink.id);
   }
 
-  // ── 6. record what was created ──────────────────────────────────────
+  // ── 5. record what was created ──────────────────────────────────────
   const { error: doneErr } = await supabase
     .from("process_expansions")
     .update({ created })

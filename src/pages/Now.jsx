@@ -527,7 +527,7 @@ function ObligationRow({ obligation: o, completions, onCheckOff }) {
         >
           {o.chore.title}
         </span>
-        {o.chore.automationEmissionId && (
+        {(o.chore.automationEmissionId || o.chore.processExpansionId) && (
           <Sparkles
             size={12}
             className="inline ml-1.5 align-middle text-accent-deep"

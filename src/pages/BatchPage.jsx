@@ -654,7 +654,7 @@ function ChoreNameList({ title, chores, dim = false }) {
               (dim ? "text-dim" : "text-fg")
             }
           >
-            {c.automationEmissionId && (
+            {(c.automationEmissionId || c.processExpansionId) && (
               <Sparkles size={12} className="shrink-0 text-accent-deep" />
             )}
             <span>{c.title}</span>
@@ -686,7 +686,7 @@ function CleanoutPill({ chore, onReschedule }) {
     >
       <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-fg">
         Brooder cleanout
-        {chore?.automationEmissionId && (
+        {(chore?.automationEmissionId || chore?.processExpansionId) && (
           <Sparkles size={10} className="inline ml-1 -translate-y-px text-accent-deep" />
         )}
         <span className="ml-1.5 text-[9px] font-semibold text-faint normal-case tracking-normal">

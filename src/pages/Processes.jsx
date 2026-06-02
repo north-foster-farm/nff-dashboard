@@ -10,10 +10,11 @@ import { MODIFIER_ACTION_LABEL } from "../lib/modifiers.js";
 import { formatDate } from "../lib/dates.js";
 import { navigate, pathForProject } from "../lib/router.js";
 
-// The Processes page (Batch 23). A process is a template tied to one
-// or more event kinds: when a matching event lands on the schedule,
-// the process expands into a project (one step per task, dated
-// relative to the event) and chore modifiers.
+// The Processes page (Batch 23; reworked in the 0025 automations
+// rework). A process is a template tied to one or more event kinds:
+// when a matching event lands on the schedule, the process expands
+// into one-time chores (one per task, dated relative to the event)
+// and chore modifiers.
 //
 // Layout: process cards (click to expand into the editor) + the
 // expansion log at the bottom.
@@ -271,9 +272,10 @@ function ProcessEditor({ process, kinds, proc }) {
           </div>
         </div>
         <p className="text-[11px] text-faint leading-relaxed m-0 mt-2">
-          Tasks become steps in the expanded project. Chore changes write
-          a one-day modifier onto an existing chore (skip it, replace it,
-          add an instruction, or tighten its deadline).
+          Tasks become one-time chores, dated relative to the event.
+          Chore changes write a one-day modifier onto an existing chore
+          (skip it, replace it, add an instruction, or tighten its
+          deadline).
         </p>
       </Block>
 
@@ -283,7 +285,7 @@ function ProcessEditor({ process, kinds, proc }) {
           onClick={() => {
             if (!window.confirm(
               `Delete "${process.title}"? Past expansions and their ` +
-              "projects stay; nothing new will expand.")) return;
+              "chores stay; nothing new will expand.")) return;
             proc.removeProcess(process.id).catch(() => {});
           }}
           className="inline-flex items-center gap-1.5 bg-transparent border border-line text-warn font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
@@ -444,6 +446,14 @@ function ExpansionLog({ proc }) {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
+                {(exp.created?.chore_ids?.length ?? 0) > 0
+                  && exp.status !== "dismissed" && (
+                  <span className="text-[10px] text-dim uppercase tracking-[0.08em] px-2 py-1 border border-line">
+                    {exp.created.chore_ids.length} chore
+                    {exp.created.chore_ids.length === 1 ? "" : "s"}
+                  </span>
+                )}
+                {/* Legacy: pre-0025 expansions created a project. */}
                 {exp.created?.project_id && exp.status !== "dismissed" && (
                   <button
                     onClick={() =>
@@ -465,7 +475,7 @@ function ExpansionLog({ proc }) {
                     </button>
                     <button
                       onClick={() => { setDismissingId(exp.id); setReason(""); }}
-                      title="Undo — archive the project and remove the chore changes"
+                      title="Undo — retire the chores and remove the chore changes"
                       className="bg-transparent text-dim border border-line px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
                     >
                       Dismiss
