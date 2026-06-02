@@ -49,6 +49,28 @@ export default function Now({ onOpenRounds }) {
     return () => clearInterval(id);
   }, []);
 
+  // Chores checked off straight from this list, newest first — each
+  // one gets an "undo" affordance for a little while so a mis-tap
+  // isn't a trip into the done list to fix.
+  const [justChecked, setJustChecked] = useState([]);
+  const checkOff = async (o) => {
+    await completions.toggle(o.chore.id, o.placeId, false);
+    const entry = {
+      key: `${o.chore.id}|${o.placeId ?? ""}|${Date.now()}`,
+      chore: o.chore,
+      placeId: o.placeId,
+    };
+    setJustChecked(list => [entry, ...list].slice(0, 3));
+    // The undo offer quietly expires.
+    setTimeout(() => {
+      setJustChecked(list => list.filter(e => e.key !== entry.key));
+    }, 12_000);
+  };
+  const undoCheck = async (entry) => {
+    setJustChecked(list => list.filter(e => e.key !== entry.key));
+    await completions.toggle(entry.chore.id, entry.placeId, true);
+  };
+
   const status = useMemo(() => computePlaceStatus({
     definitions,
     blocks,
@@ -107,18 +129,17 @@ export default function Now({ onOpenRounds }) {
 
   return (
     <div className="max-w-[640px] mx-auto flex flex-col gap-6">
-      {/* Header */}
+      {/* Header — the date is part of the heading itself */}
       <header className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="font-heading text-[32px] font-bold -tracking-[0.02em] m-0 text-fg">
-            Now
-          </h2>
-          <p className="text-[13px] text-dim m-0 mt-1">
+        <h2 className="font-heading text-[28px] font-bold -tracking-[0.02em] m-0 text-fg leading-tight">
+          Now
+          <span className="font-normal text-dim">
+            {" · "}
             {now.toLocaleDateString(undefined, {
               weekday: "long", month: "long", day: "numeric",
             })}
-          </p>
-        </div>
+          </span>
+        </h2>
         <OutboxIndicator className="mt-2" />
       </header>
 
@@ -164,8 +185,31 @@ export default function Now({ onOpenRounds }) {
             roots={roots}
             childrenByParent={childrenByParent}
             completions={completions}
-            onOpenRounds={onOpenRounds}
+            onCheckOff={checkOff}
           />
+
+          {/* Undo affordances for chores just checked off above */}
+          {justChecked.length > 0 && (
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-1.5 w-[calc(100%-2rem)] max-w-[480px]">
+              {justChecked.map(entry => (
+                <div
+                  key={entry.key}
+                  className="flex items-center gap-3 bg-fg text-bg px-4 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
+                >
+                  <Check size={14} className="shrink-0" />
+                  <span className="text-[13px] flex-1 min-w-0 truncate">
+                    {entry.chore.title} — done
+                  </span>
+                  <button
+                    onClick={() => undoCheck(entry).catch(() => {})}
+                    className="shrink-0 bg-transparent border-0 p-0 text-[12px] font-bold uppercase tracking-[0.1em] underline underline-offset-2 cursor-pointer text-bg font-[inherit]"
+                  >
+                    Undo
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
@@ -269,7 +313,7 @@ function formatBlockDuration(minutes) {
 
 // ── Due / overdue / done list ─────────────────────────────────────────
 function ObligationList({
-  buckets, roots, childrenByParent, completions, onOpenRounds,
+  buckets, roots, childrenByParent, completions, onCheckOff,
 }) {
   const { overdue, due, done } = buckets;
   const [showDone, setShowDone] = useState(false);
@@ -294,7 +338,7 @@ function ObligationList({
           roots={roots}
           childrenByParent={childrenByParent}
           completions={completions}
-          onOpenRounds={onOpenRounds}
+          onCheckOff={onCheckOff}
         />
       )}
       {due.length > 0 && (
@@ -304,7 +348,7 @@ function ObligationList({
           roots={roots}
           childrenByParent={childrenByParent}
           completions={completions}
-          onOpenRounds={onOpenRounds}
+          onCheckOff={onCheckOff}
         />
       )}
       {done.length > 0 && (
@@ -333,7 +377,7 @@ function ObligationList({
               roots={roots}
               childrenByParent={childrenByParent}
               completions={completions}
-              onOpenRounds={onOpenRounds}
+              onCheckOff={onCheckOff}
             />
           )}
         </div>
@@ -347,7 +391,7 @@ function ObligationList({
 // tab. Places with nothing in this bucket don't render at all.
 function ObligationGroup({
   title, tone, obligations, roots, childrenByParent,
-  completions, onOpenRounds,
+  completions, onCheckOff,
 }) {
   const grouped = useMemo(() => groupByPlaceTree({
     entries: obligations,
@@ -362,7 +406,7 @@ function ObligationGroup({
     <ObligationRow
       obligation={o}
       completions={completions}
-      onOpenRounds={onOpenRounds}
+      onCheckOff={onCheckOff}
     />
   );
   const keyOf = (o) => `${o.chore.id}|${o.placeId ?? "farm"}`;
@@ -414,16 +458,32 @@ function ObligationGroup({
   );
 }
 
-// One (chore, place) obligation. Tapping it deep-links into Rounds for
-// the chore's block — the doing surface is where ticking happens; Now
-// is the read-and-go list. The place is carried by the tree header
-// above, so the row stays lean for phone widths: checkbox, title,
-// block badge(s), chevron. The block reads as an icon-only badge
-// (BlockBadge) instead of its name; consolidated overdue rows carry
-// one badge per missed block.
-function ObligationRow({ obligation: o, completions, onOpenRounds }) {
+// One (chore, place) obligation. The checkbox IS the row's only
+// action: tapping it marks the chore done for the block(s) it was
+// missed in, drops it from this list, and offers an Undo. The row
+// itself is not a link — no chevron, no deep link into Rounds (that's
+// what the fat round button at the top is for). The place is carried
+// by the tree header above, so the row stays lean for phone widths:
+// checkbox, title, block badge(s).
+function ObligationRow({ obligation: o, completions, onCheckOff }) {
   const queued = completions.isQueued?.(o.chore.id, o.placeId) ?? false;
   const blocks = o.blocks ?? (o.block ? [o.block] : []);
+  const [pending, setPending] = useState(false);
+
+  const onToggle = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      if (o.done) {
+        // Done rows (the collapsed "done today" list): simple uncheck.
+        await completions.toggle(o.chore.id, o.placeId, true);
+      } else {
+        await onCheckOff(o);
+      }
+    } finally {
+      setPending(false);
+    }
+  };
 
   // Layout note: the title cell is a single inline-flow box and the
   // block badges / status icons live INSIDE it, flowing right after
@@ -432,30 +492,32 @@ function ObligationRow({ obligation: o, completions, onOpenRounds }) {
   // widths under the body `zoom` used for text density, which used to
   // push wrapped title text underneath separately-positioned badges.
   return (
-    <button
-      onClick={() => onOpenRounds(o.chore.blockId ?? null)}
+    <div
       className={
-        "w-full grid grid-cols-[auto_minmax(0,1fr)_auto] items-center " +
+        "w-full grid grid-cols-[auto_minmax(0,1fr)] items-center " +
         "gap-3 px-3 py-3 bg-surface " +
-        "border-0 cursor-pointer text-left font-[inherit] " +
-        "hover:bg-row-hover transition-colors duration-100 " +
         (o.done ? "opacity-60" : "")
       }
     >
-      <span
+      <button
+        onClick={onToggle}
+        disabled={pending}
+        aria-label={o.done
+          ? `Mark ${o.chore.title} not done`
+          : `Mark ${o.chore.title} done`}
         className={
-          "shrink-0 w-5 h-5 border-2 inline-flex items-center " +
-          "justify-center " +
+          "shrink-0 w-6 h-6 border-2 inline-flex items-center " +
+          "justify-center cursor-pointer bg-transparent p-0 " +
+          "transition-colors duration-100 " +
           (o.done
             ? "bg-resolved border-resolved text-on-accent"
             : o.status === "overdue"
-              ? "border-warn text-transparent"
-              : "border-line text-transparent")
+              ? "border-warn text-transparent hover:text-warn"
+              : "border-line text-transparent hover:text-dim")
         }
-        aria-hidden
       >
-        <Check size={12} strokeWidth={3} />
-      </span>
+        <Check size={13} strokeWidth={3} />
+      </button>
       <span className="min-w-0 text-[14px] leading-snug break-words">
         <span
           className={
@@ -481,10 +543,9 @@ function ObligationRow({ obligation: o, completions, onOpenRounds }) {
         <BlockBadgeList
           blocks={blocks}
           tone={o.status === "overdue" ? "warn" : "default"}
-          className="ml-2 align-middle"
+          className="ml-1.5 align-middle"
         />
       </span>
-      <ChevronRight size={14} className="shrink-0 text-muted" />
-    </button>
+    </div>
   );
 }

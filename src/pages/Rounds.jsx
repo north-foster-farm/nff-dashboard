@@ -51,8 +51,8 @@ export default function Rounds({ data, initialBlockId, onClose }) {
   } = useChoreDefinitions();
   const {
     activeRun, nextBlock, runByBlockId, historicalRuns, runs: todayRuns,
-    loading: runsLoading,
-    startRun, endRun, resumeRun, cancelRun, deleteRun,
+    loading: runsLoading, participantsByRunId,
+    startRun, endRun, finishRun, joinRun, resumeRun, cancelRun, deleteRun,
   } = useChoreRuns({ blocks });
 
   // The block this Rounds session is targeting. Active run wins over
@@ -196,9 +196,18 @@ export default function Rounds({ data, initialBlockId, onClose }) {
       logRunEvent={logRunEvent}
       logMortality={logMortality}
       onCancelRun={async () => {
-        if (!activeRun) return;
-        await cancelRun(activeRun.id);
+        if (!activeRun) return { ended: true, waitingOn: [] };
+        return cancelRun(activeRun.id);
       }}
+      onFinishRun={async () => {
+        if (!activeRun) return { ended: true, waitingOn: [] };
+        return finishRun(activeRun.id);
+      }}
+      onJoinRun={async () => {
+        if (!activeRun) return;
+        await joinRun(activeRun.id);
+      }}
+      participants={participantsByRunId.get(activeRun?.id) ?? []}
       recentConditionsByPlace={recentConditionsByPlace}
       repeatWindowDays={repeatWindowDays}
       selectedPlaceId={selectedPlaceId}
@@ -460,6 +469,14 @@ function isOverran(block, run) {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+// "james.boynton0@gmail.com" → "James" — display name for the
+// waiting-on banner. Mirrors the activity-log convention.
+function nameFromEmail(email) {
+  if (!email) return "the other person";
+  const local = email.split("@")[0].replace(/[^a-zA-Z]+.*$/, "");
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
+
 function formatBlockDuration(minutes) {
   if (typeof minutes !== "number" || minutes <= 0) return "";
   const h = Math.floor(minutes / 60);
@@ -474,7 +491,8 @@ function DoingSurface({
   run, block, blocks, places, placesById, childrenByParent,
   switcherPlaces, switcherIdOf, placementsByPlaceId, choreCtx,
   definitions, completions,
-  logRunEvent, logMortality, onCancelRun,
+  logRunEvent, logMortality, onCancelRun, onFinishRun, onJoinRun,
+  participants,
   recentConditionsByPlace, repeatWindowDays,
   selectedPlaceId, onSelectPlace,
   selectedChildId, onSelectChild,
@@ -489,6 +507,18 @@ function DoingSurface({
     return () => clearInterval(id);
   }, []);
   const elapsed = run.startedAt ? now - run.startedAt.getTime() : 0;
+
+  // Opening the doing surface joins the run (multi-person rounds).
+  // Best-effort: offline it's a no-op and the run behaves solo.
+  useEffect(() => {
+    onJoinRun?.();
+    // Re-join if the run identity changes (fresh start after a sweep).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run.id]);
+
+  // "Waiting on Jim" — set when this user finished/canceled but other
+  // joined participants haven't yet.
+  const [waitingOn, setWaitingOn] = useState(null);
 
   // Filter chores to this run's block.
   const blockChores = useMemo(
@@ -645,12 +675,30 @@ function DoingSurface({
                   "marked canceled instead of done."
                 );
                 if (!ok) return;
-                await onCancelRun();
+                const result = await onCancelRun();
+                if (result && !result.ended) {
+                  setWaitingOn(result.waitingOn);
+                }
               }}
               className="text-muted hover:text-warn p-2 cursor-pointer bg-transparent border-0 text-[10px] uppercase tracking-[0.12em] font-semibold"
               title="Cancel this run"
             >
               Cancel
+            </button>
+            {/* Finish: "I'm done" — ends the run outright when solo;
+                with others still in the run, it waits for them. Chores
+                left unchecked simply read as overdue afterward. */}
+            <button
+              onClick={async () => {
+                const result = await onFinishRun();
+                if (result && !result.ended) {
+                  setWaitingOn(result.waitingOn);
+                }
+              }}
+              className="bg-accent text-on-accent border-0 px-3 py-1.5 cursor-pointer text-[10px] uppercase tracking-[0.12em] font-semibold"
+              title="Finish — end this round even if chores are left"
+            >
+              Finish
             </button>
             <button
               onClick={onClose}
@@ -661,6 +709,16 @@ function DoingSurface({
             </button>
           </div>
         </header>
+
+        {/* Multi-person: this user has finished, others haven't. */}
+        {waitingOn && waitingOn.length > 0 && (
+          <div className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-row-active-dim border-b border-line text-[12px] text-fg">
+            <Check size={13} className="text-resolved shrink-0" />
+            You're done — the round stays open until{" "}
+            {waitingOn.map(e => nameFromEmail(e)).join(" and ")}
+            {" "}finishes too.
+          </div>
+        )}
 
         {/* Place Switcher */}
         <PlaceSwitcher
@@ -890,21 +948,28 @@ function PlaceSection({
   ).length;
   return (
     <section className="bg-surface border border-line">
-      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
+      {/* items-baseline: the name (14px) and count (10px) align on
+          their text baselines instead of box centers, so the count
+          doesn't read as sunken next to the place name. */}
+      <header className="flex items-baseline gap-3 px-4 py-2.5 border-b border-line">
         {onTitleClick ? (
           <button
             onClick={onTitleClick}
-            className="text-[14px] font-semibold text-fg border-0 bg-transparent cursor-pointer hover:underline"
+            className="text-[14px] font-semibold text-fg border-0 bg-transparent cursor-pointer hover:underline p-0 leading-tight"
           >
             {place.name}
           </button>
         ) : (
-          <span className="text-[14px] font-semibold text-fg">{place.name}</span>
+          <span className="text-[14px] font-semibold text-fg leading-tight">{place.name}</span>
         )}
-        <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
+        <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold leading-tight whitespace-nowrap">
           {completed}/{obligations.length} done
         </span>
-        <AllDoneButton obligations={obligations} completions={completions} />
+        <AllDoneButton
+          obligations={obligations}
+          completions={completions}
+          className="self-center"
+        />
       </header>
       <ul className="m-0 p-0 list-none">
         {obligations.map(o => {
@@ -1018,7 +1083,7 @@ function KindView({
 // INSERT per chore covering all its remaining places) instead of one
 // round-trip per row. Disabled while a tick is in flight so
 // back-to-back taps don't double-fire on contention.
-function AllDoneButton({ obligations, completions }) {
+function AllDoneButton({ obligations, completions, className = "" }) {
   const [pending, setPending] = useState(false);
   const undone = obligations.filter(o =>
     !completions.isDone(o.chore.id, o.placeId)
@@ -1052,7 +1117,7 @@ function AllDoneButton({ obligations, completions }) {
         "font-semibold uppercase tracking-[0.12em] px-2 py-1 cursor-pointer " +
         "border border-line bg-transparent text-dim leading-none " +
         "hover:border-fg hover:text-fg transition-colors duration-100 " +
-        "disabled:opacity-50 disabled:cursor-not-allowed"
+        "disabled:opacity-50 disabled:cursor-not-allowed " + className
       }
       title="Mark every chore in this group done"
     >

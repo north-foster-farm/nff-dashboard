@@ -1033,16 +1033,24 @@ function ChoreDefinitionRow({
             dormantNote={dormantNote}
           />
         </div>
-        <ChoreMessageButton
-          choreId={chore.id}
-          choreTitle={chore.title}
-          currentUserEmail={currentUserEmail}
-        />
-        <RowActions
-          editing={editing}
-          onEdit={onStartEdit}
-          onDelete={onDeleteChore}
-        />
+        {/* Right-side icon cluster: one container, one gap, so the
+            message / edit / delete icons space + align uniformly
+            instead of inheriting the row's wider gap between the
+            first two. */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
+        }}>
+          <ChoreMessageButton
+            choreId={chore.id}
+            choreTitle={chore.title}
+            currentUserEmail={currentUserEmail}
+          />
+          <RowActions
+            editing={editing}
+            onEdit={onStartEdit}
+            onDelete={onDeleteChore}
+          />
+        </div>
       </div>
       {expanded && (
         editing

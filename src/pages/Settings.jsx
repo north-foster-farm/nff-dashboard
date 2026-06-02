@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useUserPreferences } from "../lib/data/useUserPreferences.js";
 import { usePushNotifications } from "../lib/data/usePushNotifications.js";
 import { useAutomations } from "../lib/data/useAutomations.js";
+import { supabase } from "../lib/supabase.js";
 import {
-  Sun, Moon, ALargeSmall, Bell, BellOff, Sparkles,
+  Sun, Moon, ALargeSmall, Bell, BellOff, Sparkles, LogOut,
 } from "lucide-react";
 
 // User settings page. Stays focused — three settings, each with a tight
@@ -15,9 +16,9 @@ const THEME_OPTIONS = [
 ];
 
 const DENSITY_OPTIONS = [
-  { value: "compact", label: "Compact", description: "Default — packs the most info on screen." },
-  { value: "comfortable", label: "Comfortable", description: "15% larger across the board." },
-  { value: "spacious", label: "Spacious", description: "30% larger; easiest to read at distance." },
+  { value: "compact", label: "Compact", description: "Default — packs the most info on screen (smallest text is 12px)." },
+  { value: "comfortable", label: "Comfortable", description: "~13% larger across the board." },
+  { value: "spacious", label: "Spacious", description: "25% larger; easiest to read at distance." },
 ];
 
 export default function Settings() {
@@ -72,6 +73,20 @@ export default function Settings() {
       <NotificationsSection />
 
       <AutomationsSection />
+
+      {/* Sign out moved here from the TopBar (2026-06 chore-ux fixes). */}
+      <Section title="Account">
+        <button
+          onClick={() => {
+            // LoginGate's onAuthStateChange listener handles the
+            // re-render back to the sign-in screen.
+            supabase.auth.signOut();
+          }}
+          className="self-start inline-flex items-center gap-2 bg-transparent border border-line text-warn font-[inherit] text-[12px] font-semibold uppercase tracking-[0.12em] px-4 py-2 cursor-pointer hover:border-warn"
+        >
+          <LogOut size={14} /> Sign out
+        </button>
+      </Section>
     </div>
   );
 }

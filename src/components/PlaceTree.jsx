@@ -101,29 +101,34 @@ export function PlaceTreeNode({
 
   return (
     <div style={{ marginLeft: depth === 0 ? 0 : 18 }}>
+      {/* Baseline alignment: the name and count are different font
+          sizes, so centering their line boxes leaves the count looking
+          sunken — aligning their text baselines is what reads as
+          "lined up". The chevron self-centers against the row. */}
       <button
         onClick={() => setUserOpen(o => (o == null ? !(subtreeCount > 0) : !o))}
         style={{
-          display: "flex", alignItems: "center", gap: 8, width: "100%",
+          display: "flex", alignItems: "baseline", gap: 8, width: "100%",
           background: "transparent", border: "none", cursor: "pointer",
           padding: "8px 0", fontFamily: "inherit", textAlign: "left",
         }}
         aria-expanded={open}
       >
         {open
-          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
-          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0 }} />}
+          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />
+          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />}
         <span style={{
           fontFamily: T.uiLabel, fontSize: depth === 0 ? 13 : 12,
           color: subtreeCount > 0 ? T.text : T.textDim,
           textTransform: "uppercase", letterSpacing: "0.12em",
           fontWeight: depth === 0 ? 700 : 600,
+          lineHeight: 1.2,
         }}>
           {place.name}
         </span>
         <span style={{
           fontSize: 11, color: T.textMuted,
-          whiteSpace: "nowrap", flexShrink: 0,
+          whiteSpace: "nowrap", flexShrink: 0, lineHeight: 1.2,
         }}>
           {subtreeCount > 0
             ? `${subtreeCount} ${subtreeCount === 1 ? countNoun : countNoun + "s"}`
@@ -173,31 +178,33 @@ export function PlaceTreeSection({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div>
+      {/* Baseline alignment — same rationale as PlaceTreeNode. */}
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          display: "flex", alignItems: "center", gap: 8, width: "100%",
+          display: "flex", alignItems: "baseline", gap: 8, width: "100%",
           background: "transparent", border: "none", cursor: "pointer",
           padding: "8px 0", fontFamily: "inherit", textAlign: "left",
         }}
         aria-expanded={open}
       >
         {open
-          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
-          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0 }} />}
+          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />
+          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />}
         <span style={{
           fontFamily: T.uiLabel, fontSize: 13,
           color: dimmed ? T.textDim : T.text,
           textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700,
+          lineHeight: 1.2,
         }}>
           {title}
         </span>
         {subtitle && (
-          <span style={{ fontSize: 11, color: T.textMuted }}>{subtitle}</span>
+          <span style={{ fontSize: 11, color: T.textMuted, lineHeight: 1.2 }}>{subtitle}</span>
         )}
         <span style={{
           fontSize: 11, color: T.textMuted, marginLeft: "auto",
-          whiteSpace: "nowrap", flexShrink: 0,
+          whiteSpace: "nowrap", flexShrink: 0, lineHeight: 1.2,
         }}>
           {entries.length} {entries.length === 1 ? countNoun : countNoun + "s"}
         </span>

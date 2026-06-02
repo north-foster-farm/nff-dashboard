@@ -1,39 +1,26 @@
 import { useEffect, useState } from "react";
-import { Sprout, Sun, Moon, LogOut, ALargeSmall, Menu } from "lucide-react";
+import { Sprout, Menu } from "lucide-react";
 import UserAvatarMenu from "./UserAvatarMenu.jsx";
-import { supabase } from "../lib/supabase.js";
-import { useUserPreferences } from "../lib/data/useUserPreferences.js";
 import InboxBell from "./InboxBell.jsx";
 import ThoughtCapture from "./ThoughtCapture.jsx";
 import OutboxIndicator from "./OutboxIndicator.jsx";
 
-const DENSITY_ORDER = ["compact", "comfortable", "spacious"];
+// Slimmed in the 2026-06 chore-ux fixes: text size, theme, and sign
+// out all live on the Settings page now (avatar click goes there);
+// the hamburger works on desktop too (collapses the sidebar).
 
-function nextDensity(d) {
-  const i = DENSITY_ORDER.indexOf(d);
-  return DENSITY_ORDER[(i + 1) % DENSITY_ORDER.length];
-}
-
-export default function TopBar({ data, session, onOpenRecords, onToggleNav }) {
-  const { theme, density, setTheme, setDensity } = useUserPreferences();
-
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
-  const toggleDensity = () => setDensity(nextDensity(density));
-  const handleSignOut = () => {
-    supabase.auth.signOut();
-    // LoginGate's onAuthStateChange listener handles the re-render.
-  };
-
+export default function TopBar({ data, session, onOpenSettings, onToggleNav }) {
   return (
     <header className="border-b border-line py-3 px-4 sm:px-6 flex justify-between items-center bg-bg shrink-0 gap-[18px]">
       <div className="flex items-center gap-3.5 min-w-0">
-        {/* Phone-only nav hamburger (Batch 17) — the fixed sidebar is
-            desktop-only; phones open it as an overlay drawer. */}
+        {/* Nav hamburger: phones open the overlay drawer; desktop
+            collapses / restores the fixed sidebar. */}
         {onToggleNav && (
           <button
             onClick={onToggleNav}
-            aria-label="Open navigation"
-            className="sm:hidden bg-transparent border-0 text-dim p-1.5 cursor-pointer flex items-center justify-center"
+            aria-label="Toggle navigation"
+            title="Toggle navigation"
+            className="bg-transparent border-0 text-dim hover:text-fg p-1.5 cursor-pointer flex items-center justify-center"
           >
             <Menu size={18} />
           </button>
@@ -49,37 +36,9 @@ export default function TopBar({ data, session, onOpenRecords, onToggleNav }) {
         {/* "Just a thought…" capture (Batch 21) */}
         <ThoughtCapture />
         <InboxBell />
-        <UserAvatarMenu session={session} onClick={onOpenRecords} />
-        <IconButton
-          onClick={toggleDensity}
-          ariaLabel={`Text density: ${density} (click to cycle)`}
-        >
-          <ALargeSmall size={16} />
-        </IconButton>
-        <IconButton
-          onClick={toggleTheme}
-          ariaLabel={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-        >
-          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-        </IconButton>
-        <IconButton onClick={handleSignOut} ariaLabel="Sign out">
-          <LogOut size={16} />
-        </IconButton>
+        <UserAvatarMenu session={session} onClick={onOpenSettings} />
       </div>
     </header>
-  );
-}
-
-function IconButton({ onClick, ariaLabel, children }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={ariaLabel}
-      title={ariaLabel}
-      className="bg-transparent border-0 text-dim p-1.5 cursor-pointer flex items-center justify-center"
-    >
-      {children}
-    </button>
   );
 }
 

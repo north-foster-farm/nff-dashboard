@@ -67,6 +67,18 @@ export default function BatchPage({
     ),
     [definitions, batch?.id]
   );
+
+  // Chores the batch inherits from its species anchor — every
+  // species-anchored chore applies to every batch of that species, so
+  // they belong on this page too (shown as "inherited").
+  const inheritedChores = useMemo(
+    () => (definitions ?? []).filter(
+      (c) => c.anchorSpeciesId === species?.id
+        && c.anchorBatchId !== batch?.id
+        && !c.retiredAt
+    ),
+    [definitions, species?.id, batch?.id]
+  );
   const cleanoutChore = batchChores.find(
     (c) => c.frequency?.type === "once"
   ) ?? null;
@@ -160,6 +172,52 @@ export default function BatchPage({
       .update({ frequency: { type: "once", date: newDate } })
       .eq("id", chore.id);
     if (err) setError(err);
+  };
+
+  // ── create a missing milestone event (2026-06 chore-ux fixes) ──────
+  // Batches created before the lifecycle automation existed (or whose
+  // events were deleted) have milestone slots with nothing linked.
+  // Picking a date in an empty pill creates the event series + its
+  // one-off occurrence + the event_links row, right from this screen.
+  const createMilestone = async (role, milestoneLabel, date) => {
+    if (!date) return;
+    setError(null);
+    try {
+      const kindId = role === "processing"
+        ? "processing_days"
+        : "batch_milestones";
+      const { data: series, error: sErr } = await supabase
+        .from("event_series")
+        .insert({
+          kind_id: kindId,
+          label: `${batch.label} — ${milestoneLabel.toLowerCase()}`,
+          dtstart: `${date}T00:00:00+00:00`,
+          status: "active",
+        })
+        .select("id")
+        .single();
+      if (sErr) throw sErr;
+      const { error: oErr } = await supabase
+        .from("event_occurrences")
+        .insert({
+          series_id: series.id,
+          occurs_on: date,
+          status: "scheduled",
+        });
+      if (oErr) throw oErr;
+      const { error: lErr } = await supabase
+        .from("event_links")
+        .insert({
+          series_id: series.id,
+          target_type: "batch",
+          target_id: batch.id,
+          role,
+        });
+      if (lErr) throw lErr;
+      await refresh();
+    } catch (e) {
+      setError(e);
+    }
   };
 
   // ── delete with tombstone ───────────────────────────────────────────
@@ -278,6 +336,8 @@ export default function BatchPage({
                 }}
                 onReschedule={(newDate) =>
                   rescheduleMilestone(m.link, newDate)}
+                onCreate={(date) =>
+                  createMilestone(m.role, m.label, date)}
               />
             ))}
             <CleanoutPill
@@ -322,27 +382,31 @@ export default function BatchPage({
           )}
         </Card>
 
-        <Card title="Chores tied to this batch" icon={Bird}>
-          {batchChores.length === 0 ? (
+        <Card title="Chores for this batch" icon={Bird}>
+          {/* Batch-specific chores + the ones inherited from the
+              species anchor (2026-06 chore-ux fixes): a broiler batch
+              does every species-anchored broiler chore, so both belong
+              on this page. */}
+          {batchChores.length === 0 && inheritedChores.length === 0 ? (
             <div className="text-[12px] text-dim italic">
-              No chores anchored to this batch.
+              No chores anchored to this batch or its species.
             </div>
           ) : (
-            <ul className="m-0 p-0 list-none flex flex-col gap-2">
-              {batchChores.map((c) => (
-                <li key={c.id} className="text-[13px] text-fg flex items-center gap-2">
-                  {c.automationEmissionId && (
-                    <Sparkles size={12} className="shrink-0 text-accent-deep" />
-                  )}
-                  <span>{c.title}</span>
-                  {c.frequency?.type === "once" && c.frequency.date && (
-                    <span className="text-[11px] text-dim">
-                      · {formatDate(c.frequency.date)}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className="flex flex-col gap-3">
+              {batchChores.length > 0 && (
+                <ChoreNameList
+                  title="This batch only"
+                  chores={batchChores}
+                />
+              )}
+              {inheritedChores.length > 0 && (
+                <ChoreNameList
+                  title={`Inherited from ${species.name.toLowerCase()}`}
+                  chores={inheritedChores}
+                  dim
+                />
+              )}
+            </div>
           )}
         </Card>
       </div>
@@ -481,7 +545,7 @@ function Card({ title, icon: Icon, children }) {
 // One lifecycle milestone: name (click → EventEditor), the date as an
 // editable input, a relative time label, and status treatment (done /
 // skipped / ended events render dimmed).
-function MilestonePill({ label, link, onOpen, onReschedule }) {
+function MilestonePill({ label, link, onOpen, onReschedule, onCreate }) {
   const series = link?.series;
   const occ = series?.occurrences.find((o) => o.status !== "skipped")
     ?? series?.occurrences[0];
@@ -533,8 +597,56 @@ function MilestonePill({ label, link, onOpen, onReschedule }) {
           </div>
         </>
       ) : (
-        <div className="text-[11px] text-faint italic">no event linked</div>
+        <>
+          {/* No event yet — picking a date creates the milestone event
+              and links it to this batch right here. */}
+          <input
+            type="date"
+            value=""
+            onChange={(e) => {
+              if (e.target.value) onCreate?.(e.target.value);
+            }}
+            className="bg-surface border border-dashed border-line text-dim text-[12px] px-2 py-1 outline-none focus:border-accent font-[inherit] w-full"
+            title={`Pick a date to create the ${label.toLowerCase()} event`}
+          />
+          <div className="text-[10px] text-faint">
+            pick a date to create this event
+          </div>
+        </>
       )}
+    </div>
+  );
+}
+
+// Titled list of chore names for the batch-chores card — shared by the
+// "this batch only" and "inherited from <species>" groups.
+function ChoreNameList({ title, chores, dim = false }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="font-ui text-[10px] uppercase tracking-[0.14em] font-semibold text-muted">
+        {title}
+      </div>
+      <ul className="m-0 p-0 list-none flex flex-col gap-2">
+        {chores.map((c) => (
+          <li
+            key={c.id}
+            className={
+              "text-[13px] flex items-center gap-2 " +
+              (dim ? "text-dim" : "text-fg")
+            }
+          >
+            {c.automationEmissionId && (
+              <Sparkles size={12} className="shrink-0 text-accent-deep" />
+            )}
+            <span>{c.title}</span>
+            {c.frequency?.type === "once" && c.frequency.date && (
+              <span className="text-[11px] text-dim">
+                · {formatDate(c.frequency.date)}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

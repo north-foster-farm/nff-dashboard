@@ -32,12 +32,19 @@ import {
 //                     or null. Resolves to the one whose window is
 //                     open now if any; otherwise the soonest future
 //                     start.
+//     participantsByRunId: Map<runId, [{userEmail, finishedAt, …}]>,
 //     loading, error,
 //     startRun(block_id) -> run,             // creates / resumes
-//     endRun(runId) -> void,                 // state='done'
+//     endRun(runId, {endedAt}) -> void,      // state='done'
+//     finishRun(runId) -> {ended, waitingOn} // multi-person finish
+//     joinRun(runId) -> void,                // participant upsert
 //     resumeRun(runId) -> void,              // state='in_progress'
-//     cancelRun(runId) -> void,              // state='canceled'
+//     cancelRun(runId) -> {ended, waitingOn} // gated like finishRun
 //   }
+//
+// Lifecycle guarantees (chore-ux fix, 2026-06): an in_progress run is
+// swept to done when a later block starts or the day rolls over, and
+// re-starting a finished run resets its clock.
 
 const SELECT_COLS =
   "id, block_id, run_date, state, started_at, ended_at, " +
@@ -65,13 +72,21 @@ function applyRunOps(serverRows, ops) {
     const key = runKey(p.blockId, p.runDate);
     const existing = byKey.get(key);
     switch (op.opKind) {
-      case "run_start":
+      case "run_start": {
         if (existing) {
+          // Re-starting a finished (done / canceled) run resets the
+          // clock — same rule as the outbox executor (execRunStart).
+          const isRestart =
+            existing.state === "done" || existing.state === "canceled";
           byKey.set(key, {
             ...existing,
             state: "in_progress",
-            started_at: existing.started_at ?? p.startedAt,
-            started_by_email: existing.started_by_email ?? p.email,
+            started_at: isRestart
+              ? p.startedAt
+              : (existing.started_at ?? p.startedAt),
+            started_by_email: isRestart
+              ? p.email
+              : (existing.started_by_email ?? p.email),
             ended_at: null,
             ended_by_email: null,
           });
@@ -88,6 +103,7 @@ function applyRunOps(serverRows, ops) {
           });
         }
         break;
+      }
       case "run_end":
         if (existing) {
           byKey.set(key, {
@@ -286,6 +302,69 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
     [shaped.todayRuns, shaped.historicalRuns]
   );
 
+  // ── Participants (multi-person rounds; direct Supabase) ────────────
+  // chore_run_participants tracks who has joined / finished a run.
+  // Direct writes (not outbox): multi-person coordination is only
+  // meaningful online; a solo offline run ends through run_end as
+  // before, never touching this table.
+  const [participants, setParticipants] = useState([]);
+
+  const fetchParticipants = useCallback(async () => {
+    const runIds = (runs ?? []).map(r => r.id);
+    if (runIds.length === 0) { setParticipants([]); return; }
+    const { data, error: err } = await supabase
+      .from("chore_run_participants")
+      .select("run_id, user_email, joined_at, finished_at")
+      .in("run_id", runIds);
+    if (!err) setParticipants(data ?? []);
+  }, [runs]);
+
+  useEffect(() => { fetchParticipants(); }, [fetchParticipants]);
+
+  useEffect(() => {
+    let scheduled = false;
+    const refresh = () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(() => { scheduled = false; fetchParticipants(); }, 80);
+    };
+    const channel = realtimeChannel(`run_participants:stream:${instanceId}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "chore_run_participants" },
+        refresh)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [instanceId, fetchParticipants]);
+
+  const participantsByRunId = useMemo(() => {
+    const map = new Map();
+    for (const p of participants) {
+      const list = map.get(p.run_id) ?? [];
+      list.push({
+        runId: p.run_id,
+        userEmail: p.user_email,
+        joinedAt: p.joined_at,
+        finishedAt: p.finished_at,
+      });
+      map.set(p.run_id, list);
+    }
+    return map;
+  }, [participants]);
+
+  // Joining is what opening the doing surface does. Best-effort: if
+  // offline, the upsert fails silently and the run behaves solo.
+  const joinRun = useCallback(async (runId) => {
+    const email = await getSessionEmail();
+    if (!email || !runId) return;
+    await supabase.from("chore_run_participants")
+      .upsert(
+        { run_id: runId, user_email: email },
+        { onConflict: "run_id,user_email", ignoreDuplicates: true }
+      )
+      .then(() => fetchParticipants())
+      .catch(() => {});
+  }, [fetchParticipants]);
+
   // ── Mutations (outbox-first) ──────────────────────────────────────
   const startRun = useCallback(async (blockId) => {
     if (!blockId) throw new Error("Need a blockId to start a run.");
@@ -302,17 +381,53 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
     return { id, block_id: blockId, run_date: todayISO };
   }, [shaped.runByBlockId, todayISO]);
 
-  const endRun = useCallback(async (runId) => {
+  // endedAt override lets the stale-run sweep close yesterday's run at
+  // a sane timestamp (start + block duration) instead of "now".
+  const endRun = useCallback(async (runId, { endedAt } = {}) => {
     const run = allRuns.find(r => r.id === runId);
     if (!run) throw new Error("Run not found.");
     const email = await getSessionEmail();
     await enqueueOp("run_end", {
       blockId: run.blockId,
       runDate: run.runDate,
-      endedAt: new Date().toISOString(),
+      endedAt: endedAt ?? new Date().toISOString(),
       email,
     });
   }, [allRuns]);
+
+  // "I'm done" — the Finish button. Marks this user's participant row
+  // finished; the run itself only ends when every joined participant
+  // has finished. Returns { ended, waitingOn } so the UI can show
+  // "waiting on Jim". Solo runs (or offline, where participants are
+  // unknown) end immediately.
+  const finishRun = useCallback(async (runId) => {
+    const email = await getSessionEmail();
+    const others = (participantsByRunId.get(runId) ?? [])
+      .filter(p => p.userEmail !== email);
+    // Mark me finished (best-effort; offline → solo semantics).
+    if (email) {
+      await supabase.from("chore_run_participants")
+        .upsert(
+          {
+            run_id: runId,
+            user_email: email,
+            finished_at: new Date().toISOString(),
+          },
+          { onConflict: "run_id,user_email" }
+        )
+        .catch(() => {});
+    }
+    const stillGoing = others.filter(p => !p.finishedAt);
+    if (stillGoing.length > 0) {
+      await fetchParticipants();
+      return {
+        ended: false,
+        waitingOn: stillGoing.map(p => p.userEmail),
+      };
+    }
+    await endRun(runId);
+    return { ended: true, waitingOn: [] };
+  }, [participantsByRunId, fetchParticipants, endRun]);
 
   const resumeRun = useCallback(async (runId) => {
     const run = allRuns.find(r => r.id === runId);
@@ -326,17 +441,38 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
   // Cancel a run that's in progress (or scheduled). Records ended_at
   // so wrap-card math + history list still know when it stopped, but
   // distinguishes cancellation from completion via the state column.
+  //
+  // Same multi-person gating as finishRun: with other active
+  // participants, "cancel" just marks this user finished — the round
+  // keeps going for everyone else until they end it too.
   const cancelRun = useCallback(async (runId) => {
+    const email = await getSessionEmail();
+    const others = (participantsByRunId.get(runId) ?? [])
+      .filter(p => p.userEmail !== email && !p.finishedAt);
+    if (email && others.length > 0) {
+      await supabase.from("chore_run_participants")
+        .upsert(
+          {
+            run_id: runId,
+            user_email: email,
+            finished_at: new Date().toISOString(),
+          },
+          { onConflict: "run_id,user_email" }
+        )
+        .catch(() => {});
+      await fetchParticipants();
+      return { ended: false, waitingOn: others.map(p => p.userEmail) };
+    }
     const run = allRuns.find(r => r.id === runId);
     if (!run) throw new Error("Run not found.");
-    const email = await getSessionEmail();
     await enqueueOp("run_cancel", {
       blockId: run.blockId,
       runDate: run.runDate,
       endedAt: new Date().toISOString(),
       email,
     });
-  }, [allRuns]);
+    return { ended: true, waitingOn: [] };
+  }, [allRuns, participantsByRunId, fetchParticipants]);
 
   // Delete a run row entirely — cleanup of canceled runs from the cold
   // open's history list. Removes the row rather than flipping state, so
@@ -350,16 +486,69 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
     });
   }, [allRuns]);
 
+  // ── Stale-run sweep ─────────────────────────────────────────────────
+  // Runs don't get to live forever (the "22 hours and climbing" bug).
+  // An in_progress run auto-completes when:
+  //   (a) it's from a previous calendar day, or
+  //   (b) a later block's start time has arrived today.
+  // The chores left undone simply read as overdue everywhere — that's
+  // computed from completions, not from the run.
+  //
+  // ended_at is capped at started_at + the block's window so history
+  // durations stay sane. The sweep re-checks every minute while any
+  // surface that mounts this hook is open.
+  useEffect(() => {
+    if (!blocks || blocks.length === 0) return;
+    if (runs === null) return;
+
+    const sweep = () => {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      for (const run of allRuns) {
+        if (run.state !== "in_progress") continue;
+        const block = blocks.find(b => b.id === run.blockId) ?? null;
+        let stale = false;
+        if (run.runDate < todayISO) {
+          stale = true;
+        } else if (run.runDate === todayISO && block) {
+          const start = resolveBlockMinutes(
+            now, block.startKind, block.startMinutes);
+          // A later active block has started → this run's time is up.
+          stale = blocks.some(b => {
+            if (b.id === block.id || !b.isActive) return false;
+            const s = resolveBlockMinutes(now, b.startKind, b.startMinutes);
+            return s != null && start != null && s > start && nowMin >= s;
+          });
+        }
+        if (!stale) continue;
+        // Cap the recorded end at the block window's length.
+        const cappedEnd = run.startedAt && block?.durationMinutes
+          ? new Date(
+              run.startedAt.getTime() + block.durationMinutes * 60_000
+            ).toISOString()
+          : undefined;
+        endRun(run.id, { endedAt: cappedEnd }).catch(() => {});
+      }
+    };
+
+    sweep();
+    const id = setInterval(sweep, 60_000);
+    return () => clearInterval(id);
+  }, [blocks, runs, allRuns, todayISO, endRun]);
+
   return {
     runs: shaped.todayRuns,
     historicalRuns: shaped.historicalRuns,
     runByBlockId: shaped.runByBlockId,
     activeRun: shaped.activeRun,
     nextBlock,
+    participantsByRunId,
     loading: runs === null,
     error,
     startRun,
     endRun,
+    finishRun,
+    joinRun,
     resumeRun,
     cancelRun,
     deleteRun,

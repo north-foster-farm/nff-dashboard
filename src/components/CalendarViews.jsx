@@ -797,16 +797,34 @@ function blocksForDate(blocks, date) {
 const MonthCell = forwardRef(function MonthCell({
   cell, blocks, isToday, onClickItem, onCreateAt, beginMove, isDragTarget,
 }, ref) {
-  const visible = cell.items.slice(0, 3);
-  const overflow = cell.items.length - visible.length;
   const cellRef = useRef(null);
   // Chore-block bands for this date — rendered as semi-transparent
-  // chips above the day's events (the blocks themselves matter on the
-  // calendar; the individual chores don't).
+  // chips interleaved with the day's events in time order (the blocks
+  // themselves matter on the calendar; the individual chores don't).
   const dayBlocks = useMemo(
     () => blocksForDate(blocks, cell.date),
     [blocks, cell.date]
   );
+
+  // Merge chore blocks + events into one chronological list. Blocks
+  // used to always render above events regardless of time, which made
+  // an 8 AM market appear below the 5 PM evening chores.
+  const ordered = useMemo(() => {
+    const rows = [];
+    for (const b of dayBlocks) {
+      rows.push({ type: "block", sortMin: b.start, block: b });
+    }
+    for (const it of cell.items) {
+      const [h, m] = (it.startTime ?? "").split(":").map(Number);
+      const min = Number.isFinite(h) ? h * 60 + (m || 0) : -1;
+      rows.push({ type: "event", sortMin: min, item: it });
+    }
+    rows.sort((a, b) => a.sortMin - b.sortMin);
+    return rows;
+  }, [dayBlocks, cell.items]);
+
+  const visible = ordered.slice(0, 3 + dayBlocks.length);
+  const overflow = ordered.length - visible.length;
 
   const onCellClick = (e) => {
     if (e.target !== cellRef.current) return;
@@ -837,35 +855,36 @@ const MonthCell = forwardRef(function MonthCell({
         {cell.date.getDate()}
       </div>
       <div className="flex flex-col gap-0.5">
-        {dayBlocks.map(({ block, start }) => (
+        {visible.map((row, idx) => row.type === "block" ? (
           <div
-            key={block.id}
+            key={`block:${row.block.block.id}`}
             className="w-full text-[9px] font-semibold uppercase tracking-[0.04em] text-warn px-1 py-0.5 truncate bg-warn/10 border border-warn/25 pointer-events-none"
-            title={`${block.name} · ${formatMinutesOfDay(start)}`}
+            title={`${row.block.block.name} · ${formatMinutesOfDay(row.block.start)}`}
           >
-            {formatMinutesOfDay(start).replace(" ", "")} {block.name}
+            {formatMinutesOfDay(row.block.start).replace(" ", "")}{" "}
+            {row.block.block.name}
           </div>
-        ))}
-        {visible.map((it, idx) => (
+        ) : (
           <button
             key={idx}
             onPointerDown={(e) => {
               if (e.button !== 0) return;
               beginMove?.(e, {
-                occurrence: it,
-                onClickFallback: () => onClickItem?.(it),
+                occurrence: row.item,
+                onClickFallback: () => onClickItem?.(row.item),
               });
             }}
             className="w-full text-left text-[9px] font-bold uppercase tracking-[0.04em] text-on-cat px-1 py-0.5 cursor-grab truncate select-none"
             style={{
-              background: `var(--c-cat-${kindToCss(it.kindId)})`,
+              background: `var(--c-cat-${kindToCss(row.item.kindId)})`,
             }}
-            title={it.instanceLabel}
+            title={row.item.instanceLabel}
           >
-            {it.automationEmissionId && (
+            {row.item.automationEmissionId && (
               <Sparkles size={9} className="inline mr-0.5 -translate-y-px" aria-label="Created by an automation" />
             )}
-            {formatTime12h(it.startTime).replace(" ", "")} {it.instanceLabel}
+            {formatTime12h(row.item.startTime).replace(" ", "")}{" "}
+            {row.item.instanceLabel}
           </button>
         ))}
         {overflow > 0 && (

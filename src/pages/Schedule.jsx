@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { T } from "../theme.js";
 import { formatISODate, formatLongDate } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
@@ -375,9 +375,15 @@ function NavBtn({ onClick, ariaLabel, children }) {
   );
 }
 
+// Collapsible filters: a single "Filters" toggle (with an arrow that
+// rotates right → down) opens a pane of checklist rows — one per event
+// kind plus the Chores toggle — each keeping its kind accent color.
+// Replaces the old always-visible chip strip, which had grown too
+// crowded.
 function FilterChips({
   kinds, filters, onChange, showChores, onToggleChores,
 }) {
+  const [open, setOpen] = useState(false);
   const chipDefs = (kinds ?? [])
     .map(k => ({
       id: k.id,
@@ -394,63 +400,101 @@ function FilterChips({
     onChange(Object.fromEntries(chipDefs.map(c => [c.id, val])));
     onToggleChores?.(val);
   };
+  const activeCount =
+    chipDefs.filter(c => filters[c.id]).length + (showChores ? 1 : 0);
+  const totalCount = chipDefs.length + 1;
 
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex flex-col gap-2">
       <button
-        onClick={() => setAll(!allOn)}
-        className="bg-transparent border border-line text-dim hover:text-fg font-[inherit] text-[10px] font-semibold uppercase tracking-[0.12em] px-2.5 py-1 cursor-pointer"
-        title={allOn ? "Hide all kinds" : "Show all kinds"}
+        onClick={() => setOpen(o => !o)}
+        className="self-start inline-flex items-center gap-1.5 bg-transparent border border-line text-dim hover:text-fg font-[inherit] text-[10px] font-semibold uppercase tracking-[0.12em] px-2.5 py-1.5 cursor-pointer"
+        aria-expanded={open}
       >
-        {allOn ? "None" : "All"}
-      </button>
-      {chipDefs.map(c => {
-        const active = !!filters[c.id];
-        const dim = c.count === 0;
-        return (
-          <button
-            key={c.id}
-            onClick={() => toggle(c.id)}
-            className={
-              "inline-flex items-center gap-1.5 font-[inherit] text-[10px] " +
-              "font-semibold uppercase tracking-[0.12em] px-2.5 py-1 " +
-              "cursor-pointer border " +
-              (active
-                ? "bg-surface text-fg"
-                : "bg-transparent text-dim")
-            }
-            style={{
-              borderColor: active ? c.color : undefined,
-              opacity: dim && !active ? 0.55 : 1,
-            }}
-          >
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{ background: c.color }}
-            />
-            {c.label}
-          </button>
-        );
-      })}
-      {/* Chores aren't an event kind, but the calendar shows their
-          block windows on every view — this chip shows / hides them. */}
-      <button
-        onClick={() => onToggleChores?.(!showChores)}
-        className={
-          "inline-flex items-center gap-1.5 font-[inherit] text-[10px] " +
-          "font-semibold uppercase tracking-[0.12em] px-2.5 py-1 " +
-          "cursor-pointer border " +
-          (showChores ? "bg-surface text-fg" : "bg-transparent text-dim")
-        }
-        style={{ borderColor: showChores ? T.cat.chore : undefined }}
-        title={showChores ? "Hide chore blocks" : "Show chore blocks"}
-      >
-        <span
-          className="w-2 h-2 rounded-full"
-          style={{ background: T.cat.chore }}
+        <ChevronRight
+          size={12}
+          className={
+            "shrink-0 transition-transform duration-150 " +
+            (open ? "rotate-90" : "")
+          }
         />
-        Chores
+        Filters
+        {activeCount < totalCount && (
+          <span className="text-faint normal-case tracking-normal">
+            · {activeCount}/{totalCount} on
+          </span>
+        )}
       </button>
+
+      {open && (
+        <div className="bg-surface border border-line p-3 flex flex-col gap-1">
+          <button
+            onClick={() => setAll(!allOn)}
+            className="self-start bg-transparent border-0 text-dim hover:text-fg font-[inherit] text-[10px] font-semibold uppercase tracking-[0.12em] p-0 pb-1.5 cursor-pointer"
+            title={allOn ? "Hide all kinds" : "Show all kinds"}
+          >
+            {allOn ? "Uncheck all" : "Check all"}
+          </button>
+          {chipDefs.map(c => (
+            <FilterCheckRow
+              key={c.id}
+              label={c.label}
+              color={c.color}
+              checked={!!filters[c.id]}
+              dim={c.count === 0}
+              onToggle={() => toggle(c.id)}
+            />
+          ))}
+          {/* Chores aren't an event kind, but the calendar shows their
+              block windows on every view — this row shows / hides them. */}
+          <FilterCheckRow
+            label="Chores"
+            color={T.cat.chore}
+            checked={showChores}
+            onToggle={() => onToggleChores?.(!showChores)}
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+// One checklist row in the filters pane: checkbox + color dot + label.
+function FilterCheckRow({ label, color, checked, dim = false, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      className={
+        "flex items-center gap-2.5 bg-transparent border-0 p-1 " +
+        "cursor-pointer font-[inherit] text-left " +
+        (dim && !checked ? "opacity-55" : "")
+      }
+      role="checkbox"
+      aria-checked={checked}
+    >
+      <span
+        className={
+          "shrink-0 w-4 h-4 border-2 inline-flex items-center " +
+          "justify-center transition-colors duration-100"
+        }
+        style={{
+          borderColor: color,
+          background: checked ? color : "transparent",
+        }}
+      >
+        {checked && (
+          <Check size={11} strokeWidth={3} className="text-on-cat" />
+        )}
+      </span>
+      <span
+        className="w-2 h-2 rounded-full shrink-0"
+        style={{ background: color }}
+      />
+      <span className={
+        "text-[12px] font-medium " + (checked ? "text-fg" : "text-dim")
+      }>
+        {label}
+      </span>
+    </button>
   );
 }

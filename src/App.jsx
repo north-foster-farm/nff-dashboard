@@ -6,13 +6,13 @@ import Sidebar from "./components/Sidebar.jsx";
 import SectionHeader from "./components/SectionHeader.jsx";
 import SectionContent from "./components/SectionContent.jsx";
 import EventEditor from "./components/EventEditor.jsx";
-import RecordsDrawer from "./components/RecordsDrawer.jsx";
 import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
 import { useProcessRunner } from "./lib/data/useProcessRunner.js";
 import {
   useRoute, usePath, navigate, navigateBack, pathForSection,
+  usePersistedState,
 } from "./lib/router.js";
 
 // Phone-width media query — used once at boot to pick the landing
@@ -49,9 +49,11 @@ export default function App({ session }) {
   // Phone nav drawer (Batch 17). The fixed sidebar is desktop-only;
   // on phones it opens as an overlay from the TopBar hamburger.
   const [navOpen, setNavOpen] = useState(false);
-  // Records drawer (Batch 18.2). Products / Sales / CRM / Comms /
-  // Animals / resource lists + Settings, off the header avatar.
-  const [recordsOpen, setRecordsOpen] = useState(false);
+  // Desktop sidebar collapse (2026-06 chore-ux fixes). Session-scoped
+  // so it survives navigation but a fresh tab starts expanded.
+  const [sidebarHidden, setSidebarHidden] = usePersistedState(
+    "sidebar-hidden", false
+  );
 
   // "/" lands on the device-appropriate default screen.
   useEffect(() => {
@@ -133,11 +135,16 @@ export default function App({ session }) {
   const handleSelect = (id) => {
     navigate(pathForSection(id));
     setNavOpen(false);
-    setRecordsOpen(false);
   };
   const handleOpenRounds = (blockId) => {
     openRounds(blockId);
     setNavOpen(false);
+  };
+  // The TopBar hamburger: on phones it opens the overlay drawer; on
+  // desktop it collapses / restores the fixed sidebar.
+  const handleToggleNav = () => {
+    if (isPhone()) setNavOpen((o) => !o);
+    else setSidebarHidden((h) => !h);
   };
 
   // Layout note: the page scrolls as one normal document — no
@@ -150,19 +157,21 @@ export default function App({ session }) {
       <TopBar
         data={data}
         session={session}
-        onOpenRecords={() => setRecordsOpen((o) => !o)}
-        onToggleNav={() => setNavOpen((o) => !o)}
+        onOpenSettings={() => handleSelect("settings")}
+        onToggleNav={handleToggleNav}
       />
       <div className="flex flex-1 items-stretch">
-        {/* Desktop sidebar */}
-        <div className="hidden sm:flex shrink-0">
-          <Sidebar
-            current={section.id}
-            onSelect={handleSelect}
-            onOpenRounds={handleOpenRounds}
-            data={data}
-          />
-        </div>
+        {/* Desktop sidebar (collapsible via the TopBar hamburger) */}
+        {!sidebarHidden && (
+          <div className="hidden sm:flex shrink-0">
+            <Sidebar
+              current={section.id}
+              onSelect={handleSelect}
+              onOpenRounds={handleOpenRounds}
+              data={data}
+            />
+          </div>
+        )}
         {/* Phone nav drawer (Batch 17) */}
         {navOpen && (
           <div className="fixed inset-0 z-40 flex sm:hidden">
@@ -217,14 +226,6 @@ export default function App({ session }) {
           setEventSeed(null);
           setProcessingTarget(target);
         }}
-      />
-      <RecordsDrawer
-        open={recordsOpen}
-        current={section.id}
-        data={data}
-        session={session}
-        onSelect={handleSelect}
-        onClose={() => setRecordsOpen(false)}
       />
     </div>
   );

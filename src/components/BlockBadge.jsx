@@ -32,8 +32,13 @@ export function blockIcon(block, date = new Date()) {
 }
 
 // One badge. tone: "default" | "warn" (warn = the block was missed).
+//
+// Deliberately quiet: a small bare icon, no border or padding box. At
+// the largest text-density setting (body zoom 1.4+) the old boxed
+// treatment read as loudly as the chore title itself; an icon-only
+// glyph stays subordinate at every zoom.
 export default function BlockBadge({
-  block, tone = "default", size = 13, className = "",
+  block, tone = "default", size = 11, className = "",
 }) {
   const Icon = blockIcon(block);
   const label = block?.name ?? "Anytime";
@@ -42,10 +47,8 @@ export default function BlockBadge({
       title={label}
       aria-label={label}
       className={
-        "inline-flex items-center justify-center shrink-0 p-1 border " +
-        (tone === "warn"
-          ? "border-warn/50 text-warn "
-          : "border-line text-dim ") +
+        "inline-flex items-center justify-center shrink-0 " +
+        (tone === "warn" ? "text-warn " : "text-faint ") +
         className
       }
     >
@@ -56,9 +59,10 @@ export default function BlockBadge({
 
 // A row of badges — one per block, sorted by today's resolved start
 // time. Used by consolidated overdue rows on the Now surface, where
-// each badge marks one missed block.
+// each badge marks one missed block. Tight: the icons sit shoulder to
+// shoulder so two or three missed blocks read as one quiet cluster.
 export function BlockBadgeList({
-  blocks, tone = "default", size = 13, className = "",
+  blocks, tone = "default", size = 11, className = "",
 }) {
   const today = new Date();
   const sorted = [...(blocks ?? [])].sort((a, b) => {
@@ -69,7 +73,7 @@ export function BlockBadgeList({
   if (sorted.length === 0) return null;
   return (
     <span
-      className={"inline-flex items-center gap-1 shrink-0 " + className}
+      className={"inline-flex items-center gap-0.5 shrink-0 " + className}
     >
       {sorted.map((b, i) => (
         <BlockBadge key={b?.id ?? i} block={b} tone={tone} size={size} />

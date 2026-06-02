@@ -346,7 +346,13 @@ async function execRunStart(p) {
   const existing = await selectRun(p.blockId, p.runDate);
   if (!existing) throw asError(error);
   const patch = { state: "in_progress", ended_at: null, ended_by_email: null };
-  if (!existing.started_at) {
+  // Fresh start vs resume: re-starting a run that already finished
+  // (done / canceled) resets the clock — otherwise the timer reads
+  // hours of elapsed time from the earlier session (the "22 hours and
+  // climbing" bug). A run still in_progress keeps its original start.
+  const isRestart =
+    existing.state === "done" || existing.state === "canceled";
+  if (!existing.started_at || isRestart) {
     patch.started_at = p.startedAt;
     patch.started_by_email = p.email;
   }

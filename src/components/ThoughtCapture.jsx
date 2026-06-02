@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Lightbulb, Send } from "lucide-react";
+import { SquarePen, Send } from "lucide-react";
 import { useInboxItems } from "../lib/data/useInboxItems.js";
 
 // Top-bar "just a thought…" capture (Batch 21). A lightbulb button
@@ -53,7 +53,7 @@ export default function ThoughtCapture() {
         title="Just a thought…"
         className="bg-transparent border-0 text-dim p-1.5 cursor-pointer flex items-center justify-center"
       >
-        <Lightbulb size={16} />
+        <SquarePen size={16} />
       </button>
       {open && (
         <div

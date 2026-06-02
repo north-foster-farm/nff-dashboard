@@ -17,12 +17,12 @@ function countUpdatesNeedingAttention(d) {
 // ── Primary navigation (the sidebar) ─────────────────────────────────
 //
 // Restructured in Batch 18.2 (the farm-map IA overhaul): the sidebar
-// carries only the spatial/temporal surfaces — Now · Farm map ·
-// Dashboard, then Planning (Schedule / Events / Chores / Do rounds /
-// Projects / Processes) and the Other log pages. Everything that's a
-// pure record (products, sales, CRM, comms, animals, resource lists)
-// lives in the records drawer off the header avatar — see
-// RECORDS_GROUPS below.
+// carries the spatial/temporal surfaces — Now · Farm map · Dashboard,
+// then Planning (Schedule / Events / Chores / Do rounds / Projects /
+// Processes), the Other log pages, and the record-keeping groups
+// (Products / Sales / Animals / CRM / Communication / Resources),
+// which moved back here from the avatar records drawer in the 2026-06
+// chore-ux fixes.
 //
 // `kind`:
 //   "page"    → normal navigation item (default)
@@ -88,80 +88,42 @@ export const SECTIONS = [
   { id: "notes", group: "Other", label: "Notes", icon: NotebookPen, description: "Uncategorized brain dumps", getCount: () => null },
   { id: "threads", group: "Other", label: "Threads", icon: MessageCircleQuestion, description: "Open questions and resolved decisions", getCount: (d) => d.threads.filter(t => t.status === "open").length },
 
-  // Reachable only via the records drawer (header avatar).
+  // ── Records (back in the sidebar, 2026-06 chore-ux fixes) ───────────
+  // These lived in the avatar records drawer from Batch 18.2 until
+  // James asked for them back in the left nav. Same ids, so every
+  // deep link and SectionContent case keeps working unchanged.
+  { id: "products", group: "Products", label: "All products", icon: Tag, description: "What NFF sells — SKUs by size bracket, with cost-floor and pricing-recommendation surface", getCount: () => null },
+  { id: "inventory", group: "Products", label: "Inventory", icon: Boxes, description: "Current stock — egg cartons in the fridge, chicken lots in freezers, FIFO-ordered", getCount: () => null },
+  { id: "add_to_inventory", group: "Products", label: "Add to inventory", icon: PackagePlus, kind: "action", description: "Quick form to record new lots — eggs collected, broiler lots after processing day. Placeholder.", getCount: () => null },
+
+  { id: "orders", group: "Sales", label: "Orders", icon: Receipt, description: "Customer orders against inventory and event sales — placeholder until the sales model is built.",
+    getCount: (d) => (d.orders ?? []).filter(o => o.status === "open").length },
+  { id: "point_of_sale", group: "Sales", label: "Point of sale", icon: Banknote, kind: "action", description: "Record a sale on the spot at a market or event — drains inventory FIFO. Placeholder.", getCount: () => null },
+
+  { id: "livestock_layers", group: "Animals", label: "Layers", icon: Egg, getCount: () => null },
+  { id: "livestock_broilers", group: "Animals", label: "Broilers", icon: Bird, getCount: () => null },
+  { id: "livestock_sheep", group: "Animals", label: "Sheep", icon: PawPrint, getCount: () => null },
+  { id: "manage_feed_schedule", group: "Animals", label: "Manage feed", icon: Wheat, kind: "action", description: "Edit the per-species feed schedule by week of life. Placeholder.", getCount: () => null },
+
+  { id: "customers", group: "CRM", label: "Customers", icon: Users, description: "Customer directory — placeholder until the CRM model is built.", getCount: () => null },
+  { id: "manage_lists", group: "CRM", label: "Lists", icon: ClipboardList, description: "Customer lists — segmentation, mailing groups, etc. Placeholder.", getCount: () => null },
+  { id: "add_new_customer", group: "CRM", label: "Add new customer", icon: UserPlus, kind: "action", description: "Create a new customer record. Placeholder.", getCount: () => null },
+
+  { id: "farm_news_updates", group: "Communication", label: "Farm updates", icon: Newspaper, description: "Drafted, in-review, and published farm updates.",
+    getCount: countUpdatesNeedingAttention },
+  { id: "content_calendar", group: "Communication", label: "Content calendar", icon: CalendarDays, description: "Plan and schedule customer-facing communication. Placeholder.",
+    getCount: countUpdatesNeedingAttention },
+
+  { id: "resources_feed", group: "Resources", label: "Feed", icon: Wheat, description: "Feed types, suppliers, costs, and reorder rules.", getCount: () => null },
+  { id: "resources_suppliers", group: "Resources", label: "Suppliers", icon: Store, description: "Vendors and sources NFF buys from.", getCount: () => null },
+  { id: "resources_machinery", group: "Resources", label: "Machinery", icon: Cog, description: "Powered equipment owned by the farm.", getCount: () => null },
+  { id: "resources_trailers", group: "Resources", label: "Trailers", icon: Truck, description: "Towable trailers used for transport.", getCount: () => null },
+  { id: "resources_sites", group: "Resources", label: "Places", icon: MapPin, description: "The recursive place tree — every zone, area, and structure on the farm. The map renders this.", getCount: () => null },
+  { id: "resources_equipment", group: "Resources", label: "Equipment", icon: Wrench, description: "General equipment — egg washer, processing tools, etc. Placeholder.", comingSoon: true, getCount: () => null },
+
+  // Reachable via the header avatar.
   { id: "settings", kind: "hidden", label: "Settings", description: "Per-user preferences" }
 ];
-
-// ── Records drawer (Batch 18.2) ───────────────────────────────────────
-//
-// The genuinely non-spatial / non-temporal record-keeping sections,
-// reachable from the header avatar instead of crowding the sidebar.
-// The old Resources flyout dissolved here: place-types live in the
-// place tree (Farm map → Edit places), asset-types are typed occupants,
-// and the remaining reference lists (feed, suppliers, machinery,
-// trailers) are records.
-export const RECORDS_GROUPS = [
-  {
-    title: "Products",
-    items: [
-      { id: "products", label: "All products", icon: Tag, description: "What NFF sells — SKUs by size bracket, with cost-floor and pricing-recommendation surface", getCount: () => null },
-      { id: "inventory", label: "Inventory", icon: Boxes, description: "Current stock — egg cartons in the fridge, chicken lots in freezers, FIFO-ordered", getCount: () => null },
-      { id: "add_to_inventory", label: "Add to inventory", icon: PackagePlus, kind: "action", description: "Quick form to record new lots — eggs collected, broiler lots after processing day. Placeholder.", getCount: () => null },
-    ],
-  },
-  {
-    title: "Sales",
-    items: [
-      { id: "orders", label: "Orders", icon: Receipt, description: "Customer orders against inventory and event sales — placeholder until the sales model is built.",
-        // Open orders. No order model yet → 0.
-        getCount: (d) => (d.orders ?? []).filter(o => o.status === "open").length },
-      { id: "point_of_sale", label: "Point of sale", icon: Banknote, kind: "action", description: "Record a sale on the spot at a market or event — drains inventory FIFO. Placeholder.", getCount: () => null },
-    ],
-  },
-  {
-    title: "Animals",
-    items: [
-      { id: "livestock_layers", label: "Layers", icon: Egg, getCount: () => null },
-      { id: "livestock_broilers", label: "Broilers", icon: Bird, getCount: () => null },
-      { id: "livestock_sheep", label: "Sheep", icon: PawPrint, getCount: () => null },
-      { id: "manage_feed_schedule", label: "Manage feed", icon: Wheat, kind: "action", description: "Edit the per-species feed schedule by week of life. Placeholder.", getCount: () => null },
-    ],
-  },
-  {
-    title: "CRM",
-    items: [
-      { id: "customers", label: "Customers", icon: Users, description: "Customer directory — placeholder until the CRM model is built.", getCount: () => null },
-      { id: "manage_lists", label: "Lists", icon: ClipboardList, description: "Customer lists — segmentation, mailing groups, etc. Placeholder.", getCount: () => null },
-      { id: "add_new_customer", label: "Add new customer", icon: UserPlus, kind: "action", description: "Create a new customer record. Placeholder.", getCount: () => null },
-    ],
-  },
-  {
-    title: "Communication",
-    items: [
-      // "Items needing attention" — drafts that have been pushed to review and are
-      // awaiting a decision. Shared count between Farm updates and Content calendar
-      // so the two surfaces stay in sync.
-      { id: "farm_news_updates", label: "Farm updates", icon: Newspaper, description: "Drafted, in-review, and published farm updates.",
-        getCount: countUpdatesNeedingAttention },
-      { id: "content_calendar", label: "Content calendar", icon: CalendarDays, description: "Plan and schedule customer-facing communication. Placeholder.",
-        getCount: countUpdatesNeedingAttention },
-    ],
-  },
-  {
-    title: "Resources",
-    items: [
-      { id: "resources_feed", label: "Feed", icon: Wheat, description: "Feed types, suppliers, costs, and reorder rules.", getCount: () => null },
-      { id: "resources_suppliers", label: "Suppliers", icon: Store, description: "Vendors and sources NFF buys from.", getCount: () => null },
-      { id: "resources_machinery", label: "Machinery", icon: Cog, description: "Powered equipment owned by the farm.", getCount: () => null },
-      { id: "resources_trailers", label: "Trailers", icon: Truck, description: "Towable trailers used for transport.", getCount: () => null },
-      { id: "resources_sites", label: "Places", icon: MapPin, description: "The recursive place tree — every zone, area, and structure on the farm. The map renders this.", getCount: () => null },
-      { id: "resources_equipment", label: "Equipment", icon: Wrench, description: "General equipment — egg washer, processing tools, etc. Placeholder.", comingSoon: true, getCount: () => null },
-    ],
-  },
-];
-
-// Flat list of every records-drawer item, for lookup parity with SECTIONS.
-const RECORDS_ITEMS = RECORDS_GROUPS.flatMap(g => g.items);
 
 export function findSection(id) {
   for (const s of SECTIONS) {
@@ -172,7 +134,7 @@ export function findSection(id) {
       if (c) return c;
     }
   }
-  return RECORDS_ITEMS.find(item => item.id === id) ?? null;
+  return null;
 }
 
 export function findFlyoutParentForChild(id) {
