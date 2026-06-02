@@ -16,6 +16,10 @@ import QuickActionsTray from "../components/QuickActionsTray.jsx";
 import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PlaceTag from "../components/PlaceTag.jsx";
+import ModifierBadges from "../components/ModifierBadge.jsx";
+import { useChoreModifiers } from "../lib/data/useChoreModifiers.js";
+import { resolveModifiers, applyModifier } from "../lib/modifiers.js";
+import { formatISODate, todayUTC } from "../lib/dates.js";
 
 // Full-screen takeover for actually doing chores. Bypasses the
 // normal layout (no TopBar, no Sidebar, no SectionHeader).
@@ -1183,6 +1187,15 @@ function ChoreCheckRow({ chore, placeId, placeLabel, blocks, completions }) {
   const queued = completions.isQueued?.(chore.id, placeId) ?? false;
   const [pending, setPending] = useState(false);
 
+  // Batch 23 — date-bound modifiers on this chore today (written by a
+  // process expansion or placed by hand). Winner drives the display;
+  // the stacked badge explains winner + losers on tap.
+  const { modifiers } = useChoreModifiers();
+  const resolved = resolveModifiers(
+    modifiers, chore.id, formatISODate(todayUTC()), placeId
+  );
+  const effects = applyModifier(resolved);
+
   const onToggle = async () => {
     if (pending) return;
     setPending(true);
@@ -1197,7 +1210,8 @@ function ChoreCheckRow({ chore, placeId, placeLabel, blocks, completions }) {
     <li
       className={
         "flex items-center gap-3 px-4 py-3 border-b border-line last:border-b-0 " +
-        (done ? "bg-row-active-dim" : "bg-transparent")
+        (done ? "bg-row-active-dim" : "bg-transparent") +
+        (effects.skipped ? " opacity-60" : "")
       }
     >
       <button
@@ -1219,10 +1233,15 @@ function ChoreCheckRow({ chore, placeId, placeLabel, blocks, completions }) {
       <div className="flex-1 min-w-0">
         <div className={
           "text-[14px] flex items-center gap-2 " +
-          (done ? "text-muted line-through" : "text-fg font-medium")
+          (done || effects.skipped
+            ? "text-muted line-through"
+            : "text-fg font-medium")
         }>
-          <span className="truncate">{chore.title}</span>
+          <span className="truncate">
+            {effects.replaceText ?? chore.title}
+          </span>
           <ChoreRemainingPill chore={chore} blocks={blocks} />
+          <ModifierBadges resolved={resolved} compact />
           {queued && (
             <CloudOff
               size={12}
@@ -1231,6 +1250,16 @@ function ChoreCheckRow({ chore, placeId, placeLabel, blocks, completions }) {
             />
           )}
         </div>
+        {effects.prependText && (
+          <div className="text-[12px] text-accent-deep font-medium mt-0.5">
+            {effects.prependText}
+          </div>
+        )}
+        {effects.deadlineText && (
+          <div className="text-[11px] text-warn mt-0.5">
+            Deadline today: {effects.deadlineText}
+          </div>
+        )}
         {placeLabel && (
           <div className="text-[11px] text-faint mt-0.5">{placeLabel}</div>
         )}

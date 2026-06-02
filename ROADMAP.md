@@ -1834,6 +1834,81 @@ dragging steps between phases, proportional (vs same-delta) date
 shuffle, and pulling assignees from the admins table (hardcoded
 James/Jim, same as chore assignment rules).
 
+### Batch 23 — Processes · `v0.10.20-alpha`
+2026-06-02. Process templates tied to event kinds, the client-side
+expansion engine, and the chore-modifier UI deferred from the chores
+overhaul (Batch 7 created the table; this finally writes + renders
+it).
+
+Migration `0018_processes.sql`:
+- **`processes`** — title, description, `is_active` (gates
+  expansion), `lookahead_days` (default 60).
+- **`process_steps`** — ordered steps with `offset_days` relative to
+  the anchor event (negative = before). Two kinds: `task` (becomes a
+  project step) and `chore_modifier` (writes a `chore_modifiers` row:
+  target chore + action + text, priority 10 so process modifiers
+  deterministically beat manual ones).
+- **`process_event_kind_links`** — which event kinds trigger which
+  process (many-to-many, unique per pair).
+- **`process_expansions`** — one row per (process, series, date)
+  expanded. The unique constraint IS the idempotency guard (two
+  clients racing produce exactly one expansion). Mirrors
+  automation_emissions' active / acknowledged / dismissed lifecycle;
+  `created` jsonb records what was written so dismissal can undo it.
+- Provenance columns: `projects.process_expansion_id`,
+  `chore_modifiers.process_expansion_id` (both set-null on delete).
+- All new tables + chore_modifiers join the realtime publication.
+- **Seed**: "Processing day prep" (6 task steps, −7 days → +1 day)
+  tied to processing_days — seeded DISABLED so nothing expands until
+  James reviews it and switches it on.
+
+Expansion engine (`lib/data/useProcessRunner.js`, mounted in
+App.jsx): watches active processes + upcoming occurrences (client
+side — occurrences are lazily materialized from RRULEs, so only the
+client can see "this occurrence is now within the lookahead
+window"). Each expansion creates the project (one phase, one step
+per task, dated event date + offset), `project_links` +
+`event_links` in both directions, and the chore_modifiers rows.
+Pure planning math lives in `lib/processes.js`.
+
+Modifier UI (`lib/modifiers.js` + `components/ModifierBadge.jsx`):
+- Conflict resolution: priority desc, then newest — deterministic,
+  no resolver modal (the chores-overhaul decision).
+- **Stacked badges**: winner solid, losers ghosted behind it;
+  tap-to-explain popover shows winner + losers + source ("Process" /
+  "Added by hand") + the conflict rule.
+- Surfaces: **Rounds** rows (ChoreCheckRow) and **Chores → Today**
+  rows (TodayObligationRow) render the badge and apply the winner's
+  effect — skip ghosts the row, replace swaps the title, prepend adds
+  an instruction line, restrict_until overrides the deadline text.
+  **Schedule-at-a-glance** rollups show an "N changed" count.
+- `useChoreModifiers` is a shared singleton store
+  (useSyncExternalStore) — one fetch + one realtime channel app-wide,
+  so leaf rows can read modifiers without per-row subscriptions.
+
+UI:
+- **Processes page** (`pages/Processes.jsx`, sidebar → Planning →
+  Processes — the coming-soon flag finally drops): process cards
+  with inline editor (title, description, active toggle, event-kind
+  chips, step editor with offset/kind/chore-picker), and the
+  expansion log with per-expansion "Got it" / "Dismiss + undo".
+- **Heads-up lane** (Overview): process expansions ride the same
+  lane as automation emissions — Workflow icon, "See the project"
+  deep link, acknowledge / dismiss with reason.
+- **EventEditor**: "Process work on this event" section — the
+  event-side view (prep project deep link + chore-change count).
+
+Verified with a surgical live-DB test (41 checks: modifier conflict
+resolution, expansion planning, idempotency constraint, full
+expansion simulation, dismissal semantics, cascades); all test rows
+cleaned up.
+
+**Out of scope / deferred:** dismissal of a partially-failed
+expansion retries nothing (visible in the expansion log instead),
+modifier place-targeting UI (the column + resolution logic exist;
+the Processes step editor doesn't expose a place picker yet), and
+process-level "expand N days early" overrides per event kind.
+
 ---
 
 ## Overhaul design records
@@ -1844,9 +1919,9 @@ shipped (full entries in Shipped above); the write-ups stay here as
 the record of why each one jumped and what was decided.
 
 ### Chores overhaul (Batches 7–12) ✅ COMPLETE
-*All batches shipped as of 2026-05-08 (`v0.10.5-alpha`). One loose
-end remains open on purpose: the modifier-conflict UI, deferred to
-the Processes batch (Batch 23) — see the last bullet.*
+*All batches shipped as of 2026-05-08 (`v0.10.5-alpha`). The one
+deferred loose end — the modifier-conflict UI (last bullet below) —
+shipped with the Processes batch (Batch 23, 2026-06-02).*
 
 Why these jumped the queue: chores + scheduling are the primary
 problem the dashboard exists to solve. The current chores
@@ -1884,10 +1959,9 @@ Highlights:
   Wed/Sat/Sun both"). Per-instance overrides only touch that
   one instance.
 - **Modifiers** are date-bound override rows that ride alongside
-  chores; the table ships in Batch 7 so it's ready for Processes
-  to populate, but the modifier-conflict UI ships with the
-  Processes batch (now Batch 23) since it has nothing to render
-  until then.
+  chores; the table shipped in Batch 7 so it would be ready for
+  Processes to populate, and the modifier-conflict UI shipped with
+  the Processes batch (Batch 23) once it had something to render.
 
 ### Events + Schedule overhaul (Batches 13–14 + 19–20) ✅ COMPLETE
 *All batches shipped as of 2026-06-01 (`v0.10.17-alpha`). The tail
@@ -2020,26 +2094,13 @@ Numbering history (for anyone reading old commit messages):
   and the mobile pass (old 32) were pulled forward into the
   farm-map MVP.
 
-### Batch 23 — Processes
-Process = template tied to an `event_kind`. Event instance lands on
-schedule → process expands into project(s) / tasks anchored to the
-event date (e.g. "1 week before processing day → check trailer
-hitch and tires"). Schema: `processes`, `process_steps` (with
-`offset_days` from anchor event), `process_event_kind_links`.
-
-*Dependency note: the project substrate processes expand into —
-projects / phases / steps, plus `project_links` for tying the
-expansion back to its anchor event — shipped in Batch 22.*
-
-**Modifier UI ships with this batch** (deferred from the chores
-overhaul). When a process step targets a chore on a date, it
-writes a `chore_modifiers` row (table created in Batch 7) — and
-also writes corresponding `event_links` rows so the modifier
-shows up on the event-side timeline too. Stacked-badge UI in
-Rounds + Today tab + Schedule-at-a-glance:
-winner solid, loser ghosted, tap-to-explain shows winner + loser
-+ source. v1 conflict resolution is priority-based and
-deterministic; no manual-resolver modal.
+### Batch 23 — Processes ✅ SHIPPED
+Shipped `v0.10.20-alpha` (2026-06-02) — see the Shipped section
+above. Process templates tied to event kinds, the client-side
+expansion engine (project + chore modifiers per upcoming
+occurrence), the Processes page, Heads-up lane integration, and the
+stacked-badge modifier UI in Rounds / Today / Schedule-at-a-glance
+all landed.
 
 ### Batch 24 — Customers + Lists
 `customers` CRUD (workshop fields together). `customer_lists`

@@ -79,7 +79,7 @@ export const SECTIONS = [
       return d.projects.filter(p => p.status !== "completed" && (!p.startedAt || p.startedAt <= today) && (!p.targetDate || p.targetDate >= today)).length;
     }
   },
-  { id: "processes", group: "Planning", label: "Processes", icon: Workflow, description: "Repeatable workflows and SOPs", comingSoon: true, getCount: () => null },
+  { id: "processes", group: "Planning", label: "Processes", icon: Workflow, description: "Templates tied to event kinds — when a matching event lands on the schedule, the process expands into prep tasks and chore changes around it.", getCount: () => null },
 
   { id: "inbox", group: "Other", label: "Inbox", icon: Lightbulb, description: "Just-a-thought capture — ideas that aren't yet projects or chores. Pin, archive, or promote them to events.", getCount: () => null },
   { id: "roadmap", group: "Other", label: "What's coming", icon: Telescope, description: "Features on deck for upcoming releases.", getCount: () => null },

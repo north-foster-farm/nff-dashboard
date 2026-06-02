@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Trash2, ArrowUpRight } from "lucide-react";
+import { X, Trash2, ArrowUpRight, Workflow } from "lucide-react";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
+import { supabase } from "../lib/supabase.js";
+import { navigate, pathForProject } from "../lib/router.js";
 import RecurrenceEditor from "./RecurrenceEditor.jsx";
 import EventScopePrompt from "./EventScopePrompt.jsx";
 
@@ -366,6 +368,15 @@ export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessi
             </button>
           )}
 
+          {/* Process work attached to this event (Batch 23) — the
+              event-side view of what a process expansion created. */}
+          {!isNew && editingSeries?.id && (
+            <ProcessWorkNote
+              seriesId={editingSeries.id}
+              onNavigateAway={onClose}
+            />
+          )}
+
           {errorMsg && (
             <div className="text-[11px] text-warn">{errorMsg}</div>
           )}
@@ -413,6 +424,59 @@ export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessi
           onCancel={() => setScopePrompt(null)}
           onPick={(scope) => { setScopePrompt(null); runDelete(scope); }}
         />
+      )}
+    </div>
+  );
+}
+
+// The event-side view of process work (Batch 23): event_links rows
+// with role 'process' (an expanded prep project) or 'process_modifier'
+// (chore changes around this event). Quiet — renders nothing when the
+// event has no process work.
+function ProcessWorkNote({ seriesId, onNavigateAway }) {
+  const [links, setLinks] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("event_links")
+      .select("id, target_type, target_id, role")
+      .eq("series_id", seriesId)
+      .in("role", ["process", "process_modifier"])
+      .then(({ data }) => { if (!cancelled) setLinks(data ?? []); });
+    return () => { cancelled = true; };
+  }, [seriesId]);
+
+  if (!links || links.length === 0) return null;
+  const projectLinks = links.filter(l => l.target_type === "project");
+  const modifierCount = links.filter(l => l.target_type === "chore").length;
+
+  return (
+    <div className="bg-surface border border-line px-3 py-2.5 flex flex-col gap-1.5">
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-deep">
+        <Workflow size={12} className="shrink-0" />
+        Process work on this event
+      </div>
+      {projectLinks.map(l => (
+        <button
+          key={l.id}
+          type="button"
+          onClick={() => {
+            onNavigateAway?.();
+            navigate(pathForProject(l.target_id));
+          }}
+          className="inline-flex items-center justify-between gap-2 bg-transparent border-0 p-0 text-[12px] text-fg hover:text-accent-deep font-[inherit] cursor-pointer text-left"
+        >
+          <span>Open the prep project</span>
+          <ArrowUpRight size={13} className="shrink-0" />
+        </button>
+      ))}
+      {modifierCount > 0 && (
+        <div className="text-[11px] text-dim">
+          {modifierCount} chore change{modifierCount === 1 ? "" : "s"} scheduled
+          around this event — they show as badges in Rounds and the
+          Today tab on the day.
+        </div>
       )}
     </div>
   );

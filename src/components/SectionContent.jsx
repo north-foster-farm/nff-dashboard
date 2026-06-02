@@ -24,6 +24,7 @@ import SitesPage from "../pages/SitesPage.jsx";
 import Inbox from "../pages/Inbox.jsx";
 import Projects from "../pages/Projects.jsx";
 import ProjectPage from "../pages/ProjectPage.jsx";
+import Processes from "../pages/Processes.jsx";
 
 export default function SectionContent({
   section, data, onOpenEvent, onNavigate, onOpenRounds,
@@ -105,6 +106,7 @@ export default function SectionContent({
         />;
       }
       return <Projects />;
+    case "processes": return <Processes data={data} />;
     case "inbox": return <Inbox onOpenEvent={onOpenEvent} />;
     case "activity": return <Activity />;
     case "observations": return <Observations />;

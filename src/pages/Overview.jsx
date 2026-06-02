@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Clock, CheckCircle2, ArrowUpRight,
   FolderKanban, Receipt, Newspaper, Activity as ActivityIcon,
-  MapPin, User, CloudOff, Sparkles, X
+  MapPin, User, CloudOff, Sparkles, Workflow, X
 } from "lucide-react";
 import { T } from "../theme.js";
 import { formatTime12h } from "../lib/dates.js";
@@ -24,6 +24,9 @@ import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useAutomationEmissions } from "../lib/data/useAutomations.js";
+import { useProcesses } from "../lib/data/useProcesses.js";
+import { useChoreModifiers } from "../lib/data/useChoreModifiers.js";
+import { countModified } from "../lib/modifiers.js";
 import { useSites } from "../lib/data/useSites.js";
 import { sunMinutesOfDay } from "../lib/sunTimes.js";
 import { Sunrise, Sunset } from "lucide-react";
@@ -101,22 +104,61 @@ function Stack({ children }) {
   return <div className="flex flex-col gap-4">{children}</div>;
 }
 
-// ─── Heads up (automation emissions) ─────────────────────────────────────────
+// ─── Heads up (automation emissions + process expansions) ────────────────────
 
-// Full-width lane listing automation firings nobody has triaged yet.
-// Each row: sparkle + summary + when, with "Got it" (acknowledge — keeps
-// what was created) and "Dismiss" (asks for a reason, tombstones the
-// created events / chores). Renders nothing when the lane is empty.
+// Full-width lane listing the things the system did that nobody has
+// triaged yet: automation firings (Batch 19) and process expansions
+// (Batch 23). Each row: icon + summary + when, with "Got it"
+// (acknowledge — keeps what was created) and "Dismiss" (asks for a
+// reason, tombstones / archives what was created). Renders nothing
+// when the lane is empty.
 function HeadsUpLane({ onNavigate }) {
   const { emissions, acknowledge, dismiss } = useAutomationEmissions();
+  const {
+    activeExpansions, acknowledgeExpansion, dismissExpansion,
+  } = useProcesses();
   const [dismissingId, setDismissingId] = useState(null);
   const [reason, setReason] = useState("");
 
-  if (!emissions || emissions.length === 0) return null;
+  // Merge both sources into one chronological lane. Each entry carries
+  // its own accept / dismiss handlers so the row JSX stays shared.
+  const items = useMemo(() => {
+    const out = [];
+    for (const em of emissions ?? []) {
+      out.push({
+        id: em.id,
+        icon: Sparkles,
+        summary: em.summary,
+        at: em.firedAt,
+        projectId: null,
+        onAccept: () => acknowledge(em.id),
+        onDismiss: (why) => dismiss(em.id, why),
+        dismissLabel: "Dismiss + remove",
+      });
+    }
+    for (const exp of activeExpansions ?? []) {
+      out.push({
+        id: exp.id,
+        icon: Workflow,
+        summary: exp.summary,
+        at: exp.expandedAt,
+        projectId: exp.created?.project_id ?? null,
+        onAccept: () => acknowledgeExpansion(exp.id),
+        onDismiss: (why) => dismissExpansion(exp.id, why),
+        dismissLabel: "Dismiss + undo",
+      });
+    }
+    return out.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
+  }, [
+    emissions, activeExpansions, acknowledge, dismiss,
+    acknowledgeExpansion, dismissExpansion,
+  ]);
 
-  const submitDismiss = async (id) => {
+  if (items.length === 0) return null;
+
+  const submitDismiss = async (item) => {
     try {
-      await dismiss(id, reason.trim());
+      await item.onDismiss(reason.trim());
     } finally {
       setDismissingId(null);
       setReason("");
@@ -125,64 +167,73 @@ function HeadsUpLane({ onNavigate }) {
 
   return (
     <Card title="Heads up" icon={Sparkles}
-      subtitle={`${emissions.length} automation${emissions.length === 1 ? "" : "s"} fired`}>
+      subtitle={`${items.length} thing${items.length === 1 ? "" : "s"} the system did for you`}>
       <ol className="m-0 p-0 list-none flex flex-col gap-2">
-        {emissions.map((em) => (
-          <li key={em.id}
+        {items.map((item) => (
+          <li key={item.id}
             className="flex flex-col gap-2 border border-line bg-row-active-dim px-3.5 py-3">
             <div className="flex items-start gap-2.5">
-              <Sparkles size={14} className="text-accent-deep shrink-0 translate-y-0.5" />
+              <item.icon size={14} className="text-accent-deep shrink-0 translate-y-0.5" />
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] text-fg leading-relaxed">
-                  {em.summary}
+                  {item.summary}
                 </div>
                 <div className="text-[11px] text-dim mt-1">
-                  {new Date(em.firedAt).toLocaleString("en-US", {
+                  {new Date(item.at).toLocaleString("en-US", {
                     weekday: "short", month: "short", day: "numeric",
                     hour: "numeric", minute: "2-digit",
                   })}
                   {" · "}
-                  <button
-                    onClick={() => onNavigate?.("schedule")}
-                    className="bg-transparent border-0 p-0 text-accent-deep cursor-pointer font-[inherit] text-[11px] underline underline-offset-2"
-                  >
-                    See schedule
-                  </button>
+                  {item.projectId ? (
+                    <button
+                      onClick={() => navigate(pathForProject(item.projectId))}
+                      className="bg-transparent border-0 p-0 text-accent-deep cursor-pointer font-[inherit] text-[11px] underline underline-offset-2"
+                    >
+                      See the project
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => onNavigate?.("schedule")}
+                      className="bg-transparent border-0 p-0 text-accent-deep cursor-pointer font-[inherit] text-[11px] underline underline-offset-2"
+                    >
+                      See schedule
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => acknowledge(em.id)}
+                  onClick={item.onAccept}
                   className="bg-accent text-on-accent border-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
                 >
                   Got it
                 </button>
                 <button
-                  onClick={() => { setDismissingId(em.id); setReason(""); }}
+                  onClick={() => { setDismissingId(item.id); setReason(""); }}
                   className="bg-transparent text-dim border border-line px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
                 >
                   Dismiss
                 </button>
               </div>
             </div>
-            {dismissingId === em.id && (
+            {dismissingId === item.id && (
               <div className="flex items-center gap-2 pl-6">
                 <input
                   autoFocus
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") submitDismiss(em.id);
+                    if (e.key === "Enter") submitDismiss(item);
                     if (e.key === "Escape") setDismissingId(null);
                   }}
                   placeholder="Why dismiss? (e.g. batch canceled, ordered already)"
                   className="flex-1 bg-surface border border-line px-2.5 py-1.5 text-[12px] text-fg font-[inherit] outline-none"
                 />
                 <button
-                  onClick={() => submitDismiss(em.id)}
+                  onClick={() => submitDismiss(item)}
                   className="bg-warn text-on-accent border-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] cursor-pointer"
                 >
-                  Dismiss + remove
+                  {item.dismissLabel}
                 </button>
                 <button
                   onClick={() => setDismissingId(null)}
@@ -346,6 +397,9 @@ function getRollupAssignee(rollup, dayDate, ruleOpts) {
 
 function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
   const { data: weather } = useCurrentWeather();
+  // Batch 23: chore modifiers — rollup rows show how many of their
+  // chores are modified that day.
+  const { modifiers } = useChoreModifiers();
   const todayUTC = useMemo(
     () => new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())),
     [today]
@@ -403,9 +457,11 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
       choreRollups: todaysChoreRollups,
       projects: todaysProjects,
       morningCutoff: todayMorningCutoff,
-      sundownLabel
+      sundownLabel,
+      modifiers,
+      dateISO: todayISO
     }),
-    [todaysEvents, todaysChoreRollups, todaysProjects, todayMorningCutoff, sundownLabel]
+    [todaysEvents, todaysChoreRollups, todaysProjects, todayMorningCutoff, sundownLabel, modifiers, todayISO]
   );
 
   // ─── Tomorrow: pre-morning items + assigned morning rollup ─────────────
@@ -441,9 +497,11 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
       choreRollups: filteredRollups,
       projects: [],
       morningCutoff: tomorrowMorningCutoff,
-      sundownLabel
+      sundownLabel,
+      modifiers,
+      dateISO: isoFromDate(tomorrowUTC)
     });
-  }, [tomorrowsEvents, tomorrowsChoreRollups, tomorrowMorningCutoff, tomorrow, sundownLabel]);
+  }, [tomorrowsEvents, tomorrowsChoreRollups, tomorrowMorningCutoff, tomorrow, sundownLabel, modifiers, tomorrowUTC]);
 
   // ─── "Upcoming events" — events between (today + 2) and (today + 7) ────
   const upcomingEvents = useMemo(() => {
@@ -530,7 +588,9 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
 // `sundownLabel` is the formatted sundown time used for evening chore
 // rollups (e.g. "7 PM"); falls back to the literal "Sundown" if weather
 // data isn't loaded yet.
-function buildTimelineItems({ events, choreRollups, projects, sundownLabel }) {
+function buildTimelineItems({
+  events, choreRollups, projects, sundownLabel, modifiers, dateISO,
+}) {
   const out = [];
   for (const ev of events) {
     const min = timeToMinutes(ev.startTime);
@@ -555,6 +615,11 @@ function buildTimelineItems({ events, choreRollups, projects, sundownLabel }) {
     const detail = r.assignee
       ? r.assignee
       : `${count} ${count === 1 ? "item" : "items"}`;
+    // Batch 23: how many chores in this rollup carry a modifier that
+    // day — surfaces as a small "N changed" badge on the row.
+    const modifiedCount = modifiers && dateISO
+      ? countModified(modifiers, r.items.map(i => i.chore.id), dateISO)
+      : 0;
     out.push({
       kind: "chore-group",
       id: `chores:${r.bucket}`,
@@ -567,7 +632,8 @@ function buildTimelineItems({ events, choreRollups, projects, sundownLabel }) {
         : (r.startHHMM ? formatTime12hShort(r.startHHMM) : ""),
       title: BUCKET_LABEL[r.bucket] ?? `${r.bucket} chores`,
       detail,
-      detailIcon: r.assignee ? "user" : null
+      detailIcon: r.assignee ? "user" : null,
+      modifiedCount
     });
   }
   for (const p of projects) {
@@ -645,6 +711,17 @@ function TimelineRow({ item }) {
         <div className={`min-w-0 flex-1 truncate ${titleClass}`}>
           {item.title}
         </div>
+        {/* Batch 23: "N changed" — chores in this rollup carrying a
+            modifier that day (from a process or placed by hand). */}
+        {(item.modifiedCount ?? 0) > 0 && (
+          <div
+            className="text-accent-deep text-[11px] font-semibold flex items-center gap-1 whitespace-nowrap shrink-0"
+            title="Some chores in this group are modified — open Rounds or the Today tab to see how"
+          >
+            <Workflow size={11} className="mb-[1px]" />
+            <span>{item.modifiedCount} changed</span>
+          </div>
+        )}
         {item.detail && (
           <div className="text-dim text-[12px] flex items-center gap-1 whitespace-nowrap shrink-0">
             {item.detailIcon === "location" && (

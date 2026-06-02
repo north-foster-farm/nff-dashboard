@@ -10,6 +10,7 @@ import RecordsDrawer from "./components/RecordsDrawer.jsx";
 import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
+import { useProcessRunner } from "./lib/data/useProcessRunner.js";
 import {
   useRoute, usePath, navigate, navigateBack, pathForSection,
 } from "./lib/router.js";
@@ -84,6 +85,12 @@ export default function App({ session }) {
     }
     return merged;
   }, [refData]);
+
+  // The process expansion engine (Batch 23): watches active processes
+  // + upcoming events, expands matching occurrences into projects /
+  // chore modifiers. Idempotent across devices via process_expansions'
+  // unique constraint.
+  useProcessRunner(data);
 
   const currentSection = route.kind === "section" ? route.sectionId : null;
   const section =

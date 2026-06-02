@@ -9,7 +9,7 @@
 // "Resources, rethought" (dissolved into the farm map's place tree +
 // the records drawer in Batch 18.2), "Triggers + animal-batch
 // lifecycles" (Batches 19–20), "Inbox" (Batch 21), "Projects,
-// rebuilt" (Batch 22).
+// rebuilt" (Batch 22), "Processes" (Batch 23).
 
 const ITEMS = [
   {
@@ -20,12 +20,6 @@ const ITEMS = [
       "Google Calendar reaches). The dashboard stays the source of " +
       "truth for edits — the phone copy is intentionally read-only so " +
       "there's no risk of two clocks disagreeing.",
-  },
-  {
-    title: "Processes",
-    body: "Templates that hang off an event kind. Schedule a processing " +
-      "day and the right preparation work lands on the calendar at the " +
-      "right offsets — \"1 week before: check trailer hitch and tires\".",
   },
   {
     title: "Customers and lists",

@@ -23,6 +23,10 @@ import {
 import { displayBlockSide, resolveBlockMinutes } from "../lib/sunTimes.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 import { blockIcon } from "../components/BlockBadge.jsx";
+import ModifierBadges from "../components/ModifierBadge.jsx";
+import { useChoreModifiers } from "../lib/data/useChoreModifiers.js";
+import { resolveModifiers, applyModifier } from "../lib/modifiers.js";
+import { formatISODate, todayUTC } from "../lib/dates.js";
 import ChoresBlocksTab from "../components/ChoresBlocksTab.jsx";
 import ChoresPerformanceTab from "../components/ChoresPerformanceTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
@@ -505,14 +509,27 @@ function TodayObligationRow({
   const isDone = completions.isDone(chore.id, placeId);
   const queued = completions.isQueued?.(chore.id, placeId) ?? false;
 
+  // Batch 23 — date-bound modifiers on this chore today (from a
+  // process expansion or placed by hand). The winner changes how the
+  // row reads; the stacked badge explains winner + losers on tap.
+  const { modifiers } = useChoreModifiers();
+  const resolved = resolveModifiers(
+    modifiers, chore.id, formatISODate(todayUTC()), placeId
+  );
+  const effects = applyModifier(resolved);
+
   // Right-column metadata: explicit assignees + deadline. If no
   // assignees, show only the deadline — no "unassigned" label.
   const metaParts = [];
   if (assignees && assignees.length > 0) metaParts.push(assignees.join(" · "));
-  metaParts.push(displayDeadlineConcrete(chore));
+  metaParts.push(
+    effects.deadlineText
+      ? `today: ${effects.deadlineText}`
+      : displayDeadlineConcrete(chore)
+  );
 
   return (
-    <div style={{ background: T.surface }}>
+    <div style={{ background: T.surface, opacity: effects.skipped ? 0.6 : 1 }}>
       <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12 }}>
         <button
           onClick={() => completions.toggle(chore.id, placeId, isDone)}
@@ -530,10 +547,10 @@ function TodayObligationRow({
           <div style={{
             fontSize: 13, fontWeight: 500,
             color: isDone ? T.textFaint : T.text,
-            textDecoration: isDone ? "line-through" : "none",
+            textDecoration: isDone || effects.skipped ? "line-through" : "none",
             display: "flex", alignItems: "center", gap: 8
           }}>
-            <span>{chore.title}</span>
+            <span>{effects.replaceText ?? chore.title}</span>
             {chore.automationEmissionId && (
               <Sparkles
                 size={12}
@@ -541,6 +558,7 @@ function TodayObligationRow({
                 aria-label="Created by an automation"
               />
             )}
+            <ModifierBadges resolved={resolved} />
             {queued && (
               <CloudOff
                 size={12}
@@ -549,6 +567,13 @@ function TodayObligationRow({
               />
             )}
           </div>
+          {effects.prependText && (
+            <div style={{
+              fontSize: 12, color: T.accentDeep, fontWeight: 500, marginTop: 2,
+            }}>
+              {effects.prependText}
+            </div>
+          )}
           {chore.description && (
             <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{chore.description}</div>
           )}
