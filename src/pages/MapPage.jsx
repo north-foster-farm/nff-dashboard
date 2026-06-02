@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil } from "lucide-react";
+import { ArrowLeft, CalendarRange, Pencil } from "lucide-react";
 import { useSites } from "../lib/data/useSites.js";
 import { usePlaceGeometry } from "../lib/data/usePlaceGeometry.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
@@ -7,9 +7,11 @@ import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { computePlaceStatus } from "../lib/placeStatus.js";
 import { parseFarmMapSvg, bindLayersToPlaces } from "../lib/farmMap.js";
+import { descendantIds } from "../lib/places.js";
 import FarmMap, { MapLegend } from "../components/FarmMap.jsx";
 import PlaceSearch, { pushRecent } from "../components/PlaceSearch.jsx";
 import PlacePage from "./PlacePage.jsx";
+import Schedule from "./Schedule.jsx";
 import {
   useRoute, navigate, navigateBack, usePersistedState,
 } from "../lib/router.js";
@@ -25,7 +27,7 @@ import {
 
 const SVG_URL = "/farm-map_v1.svg";
 
-export default function MapPage({ data, onOpenRounds, onNavigate }) {
+export default function MapPage({ data, onOpenRounds, onNavigate, onOpenEvent }) {
   const {
     places, placesById, childrenByParent, placementsByPlaceId,
     groupsById, choreCtx, loading: sitesLoading,
@@ -111,6 +113,21 @@ export default function MapPage({ data, onOpenRounds, onNavigate }) {
     pushRecent(placeId);
     navigate(`/place/${placeId}`);
   };
+
+  // ── Place timeline takes over the section body (Batch 27.6) ─────────
+  if (openPlaceId && route.placeView === "timeline") {
+    return (
+      <PlaceTimeline
+        placeId={openPlaceId}
+        data={data}
+        onOpenEvent={onOpenEvent}
+        placesById={placesById}
+        childrenByParent={childrenByParent}
+        placementsByPlaceId={placementsByPlaceId}
+        loading={sitesLoading}
+      />
+    );
+  }
 
   // ── Place page takes over the section body ──────────────────────────
   if (openPlaceId) {
@@ -209,6 +226,89 @@ export default function MapPage({ data, onOpenRounds, onNavigate }) {
           : "Tap a zone to zoom in. Colors roll up everything inside a zone. " +
             "Pinch or use the +/− controls to zoom freely; right-click zooms out."}
       </div>
+    </div>
+  );
+}
+
+// ── Place timeline (Batch 27.6) ───────────────────────────────────────
+// /place/<id>/timeline — the Schedule filtered down to this place's
+// events: everything linked to a batch placed here (or anywhere in the
+// place's subtree). Reached from the place page's "View on timeline"
+// button.
+function PlaceTimeline({
+  placeId, data, onOpenEvent,
+  placesById, childrenByParent, placementsByPlaceId, loading,
+}) {
+  const place = placesById?.get(placeId);
+
+  // Batches placed at this place or anywhere beneath it.
+  const batchIds = useMemo(() => {
+    const subtree = descendantIds(placeId, childrenByParent);
+    const out = new Set();
+    for (const pid of subtree) {
+      for (const pl of placementsByPlaceId?.get(pid) ?? []) {
+        if (pl.occupantType === "batch") out.add(pl.occupantId);
+      }
+    }
+    return out;
+  }, [placeId, childrenByParent, placementsByPlaceId]);
+
+  if (loading) {
+    return (
+      <div className="text-[12px] text-muted uppercase tracking-[0.16em] py-10 text-center">
+        Loading…
+      </div>
+    );
+  }
+  if (!place) {
+    return (
+      <div className="bg-surface border border-line px-5 py-8 text-center">
+        <div className="text-[13px] text-muted">
+          This place no longer exists.
+        </div>
+        <button
+          onClick={() => navigateBack("/map")}
+          className="mt-3 text-[12px] text-accent bg-transparent border-0 cursor-pointer underline"
+        >
+          Back to the map
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Breadcrumb back to the place page */}
+      <button
+        onClick={() => navigateBack(`/place/${placeId}`)}
+        className={
+          "self-start inline-flex items-center gap-1.5 bg-transparent " +
+          "border-0 text-dim font-ui text-[11px] font-semibold uppercase " +
+          "tracking-[0.14em] p-0 cursor-pointer hover:text-fg"
+        }
+      >
+        <ArrowLeft size={12} />
+        {place.name}
+      </button>
+
+      <header>
+        <h2 className="font-heading text-[32px] font-bold -tracking-[0.02em] m-0 text-fg flex items-center gap-3">
+          <CalendarRange size={24} className="text-dim shrink-0" />
+          {place.name} — timeline
+        </h2>
+        <p className="text-[12px] text-dim m-0 mt-1.5 leading-relaxed max-w-[640px]">
+          Events for the batches placed here{batchIds.size === 0
+            ? ". Nothing lives here right now, so there are no events to show."
+            : " — arrivals, moves, and processing days."}
+        </p>
+      </header>
+
+      <Schedule
+        data={data}
+        onOpenEvent={onOpenEvent}
+        initialView="agenda"
+        forPlace={{ place, batchIds }}
+      />
     </div>
   );
 }

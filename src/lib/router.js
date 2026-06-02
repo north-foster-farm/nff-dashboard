@@ -22,6 +22,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 //   /projects/<projectId>  → a project's detail page (renders inside
 //                            the projects section)
 //   /place/<placeId>       → a place page (renders inside the map section)
+//   /place/<placeId>/timeline
+//                          → that place's timeline — the Schedule
+//                            filtered to its events (Batch 27.6)
 //   /rounds[/<blockId>]    → the full-screen Rounds takeover
 //
 // Modal-ish overlays (EventEditor, records drawer, processing
@@ -51,6 +54,13 @@ export function pathForProject(projectId) {
   return "/projects/" + projectId;
 }
 
+// Deep link to a place's timeline (Batch 27.6) — the Schedule filtered
+// to the events of the batches placed there. Place ids ride verbatim,
+// like project ids.
+export function pathForPlaceTimeline(placeId) {
+  return "/place/" + placeId + "/timeline";
+}
+
 function dashed(id) {
   return id.replace(/_/g, "-");
 }
@@ -63,8 +73,8 @@ function undashed(slug) {
 //   { kind: "home" }
 //   { kind: "rounds", blockId: string|null }
 //   { kind: "section", sectionId, placeId: string|null,
-//     choresTab: string|null, batchId: string|null,
-//     projectId: string|null }
+//     placeView: "timeline"|null, choresTab: string|null,
+//     batchId: string|null, projectId: string|null }
 export function parseRoute(pathname) {
   const parts = (pathname ?? "/").split("/").filter(Boolean);
   if (parts.length === 0) return { kind: "home" };
@@ -73,7 +83,10 @@ export function parseRoute(pathname) {
     return { kind: "rounds", blockId: rest[0] ?? null };
   }
   if (head === "place" && rest[0]) {
-    return section("map", { placeId: rest[0] });
+    return section("map", {
+      placeId: rest[0],
+      placeView: rest[1] === "timeline" ? "timeline" : null,
+    });
   }
   if (head === "events") {
     return section("events_" + undashed(rest[0] ?? "all"));
@@ -98,6 +111,7 @@ function section(sectionId, extra = {}) {
     kind: "section",
     sectionId,
     placeId: null,
+    placeView: null,
     choresTab: null,
     batchId: null,
     projectId: null,

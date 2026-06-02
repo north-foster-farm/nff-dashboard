@@ -221,6 +221,7 @@ export default function App({ session }) {
         open={!!eventSeed}
         seed={eventSeed}
         kinds={data.events?.kinds ?? []}
+        data={data}
         onClose={() => setEventSeed(null)}
         onOpenProcessing={(target) => {
           setEventSeed(null);

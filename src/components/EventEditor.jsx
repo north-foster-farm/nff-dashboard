@@ -2,10 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { X, Trash2, ArrowUpRight, Workflow } from "lucide-react";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
+import { useBatchAssignments } from "../lib/data/useBatchAssignments.js";
 import { supabase } from "../lib/supabase.js";
 import { navigate, pathForProject } from "../lib/router.js";
 import RecurrenceEditor from "./RecurrenceEditor.jsx";
 import EventScopePrompt from "./EventScopePrompt.jsx";
+import BatchPicker, {
+  useBatchCandidates, syncBatchLink,
+} from "./BatchPicker.jsx";
 
 // EventEditor (Batch 13.2). Side-panel on desktop, full-screen
 // sheet on mobile. Powers the full event CRUD path:
@@ -31,7 +35,9 @@ import EventScopePrompt from "./EventScopePrompt.jsx";
 // The parent owns nothing beyond passing seed + onClose. All DB
 // reads + writes live in this component via the hooks.
 
-export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessing }) {
+export default function EventEditor({
+  open, onClose, kinds, seed, onOpenProcessing, data,
+}) {
   const { series, seriesById, createSeries, updateSeries, deleteSeries, splitSeries } = useEventSeries();
   const { occurrences: seriesOccurrences, upsertOverride, deleteOverride } =
     useEventOccurrences({ seriesId: seed?.seriesId });
@@ -70,6 +76,16 @@ export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessi
   const [pending, setPending] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
+  // Batch picker for processing days (Batch 27.6). The assignment
+  // saves with the event (not live) so Cancel really cancels. Local
+  // state mirrors the loaded assignment until the user touches the
+  // picker.
+  const { getBatchId, assign } = useBatchAssignments();
+  const candidates = useBatchCandidates(data);
+  const assignedBatchId = seed?.seriesId ? getBatchId(seed.seriesId) : null;
+  const [batchId, setBatchId] = useState(null);
+  const [batchTouched, setBatchTouched] = useState(false);
+
   useEffect(() => {
     setLabel(initial.label);
     setSubtitle(initial.subtitle);
@@ -81,8 +97,14 @@ export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessi
     setEndTime(initial.endTime);
     setNotes(initial.notes);
     setRecurrence(initial.recurrence);
+    setBatchTouched(false);
     setErrorMsg(null);
   }, [initial]);
+
+  // Mirror the loaded assignment into the picker until it's touched.
+  useEffect(() => {
+    if (!batchTouched) setBatchId(assignedBatchId);
+  }, [assignedBatchId, batchTouched]);
 
   // Lock body scroll while open.
   useEffect(() => {
@@ -131,6 +153,28 @@ export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessi
     setScopePrompt("delete");
   };
 
+  // Picking a batch on a new, untitled processing day autofills the
+  // title with the house naming ("Batch N — processing").
+  const onPickBatch = (id) => {
+    setBatchTouched(true);
+    setBatchId(id);
+    if (isNew && id && !label.trim()) {
+      const c = candidates.find((x) => x.id === id);
+      if (c) setLabel(`${c.batchLabel} — processing`);
+    }
+  };
+
+  // Persist the batch assignment for processing days (Batch 27.6):
+  // a batch_assignments row + the event_links sync, exactly what the
+  // Processing workspace's picker writes.
+  const saveBatchAssignment = async (seriesId) => {
+    if (kindId !== "processing_days") return;
+    if (!batchTouched || !batchId) return;
+    const err = await assign(seriesId, batchId);
+    if (err) throw err;
+    await syncBatchLink(seriesId, batchId);
+  };
+
   const runSave = async (scope) => {
     setPending(true);
     setErrorMsg(null);
@@ -162,6 +206,7 @@ export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessi
             status: "scheduled",
           });
         }
+        await saveBatchAssignment(created.id);
         onClose?.();
         return;
       }
@@ -179,6 +224,7 @@ export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessi
             status: "scheduled",
           });
         }
+        await saveBatchAssignment(editingSeries.id);
         onClose?.();
         return;
       }
@@ -295,6 +341,25 @@ export default function EventEditor({ open, onClose, kinds, seed, onOpenProcessi
               ))}
             </select>
           </Field>
+
+          {/* Batch picker (Batch 27.6) — processing days carry which
+              batch is being processed. Saved with the event; kept in
+              sync with event_links so the batch's lifecycle page
+              shows this day. */}
+          {kindId === "processing_days" && (
+            <Field label="Batch">
+              <BatchPicker
+                candidates={candidates}
+                value={batchId}
+                onChange={onPickBatch}
+                disabled={pending}
+              />
+              <div className="text-[10px] text-faint leading-relaxed mt-0.5">
+                Linking a batch shows it in the Schedule title and on
+                the batch&rsquo;s lifecycle page.
+              </div>
+            </Field>
+          )}
 
           <Field label="Date">
             <input

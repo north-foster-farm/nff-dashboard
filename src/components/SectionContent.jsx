@@ -81,6 +81,7 @@ export default function SectionContent({
         data={data}
         onOpenRounds={onOpenRounds}
         onNavigate={onNavigate}
+        onOpenEvent={onOpenEvent}
       />;
     case "overview": return <Overview data={data} onNavigate={onNavigate} />;
     // The Metrics & analytics page (Batch 26.2).

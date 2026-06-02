@@ -10,6 +10,7 @@ import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { computePlaceStatus } from "../lib/placeStatus.js";
 import { placePath, descendantIds, childrenOf } from "../lib/places.js";
 import { tintForFlag } from "../lib/farmMap.js";
+import { navigate, pathForPlaceTimeline } from "../lib/router.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 
@@ -191,14 +192,17 @@ export default function PlacePage({
             />
             {tint.label}
           </span>
+          {/* This place's timeline (Batch 27.6) — the Schedule
+              filtered to the events of the batches placed here,
+              replacing the old jump to the generic Schedule. */}
           <button
-            onClick={() => onNavigate?.("schedule")}
+            onClick={() => navigate(pathForPlaceTimeline(place.id))}
             className={
               "inline-flex items-center gap-1.5 bg-transparent border " +
               "border-line text-dim text-[11px] font-semibold uppercase " +
               "tracking-[0.12em] px-2.5 py-1.5 cursor-pointer hover:text-fg"
             }
-            title="Open the Schedule"
+            title="See this place's events on the Schedule"
           >
             <CalendarRange size={12} />
             View on timeline

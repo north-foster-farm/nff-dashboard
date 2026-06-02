@@ -2383,6 +2383,35 @@ changes.
 batch-referencing schedule titles, feed supplier picker, and the
 place-page "View on timeline" fix.
 
+### Batch 27.6 — Pickers + titles · `v0.10.31-alpha`
+2026-06-02. Final slice of the automations rework. No schema
+changes — every picker writes through existing tables
+(`batch_assignments`, `event_links`, `feed_types.supplier_id`).
+
+- **`components/BatchPicker.jsx`** (new, shared): the
+  batch-candidates list, select UI, and event_links sync extracted
+  from the Processing workspace's `BatchAssignSection` (Batch 20),
+  which now consumes it.
+- **EventEditor → Batch picker** — when kind is
+  `processing_days`, a Batch field appears (new and edit modes).
+  Saved with the event (Cancel really cancels): writes the
+  `batch_assignments` row + keeps the `event_links` batch row in
+  sync. Picking a batch on an untitled new event autofills
+  "Batch N — processing".
+- **Schedule → batch-referencing titles** — processing
+  occurrences whose series has an assigned batch render as
+  "title — batch label" (display-time only, via the new
+  `useSeriesBatchMap` hook over event_links + batch_assignments;
+  skipped when the title already names the batch).
+- **Feed page → supplier picker** — inline borderless select on
+  each feed card's detail line, writing
+  `feed_types.supplier_id` via the existing `updateFeed`.
+- **Place timeline** — `/place/<id>/timeline` route; the place
+  page's "View on timeline" button now lands on the Schedule
+  filtered to the events of the batches placed at that place (or
+  its subtree), opened in Agenda view with a place-context chip.
+  Derived from placements — no event→place schema needed.
+
 ---
 
 ## Overhaul design records
@@ -2625,23 +2654,23 @@ Out of scope (still true): e-commerce/storefront publishing of
 the catalog (no batch owns this yet); inventory decrement on
 sale (Batch 28 POS); per-order sales (Batch 29).
 
-### Batches 27.4–27.6 — Automations rework 🔨 IN PROGRESS
-James's 2026-06-02 feedback on the Batch 19/23 automations.
-**27.4 (lifecycle + prep-as-chores, `v0.10.29-alpha`) and 27.5
-(relocation + bell, `v0.10.30-alpha`) shipped 2026-06-02** — see
-Shipped above.
+### Batches 27.4–27.6 — Automations rework ✅ DONE
+James's 2026-06-02 feedback on the Batch 19/23 automations. All
+three slices shipped 2026-06-02 — see Shipped above: **27.4**
+(lifecycle + prep-as-chores, `v0.10.29-alpha`), **27.5**
+(relocation + bell, `v0.10.30-alpha`), **27.6** (pickers +
+titles, `v0.10.31-alpha`).
 
-Remaining:
-- **27.6 — Pickers + titles**: batch picker on processing-day
-  events, processing titles reference their batch in the
-  Schedule, supplier picker on feed types, and the place-page
-  "View on timeline" button made useful (today it opens the
-  generic Schedule with no place context — James: "works but
-  generic"; it should show that place's events).
-- **Prod cleanup tail (pending James finishing his testing):**
-  the leftover old-style prep projects + project-shaped expansion
-  rows from the 15:43–16:09 deploy-race window still need the
-  approved pattern-based sweep.
+Remaining tail:
+- **Prod cleanup — BLOCKED on a stale client.** The
+  pattern-based sweep ran 2026-06-02 ~22:47 UTC (exact-ID deletes
+  of 4 prep projects + 2 project-shaped expansions + 2 links,
+  backed up to `.backups/2026-06-02T22-43-*`). Within seconds, a
+  client still running the pre-27.4 bundle re-expanded two series
+  as projects ("Batch 2 — processing (Jun 2)" + "Broiler
+  processing day (Jul 14)"). Cleanup is futile until that stale
+  tab / PWA is found and refreshed — then re-run the same sweep
+  on whatever project-shaped rows exist at that point.
 
 ### Batch 28 — Inventory backend + Point of Sale
 Inventory schema + CRUD; on-hand by SKU/location. POS marks items

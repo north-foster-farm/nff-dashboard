@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-react";
 import { T } from "../theme.js";
 import { formatISODate, formatLongDate } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useEventMutator } from "../lib/data/useEventMutator.js";
+import { useSeriesBatchMap } from "../lib/data/useSeriesBatchMap.js";
 import {
   startOfWeek, advanceDate, formatViewLabel, isoDateLocal,
 } from "../lib/calendarMath.js";
@@ -22,10 +23,16 @@ import { usePersistedState } from "../lib/router.js";
 // `initialView` is what the parent passes when the user lands here
 // from the events_all section (which now folds into Agenda) — see
 // SectionContent.jsx.
+//
+// `forPlace` (Batch 27.6) turns the page into a place timeline:
+// `{ place, batchIds: Set }` filters occurrences down to the events
+// of the batches placed there. Passed by MapPage's PlaceTimeline.
 
 const VIEWS = ["day", "week", "month", "agenda"];
 
-export default function Schedule({ data, onOpenEvent, initialView, initialFilter }) {
+export default function Schedule({
+  data, onOpenEvent, initialView, initialFilter, forPlace,
+}) {
   const today = useMemo(() => {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
@@ -111,10 +118,41 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
     return { fromDate: toUtcMidnight(start), toDate: toUtcEod(end) };
   }, [view, date, today]);
 
-  const occurrences = useMemo(
-    () => getEventOccurrences(data.events, fromDate, toDate, filters),
-    [data.events, fromDate, toDate, filters]
-  );
+  // Which batch (if any) each series is about — event_links +
+  // batch_assignments merged (Batch 27.6).
+  const seriesBatchMap = useSeriesBatchMap();
+  // Batch labels by group id, e.g. "Batch 3".
+  const batchLabelById = useMemo(() => {
+    const m = new Map();
+    for (const sp of data.livestock?.species ?? []) {
+      for (const g of sp.groups ?? []) m.set(g.id, g.label);
+    }
+    return m;
+  }, [data.livestock]);
+
+  const occurrences = useMemo(() => {
+    let out = getEventOccurrences(data.events, fromDate, toDate, filters);
+    // Place timeline (Batch 27.6): keep only the events of batches
+    // placed at this place (or anywhere in its subtree).
+    if (forPlace) {
+      out = out.filter((o) => {
+        const batchId = seriesBatchMap.get(o.instanceId);
+        return batchId != null && forPlace.batchIds.has(batchId);
+      });
+    }
+    // Batch-referencing titles (Batch 27.6): a processing day with an
+    // assigned batch shows the batch in its title — unless the title
+    // already names it.
+    return out.map((o) => {
+      if (o.kindId !== "processing_days") return o;
+      const batchLabel = batchLabelById.get(seriesBatchMap.get(o.instanceId));
+      if (!batchLabel || o.instanceLabel?.includes(batchLabel)) return o;
+      return { ...o, instanceLabel: `${o.instanceLabel} — ${batchLabel}` };
+    });
+  }, [
+    data.events, fromDate, toDate, filters,
+    forPlace, seriesBatchMap, batchLabelById,
+  ]);
 
   const onClickItem = (item) => {
     onOpenEvent?.({
@@ -166,6 +204,18 @@ export default function Schedule({ data, onOpenEvent, initialView, initialFilter
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Place-timeline context chip (Batch 27.6). */}
+      {forPlace && (
+        <div className="flex items-center gap-2 text-[11px] text-dim bg-surface border border-line px-3 py-2 self-start">
+          <MapPin size={12} className="shrink-0 text-accent-deep" />
+          <span>
+            Showing events for the batches placed at{" "}
+            <span className="font-semibold text-fg">
+              {forPlace.place.name}
+            </span>
+          </span>
+        </div>
+      )}
       <Controls
         view={view}
         onViewChange={setView}

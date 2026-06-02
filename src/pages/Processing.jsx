@@ -5,8 +5,9 @@ import {
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
 import { useBatchAssignments } from "../lib/data/useBatchAssignments.js";
-import { useSites } from "../lib/data/useSites.js";
-import { supabase } from "../lib/supabase.js";
+import BatchPicker, {
+  useBatchCandidates, syncBatchLink,
+} from "../components/BatchPicker.jsx";
 import { navigate, pathForBatch } from "../lib/router.js";
 
 // Processing-day workspace (Batch 14.2). Reachable only from the
@@ -222,37 +223,14 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
 // batch of batch-tracked species with its current location; assigning
 // writes batch_assignments (keyed by series id) AND keeps the
 // event_links row in sync so the batch's lifecycle page shows this
-// processing day.
+// processing day. The candidates list, select UI, and event_links sync
+// moved to components/BatchPicker.jsx (Batch 27.6) so the EventEditor
+// offers the same picker.
 function BatchAssignSection({ seriesId, data }) {
   const { getBatchId, assign, loading } = useBatchAssignments();
-  const { placesById, placements } = useSites();
+  const candidates = useBatchCandidates(data);
   const [pending, setPending] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
-
-  // Candidate batches: batch-tracked species (broilers today; any
-  // future batch-tracked species shows up automatically).
-  const candidates = useMemo(() => {
-    const out = [];
-    for (const sp of data?.livestock?.species ?? []) {
-      if (sp.trackingModel !== "batch") continue;
-      for (const g of sp.groups ?? []) {
-        const placement = (placements ?? []).find(
-          (p) => p.occupantType === "batch"
-            && p.occupantId === g.id
-            && !p.movedOut
-        );
-        const place = placement ? placesById?.get(placement.placeId) : null;
-        out.push({
-          id: g.id,
-          label: `${sp.name} — ${g.label}`,
-          speciesId: sp.id,
-          count: g.count,
-          placeName: place?.name ?? null,
-        });
-      }
-    }
-    return out;
-  }, [data, placements, placesById]);
 
   const assignedBatchId = getBatchId(seriesId);
   const assigned = candidates.find((c) => c.id === assignedBatchId) ?? null;
@@ -264,31 +242,7 @@ function BatchAssignSection({ seriesId, data }) {
       if (batchId) {
         const err = await assign(seriesId, batchId);
         if (err) throw err;
-        // Keep event_links in sync: one batch link per processing
-        // series — retarget the existing link or create it.
-        const { data: existing, error: qErr } = await supabase
-          .from("event_links")
-          .select("id, target_id")
-          .eq("series_id", seriesId)
-          .eq("target_type", "batch");
-        if (qErr) throw qErr;
-        if (existing && existing.length > 0) {
-          const { error: uErr } = await supabase
-            .from("event_links")
-            .update({ target_id: batchId, role: "processing" })
-            .eq("id", existing[0].id);
-          if (uErr) throw uErr;
-        } else {
-          const { error: iErr } = await supabase
-            .from("event_links")
-            .insert({
-              series_id: seriesId,
-              target_type: "batch",
-              target_id: batchId,
-              role: "processing",
-            });
-          if (iErr) throw iErr;
-        }
+        await syncBatchLink(seriesId, batchId);
       }
     } catch (e) {
       setErrorMsg(e?.message ?? "Assignment failed.");
@@ -304,21 +258,12 @@ function BatchAssignSection({ seriesId, data }) {
     >
       <div className="flex items-center gap-3 flex-wrap">
         <Bird size={15} className="text-dim shrink-0" />
-        <select
-          value={assignedBatchId ?? ""}
-          onChange={(e) => onAssign(e.target.value || null)}
+        <BatchPicker
+          candidates={candidates}
+          value={assignedBatchId}
+          onChange={onAssign}
           disabled={pending || loading}
-          className="bg-surface border border-line text-fg text-[13px] px-3 py-2 outline-none focus:border-accent font-[inherit] disabled:opacity-50 min-w-[220px]"
-        >
-          <option value="">— no batch assigned —</option>
-          {candidates.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.label}
-              {c.count != null ? ` (${c.count} birds)` : ""}
-              {c.placeName ? ` · ${c.placeName}` : ""}
-            </option>
-          ))}
-        </select>
+        />
         {assigned && (
           <button
             onClick={() =>

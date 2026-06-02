@@ -295,7 +295,6 @@ function FeedCard({ feed, db, ctx, suppliers, dragHandleProps }) {
   );
   const orders = db.ordersByFeed.get(feed.id) ?? [];
   const lastOrder = db.lastOrderByFeed.get(feed.id) ?? null;
-  const supplier = suppliers.find(s => s.id === feed.supplierId);
   const needsOrder = projection.kind === "order_now";
 
   return (
@@ -365,7 +364,9 @@ function FeedCard({ feed, db, ctx, suppliers, dragHandleProps }) {
           <LastPaidLine feed={feed} lastOrder={lastOrder} />
         </div>
         <div className="text-[11px] text-muted flex items-center gap-2 flex-wrap">
-          {supplier && <span>{supplier.label}</span>}
+          {/* Supplier picker (Batch 27.6): each feed type carries its
+              default supplier; the order form pre-fills from it. */}
+          <SupplierPicker feed={feed} db={db} suppliers={suppliers} />
           {feed.packageSize?.label && (
             <span>· {feed.packageSize.label}</span>
           )}
@@ -415,6 +416,44 @@ function FeedCard({ feed, db, ctx, suppliers, dragHandleProps }) {
         <OrderHistory feed={feed} orders={orders} db={db} />
       )}
     </div>
+  );
+}
+
+// Inline supplier picker (Batch 27.6) — a quiet borderless select in
+// the feed card's detail line. Writes feed_types.supplier_id; the
+// Record-order form keeps pre-filling its supplier from the feed.
+function SupplierPicker({ feed, db, suppliers }) {
+  const [pending, setPending] = useState(false);
+
+  const onPick = async (e) => {
+    const supplierId = e.target.value || null;
+    setPending(true);
+    try {
+      await db.updateFeed(feed.id, { supplierId });
+    } catch {
+      // Realtime refresh restores the previous value on failure.
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <select
+      value={feed.supplierId ?? ""}
+      onChange={onPick}
+      disabled={pending}
+      title="Supplier"
+      className={
+        "bg-transparent border-0 p-0 text-[11px] font-[inherit] " +
+        "cursor-pointer outline-none disabled:opacity-50 " +
+        (feed.supplierId ? "text-muted" : "text-faint italic")
+      }
+    >
+      <option value="">no supplier</option>
+      {suppliers.map(s => (
+        <option key={s.id} value={s.id}>{s.label}</option>
+      ))}
+    </select>
   );
 }
 
