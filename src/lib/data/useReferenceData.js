@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { realtimeChannel, supabase } from "../supabase.js";
 import NFF_DATA from "../../data/nff-data.json";
+import { progressOf } from "../projects.js";
 
 // Loads every migrated reference table in parallel and returns them keyed
 // under the SAME names the UI already uses on the `data` object from
@@ -136,6 +137,33 @@ export function useReferenceData() {
         refreshLivestock
       )
       .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(channel); };
+  }, []);
+
+  // Keep the projects slice live (Batch 22). The Projects pages write
+  // through useProjects / useProject, but the sidebar count, dashboard
+  // card, and schedule timeline all read `data.projects` from here.
+  useEffect(() => {
+    let cancelled = false;
+    let scheduled = false;
+    const refresh = () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(async () => {
+        scheduled = false;
+        const v = await loadProjects();
+        if (!cancelled && v) setState(s => ({ ...s, projects: v }));
+      }, 120);
+    };
+    let channel = realtimeChannel("refdata:projects:stream");
+    for (const t of ["projects", "project_phases", "project_steps"]) {
+      channel = channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: t },
+        refresh
+      );
+    }
+    channel = channel.subscribe();
     return () => { cancelled = true; supabase.removeChannel(channel); };
   }, []);
 
@@ -618,12 +646,27 @@ async function loadUpdates() {
 }
 
 async function loadProjects() {
-  const { data, error } = await supabase
-    .from("projects")
-    .select("id, title, description, status, owner_email, started_at, target_date, completed_at, notes, created_at")
-    .order("created_at", { ascending: false });
-  if (error) { console.error("loadProjects:", error); return null; }
-  return data.map(p => ({
+  // Batch 22: archived projects stay out of the app-wide `data.projects`
+  // (sidebar count, dashboard cards, schedule timeline); phases + steps
+  // ride along so those surfaces can show the completeness rule's
+  // progress copy without their own queries.
+  const [projRes, phaseRes, stepRes] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("id, title, description, status, owner_email, started_at, target_date, completed_at, notes, created_at, archived_at, sort_order")
+      .is("archived_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("project_phases")
+      .select("id, project_id, completed_at"),
+    supabase
+      .from("project_steps")
+      .select("id, project_id, phase_id, completed_at")
+  ]);
+  if (projRes.error) { console.error("loadProjects:", projRes.error); return null; }
+  const phases = phaseRes.error ? [] : (phaseRes.data ?? []);
+  const steps = stepRes.error ? [] : (stepRes.data ?? []);
+  return projRes.data.map(p => ({
     id: p.id,
     title: p.title,
     description: p.description,
@@ -633,7 +676,16 @@ async function loadProjects() {
     targetDate: p.target_date,
     completedAt: p.completed_at,
     notes: p.notes,
-    createdAt: p.created_at
+    createdAt: p.created_at,
+    sortOrder: p.sort_order ?? 0,
+    progress: progressOf(
+      phases
+        .filter(ph => ph.project_id === p.id)
+        .map(ph => ({ id: ph.id, completedAt: ph.completed_at })),
+      steps
+        .filter(st => st.project_id === p.id)
+        .map(st => ({ id: st.id, phaseId: st.phase_id, completedAt: st.completed_at }))
+    )
   }));
 }
 

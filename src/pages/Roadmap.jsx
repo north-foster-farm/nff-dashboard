@@ -7,7 +7,7 @@
 // "Chores, rebuilt", "Rounds", "Chore telemetry + push", "Chore
 // assignments", "Events + Schedule, rebuilt", "A working calendar",
 // "Resources, rethought" (dissolved into the farm map's place tree +
-// the records drawer in Batch 18.2).
+// the records drawer in Batch 18.2), "Projects, rebuilt" (Batch 22).
 
 const ITEMS = [
   {
@@ -38,13 +38,6 @@ const ITEMS = [
       "drag-orderable, pinnable rows, an Archived tab for things " +
       "you're done with, and per-user read/unread state so each of " +
       "us can mark our own.",
-  },
-  {
-    title: "Projects, rebuilt",
-    body: "Every project breaks down into phases, steps, and checklists, " +
-      "with progress that adds up on its own. Editing supports markdown, " +
-      "file attachments, assignees, and date ranges. Dependencies between " +
-      "projects can shuffle dates proportionally when one slips.",
   },
   {
     title: "Processes",

@@ -9,10 +9,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Archive, ArchiveRestore, CalendarPlus, Circle, CircleCheck,
-  GripVertical, Pin, PinOff, Trash2,
+  FolderKanban, GripVertical, Pin, PinOff, Trash2,
 } from "lucide-react";
 import { useInboxItems } from "../lib/data/useInboxItems.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
+import { supabase } from "../lib/supabase.js";
+import { navigate, pathForProject } from "../lib/router.js";
 
 // The Inbox page (Batch 21) — every captured "just a thought…" with
 // creator + creation time, drag-and-drop ordering, pinning (pinned
@@ -220,6 +222,26 @@ function ItemRow({
     if (!read) inbox.markRead(item.id).catch(() => {});
   };
 
+  // Promote to project (Batch 22, deferred from 21): the thought
+  // becomes a planned project's title + description, and the page
+  // jumps straight to its detail view. The thought stays in the inbox
+  // until someone archives it — same contract as promote-to-event.
+  // Direct insert (not useProjects) so each inbox row doesn't mount
+  // the whole projects data hook just for this button.
+  const promoteToProject = async () => {
+    if (!read) inbox.markRead(item.id).catch(() => {});
+    const { data, error } = await supabase.from("projects").insert({
+      title: item.body.length > 80
+        ? item.body.slice(0, 77) + "…"
+        : item.body,
+      description: item.body.length > 80 ? item.body : null,
+      status: "planned",
+      created_by: userEmail,
+    }).select("id").single();
+    if (error) throw error;
+    navigate(pathForProject(data.id));
+  };
+
   return (
     <div
       className={
@@ -278,6 +300,12 @@ function ItemRow({
               onClick={promote}
             >
               <CalendarPlus size={14} />
+            </RowAction>
+            <RowAction
+              title="Promote to project"
+              onClick={() => promoteToProject().catch(() => {})}
+            >
+              <FolderKanban size={14} />
             </RowAction>
             <RowAction
               title="Archive"

@@ -71,11 +71,12 @@ export const SECTIONS = [
   // surface, bypassing the normal layout. Sidebar.jsx detects
   // `kind: "takeover"` and renders a custom item with a live label.
   { id: "rounds", group: "Planning", label: "Do rounds", icon: ListChecks, description: "Full-screen surface for actually doing chores.", kind: "takeover", getCount: () => null },
-  { id: "projects", group: "Planning", label: "Projects", icon: FolderKanban, description: "Discrete, time-bound work",
-    // Projects active today and not yet complete.
+  { id: "projects", group: "Planning", label: "Projects", icon: FolderKanban, description: "Discrete, time-bound work — phases, steps, and checklists with assignees, dates, and progress.",
+    // Projects active today and not yet complete (Batch 22: archived
+    // projects are filtered out by the loader).
     getCount: (d) => {
       const today = new Date().toISOString().slice(0, 10);
-      return d.projects.filter(p => p.status !== "completed" && (!p.start || p.start <= today) && (!p.end || p.end >= today)).length;
+      return d.projects.filter(p => p.status !== "completed" && (!p.startedAt || p.startedAt <= today) && (!p.targetDate || p.targetDate >= today)).length;
     }
   },
   { id: "processes", group: "Planning", label: "Processes", icon: Workflow, description: "Repeatable workflows and SOPs", comingSoon: true, getCount: () => null },

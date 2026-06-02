@@ -19,6 +19,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 //   /livestock/<species>/<batchId>
 //                          → batch lifecycle page (renders inside the
 //                            species section)
+//   /projects/<projectId>  → a project's detail page (renders inside
+//                            the projects section)
 //   /place/<placeId>       → a place page (renders inside the map section)
 //   /rounds[/<blockId>]    → the full-screen Rounds takeover
 //
@@ -43,6 +45,12 @@ export function pathForBatch(speciesId, batchId) {
   return "/livestock/" + dashed(speciesId) + "/" + dashed(batchId);
 }
 
+// Deep link to one project's detail page (Batch 22). Project ids are
+// uuids — they ride the URL verbatim (no dash/underscore mapping).
+export function pathForProject(projectId) {
+  return "/projects/" + projectId;
+}
+
 function dashed(id) {
   return id.replace(/_/g, "-");
 }
@@ -55,7 +63,8 @@ function undashed(slug) {
 //   { kind: "home" }
 //   { kind: "rounds", blockId: string|null }
 //   { kind: "section", sectionId, placeId: string|null,
-//     choresTab: string|null }
+//     choresTab: string|null, batchId: string|null,
+//     projectId: string|null }
 export function parseRoute(pathname) {
   const parts = (pathname ?? "/").split("/").filter(Boolean);
   if (parts.length === 0) return { kind: "home" };
@@ -74,6 +83,10 @@ export function parseRoute(pathname) {
       batchId: rest[1] ? undashed(rest[1]) : null,
     });
   }
+  if (head === "projects" && rest[0]) {
+    // Project ids are uuids — keep them verbatim (dashes are real).
+    return section("projects", { projectId: rest[0] });
+  }
   if (head === "chores") {
     return section("chores", { choresTab: rest[0] ?? null });
   }
@@ -87,6 +100,7 @@ function section(sectionId, extra = {}) {
     placeId: null,
     choresTab: null,
     batchId: null,
+    projectId: null,
     ...extra,
   };
 }

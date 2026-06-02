@@ -16,6 +16,7 @@ import {
   obligationPlaceIds
 } from "../lib/chores.js";
 import { displayPlace } from "../lib/places.js";
+import { navigate, pathForProject } from "../lib/router.js";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
@@ -390,8 +391,8 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
   const todaysProjects = useMemo(
     () => (data.projects ?? []).filter(p =>
       p.status !== "completed"
-      && (!p.start || p.start <= todayISO)
-      && (!p.end || p.end >= todayISO)
+      && (!p.startedAt || p.startedAt <= todayISO)
+      && (!p.targetDate || p.targetDate >= todayISO)
     ),
     [data, todayISO]
   );
@@ -576,7 +577,9 @@ function buildTimelineItems({ events, choreRollups, projects, sundownLabel }) {
       startMin: null,
       timeLabel: "All day",
       title: p.title,
-      detail: "in progress",
+      // Batch 22: the completeness rule's verbatim copy when the
+      // project has phases; "in progress" otherwise.
+      detail: p.progress?.label ?? "in progress",
       detailIcon: null
     });
   }
@@ -608,7 +611,7 @@ function SubHeading({ children, className = "" }) {
 //            color-mix on the same color (9% mix for dark-mode legibility).
 //   chore  → plain (no border, no tint). Reserved kind-color treatment
 //            for events keeps the visual hierarchy clean.
-//   project → italic title placeholder until the new project model lands.
+//   project → italic title; detail carries the progress copy (Batch 22).
 function TimelineRow({ item }) {
   const isEvent = item.kind === "event";
   // Use an inset box-shadow for the event's left bar instead of a real
@@ -894,7 +897,13 @@ function ProjectsInProgressCard({ data }) {
       ) : (
         <div className="flex flex-col gap-1.5">
           {inProgress.map(p => (
-            <QuickOpenRow key={p.id} label={p.title} onOpen={() => alert(`Open ${p.title} — not implemented.`)} />
+            <QuickOpenRow
+              key={p.id}
+              label={p.progress
+                ? `${p.title} · ${p.progress.label}`
+                : p.title}
+              onOpen={() => navigate(pathForProject(p.id))}
+            />
           ))}
         </div>
       )}

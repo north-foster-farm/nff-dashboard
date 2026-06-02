@@ -22,6 +22,8 @@ import Settings from "../pages/Settings.jsx";
 import Roadmap from "../pages/Roadmap.jsx";
 import SitesPage from "../pages/SitesPage.jsx";
 import Inbox from "../pages/Inbox.jsx";
+import Projects from "../pages/Projects.jsx";
+import ProjectPage from "../pages/ProjectPage.jsx";
 
 export default function SectionContent({
   section, data, onOpenEvent, onNavigate, onOpenRounds,
@@ -91,6 +93,18 @@ export default function SectionContent({
     case "inventory": return <Inventory data={data} />;
     case "schedule": return <Schedule data={data} onOpenEvent={onOpenEvent} />;
     case "chores": return <Chores data={data} />;
+    case "projects":
+      // Project detail deep links (/projects/<projectId>) carry the
+      // project id on the route (Batch 22).
+      if (route.kind === "section" && route.projectId) {
+        return <ProjectPage
+          projectId={route.projectId}
+          data={data}
+          onOpenEvent={onOpenEvent}
+          key={route.projectId}
+        />;
+      }
+      return <Projects />;
     case "inbox": return <Inbox onOpenEvent={onOpenEvent} />;
     case "activity": return <Activity />;
     case "observations": return <Observations />;

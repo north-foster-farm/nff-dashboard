@@ -1762,6 +1762,77 @@ promotion makes sense once chore creation UI exists), and read-state
 sync to the dashboard Heads-up lane (the bell is the notification
 surface).
 
+### Batch 22 — Projects subsystem rewrite · `v0.10.19-alpha`
+2026-06-01. The full Project → Phase → Step → Checklist → Checklist
+item hierarchy, replacing the flat Batch-4 stub table.
+
+Migration `0017_projects_subsystem.sql` (additive — the existing
+`projects` table gains columns, nothing is dropped):
+- **`projects`** extended: `body_md` (markdown), `created_by`,
+  `archived_at`, `sort_order`, `updated_at` + touch trigger.
+- **`project_phases`** — ordered phases; explicit `completed_at`
+  check-off or derived done (all steps complete) counts as a
+  "milestone reached".
+- **`project_steps`** — the unit of work: markdown body, `assignees`
+  (jsonb display names, same convention as chore assignment rules),
+  start/target dates, completion, sort order.
+- **`project_checklists`** / **`project_checklist_items`** — Trello
+  pattern: named checklists inside a step, checkable items inside.
+- **`project_links`** — cross-links to other entities
+  (`event_series` / `chore`; text target_id so non-uuid ids fit).
+- **`project_dependencies`** — step-level "X blocks Y" edges with
+  `shift_dependents`: when a predecessor's dates move, every
+  transitive dependent shifts by the same number of days.
+- **`project_attachments`** — metadata for Supabase Storage uploads;
+  the `project-files` bucket is created in the same migration
+  (storage policies attempted in a guarded block — newer hosted
+  projects may need them added via the Dashboard).
+- All 8 tables join the realtime publication; RLS is the standard
+  admin-only pattern.
+
+Completeness rule (`lib/projects.js`, pure functions): phases > 1 →
+milestones drive the % ("x/y milestones reached"); phases == 1 →
+steps drive it ("x/y steps complete"). The same module owns the
+dependency date-shuffle math (`computeDependentShifts`, cycle-safe
+transitive traversal).
+
+UI:
+- **Projects list** (`pages/Projects.jsx`, sidebar → Planning →
+  Projects): Active / Completed / Archived tabs, new-project form,
+  cards with status badge, progress bar + the verbatim copy, dates.
+- **Project detail** (`pages/ProjectPage.jsx`, routed at
+  `/projects/<projectId>`): inline-editable title/description,
+  status select, archive/delete, start → target dates, markdown
+  notes (write/preview), progress header, phase sections with
+  drag-orderable step rows (@dnd-kit), per-phase milestone check-off
+  and target date, links section, project-level files.
+- **Step modal** (`components/ProjectStepModal.jsx`): the
+  Trello-style card — done toggle, assignee chips (James/Jim),
+  start/target dates (with the dependency-shift toast), markdown
+  details, checklists with progress bars, Storage attachments,
+  and the blocked-by / blocks dependency editor.
+- **Markdown** (`components/Markdown.jsx`): marked + DOMPurify (new
+  dependencies), `.md` styles scoped in styles.css.
+- New hooks `lib/data/useProjects.js` (`useProjects` list-level +
+  `useProject` detail-level, shared fetch-all core, realtime on all
+  8 tables).
+- **Dashboard + sidebar integration**: `loadProjects` in
+  useReferenceData now excludes archived projects, computes progress
+  for each, and the projects slice is realtime; the "This week's
+  projects" card deep-links to project pages (replacing the
+  "not implemented" alert); the schedule-at-a-glance project rows
+  show the progress copy; fixed a pre-existing field-name bug
+  (`p.start`/`p.end` → `startedAt`/`targetDate`) in the
+  active-project filters.
+- **Inbox**: "Promote to project" action (deferred from Batch 21) —
+  a thought becomes a planned project and jumps to its detail page.
+
+**Out of scope / deferred:** linking projects to places / other
+projects (kinds are modeled, picker UI is events + chores only),
+dragging steps between phases, proportional (vs same-delta) date
+shuffle, and pulling assignees from the admins table (hardcoded
+James/Jim, same as chore assignment rules).
+
 ---
 
 ## Upcoming
@@ -1993,15 +2064,12 @@ above. Top-bar lightbulb capture, the combined notifications
 bell, the Inbox page (pinning, drag ordering, archive, per-user
 read state), and promote-to-event all landed.
 
-### Batch 22 — Projects subsystem rewrite
-Hierarchy Project → Phase → Step → Checklist → Checklist item.
-Schema: `projects`, `project_phases`, `project_steps`,
-`project_checklists`, `project_checklist_items`, `project_links`,
-`project_dependencies` (with `shift_dependents` for proportional
-date shuffle). Completeness rule: phases > 1 → milestones drive %;
-phases == 1 → steps drive %. Verbatim copy: "x/y steps complete" /
-"x/y milestones reached". Trello-style edit modal with markdown,
-Supabase Storage uploads, assignees, target dates / ranges.
+### Batch 22 — Projects subsystem rewrite ✅ SHIPPED
+Shipped `v0.10.19-alpha` (2026-06-01) — see the Shipped section
+above. The full hierarchy (projects → phases → steps → checklists →
+items), the completeness rule, the Trello-style step modal with
+markdown + Storage uploads + assignees + dates, cross-linking, and
+the dependency date-shuffle all landed.
 
 ### Batch 23 — Processes
 Process = template tied to an `event_kind`. Event instance lands on
