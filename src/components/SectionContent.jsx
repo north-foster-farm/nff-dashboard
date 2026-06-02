@@ -25,6 +25,7 @@ import Inbox from "../pages/Inbox.jsx";
 import Projects from "../pages/Projects.jsx";
 import ProjectPage from "../pages/ProjectPage.jsx";
 import Processes from "../pages/Processes.jsx";
+import Customers from "../pages/Customers.jsx";
 
 export default function SectionContent({
   section, data, onOpenEvent, onNavigate, onOpenRounds,
@@ -107,6 +108,13 @@ export default function SectionContent({
       }
       return <Projects />;
     case "processes": return <Processes data={data} />;
+    // Customers + Lists (Batch 24). Three sidebar entries, one page:
+    // the Lists entry lands on the Lists tab, the add-customer action
+    // lands on Directory with the new-customer form open.
+    case "customers": return <Customers />;
+    case "manage_lists": return <Customers initialTab="lists" key="lists" />;
+    case "add_new_customer":
+      return <Customers startCreating key="new-customer" />;
     case "inbox": return <Inbox onOpenEvent={onOpenEvent} />;
     case "activity": return <Activity />;
     case "observations": return <Observations />;

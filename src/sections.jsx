@@ -105,9 +105,9 @@ export const SECTIONS = [
   { id: "livestock_sheep", group: "Animals", label: "Sheep", icon: PawPrint, getCount: () => null },
   { id: "manage_feed_schedule", group: "Animals", label: "Manage feed", icon: Wheat, kind: "action", description: "Edit the per-species feed schedule by week of life. Placeholder.", getCount: () => null },
 
-  { id: "customers", group: "CRM", label: "Customers", icon: Users, description: "Customer directory — placeholder until the CRM model is built.", getCount: () => null },
-  { id: "manage_lists", group: "CRM", label: "Lists", icon: ClipboardList, description: "Customer lists — segmentation, mailing groups, etc. Placeholder.", getCount: () => null },
-  { id: "add_new_customer", group: "CRM", label: "Add new customer", icon: UserPlus, kind: "action", description: "Create a new customer record. Placeholder.", getCount: () => null },
+  { id: "customers", group: "CRM", label: "Customers", icon: Users, description: "The customer directory — names, emails, phones, and notes, searchable and editable.", getCount: () => null },
+  { id: "manage_lists", group: "CRM", label: "Lists", icon: ClipboardList, description: "Named customer lists — mailing groups, egg-drop regulars, wholesale accounts.", getCount: () => null },
+  { id: "add_new_customer", group: "CRM", label: "Add new customer", icon: UserPlus, kind: "action", description: "Create a new customer record.", getCount: () => null },
 
   { id: "farm_news_updates", group: "Communication", label: "Farm updates", icon: Newspaper, description: "Drafted, in-review, and published farm updates.",
     getCount: countUpdatesNeedingAttention },

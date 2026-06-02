@@ -1909,6 +1909,37 @@ modifier place-targeting UI (the column + resolution logic exist;
 the Processes step editor doesn't expose a place picker yet), and
 process-level "expand N days early" overrides per event kind.
 
+### Batch 24 — Customers + Lists · `v0.10.21-alpha`
+2026-06-02. The CRM foundation: a customer directory and named
+lists. Fields workshopped with James — deliberately minimal (name,
+email, phone, notes; everything else can come additively later).
+
+Migration `0020_customers.sql`:
+- **`customers`** — name, email (unique, case-insensitive), phone,
+  notes, archived_at. Check constraint: at least a name or an email.
+- **`customer_lists`** — title + purpose.
+- **`customer_list_members`** — membership (list ↔ customer).
+- All three realtime; standard admin RLS.
+- **Seed**: James's existing 65-contact email list (egg drop /
+  farmers market contacts), all members of one "Mailing list" — the
+  list the Batch 32 farm-updates email blast will target.
+
+UI (`pages/Customers.jsx` + `lib/data/useCustomers.js`):
+- **Directory tab**: search across name/email/phone/notes, inline
+  add/edit forms, archive / restore / delete-forever.
+- **Lists tab**: list cards (title, purpose, member count); expanding
+  manages members (add from a directory dropdown, remove).
+- Sidebar wiring: CRM → Customers lands on Directory, CRM → Lists
+  lands on the Lists tab, and the "Add new customer" action opens
+  Directory with the form already open. All three drop their
+  placeholder / coming-soon status.
+
+**Out of scope / deferred:** address / tags / referral-source fields
+(James's call — basics only), customer ↔ order linking (Batch 29
+owns the orders model), and de-duplication tooling (the seed has one
+likely duplicate — Renee Pepler appears under two addresses — left
+for James to merge by hand).
+
 ---
 
 ## Overhaul design records
@@ -2102,9 +2133,10 @@ occurrence), the Processes page, Heads-up lane integration, and the
 stacked-badge modifier UI in Rounds / Today / Schedule-at-a-glance
 all landed.
 
-### Batch 24 — Customers + Lists
-`customers` CRUD (workshop fields together). `customer_lists`
-(title + purpose) and `customer_list_members`.
+### Batch 24 — Customers + Lists ✅ SHIPPED
+Shipped `v0.10.21-alpha` (2026-06-02) — see the Shipped section
+above. The directory (basics-only fields), named lists with member
+management, and the seeded 65-contact mailing list all landed.
 
 ### Batch 25 — Animals & Feed UI overhaul
 - Feed page redesigned as a group-cards layout: group by animal

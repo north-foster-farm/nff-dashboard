@@ -9,7 +9,8 @@
 // "Resources, rethought" (dissolved into the farm map's place tree +
 // the records drawer in Batch 18.2), "Triggers + animal-batch
 // lifecycles" (Batches 19–20), "Inbox" (Batch 21), "Projects,
-// rebuilt" (Batch 22), "Processes" (Batch 23).
+// rebuilt" (Batch 22), "Processes" (Batch 23), "Customers and
+// lists" (Batch 24).
 
 const ITEMS = [
   {
@@ -20,11 +21,6 @@ const ITEMS = [
       "Google Calendar reaches). The dashboard stays the source of " +
       "truth for edits — the phone copy is intentionally read-only so " +
       "there's no risk of two clocks disagreeing.",
-  },
-  {
-    title: "Customers and lists",
-    body: "A customer directory plus named lists for segmentation and " +
-      "mailing groups.",
   },
   {
     title: "Animals & feed, overhauled",
