@@ -102,9 +102,12 @@ function GridRow({ cols, children }) {
   // items-stretch (the grid default) makes each cell match the tallest in
   // the row — so cards align flush at the bottom even when their content
   // is uneven.
+  // Single column on phones — the multi-column grid squeezed cards to
+  // ~190px and overflowed their right-aligned content. Splits to 2/3
+  // columns at the `sm` breakpoint up.
   const cls = cols === 2
-    ? "grid grid-cols-[repeat(2,minmax(0,1fr))] gap-4 items-stretch"
-    : "grid grid-cols-[repeat(3,minmax(0,1fr))] gap-4 items-stretch";
+    ? "grid grid-cols-1 sm:grid-cols-[repeat(2,minmax(0,1fr))] gap-4 items-stretch"
+    : "grid grid-cols-1 sm:grid-cols-[repeat(3,minmax(0,1fr))] gap-4 items-stretch";
   return <div className={cls}>{children}</div>;
 }
 

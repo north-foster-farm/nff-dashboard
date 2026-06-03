@@ -81,7 +81,7 @@ export default function Chores({ data }) {
 
 function TabBar({ tabs, active, onChange }) {
   return (
-    <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${T.border}`, marginBottom: 24 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 0, borderBottom: `1px solid ${T.border}`, marginBottom: 24 }}>
       {tabs.map(t => {
         const isActive = t.id === active;
         return (

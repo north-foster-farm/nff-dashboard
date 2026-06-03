@@ -383,7 +383,7 @@ function Nav({ view, date, onDateChange, today }) {
           <button
             ref={labelRef}
             onClick={() => setTyperOpen(true)}
-            className="font-heading text-[16px] font-semibold min-w-[180px] text-center bg-transparent border-0 cursor-pointer hover:underline px-1"
+            className="font-heading text-[16px] font-semibold min-w-[130px] sm:min-w-[180px] text-center bg-transparent border-0 cursor-pointer hover:underline px-1"
             title="Click to type a date"
           >
             {label}

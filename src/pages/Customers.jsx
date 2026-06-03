@@ -38,7 +38,7 @@ export default function Customers({ initialTab = "directory", startCreating = fa
   return (
     <div className="max-w-[860px] flex flex-col gap-5">
       {/* tabs */}
-      <div className="flex items-center gap-1 border-b border-line">
+      <div className="flex items-center gap-1 border-b border-line flex-wrap gap-y-2">
         <Tab
           active={tab === "directory"}
           onClick={() => setTab("directory")}
@@ -75,13 +75,13 @@ export default function Customers({ initialTab = "directory", startCreating = fa
 
           {/* search + archived toggle */}
           <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-2 bg-surface border border-line px-3 py-2">
+            <div className="flex-1 min-w-0 flex items-center gap-2 bg-surface border border-line px-3 py-2">
               <Search size={14} className="text-faint shrink-0" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search name, email, phone, notes…"
-                className="flex-1 bg-transparent border-0 outline-none text-[13px] text-fg font-[inherit]"
+                className="flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] text-fg font-[inherit]"
               />
               {query && (
                 <button
@@ -174,8 +174,9 @@ function CustomerRow({ customer: c, db }) {
         </div>
         <div className="text-[11px] text-dim mt-0.5 flex items-center gap-3 flex-wrap">
           {c.email && c.name && (
-            <span className="inline-flex items-center gap-1">
-              <Mail size={11} className="shrink-0" /> {c.email}
+            <span className="inline-flex items-center gap-1 min-w-0 max-w-full">
+              <Mail size={11} className="shrink-0" />
+              <span className="truncate">{c.email}</span>
             </span>
           )}
           {c.phone && (

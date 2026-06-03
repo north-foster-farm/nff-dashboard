@@ -149,7 +149,7 @@ export default function ProjectPage({ projectId, data, onOpenEvent }) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-[12px] text-dim">
+          <div className="flex items-center gap-2 text-[12px] text-dim flex-wrap">
             <CalendarRange size={13} className="shrink-0" />
             <DateInput
               value={project.startedAt}

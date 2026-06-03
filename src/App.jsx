@@ -6,6 +6,7 @@ import Sidebar from "./components/Sidebar.jsx";
 import SectionHeader from "./components/SectionHeader.jsx";
 import SectionContent from "./components/SectionContent.jsx";
 import EventEditor from "./components/EventEditor.jsx";
+import InstallPrompt from "./components/InstallPrompt.jsx";
 import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
@@ -246,6 +247,7 @@ export default function App({ session }) {
           setProcessingTarget(target);
         }}
       />
+      <InstallPrompt />
     </div>
   );
 }

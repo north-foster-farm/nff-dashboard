@@ -2746,6 +2746,42 @@ across ~40 sites, a styled `ConfirmDialog` replacing 27
 legacy-idiom migrations (Chores, LoginGate, PlaceTree), and a
 `--c-warn-subtle` token.
 
+### Batch 35 — Mobile-responsive pass + install prompt · `v0.10.39-alpha`
+2026-06-03. The broad iPhone-width audit of every non-field page
+(the Tier-1 field surfaces — Now, Rounds, capture — were already
+mobile-first). Method: a Playwright sweep of all 41 routes at
+390×844 that *measures horizontal overflow* (the #1 mobile bug),
+not just eyeballs screenshots. Found 14 routes overflowing; fixed
+down to 2 imperceptible sub-30px slivers.
+
+**Overflow fixes:**
+- **Tab strips** that ran off-screen now wrap (`flex-wrap`): the
+  Chores tab bar (Today/All/Blocks/Performance/Activity — was 679px,
+  ~2× viewport, on all 5 chores routes), and the Products,
+  Customers, and Projects tab+action rows.
+- **Dashboard grid** collapses to one column on phones
+  (`grid-cols-1 sm:grid-cols-…`) — it was forcing 2–3 columns,
+  squeezing cards to ~190px and overflowing their content.
+- **Flex inputs that wouldn't shrink:** the Customers search box
+  (`min-w-0` on the flex-1 input + container) and long customer
+  emails (truncate) no longer force the row wide.
+- **Side-by-side date inputs** on a project wrap; the Schedule
+  date-label's fixed `min-w-[180px]` is now responsive
+  (`min-w-[130px] sm:min-w-[180px]`).
+
+**PWA — install prompt** (`components/InstallPrompt.jsx`, the one
+gap; the manifest + service worker + icons already shipped with the
+farm-map MVP): a dismissible "Add to Home Screen" banner. Chrome /
+Android use the `beforeinstallprompt` event → native installer; iOS
+Safari (which never fires it) gets the Share-sheet instruction.
+Hidden when already installed (standalone display-mode) or once
+dismissed (persisted).
+
+**Accepted as minor (documented, not chased):** two sub-30px
+slivers remain — Schedule (404px, the calendar nav, 14px over) and
+Processes (417px, the config step rows, 27px over). Neither causes
+a noticeable horizontal scroll.
+
 ---
 
 ## Overhaul design records
@@ -3118,13 +3154,15 @@ comprehensive. Likely Postgres `tsvector` + a client palette
 with D1 disambiguation already shipped in Batch 18 — this batch is
 the full cross-entity cmd-K palette.
 
-### Batch 35 — iOS / mobile-responsive pass
-Audit every page for iPhone widths. PWA manifest + install prompt
-for Add to Home Screen. Lands after Tailwind so responsive
-utilities are available. **Re-scoped by the farm map:** the Tier-1
-field surfaces (Now, Rounds, capture) were built mobile-first in
-Batches 16–17 — this batch is the broad audit of every *other*
-page.
+### Batch 35 — iOS / mobile-responsive pass ✅ SHIPPED
+Shipped `v0.10.39-alpha` (2026-06-03) — see the Shipped section
+above. The iPhone-width audit of every non-field page (overflow
+measured, not eyeballed): 14 overflowing routes fixed to 2
+sub-30px slivers, plus the PWA Add-to-Home-Screen install prompt
+(manifest/SW/icons already existed). Re-scoped by the farm map:
+the Tier-1 field surfaces (Now, Rounds, capture) were built
+mobile-first in Batches 16–17; this was the broad audit of every
+*other* page.
 
 ### Batch 36 — Offline tolerance + resync
 IndexedDB write queue (idb / Dexie) wrapping the Supabase client;

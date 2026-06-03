@@ -67,7 +67,7 @@ export default function Products({ data, initialTab = "catalog" }) {
   return (
     <div className="max-w-[920px] flex flex-col gap-5">
       {/* tabs + actions */}
-      <div className="flex items-center gap-1 border-b border-line">
+      <div className="flex items-center gap-1 border-b border-line flex-wrap gap-y-2">
         <Tab
           active={tab === "catalog"}
           onClick={() => setTab("catalog")}

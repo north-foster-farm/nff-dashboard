@@ -39,7 +39,7 @@ export default function Projects() {
   return (
     <div className="max-w-[860px] flex flex-col gap-5">
       {/* tabs + new-project button */}
-      <div className="flex items-center gap-1 border-b border-line">
+      <div className="flex items-center gap-1 border-b border-line flex-wrap gap-y-2">
         <Tab
           active={tab === "active"}
           onClick={() => setTab("active")}
