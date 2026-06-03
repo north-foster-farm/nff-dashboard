@@ -7,6 +7,7 @@ import SectionHeader from "./components/SectionHeader.jsx";
 import SectionContent from "./components/SectionContent.jsx";
 import EventEditor from "./components/EventEditor.jsx";
 import InstallPrompt from "./components/InstallPrompt.jsx";
+import CommandPalette from "./components/CommandPalette.jsx";
 import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
@@ -56,6 +57,20 @@ export default function App({ session }) {
   const [sidebarHidden, setSidebarHidden] = usePersistedState(
     "sidebar-hidden", false
   );
+  // App-wide command palette (Batch 33) — cmd/ctrl-K from anywhere.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Global cmd/ctrl-K to open the palette (and toggle it closed).
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Load + apply the user's saved theme/density on every boot, app-wide
   // (not just when the Settings page is open). The hook reconciles the
@@ -172,6 +187,7 @@ export default function App({ session }) {
         session={session}
         onOpenSettings={() => handleSelect("settings")}
         onToggleNav={handleToggleNav}
+        onOpenSearch={() => setPaletteOpen(true)}
       />
       <div className="flex flex-1 items-stretch">
         {/* Desktop sidebar (collapsible via the TopBar hamburger) */}
@@ -248,6 +264,11 @@ export default function App({ session }) {
         }}
       />
       <InstallPrompt />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        data={data}
+      />
     </div>
   );
 }

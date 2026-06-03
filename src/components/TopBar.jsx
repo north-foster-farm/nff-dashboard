@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sprout, Menu } from "lucide-react";
+import { Sprout, Menu, Search } from "lucide-react";
 import UserAvatarMenu from "./UserAvatarMenu.jsx";
 import InboxBell from "./InboxBell.jsx";
 import ThoughtCapture from "./ThoughtCapture.jsx";
@@ -9,7 +9,9 @@ import OutboxIndicator from "./OutboxIndicator.jsx";
 // out all live on the Settings page now (avatar click goes there);
 // the hamburger works on desktop too (collapses the sidebar).
 
-export default function TopBar({ data, session, onOpenSettings, onToggleNav }) {
+export default function TopBar({
+  data, session, onOpenSettings, onToggleNav, onOpenSearch,
+}) {
   return (
     <header className="border-b border-line py-3 px-4 sm:px-6 flex justify-between items-center bg-bg shrink-0 gap-[18px]">
       <div className="flex items-center gap-3.5 min-w-0">
@@ -31,6 +33,31 @@ export default function TopBar({ data, session, onOpenSettings, onToggleNav }) {
         </span>
       </div>
       <div className="flex items-center gap-1 shrink-0">
+        {/* App-wide search / command palette (Batch 33) — cmd-K. The
+            wide pill shows on desktop; phones get just the icon. */}
+        {onOpenSearch && (
+          <>
+            <button
+              onClick={onOpenSearch}
+              aria-label="Search"
+              title="Search (⌘K)"
+              className="hidden sm:flex items-center gap-2 bg-surface border border-line text-muted hover:text-fg hover:border-accent font-[inherit] text-[12px] px-2.5 py-1.5 cursor-pointer mr-2"
+            >
+              <Search size={13} className="shrink-0" />
+              <span>Search</span>
+              <kbd className="text-[10px] text-faint border border-line px-1 leading-none py-0.5 uppercase tracking-[0.08em]">
+                ⌘K
+              </kbd>
+            </button>
+            <button
+              onClick={onOpenSearch}
+              aria-label="Search"
+              className="sm:hidden bg-transparent border-0 text-dim hover:text-fg p-1.5 cursor-pointer flex items-center justify-center"
+            >
+              <Search size={18} />
+            </button>
+          </>
+        )}
         {/* Queued / not-synced field writes (Batch 16.2) */}
         <OutboxIndicator className="mr-2" />
         {/* "Just a thought…" capture (Batch 21) */}

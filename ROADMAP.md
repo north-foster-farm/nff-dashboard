@@ -2782,6 +2782,45 @@ slivers remain — Schedule (404px, the calendar nav, 14px over) and
 Processes (417px, the config step rows, 27px over). Neither causes
 a noticeable horizontal scroll.
 
+### Batch 33 — App-wide search (cmd-K palette) · `v0.10.40-alpha`
+2026-06-03. The full cross-entity command palette (the Batch 18
+place-only search was the thin precursor). Opens from anywhere with
+**⌘K / Ctrl-K** or the TopBar **Search** button; one box searches
+every page and entity, ranked, keyboard-first (↑/↓ move, Enter
+opens, Esc closes).
+
+**Client-side, no migration.** The roadmap floated Postgres
+tsvector, but migrations are parked for James's return (never
+unattended) — and a client palette over already-loaded data is the
+pragmatic MVP. `useSearchIndex` reshapes what `useReferenceData`
+already holds (batches, projects, suppliers, machines, trailers,
+threads, orders) and loads a lightweight slice (id + name) of the
+three tables that aren't in the global bag — places, customers,
+product_kinds (all tiny). Pages come from the static `SECTIONS`
+list so they're searchable instantly.
+
+**Matching + ranking** (`CommandPalette.jsx`): whitespace-token
+substring match (every token must hit the entry's keyword
+haystack), ranked so a label-prefix beats a word-prefix beats a
+mid-string beats a sublabel/keyword-only hit; pages get a small
+boost so "ord" surfaces the Orders *page* above an individual
+order. Each result shows an icon, label, sublabel, and a type chip.
+
+**Deep links:** pages, batches (`/livestock/<sp>/<id>`), projects
+(`/projects/<id>`), and places (`/place/<id>`) navigate straight to
+the thing. Entities without a per-row route yet — customers,
+products, orders, suppliers, machines, trailers, threads — jump to
+their list page (find it, land where it lives).
+
+Verified end to end: opens via button + ⌘K, searches across pages /
+batches / customers / places / threads, Enter deep-links to a batch
+page, Esc closes.
+
+**Deferred:** a server-side tsvector index (for fuzzier ranking and
+scale once tables grow) and per-row detail routes for customers /
+products / orders so the palette can deep-link those too. Both want
+a migration / new routes — a future slice.
+
 ---
 
 ## Overhaul design records
@@ -3147,12 +3186,13 @@ already-live page in place.
 Social posts: same shell + real social-network integrations + true
 scheduling. Content calendar: calendar UI + auto-add to schedule.
 
-### Batch 33 — App-wide search
-Cross-cutting; lands after most data models exist so the index is
-comprehensive. Likely Postgres `tsvector` + a client palette
-(cmd-K). **Re-scoped by the farm map:** a thin, place-only search
-with D1 disambiguation already shipped in Batch 18 — this batch is
-the full cross-entity cmd-K palette.
+### Batch 33 — App-wide search ✅ SHIPPED
+Shipped `v0.10.40-alpha` (2026-06-03) — see the Shipped section
+above. The full cross-entity cmd-K palette (the Batch 18 place-only
+search was the precursor), built client-side over already-loaded +
+three lightweight tables (no migration). Deferred: a server-side
+`tsvector` index and per-row detail routes for
+customers/products/orders so those deep-link too.
 
 ### Batch 35 — iOS / mobile-responsive pass ✅ SHIPPED
 Shipped `v0.10.39-alpha` (2026-06-03) — see the Shipped section
