@@ -5,7 +5,7 @@ import {
   MapPin, User, CloudOff, Workflow, Bird
 } from "lucide-react";
 import { T } from "../theme.js";
-import { formatTime12h } from "../lib/dates.js";
+import { formatDate, formatTime12h } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
 import {
   getChoresForDay, CHORE_CATEGORIES, CHORE_PERIODS,
@@ -20,7 +20,8 @@ import {
   navigate, pathForBatch, pathForProject, pathForSection,
 } from "../lib/router.js";
 import { useProcessingDates } from "../lib/data/useProcessingDates.js";
-import { isMeatSpecies, weeksTimeline } from "../lib/metrics.js";
+import { batchLifecycle, isMeatSpecies, weeksTimeline } from "../lib/metrics.js";
+import { isActiveProject } from "../lib/projects.js";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
@@ -304,11 +305,7 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
     [data, today, ruleOpts]
   );
   const todaysProjects = useMemo(
-    () => (data.projects ?? []).filter(p =>
-      p.status !== "completed"
-      && (!p.startedAt || p.startedAt <= todayISO)
-      && (!p.targetDate || p.targetDate >= todayISO)
-    ),
+    () => (data.projects ?? []).filter(p => isActiveProject(p, todayISO)),
     [data, todayISO]
   );
 
@@ -827,11 +824,16 @@ function UpcomingPlaceRow({ choreId, placeId, placesById, completions }) {
 // ─── Projects, orders, updates (empty-state placeholders) ────────────────────
 
 function ProjectsInProgressCard({ data }) {
-  const inProgress = (data.projects ?? []).filter(p => p.status === "in_progress");
+  // Active = in its [start, target] window and not completed — the same
+  // selector the sidebar badge uses, so the two never disagree, and a
+  // prep project whose day has passed drops off both.
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const inProgress = (data.projects ?? [])
+    .filter(p => isActiveProject(p, todayISO));
   return (
-    <Card title="This week's projects" icon={FolderKanban}>
+    <Card title="Active projects" icon={FolderKanban}>
       {inProgress.length === 0 ? (
-        <EmptyLine>No projects in progress.</EmptyLine>
+        <EmptyLine>No active projects.</EmptyLine>
       ) : (
         <div className="flex flex-col gap-1.5">
           {inProgress.map(p => (
@@ -937,20 +939,26 @@ function BroilerWeeksCard({ data }) {
     for (const sp of data.livestock?.species ?? []) {
       if (!isMeatSpecies(sp)) continue;
       for (const batch of sp.groups ?? []) {
-        // Skip emptied / processed batches (count drained to zero) and
-        // batches with no arrival date to count from.
-        if (!batch.arrivalDate) continue;
         if (typeof batch.count === "number" && batch.count <= 0) continue;
-        const weeks = weeksTimeline(
-          batch, sp, processingDateByBatchId.get(batch.id) ?? null);
-        if (weeks.weeksOnFarm == null) continue;
-        out.push({ speciesId: sp.id, batch, weeks });
+        const processingISO = processingDateByBatchId.get(batch.id) ?? null;
+        const life = batchLifecycle(batch, processingISO);
+        // Processed batches are done — they drop off "weeks to
+        // processing" entirely. Arriving batches show their arrival
+        // date instead of a (negative) week count.
+        if (life.state === "processed" || life.state === "unknown") continue;
+        const weeks = weeksTimeline(batch, sp, processingISO);
+        out.push({ speciesId: sp.id, batch, life, weeks });
       }
     }
-    // Closest to processing first.
-    out.sort((a, b) =>
-      (a.weeks.weeksRemaining ?? Infinity)
-      - (b.weeks.weeksRemaining ?? Infinity));
+    // Arriving batches sort after active ones, by soonest first.
+    out.sort((a, b) => {
+      const ra = a.life.state === "arriving"
+        ? Infinity : (a.weeks.weeksRemaining ?? Infinity);
+      const rb = b.life.state === "arriving"
+        ? Infinity : (b.weeks.weeksRemaining ?? Infinity);
+      if (ra !== rb) return ra - rb;
+      return (a.life.arrivalISO ?? "").localeCompare(b.life.arrivalISO ?? "");
+    });
     return out;
   }, [data.livestock, processingDateByBatchId]);
 
@@ -959,8 +967,14 @@ function BroilerWeeksCard({ data }) {
   return (
     <Card title="Broilers" icon={Bird} subtitle="weeks to processing">
       <div className="flex flex-col">
-        {rows.map(({ speciesId, batch, weeks }) => {
-          const week = Math.floor(weeks.weeksOnFarm) + 1;
+        {rows.map(({ speciesId, batch, life, weeks }) => {
+          const arriving = life.state === "arriving";
+          // Only a batch that's actually on the farm has a real "week N"
+          // — guard against the negative weeks future batches produced.
+          const week = !arriving && weeks.weeksOnFarm != null
+            && weeks.weeksOnFarm >= 0
+            ? Math.floor(weeks.weeksOnFarm) + 1
+            : null;
           const remaining = weeks.weeksRemaining == null
             ? null
             : Math.max(0, Math.ceil(weeks.weeksRemaining));
@@ -977,13 +991,19 @@ function BroilerWeeksCard({ data }) {
               <span className="text-[13px] font-semibold text-fg group-hover:text-accent-deep">
                 {batch.label}
               </span>
-              <span className="text-[12px] text-dim">week {week}</span>
+              {arriving ? (
+                <span className="text-[12px] text-dim">not yet arrived</span>
+              ) : week != null ? (
+                <span className="text-[12px] text-dim">week {week}</span>
+              ) : null}
               <span className="ml-auto text-[12px] text-fg whitespace-nowrap">
-                {remaining == null
-                  ? "no target"
-                  : remaining === 0
-                    ? "processing week"
-                    : `${remaining} week${remaining === 1 ? "" : "s"} remaining`}
+                {arriving
+                  ? `arrives ${formatDate(life.arrivalISO)}`
+                  : remaining == null
+                    ? "no target"
+                    : remaining === 0
+                      ? "processing week"
+                      : `${remaining} week${remaining === 1 ? "" : "s"} remaining`}
               </span>
               <ArrowUpRight size={12} className="text-muted shrink-0 self-center" />
             </button>

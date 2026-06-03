@@ -112,9 +112,12 @@ export default function Schedule({
       end.setUTCHours(23, 59, 59, 999);
       return { fromDate: start, toDate: end };
     }
-    // Agenda: today → +12 months.
+    // Agenda: today → +3 months. A near-term window keeps the list
+    // readable (it used to run a full year, which — with a chore-block
+    // summary on most days — was dozens of screens tall). Anything
+    // further out lives on the Month view.
     const start = new Date(today);
-    const end = new Date(today); end.setFullYear(end.getFullYear() + 1);
+    const end = new Date(today); end.setMonth(end.getMonth() + 3);
     return { fromDate: toUtcMidnight(start), toDate: toUtcEod(end) };
   }, [view, date, today]);
 

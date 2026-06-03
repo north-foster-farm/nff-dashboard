@@ -532,3 +532,42 @@ export function isLayerSpecies(species) {
 export function isMeatSpecies(species) {
   return /meat/i.test(species?.purpose ?? "");
 }
+
+// ── batch lifecycle ───────────────────────────────────────────────────
+// A batch's state, derived entirely from data the app already has — its
+// arrival date and its scheduled processing date (the live processing
+// occurrence from useProcessingDates). No schema column; resolution
+// order matters:
+//
+//   "processed" — the processing day has passed; the birds are gone.
+//                 Wins over everything (a batch with no arrival but a
+//                 past processing date is still processed).
+//   "arriving"  — the arrival date is in the future; not on the farm
+//                 yet, so performance numbers and "week N" are
+//                 meaningless (this is what produced "week -4").
+//   "active"    — arrived and not yet processed: the live flock.
+//   "unknown"   — nothing to reason from (no arrival, no processing).
+//
+// processingISO is the scheduled processing date (or null);
+// todayISOval is injected so callers can memoize on a stable "today".
+export const BATCH_STATES = {
+  processed: { label: "Processed", tone: "done" },
+  arriving: { label: "Arriving", tone: "future" },
+  active: { label: "On farm", tone: "live" },
+  unknown: { label: "—", tone: "muted" },
+};
+
+export function batchLifecycle(group, processingISO, todayISOval = todayISO()) {
+  const arrival = group?.arrivalDate ?? null;
+  const processing = processingISO ?? null;
+  if (processing && processing < todayISOval) {
+    return { state: "processed", processingISO: processing, arrivalISO: arrival };
+  }
+  if (arrival && arrival > todayISOval) {
+    return { state: "arriving", arrivalISO: arrival, processingISO: processing };
+  }
+  if (arrival) {
+    return { state: "active", arrivalISO: arrival, processingISO: processing };
+  }
+  return { state: "unknown", arrivalISO: null, processingISO: processing };
+}

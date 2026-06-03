@@ -237,6 +237,52 @@ export default function FarmMap({
     return c.due + c.overdue;
   };
 
+  // Zone label positions with a vertical declutter pass: adjacent
+  // authored zones (e.g. Barn / Pasture B) can sit close enough that
+  // their centered name plates overlap. We estimate each label's box
+  // and, scanning top-to-bottom, nudge any label that collides with one
+  // already placed straight down until it clears — cheap, deterministic,
+  // and enough for the handful of zones on the map.
+  const zoneLabels = useMemo(() => {
+    const fontUnits = 38 / scale; // name glyph height in SVG units
+    const out = [];
+    const placed = [];
+    const candidates = zones
+      .map(({ layer, place }) => {
+        const bbox = bboxes.get(layer.id);
+        if (!bbox || place.id === zoomedPlaceId) return null;
+        const due = dueCount(place.id);
+        return {
+          layerId: layer.id,
+          place,
+          due,
+          cx: bbox.x + bbox.width / 2,
+          cy: bbox.y + bbox.height / 2,
+          // crude text box estimate: ~0.6em per glyph wide
+          halfW: Math.max(
+            (place.name.length * fontUnits * 0.32),
+            fontUnits),
+          halfH: (due > 0 ? fontUnits * 1.4 : fontUnits * 0.7),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.cy - b.cy);
+
+    for (const c of candidates) {
+      let guard = 0;
+      // Push down while overlapping any already-placed label.
+      // eslint-disable-next-line no-loop-func
+      while (guard++ < 40 && placed.some((p) =>
+        Math.abs(p.cx - c.cx) < (p.halfW + c.halfW) &&
+        Math.abs(p.cy - c.cy) < (p.halfH + c.halfH))) {
+        c.cy += fontUnits * 0.5;
+      }
+      placed.push(c);
+      out.push(c);
+    }
+    return out;
+  }, [zones, bboxes, zoomedPlaceId, scale, byPlace]);
+
   const viewBoxAttr = view
     ? `${curView.x} ${curView.y} ${curView.w} ${curView.h}`
     : svg.viewBox;
@@ -323,14 +369,9 @@ export default function FarmMap({
 
           {/* Zone labels — name + due-count badge at the bbox center.
               Hidden for the zoomed zone (its pins + name plate take over). */}
-          {zones.map(({ layer, place }) => {
-            const bbox = bboxes.get(layer.id);
-            if (!bbox || place.id === zoomedPlaceId) return null;
-            const due = dueCount(place.id);
-            const cx = bbox.x + bbox.width / 2;
-            const cy = bbox.y + bbox.height / 2;
+          {zoneLabels.map(({ layerId, place, due, cx, cy }) => {
             return (
-              <g key={`label-${layer.id}`} pointerEvents="none">
+              <g key={`label-${layerId}`} pointerEvents="none">
                 <text
                   x={cx}
                   y={cy}

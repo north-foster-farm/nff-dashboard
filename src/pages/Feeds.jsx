@@ -595,7 +595,11 @@ function OnHandEditor({ feed, db }) {
           onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
           className="w-[88px] font-heading text-[20px] text-fg bg-transparent border-0 border-b border-line focus:border-accent outline-none p-0 leading-none"
         />
-        <span className="text-[12px] text-dim">{unit}</span>
+        {/* Only show the unit once there's a number — a bare "lb" beside
+            an empty field reads as missing data. */}
+        {(draft ?? current) != null && (draft ?? current) !== "" && (
+          <span className="text-[12px] text-dim">{unit}</span>
+        )}
         {saved && <Check size={13} className="text-resolved" />}
       </div>
       {errorMsg && (

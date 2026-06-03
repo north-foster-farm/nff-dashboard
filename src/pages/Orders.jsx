@@ -1550,6 +1550,21 @@ function OrderForm({
     setDrafts(prev => prev.map((d, j) => j === i ? { ...d, ...patch } : d));
   };
 
+  // Changing the product or quantity: if the catalog can price the
+  // resulting line, drop any manual total so it re-derives (qty × unit
+  // price). If it can't (no catalog price — the common case here), keep
+  // whatever total was already typed so an edit never silently blanks a
+  // price the user set and breaks the save.
+  const patchLineKeepingPrice = (i, patch) => {
+    setDrafts(prev => prev.map((d, j) => {
+      if (j !== i) return d;
+      const next = { ...d, ...patch };
+      return suggestedCents(next) != null
+        ? { ...next, totalText: null }
+        : next;
+    }));
+  };
+
   const validLines = drafts
     .map(d => {
       const sku = skus[Number(d.skuIdx)];
@@ -1706,8 +1721,8 @@ function OrderForm({
             <div key={i} className="flex items-center gap-2 flex-wrap">
               <select
                 value={draft.skuIdx}
-                onChange={(e) => patchDraft(i, {
-                  skuIdx: e.target.value, totalText: null,
+                onChange={(e) => patchLineKeepingPrice(i, {
+                  skuIdx: e.target.value,
                 })}
                 disabled={pending}
                 className={inputCls + " min-w-[220px] flex-1"}
@@ -1721,8 +1736,8 @@ function OrderForm({
               </select>
               <input
                 value={draft.qty}
-                onChange={(e) => patchDraft(i, {
-                  qty: e.target.value, totalText: null,
+                onChange={(e) => patchLineKeepingPrice(i, {
+                  qty: e.target.value,
                 })}
                 disabled={pending}
                 inputMode="decimal"

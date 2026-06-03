@@ -201,9 +201,13 @@ function summarize(row) {
       return `un-checked ${title}${at}`;
     }
     case "batch_assigned":
-      return `assigned batch ${p.batch_id} to processing day ${p.event_instance_id}`;
-    case "batch_reassigned":
-      return `re-assigned processing day ${p.event_instance_id} to batch ${p.batch_id} (was ${p.previous_batch_id})`;
+      return `assigned ${humanizeBatchId(p.batch_id)} to a processing day`;
+    case "batch_reassigned": {
+      const was = p.previous_batch_id
+        ? ` (was ${humanizeBatchId(p.previous_batch_id)})` : "";
+      return `re-assigned a processing day to ` +
+        `${humanizeBatchId(p.batch_id)}${was}`;
+    }
     case "note_observed": {
       const text = (p.text ?? "").trim();
       if (!text) return "noted something";
@@ -255,8 +259,14 @@ function summarize(row) {
       return `swept ${site}: ${total} item${total === 1 ? "" : "s"} ` +
         `across ${instances.length} ${noun}`;
     }
-    default:
-      return `logged a ${row.kind} entry`;
+    default: {
+      // Humanize an unmapped kind slug ("automation_fired" → "automation
+      // fired") rather than leaking the raw identifier, and pick the
+      // article to match.
+      const phrase = String(row.kind ?? "activity").replace(/_/g, " ");
+      const article = /^[aeiou]/i.test(phrase) ? "an" : "a";
+      return `logged ${article} ${phrase} entry`;
+    }
   }
 }
 
@@ -271,4 +281,18 @@ const CHORE_TITLE_BY_ID = (() => {
 function choreTitleFor(choreId) {
   if (!choreId) return null;
   return CHORE_TITLE_BY_ID.get(choreId) ?? null;
+}
+
+// Turn a batch slug into something human: drop a leading species token
+// and title-case the rest. "broilers_batch_3" → "Batch 3",
+// "layers_blue_band" → "Blue Band". Keeps raw slugs/UUIDs out of the
+// activity feed when the payload only carries ids.
+const SPECIES_PREFIXES = new Set(["broilers", "layers", "sheep"]);
+function humanizeBatchId(id) {
+  if (!id) return "a batch";
+  const parts = String(id).split("_");
+  if (parts.length > 1 && SPECIES_PREFIXES.has(parts[0])) parts.shift();
+  const words = parts.filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1));
+  return words.join(" ") || "a batch";
 }

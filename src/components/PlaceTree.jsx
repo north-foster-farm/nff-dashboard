@@ -100,7 +100,7 @@ export function PlaceTreeNode({
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 
   return (
-    <div style={{ marginLeft: depth === 0 ? 0 : 18 }}>
+    <div style={{ marginLeft: depth === 0 ? 0 : "var(--tree-indent, 18px)" }}>
       {/* Baseline alignment: the name and count are different font
           sizes, so centering their line boxes leaves the count looking
           sunken — aligning their text baselines is what reads as
@@ -138,7 +138,7 @@ export function PlaceTreeNode({
       {open && (
         <div style={{
           borderLeft: `1px solid ${T.border}`,
-          marginLeft: 6, paddingLeft: 12,
+          marginLeft: 6, paddingLeft: "var(--tree-rail, 12px)",
           display: "flex", flexDirection: "column", gap: 2,
         }}>
           {ownEntries.length > 0 && (
@@ -212,7 +212,7 @@ export function PlaceTreeSection({
       {open && (
         <div style={{
           borderLeft: `1px solid ${T.border}`,
-          marginLeft: 6, paddingLeft: 12,
+          marginLeft: 6, paddingLeft: "var(--tree-rail, 12px)",
           opacity: dimmed ? 0.7 : 1,
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>

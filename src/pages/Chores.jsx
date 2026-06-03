@@ -48,8 +48,11 @@ const TABS = [
   { id: "activity", label: "Activity log" }
 ];
 
-// The fake-auth current user. Until real auth lands, users pick who they are
-// via the small selector on the Today tab. Defaults to James.
+// Who the Today tab is filtering chores for. This is deliberately
+// independent of the signed-in account: the farm runs on one shared
+// device as often as not, so whoever is holding the phone picks the
+// farmhand whose chores they're doing (James or Jim) via the selector.
+// Defaults to James.
 const USERS = ["James", "Jim"];
 
 export default function Chores({ data }) {

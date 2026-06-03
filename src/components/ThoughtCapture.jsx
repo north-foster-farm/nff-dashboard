@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { SquarePen, Send } from "lucide-react";
+import { Lightbulb, Send } from "lucide-react";
 import { useInboxItems } from "../lib/data/useInboxItems.js";
 
 // Top-bar "just a thought…" capture (Batch 21). A lightbulb button
 // that drops a small textarea for on-the-fly thought-dumping; saving
 // writes an inbox_items row. Quiet by design — no push, no fanfare,
-// the thought just lands in the Inbox.
+// the thought just lands in the Inbox. The lightbulb matches both the
+// sidebar's Inbox icon and the Inbox page's empty-state copy.
 export default function ThoughtCapture() {
   const { create } = useInboxItems();
   const [open, setOpen] = useState(false);
@@ -53,7 +54,7 @@ export default function ThoughtCapture() {
         title="Just a thought…"
         className="bg-transparent border-0 text-dim p-1.5 cursor-pointer flex items-center justify-center"
       >
-        <SquarePen size={16} />
+        <Lightbulb size={16} />
       </button>
       {open && (
         <div

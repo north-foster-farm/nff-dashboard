@@ -14,6 +14,19 @@ import { parseISODate, formatISODate } from "./dates.js";
 //      outgoing edges have shift_dependents, every transitive
 //      dependent shifts by the same number of days.
 
+// ── Active-project predicate ──────────────────────────────────────────
+// A project is "active" (worth surfacing on the dashboard and counting
+// in the sidebar badge) when it isn't completed and today falls inside
+// its [startedAt, targetDate] window. Past-target prep projects — e.g.
+// a processing-day prep whose day has come and gone — fall out, so the
+// sidebar count and the dashboard card always agree. Dates are ISO
+// "YYYY-MM-DD"; missing bounds are treated as open.
+export function isActiveProject(p, todayISO) {
+  return p.status !== "completed"
+    && (!p.startedAt || p.startedAt <= todayISO)
+    && (!p.targetDate || p.targetDate >= todayISO);
+}
+
 // ── Completion predicates ─────────────────────────────────────────────
 
 export function stepDone(step) {

@@ -55,6 +55,19 @@
         font-style: italic;
         font-display: swap;
       }
+      /* Place-tree indentation (Chores / Sites). Tight on phones so the
+         deep place hierarchy doesn't squeeze chore names into a sliver
+         of the screen. Theme-independent — declared once here. */
+      :root {
+        --tree-indent: 18px;
+        --tree-rail: 12px;
+      }
+      @media (max-width: 639px) {
+        :root {
+          --tree-indent: 7px;
+          --tree-rail: 6px;
+        }
+      }
       /* Dark theme (default). Brand anchor #297D5A lightened to #4cba85 for legible
          accent on near-black surfaces. Earthy, warm, slightly green-tinted neutrals. */
       :root,

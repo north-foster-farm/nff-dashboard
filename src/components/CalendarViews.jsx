@@ -806,25 +806,22 @@ const MonthCell = forwardRef(function MonthCell({
     [blocks, cell.date]
   );
 
-  // Merge chore blocks + events into one chronological list. Blocks
-  // used to always render above events regardless of time, which made
-  // an 8 AM market appear below the 5 PM evening chores.
-  const ordered = useMemo(() => {
-    const rows = [];
-    for (const b of dayBlocks) {
-      rows.push({ type: "block", sortMin: b.start, block: b });
-    }
-    for (const it of cell.items) {
+  // Month cells lead with the day's one-off events; the recurring chore
+  // blocks (the same five most days) collapse into a single muted
+  // summary chip so a market or delivery isn't buried under a wall of
+  // identical blocks. Day / Week still show every block as a band.
+  const eventRows = useMemo(() => {
+    const rows = cell.items.map((it) => {
       const [h, m] = (it.startTime ?? "").split(":").map(Number);
       const min = Number.isFinite(h) ? h * 60 + (m || 0) : -1;
-      rows.push({ type: "event", sortMin: min, item: it });
-    }
+      return { type: "event", sortMin: min, item: it };
+    });
     rows.sort((a, b) => a.sortMin - b.sortMin);
     return rows;
-  }, [dayBlocks, cell.items]);
+  }, [cell.items]);
 
-  const visible = ordered.slice(0, 3 + dayBlocks.length);
-  const overflow = ordered.length - visible.length;
+  const visible = eventRows.slice(0, 4);
+  const overflow = eventRows.length - visible.length;
 
   const onCellClick = (e) => {
     if (e.target !== cellRef.current) return;
@@ -855,16 +852,17 @@ const MonthCell = forwardRef(function MonthCell({
         {cell.date.getDate()}
       </div>
       <div className="flex flex-col gap-0.5">
-        {visible.map((row, idx) => row.type === "block" ? (
+        {dayBlocks.length > 0 && (
           <div
-            key={`block:${row.block.block.id}`}
-            className="w-full text-[9px] font-semibold uppercase tracking-[0.04em] text-warn px-1 py-0.5 truncate bg-warn/10 border border-warn/25 pointer-events-none"
-            title={`${row.block.block.name} · ${formatMinutesOfDay(row.block.start)}`}
+            className="w-full text-[9px] font-semibold uppercase tracking-[0.04em] text-warn/80 px-1 py-0.5 truncate bg-warn/10 border border-warn/25 pointer-events-none"
+            title={dayBlocks
+              .map(b => `${b.block.name} · ${formatMinutesOfDay(b.start)}`)
+              .join("\n")}
           >
-            {formatMinutesOfDay(row.block.start).replace(" ", "")}{" "}
-            {row.block.block.name}
+            {dayBlocks.length} chore block{dayBlocks.length === 1 ? "" : "s"}
           </div>
-        ) : (
+        )}
+        {visible.map((row, idx) => (
           <button
             key={idx}
             onPointerDown={(e) => {
@@ -910,18 +908,30 @@ function AgendaGroup({ group, blocks, today, onClickItem }) {
   // the agenda reads as one chronological day. Blocks are read-only,
   // semi-transparent rows — the calendar shows the rounds windows, not
   // the individual chores inside them.
-  const rows = useMemo(() => {
+  // One-off events render as individual rows; the recurring chore
+  // blocks (the same set most days) collapse into a single summary row
+  // so the agenda doesn't become a wall of identical block rows
+  // stretching for months. The summary sorts to the first block's time.
+  const { rows, blockSummary } = useMemo(() => {
     const localDate = dDate
       ? new Date(dDate.getUTCFullYear(), dDate.getUTCMonth(), dDate.getUTCDate())
       : new Date(group.date);
-    const blockRows = blocksForDate(blocks, localDate)
-      .map(b => ({ type: "block", ...b, sortMin: b.start }));
+    const dayBlocks = blocksForDate(blocks, localDate);
     const eventRows = group.items.map(ev => ({
       type: "event",
       ev,
       sortMin: hhmmToMinutes(ev.startTime) ?? 24 * 60,
     }));
-    return [...blockRows, ...eventRows].sort((a, b) => a.sortMin - b.sortMin);
+    eventRows.sort((a, b) => a.sortMin - b.sortMin);
+    const summary = dayBlocks.length > 0
+      ? {
+          count: dayBlocks.length,
+          start: dayBlocks[0].start,
+          end: dayBlocks[dayBlocks.length - 1].end,
+          names: dayBlocks.map(b => b.block.name).join(", "),
+        }
+      : null;
+    return { rows: eventRows, blockSummary: summary };
   }, [blocks, group, dDate]);
 
   return (
@@ -935,20 +945,21 @@ function AgendaGroup({ group, blocks, today, onClickItem }) {
         {formatLongDate(group.date)}{isToday ? " · today" : ""}
       </div>
       <ul className="m-0 p-0 list-none flex flex-col gap-px bg-line">
-        {rows.map(row => row.type === "block" ? (
-          <li
-            key={`block-${row.block.id}`}
-            className="bg-warn/[0.07]"
-          >
+        {blockSummary && (
+          <li className="bg-warn/[0.07]">
             <div className="flex items-center gap-3 px-3 py-2">
               <span aria-hidden className="w-1 h-7 shrink-0 bg-warn/50" />
               <span className="text-[11px] text-dim tabular-nums w-[100px] shrink-0">
-                {formatMinutesOfDay(row.start)}
-                {` – ${formatMinutesOfDay(row.end)}`}
+                {formatMinutesOfDay(blockSummary.start)}
+                {` – ${formatMinutesOfDay(blockSummary.end)}`}
               </span>
               <span className="flex-1 min-w-0">
-                <span className="text-[13px] text-warn font-medium block truncate">
-                  {row.block.name} rounds
+                <span
+                  className="text-[13px] text-warn font-medium block truncate"
+                  title={blockSummary.names}
+                >
+                  {blockSummary.count} chore-block round
+                  {blockSummary.count === 1 ? "" : "s"}
                 </span>
               </span>
               <span className="text-[10px] text-dim uppercase tracking-[0.08em] text-right">
@@ -956,7 +967,8 @@ function AgendaGroup({ group, blocks, today, onClickItem }) {
               </span>
             </div>
           </li>
-        ) : (
+        )}
+        {rows.map(row => (
           <li
             key={(row.ev.occurrenceId ?? row.ev.instanceId) + row.ev.date}
             className="bg-surface"
@@ -1000,6 +1012,11 @@ function AgendaGroup({ group, blocks, today, onClickItem }) {
             </button>
           </li>
         ))}
+        {rows.length === 0 && !blockSummary && (
+          <li className="bg-surface px-3 py-2 text-[11px] text-faint italic">
+            Nothing scheduled.
+          </li>
+        )}
       </ul>
     </div>
   );

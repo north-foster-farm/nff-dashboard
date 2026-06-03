@@ -3,6 +3,9 @@ import {
   MapPin, Pencil, Plus, Sparkles,
 } from "lucide-react";
 import { computeAge, formatDate } from "../lib/dates.js";
+import { batchLifecycle } from "../lib/metrics.js";
+import { useProcessingDates } from "../lib/data/useProcessingDates.js";
+import BatchStatePill from "../components/BatchStatePill.jsx";
 import { computeStageCost } from "../lib/feedCost.js";
 import { describeConsumption } from "../lib/feedConsumption.js";
 import { supabase } from "../lib/supabase.js";
@@ -116,6 +119,33 @@ function GroupsTab({ species }) {
   // dead currentLocation column this page used to read was dropped in
   // Batch 15.
   const { placements, placesById, loading: sitesLoading } = useSites();
+  const { processingDateByBatchId } = useProcessingDates();
+  const [showPast, setShowPast] = useState(false);
+
+  // Split by derived lifecycle so processed batches collapse into their
+  // own "Past batches" section instead of looking like live flocks.
+  const { current, past } = useMemo(() => {
+    const cur = [];
+    const done = [];
+    for (const g of species.groups ?? []) {
+      const life = batchLifecycle(
+        g, processingDateByBatchId.get(g.id) ?? null);
+      (life.state === "processed" ? done : cur).push({ group: g, life });
+    }
+    return { current: cur, past: done };
+  }, [species.groups, processingDateByBatchId]);
+
+  const renderCard = ({ group, life }) => (
+    <GroupCard
+      key={group.id}
+      group={group}
+      life={life}
+      species={species}
+      placements={placements}
+      placesById={placesById}
+      placeLoading={sitesLoading}
+    />
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -127,18 +157,34 @@ function GroupsTab({ species }) {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
-          {species.groups.map(g => (
-            <GroupCard
-              key={g.id}
-              group={g}
-              species={species}
-              placements={placements}
-              placesById={placesById}
-              placeLoading={sitesLoading}
-            />
-          ))}
-        </div>
+        <>
+          {current.length > 0 && (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
+              {current.map(renderCard)}
+            </div>
+          )}
+          {current.length === 0 && past.length > 0 && (
+            <div className="text-[12px] text-dim italic">
+              No active {species.name.toLowerCase()} batches — all
+              processed. Past batches are below.
+            </div>
+          )}
+          {past.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => setShowPast(s => !s)}
+                className="self-start inline-flex items-center gap-1.5 bg-transparent border-0 p-0 font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] text-dim hover:text-fg cursor-pointer"
+              >
+                {showPast ? "▾" : "▸"} Past batches · {past.length}
+              </button>
+              {showPast && (
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 opacity-75">
+                  {past.map(renderCard)}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -281,18 +327,26 @@ function AddBatchForm({ species }) {
   );
 }
 
-function GroupCard({ group, species, placements, placesById, placeLoading }) {
+function GroupCard({
+  group, life, species, placements, placesById, placeLoading,
+}) {
   const isSheep = species.id === "sheep";
   const showCount = species.trackingModel !== "individual";
-  const age = computeAge(group.knownAge);
-  const arrivalDisplay = formatDate(group.arrivalDate) || "Unknown";
+  const arriving = life?.state === "arriving";
+  const processed = life?.state === "processed";
+  // A not-yet-arrived batch has no age; show its arrival instead.
+  const age = arriving ? null : computeAge(group.knownAge);
+  const arrivalDisplay = formatDate(group.arrivalDate)
+    || (arriving ? "—" : "Unknown");
   const countDisplay = group.count != null
     ? group.count.toLocaleString()
     : "Unknown";
 
   // Where does this group live right now? (placements, Batch 25.2 —
-  // replaces the dead currentLocation column.)
-  const activePlacement = (placements ?? []).find(
+  // replaces the dead currentLocation column.) A processed batch is off
+  // the farm — never show it sitting in a structure even if a stale
+  // open placement lingers.
+  const activePlacement = processed ? null : (placements ?? []).find(
     p => p.occupantType === "batch"
       && p.occupantId === group.id
       && !p.movedOut
@@ -302,10 +356,12 @@ function GroupCard({ group, species, placements, placesById, placeLoading }) {
     : null;
 
   const fields = [
-    ...(!isSheep ? [{ label: "Age", value: age }] : []),
+    ...(!isSheep && !arriving ? [{ label: "Age", value: age }] : []),
     ...(showCount && !isSheep
       ? [{ label: "Count", value: countDisplay }] : []),
-    ...(!isSheep ? [{ label: "Arrived", value: arrivalDisplay }] : []),
+    ...(!isSheep
+      ? [{ label: arriving ? "Arrives" : "Arrived", value: arrivalDisplay }]
+      : []),
   ];
 
   const open = () => navigate(pathForBatch(species.id, group.id));
@@ -325,8 +381,11 @@ function GroupCard({ group, species, placements, placesById, placeLoading }) {
     >
       <div className="flex items-baseline justify-between gap-2 mb-2.5">
         <div className="min-w-0">
-          <div className="font-heading text-[17px] font-semibold leading-tight text-fg">
-            {group.label}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="font-heading text-[17px] font-semibold leading-tight text-fg">
+              {group.label}
+            </div>
+            {life && <BatchStatePill state={life.state} />}
           </div>
           {species.breed && (
             <div className="text-[11px] text-dim mt-0.5">{species.breed}</div>

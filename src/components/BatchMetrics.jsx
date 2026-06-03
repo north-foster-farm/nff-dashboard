@@ -26,7 +26,7 @@ import { formatDate } from "../lib/dates.js";
 // number. The cross-batch comparison + Metrics page land in 26.2.
 
 export default function BatchMetricsSection({
-  batch, species, data, processingISO,
+  batch, species, data, processingISO, lifecycle,
 }) {
   const isLayer = isLayerSpecies(species);
   const isMeat = isMeatSpecies(species);
@@ -49,9 +49,26 @@ export default function BatchMetricsSection({
   // Sheep / pets: no metrics defined for this species — render nothing.
   if (!isLayer && !isMeat) return null;
 
+  // A batch that hasn't arrived yet has nothing to measure — showing
+  // FCR / gain / "weeks remaining" would just render the placeholder
+  // dashes and the negative-week artifacts. Hold them until arrival,
+  // but still offer the weigh-in / egg-log capture cards below.
+  const notYetArrived = lifecycle?.state === "arriving";
+
   return (
     <>
-      {isMeat && (
+      {notYetArrived && (
+        <Card title="Performance" icon={ChartLine}>
+          <div className="text-[12px] text-dim leading-relaxed">
+            This batch hasn&rsquo;t arrived yet
+            {lifecycle?.arrivalISO
+              ? ` (arrives ${formatDate(lifecycle.arrivalISO)})`
+              : ""}. Performance numbers start once it&rsquo;s on the
+            farm and the first weigh-in is logged.
+          </div>
+        </Card>
+      )}
+      {isMeat && !notYetArrived && (
         <PerformanceCard
           batch={batch}
           species={species}
@@ -61,7 +78,7 @@ export default function BatchMetricsSection({
           processingISO={processingISO}
         />
       )}
-      {isLayer && (
+      {isLayer && !notYetArrived && (
         <ProductionCard
           batch={batch}
           samples={samples}
@@ -140,7 +157,7 @@ function PerformanceCard({
           value={weeks.weeksRemaining != null
             ? Math.max(0, weeks.weeksRemaining).toFixed(1)
             : "—"}
-          sub={weeks.weeksOnFarm != null
+          sub={weeks.weeksOnFarm != null && weeks.weeksOnFarm >= 0
             ? `week ${Math.floor(weeks.weeksOnFarm) + 1} of ` +
               (weeks.basis === "processing_event"
                 ? "scheduled processing"

@@ -7,6 +7,7 @@ import {
   UserPlus, ClipboardList, CalendarDays, Newspaper, Map, MapPin, Eye,
   Lightbulb, ChartLine
 } from "lucide-react";
+import { isActiveProject } from "./lib/projects.js";
 
 // Updates flagged as needing attention — anything sitting in or past review.
 // Surfaced as the counter on both Farm updates and Content calendar.
@@ -79,7 +80,7 @@ export const SECTIONS = [
     // projects are filtered out by the loader).
     getCount: (d) => {
       const today = new Date().toISOString().slice(0, 10);
-      return d.projects.filter(p => p.status !== "completed" && (!p.startedAt || p.startedAt <= today) && (!p.targetDate || p.targetDate >= today)).length;
+      return d.projects.filter(p => isActiveProject(p, today)).length;
     }
   },
   { id: "processes", group: "Planning", label: "Processes", icon: Workflow, description: "Templates tied to event kinds — when a matching event lands on the schedule, the process expands into prep tasks and chore changes around it.", getCount: () => null },

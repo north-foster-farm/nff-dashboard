@@ -8,8 +8,10 @@ import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useEventLinks } from "../lib/data/useEventLinks.js";
 import { supabase } from "../lib/supabase.js";
 import { computeAge, formatDate } from "../lib/dates.js";
+import { batchLifecycle, BATCH_STATES } from "../lib/metrics.js";
 import { navigate, pathForSection } from "../lib/router.js";
 import BatchMetricsSection from "../components/BatchMetrics.jsx";
+import BatchStatePill from "../components/BatchStatePill.jsx";
 
 // The batch lifecycle page (Batch 20) — everything the dashboard knows
 // about one livestock batch: its lifespan timeline (arrival → pasture
@@ -136,6 +138,11 @@ export default function BatchPage({
 
   const age = computeAge(batch.knownAge)
     ?? ageFromArrival(batch.arrivalDate);
+
+  // Derived lifecycle (processed / arriving / active) — drives the
+  // status pill and tells the metrics section to hold performance
+  // numbers until the birds are actually on the farm.
+  const life = batchLifecycle(batch, processingISO);
 
   // ── milestone date edit: the batch owns its dates ──────────────────
   const rescheduleMilestone = async (link, newDate) => {
@@ -304,9 +311,22 @@ export default function BatchPage({
             <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-faint font-semibold">
               {species.name} batch
             </div>
-            <h2 className="font-heading text-[28px] font-bold -tracking-[0.02em] m-0 leading-tight">
-              {batch.label}
-            </h2>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h2 className="font-heading text-[28px] font-bold -tracking-[0.02em] m-0 leading-tight">
+                {batch.label}
+              </h2>
+              <BatchStatePill state={life.state} />
+            </div>
+            {life.state === "arriving" && (
+              <div className="text-[12px] text-accent-deep mt-1">
+                Arrives {formatDate(life.arrivalISO)} — not on the farm yet.
+              </div>
+            )}
+            {life.state === "processed" && (
+              <div className="text-[12px] text-dim mt-1">
+                Processed {formatDate(life.processingISO)}.
+              </div>
+            )}
             {species.breed && (
               <div className="text-[12px] text-dim mt-1">{species.breed}</div>
             )}
@@ -371,6 +391,7 @@ export default function BatchPage({
         species={species}
         data={data}
         processingISO={processingISO}
+        lifecycle={life}
       />
 
       {/* ── where + chores ── */}

@@ -54,8 +54,8 @@ export default function Inventory({ startCreating = false }) {
       <div className="text-[11px] text-muted leading-relaxed max-w-[700px]">
         What&rsquo;s in the freezers and the fridge, lot by lot — which
         processing day it came from, where it lives, and how much is
-        left. Selling through the Products page&rsquo;s POS (coming in
-        28.2) draws lots down automatically, oldest first.
+        left. Selling through the Products page&rsquo;s POS draws lots
+        down automatically, oldest first.
       </div>
 
       <div className="flex items-start justify-between gap-3 flex-wrap">

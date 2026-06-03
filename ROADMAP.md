@@ -2632,6 +2632,75 @@ restored.
 (Shippo: address validation, real rates, label purchase, tracking
 webhooks), payment APIs (Stripe / Venmo), QuickBooks sync.
 
+### Batch 40.1 — Preliminary functionality + UX audit · `v0.10.37-alpha`
+2026-06-03. A Claude-driven UI audit (Playwright against every
+screen, authenticated as James, marked test rows + exact-ID
+cleanup) ahead of the recorded walkthrough proper. 60-route render
+sweep (desktop + mobile) plus interactive flow tests; findings in
+`.ignored/audit/FINDINGS-2026-06-03.md`. 19 code findings fixed in
+one pass, plus one prod data fix. Four data-readiness items
+(catalog prices, inventory lots, feed on-hand, batch arrival-date
+backfill) are James's to enter and stay parked.
+
+**Batch lifecycle (the big one — A1/A2/A3):** new
+`batchLifecycle()` in `lib/metrics.js` derives a batch's state
+(`arriving` / `active` / `processed`) from data already present —
+arrival date + the scheduled processing occurrence — with no
+schema change. Applied everywhere a batch is shown:
+- Processed batches (Batch 1, 2) collapse into a **"Past
+  batches"** section on the species Groups tab, drop off the
+  dashboard "Broilers" card, and stop reporting a current place.
+- Not-yet-arrived batches (5–8) render an **"Arriving · arrives
+  Jul 8"** state instead of the negative "week -4" artifacts; the
+  batch page holds performance metrics until arrival.
+- Shared `BatchStatePill` chip; the dashboard card and batch
+  header branch on the lifecycle.
+- **Data fix:** Batch 1's stale open placement (processed weeks
+  ago, still "in" Chicken tractor 1) was closed by exact id —
+  the tractor now reads empty.
+
+**Other fixes:**
+- **Preferences (B1):** `useUserPreferences()` now mounts at the
+  App level, so a saved theme/density loads on every boot, not
+  only when the Settings page is open.
+- **Places tree (B2):** expands fully by default; collapsed nodes
+  show a child-count + occupant hint; occupants roll up so a zone
+  reads "N in sub-places below" instead of "No occupants here"
+  while a child holds a batch.
+- **Orders (B3):** editing a line's quantity no longer wipes a
+  hand-typed price (`patchLineKeepingPrice`).
+- **Projects (B4 / C9):** shared `isActiveProject()` selector used
+  by both the sidebar badge and the dashboard card ("Active
+  projects") so their counts agree and past-target prep projects
+  drop off both.
+- **Activity feed (C1):** humanized batch ids and unmapped kinds;
+  no more raw UUIDs / slugs.
+- **Router (C2):** unknown URLs render a "nothing at this address"
+  panel instead of silently showing the dashboard.
+- **Copy / icons (C3, C4):** TopBar capture is a lightbulb (matches
+  the sidebar + the Inbox copy); stale "(coming in 28.2)" removed.
+- **Farm map (C5):** vertical label-declutter pass so adjacent
+  zone labels stop overlapping.
+- **Schedule (C6, C8):** month cells collapse the recurring chore
+  blocks into one summary chip so real events stand out; the
+  agenda collapses per-day blocks to a single row and caps its
+  horizon to 3 months (was a 40-screen, full-year list).
+- **Feed (C7):** the "Remaining" unit hides until there's a value.
+- **Mobile (G1):** place-tree indentation shrinks on narrow
+  viewports via a `--tree-indent` CSS var, so Chores → Today is
+  usable on a phone.
+- **Docs (F2):** corrected the stale "fake-auth" comment in
+  `Chores.jsx`.
+
+Re-ran the audit flows to confirm: zero negative-number
+observations (was 4), the qty-price wipe gone, processed batches
+off the live surfaces, the tractors visible and empty. Prod
+verified back to baseline.
+
+**Still open (40.2):** the recorded-walkthrough audit pipeline
+(ffmpeg + whisper) per the Batch 40 plan, and the four
+data-readiness items above.
+
 ---
 
 ## Overhaul design records
@@ -3049,10 +3118,15 @@ report + refactor plan checked into `audits/`, then executed as
 `fix:` / `chore:` commits.
 
 ### Batch 40 — Functionality + UX audit (recorded walkthrough)
-Added 2026-06-02. The screen-recording audit workflow, then the
-audit itself. Design/UX issues are treated exactly like
-functionality bugs — one backlog, fixed in sequence. Settled at
-the 2026-06-02 discussion:
+Added 2026-06-02. **40.1 shipped 2026-06-03 (`v0.10.37-alpha`)** —
+a preliminary Claude-driven UI audit + fixes ahead of the recorded
+walkthrough; see Shipped. Remaining (40.2): the recorded-walkthrough
+pipeline below, and the four parked data-readiness items.
+
+The screen-recording audit workflow, then the audit itself.
+Design/UX issues are treated exactly like functionality bugs —
+one backlog, fixed in sequence. Settled at the 2026-06-02
+discussion:
 
 - **Capture (James):** ⌘⇧5 screen recording with the mic on,
   narrating issues while demonstrating them on screen. Files land

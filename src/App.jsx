@@ -10,6 +10,7 @@ import Processing from "./pages/Processing.jsx";
 import Rounds from "./pages/Rounds.jsx";
 import { useReferenceData } from "./lib/data/useReferenceData.js";
 import { useProcessRunner } from "./lib/data/useProcessRunner.js";
+import { useUserPreferences } from "./lib/data/useUserPreferences.js";
 import {
   useRoute, usePath, navigate, navigateBack, pathForSection,
   usePersistedState,
@@ -55,6 +56,12 @@ export default function App({ session }) {
     "sidebar-hidden", false
   );
 
+  // Load + apply the user's saved theme/density on every boot, app-wide
+  // (not just when the Settings page is open). The hook reconciles the
+  // DB row into localStorage + the data-theme/data-density attributes
+  // and keeps them live across devices via realtime.
+  useUserPreferences();
+
   // "/" lands on the device-appropriate default screen.
   useEffect(() => {
     if (route.kind === "home") {
@@ -95,6 +102,11 @@ export default function App({ session }) {
   useProcessRunner(data);
 
   const currentSection = route.kind === "section" ? route.sectionId : null;
+  // A section route whose id matches no known section is a bad URL
+  // (typo, dead link). We still need a `section` object for layout
+  // chrome, but the content area shows a not-found notice rather than
+  // silently rendering the dashboard at the wrong URL.
+  const notFound = currentSection != null && !findSection(currentSection);
   const section =
     findSection(currentSection ?? (isPhone() ? "now" : "map")) ||
     findSection("overview");
@@ -191,6 +203,10 @@ export default function App({ session }) {
           </div>
         )}
         <main className="flex-1 px-4 py-5 sm:px-10 sm:py-8 min-w-0">
+          {notFound ? (
+            <NotFoundPanel onHome={() => navigate(defaultPath())} />
+          ) : (
+          <>
           {!isSelfHeadered && !inProcessingWorkspace && (
             <SectionHeader
               section={section}
@@ -215,6 +231,8 @@ export default function App({ session }) {
               onOpenRounds={openRounds}
             />
           )}
+          </>
+          )}
         </main>
       </div>
       <EventEditor
@@ -228,6 +246,29 @@ export default function App({ session }) {
           setProcessingTarget(target);
         }}
       />
+    </div>
+  );
+}
+
+// Shown when the URL's section id matches nothing — a typo or a dead
+// link. Keeps the chrome; offers a way back rather than silently
+// rendering the dashboard at the wrong address.
+function NotFoundPanel({ onHome }) {
+  return (
+    <div className="bg-surface border border-line px-6 py-12 text-center max-w-[520px] mx-auto mt-6">
+      <div className="font-heading text-[20px] font-semibold text-fg">
+        There's nothing at this address
+      </div>
+      <div className="text-[12px] text-dim leading-relaxed mt-2">
+        The page you tried to open doesn't exist — it may have been
+        renamed or the link may be out of date.
+      </div>
+      <button
+        onClick={onHome}
+        className="mt-5 inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-4 py-2 cursor-pointer"
+      >
+        Back to the dashboard
+      </button>
     </div>
   );
 }

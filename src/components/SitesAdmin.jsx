@@ -181,7 +181,21 @@ function PlaceNode({
   onAssignOccupant, onMoveOutOccupant,
 }) {
   const kids = (childrenByParent.get(place.id) ?? []).filter((p) => p.isActive !== false);
-  const [open, setOpen] = useState(depth < 2);
+  // Expand the whole tree by default — the structures that hold animals
+  // (chicken tractors, coops, brooders) live at the deepest level, and
+  // collapsing past depth 2 hid them entirely.
+  const [open, setOpen] = useState(true);
+
+  // Occupants anywhere in this place's subtree (including itself), so a
+  // zone/area can summarize "what's down there" without being expanded,
+  // and a parent never reads "No occupants here" while a child holds a
+  // batch.
+  const subtree = descendantIds(place.id, childrenByParent);
+  let subtreeOccupantCount = 0;
+  for (const id of subtree) {
+    if (id === place.id) continue;
+    subtreeOccupantCount += (placementsByPlaceId.get(id) ?? []).length;
+  }
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(place.name);
   const [creatingChild, setCreatingChild] = useState(false);
@@ -273,6 +287,15 @@ function PlaceNode({
             {place.kindTag && (
               <span className="text-[10px] text-faint">{place.kindTag}</span>
             )}
+            {kids.length > 0 && (
+              <span className="text-[10px] text-faint shrink-0">
+                {kids.length} place{kids.length === 1 ? "" : "s"}
+                {subtreeOccupantCount > 0
+                  ? ` · ${subtreeOccupantCount} occupant`
+                    + (subtreeOccupantCount === 1 ? "" : "s")
+                  : ""}
+              </span>
+            )}
           </button>
         )}
 
@@ -299,6 +322,7 @@ function PlaceNode({
       <OccupantsPane
         place={place}
         residents={residents}
+        subtreeOccupantCount={subtreeOccupantCount}
         occupants={occupants}
         occupantLabel={occupantLabel}
         occupantCurrentPlace={occupantCurrentPlace}
@@ -452,8 +476,8 @@ function Field({ label, children }) {
 }
 
 function OccupantsPane({
-  place, residents, occupants, occupantLabel, occupantCurrentPlace,
-  placesById, onAssign, onMoveOut,
+  place, residents, subtreeOccupantCount = 0, occupants, occupantLabel,
+  occupantCurrentPlace, placesById, onAssign, onMoveOut,
 }) {
   const [picking, setPicking] = useState(false);
   const [type, setType] = useState("batch");
@@ -480,7 +504,12 @@ function OccupantsPane({
   return (
     <div className="bg-bg border-t border-line px-3 py-2 flex flex-col gap-1.5">
       {!hasAny && !picking && (
-        <div className="text-faint text-[11px] italic">No occupants here.</div>
+        <div className="text-faint text-[11px] italic">
+          {subtreeOccupantCount > 0
+            ? `No occupants placed directly here — ${subtreeOccupantCount} `
+              + `in sub-places below.`
+            : "No occupants here."}
+        </div>
       )}
       {residents.map((r) => {
         const o = occupantLabel(r.occupantType, r.occupantId);
