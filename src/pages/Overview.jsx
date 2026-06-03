@@ -22,6 +22,7 @@ import {
 import { useProcessingDates } from "../lib/data/useProcessingDates.js";
 import { batchLifecycle, isMeatSpecies, weeksTimeline } from "../lib/metrics.js";
 import { isActiveProject } from "../lib/projects.js";
+import { Card } from "../components/ui.jsx";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
@@ -899,23 +900,6 @@ function QuickOpenRow({ label, onOpen }) {
       <span className="flex-1 min-w-0">{label}</span>
       <ArrowUpRight size={13} className="text-muted" />
     </button>
-  );
-}
-
-// ─── Shared card shell ───────────────────────────────────────────────────────
-
-function Card({ title, subtitle, icon: Icon, children }) {
-  return (
-    <section className="bg-surface border border-line py-[18px] px-5">
-      <header className="flex items-baseline gap-2.5 mb-3.5">
-        {Icon && <Icon size={15} className="text-dim translate-y-0.5" />}
-        <div className="font-ui text-xs text-fg uppercase tracking-[0.14em] font-bold">
-          {title}
-        </div>
-        {subtitle && <div className="text-[12px] text-dim ml-auto">{subtitle}</div>}
-      </header>
-      {children}
-    </section>
   );
 }
 

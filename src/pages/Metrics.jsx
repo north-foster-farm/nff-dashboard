@@ -13,6 +13,7 @@ import {
   mortalityStats, bodyWeightTrend, uniformity, weeksTimeline,
 } from "../lib/metrics.js";
 import { navigate, pathForBatch } from "../lib/router.js";
+import { Card } from "../components/ui.jsx";
 
 // The Metrics page (Batch 26.2) — the "how are we doing?" surface.
 //
@@ -167,6 +168,7 @@ function BroilerComparison({
             { value: numOrDash(r.mort.placed) },
             { value: numOrDash(r.batch.count) },
             { value: r.weeks.weeksOnFarm != null
+              && r.weeks.weeksOnFarm >= 0
               ? r.weeks.weeksOnFarm.toFixed(1) : "—" },
             { value: r.weeks.weeksRemaining != null
               ? Math.max(0, r.weeks.weeksRemaining).toFixed(1) : "—" },
@@ -325,23 +327,6 @@ function Registry({ byAppliesTo, loading }) {
 }
 
 // ── shared pieces ─────────────────────────────────────────────────────
-
-function Card({ title, icon: Icon, subtitle, children }) {
-  return (
-    <section className="bg-surface border border-line py-4 px-5 flex flex-col">
-      <header className="flex items-baseline gap-2.5 mb-3.5">
-        {Icon && <Icon size={14} className="text-dim translate-y-0.5" />}
-        <div className="font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-bold">
-          {title}
-        </div>
-        {subtitle && (
-          <div className="text-[12px] text-dim ml-auto">{subtitle}</div>
-        )}
-      </header>
-      {children}
-    </section>
-  );
-}
 
 // The comparison sheet itself. Plain table, horizontal scroll on
 // narrow screens, whole rows clickable (deep link to the cohort page).

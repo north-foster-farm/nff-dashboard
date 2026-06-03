@@ -4,6 +4,7 @@ import {
   SALE_CHANNELS, currentPriceMap, fmtCents, parseDollarsToCents,
   expandSkus, skuKey, skuLabel,
 } from "../lib/productCatalog.js";
+import { LABEL_CLS } from "./ui.jsx";
 
 // The Sell tab (Batch 28.2) — the point-of-sale register.
 //
@@ -22,7 +23,7 @@ import {
 const inputCls =
   "bg-bg border border-line text-fg text-[13px] px-2.5 py-2 outline-none " +
   "focus:border-accent font-[inherit] w-full";
-const labelCls = "text-[9px] text-faint uppercase tracking-[0.12em] mb-1";
+const labelCls = LABEL_CLS;
 
 function todayISO() {
   const d = new Date();

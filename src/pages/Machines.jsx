@@ -1,8 +1,8 @@
-import { T } from "../theme.js";
-
+// Resources → Machinery (Batch 39: migrated off inline styles to
+// Tailwind tokens).
 export default function Machines({ data }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
+    <div className="flex flex-col gap-px bg-line">
       {data.machines.map(m => <MachineRow key={m.id} machine={m} />)}
     </div>
   );
@@ -10,14 +10,28 @@ export default function Machines({ data }) {
 
 function MachineRow({ machine }) {
   return (
-    <div style={{ background: T.surface, padding: "18px 22px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-        <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 600 }}>{machine.label}</div>
-        <div style={{ fontSize: 10, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.12em" }}>{machine.category}</div>
+    <div className="bg-surface px-[22px] py-[18px]">
+      <div className="flex justify-between items-baseline mb-2.5">
+        <div className="font-heading text-[18px] font-semibold">
+          {machine.label}
+        </div>
+        <div className="text-[10px] text-dim uppercase tracking-[0.12em]">
+          {machine.category}
+        </div>
       </div>
-      <div style={{ fontSize: 11, color: T.textDim, marginBottom: 10 }}>{machine.manufacturer} · Model {machine.model}</div>
-      {machine.uses.length > 0 && <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: T.text, lineHeight: 1.7 }}>{machine.uses.map((u, idx) => <li key={idx}>{u}</li>)}</ul>}
-      {machine.notes && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.surfaceAlt}`, fontStyle: "italic", lineHeight: 1.5 }}>{machine.notes}</div>}
+      <div className="text-[11px] text-dim mb-2.5">
+        {machine.manufacturer} · Model {machine.model}
+      </div>
+      {machine.uses.length > 0 && (
+        <ul className="m-0 pl-4 text-[12px] text-fg leading-[1.7]">
+          {machine.uses.map((u, idx) => <li key={idx}>{u}</li>)}
+        </ul>
+      )}
+      {machine.notes && (
+        <div className="text-[11px] text-muted mt-2.5 pt-2.5 border-t border-surface-alt italic leading-[1.5]">
+          {machine.notes}
+        </div>
+      )}
     </div>
   );
 }

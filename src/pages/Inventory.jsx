@@ -7,6 +7,7 @@ import { useInventory } from "../lib/data/useInventory.js";
 import { useSites } from "../lib/data/useSites.js";
 import { expandSkus, skuLabel } from "../lib/productCatalog.js";
 import { formatDate } from "../lib/dates.js";
+import { BTN_GHOST, INPUT_CLS, LABEL_CLS } from "../components/ui.jsx";
 
 // The Inventory page (Batch 28.1) — the real, DB-backed inventory
 // replacing the Batch-4 static stub.
@@ -276,14 +277,10 @@ function LotRow({ lot, product, inv, places, placesById }) {
   );
 }
 
-const inputCls =
-  "bg-bg border border-line text-fg text-[12px] px-2 py-1.5 outline-none " +
-  "focus:border-accent font-[inherit]";
-const labelCls = "text-[9px] text-faint uppercase tracking-[0.12em] mb-1";
-const btnGhostCls =
-  "bg-transparent border border-line text-dim font-[inherit] text-[10px] " +
-  "font-semibold uppercase tracking-[0.12em] px-2.5 py-1.5 cursor-pointer " +
-  "hover:text-fg disabled:opacity-50";
+// Class strings now live in the shared ui kit (Batch 39).
+const inputCls = INPUT_CLS;
+const labelCls = LABEL_CLS;
+const btnGhostCls = BTN_GHOST;
 
 // Per-lot actions: recount / spoilage adjustment, move to a different
 // place, and delete (mistakes only).

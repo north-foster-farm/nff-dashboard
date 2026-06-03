@@ -1,6 +1,5 @@
 import { getSpeciesFromSectionId, getEventKindFromSectionId } from "../sections.jsx";
 import ComingSoon from "./ComingSoon.jsx";
-import { T } from "../theme.js";
 import { useRoute } from "../lib/router.js";
 import Now from "../pages/Now.jsx";
 import MapPage from "../pages/MapPage.jsx";
@@ -151,11 +150,17 @@ export default function SectionContent({
 
 function GenericItemList({ items }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
+    <div className="flex flex-col gap-px bg-line">
       {items.map((item, idx) => (
-        <div key={idx} style={{ background: T.surface, padding: "16px 20px" }}>
-          <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{item.title || item.name || "Untitled"}</div>
-          {item.description && <p style={{ fontSize: 12, color: T.textDim, lineHeight: 1.6, margin: 0 }}>{item.description}</p>}
+        <div key={idx} className="bg-surface px-5 py-4">
+          <div className="font-heading text-[16px] font-semibold mb-1">
+            {item.title || item.name || "Untitled"}
+          </div>
+          {item.description && (
+            <p className="text-[12px] text-dim leading-relaxed m-0">
+              {item.description}
+            </p>
+          )}
         </div>
       ))}
     </div>

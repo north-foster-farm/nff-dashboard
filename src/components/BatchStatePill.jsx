@@ -1,31 +1,18 @@
 import { BATCH_STATES } from "../lib/metrics.js";
+import { StatusPill } from "./ui.jsx";
 
 // A small status chip for a batch's derived lifecycle state
 // (arriving / on farm / processed). Used on the species Groups cards
 // and the batch detail header so a processed or not-yet-arrived batch
 // reads as such at a glance instead of looking like a live flock.
-//
-// Tones map to the theme's semantic colors; "live" is intentionally
-// quiet (it's the normal case), "done" and "future" stand out.
-const TONE_CLS = {
-  done: "text-dim border-line bg-surface-alt",
-  future: "text-accent-deep border-accent/40",
-  live: "text-resolved border-resolved/40",
-  muted: "text-faint border-line",
-};
-
+// Thin wrapper over the shared StatusPill — maps the lifecycle state to
+// a tone + label (Batch 39: tone styling lives in ui.jsx).
 export default function BatchStatePill({ state, className = "" }) {
   const meta = BATCH_STATES[state] ?? BATCH_STATES.unknown;
   if (state === "unknown") return null;
   return (
-    <span
-      className={
-        "inline-flex items-center text-[9px] font-semibold uppercase " +
-        "tracking-[0.12em] px-1.5 py-0.5 border " +
-        (TONE_CLS[meta.tone] ?? TONE_CLS.muted) + " " + className
-      }
-    >
+    <StatusPill tone={meta.tone} className={className}>
       {meta.label}
-    </span>
+    </StatusPill>
   );
 }

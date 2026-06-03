@@ -1,12 +1,16 @@
-import { T } from "../theme.js";
-
+// Resources → Trailers (Batch 39: migrated off inline styles to
+// Tailwind tokens).
 export default function Trailers({ data }) {
   const trailers = data.trailers ?? [];
   if (trailers.length === 0) {
-    return <div style={{ fontSize: 12, color: T.textMuted, fontStyle: "italic", padding: "32px 0", textAlign: "center" }}>No trailers captured yet.</div>;
+    return (
+      <div className="text-[12px] text-muted italic py-8 text-center">
+        No trailers captured yet.
+      </div>
+    );
   }
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
+    <div className="flex flex-col gap-px bg-line">
       {trailers.map(t => <TrailerRow key={t.id} trailer={t} />)}
     </div>
   );
@@ -14,17 +18,27 @@ export default function Trailers({ data }) {
 
 function TrailerRow({ trailer }) {
   return (
-    <div style={{ background: T.surface, padding: "18px 22px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-        <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 600 }}>{trailer.label}</div>
-        {trailer.category && <div style={{ fontSize: 10, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.12em" }}>{trailer.category}</div>}
+    <div className="bg-surface px-[22px] py-[18px]">
+      <div className="flex justify-between items-baseline mb-2.5">
+        <div className="font-heading text-[18px] font-semibold">
+          {trailer.label}
+        </div>
+        {trailer.category && (
+          <div className="text-[10px] text-dim uppercase tracking-[0.12em]">
+            {trailer.category}
+          </div>
+        )}
       </div>
       {(trailer.uses?.length ?? 0) > 0 && (
-        <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: T.text, lineHeight: 1.7 }}>
+        <ul className="m-0 pl-4 text-[12px] text-fg leading-[1.7]">
           {trailer.uses.map((u, idx) => <li key={idx}>{u}</li>)}
         </ul>
       )}
-      {trailer.notes && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.surfaceAlt}`, fontStyle: "italic", lineHeight: 1.5 }}>{trailer.notes}</div>}
+      {trailer.notes && (
+        <div className="text-[11px] text-muted mt-2.5 pt-2.5 border-t border-surface-alt italic leading-[1.5]">
+          {trailer.notes}
+        </div>
+      )}
     </div>
   );
 }

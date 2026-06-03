@@ -11,6 +11,7 @@ import {
   layingRate, mortalityStats, summarizeSamples, uniformity, weeksTimeline,
 } from "../lib/metrics.js";
 import { formatDate } from "../lib/dates.js";
+import { Card, INPUT_SURFACE_CLS } from "./ui.jsx";
 
 // Batch / flock metrics section (Batch 26.1) — the per-cohort slice of
 // the Metrics & analytics subsystem, embedded on BatchPage.
@@ -533,26 +534,7 @@ function EggLogCard({ collections, onRecord, onRemove }) {
 
 // ── shared pieces ─────────────────────────────────────────────────────
 
-const inputCls =
-  "bg-surface border border-line text-fg text-[13px] px-2.5 py-2 " +
-  "outline-none focus:border-accent font-[inherit] w-full";
-
-function Card({ title, icon: Icon, subtitle, children }) {
-  return (
-    <section className="bg-surface border border-line py-4 px-5 flex flex-col">
-      <header className="flex items-baseline gap-2.5 mb-3">
-        {Icon && <Icon size={14} className="text-dim translate-y-0.5" />}
-        <div className="font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-bold">
-          {title}
-        </div>
-        {subtitle && (
-          <div className="text-[12px] text-dim ml-auto">{subtitle}</div>
-        )}
-      </header>
-      {children}
-    </section>
-  );
-}
+const inputCls = INPUT_SURFACE_CLS + " w-full";
 
 function MetricStat({ label, value, sub, tone }) {
   return (

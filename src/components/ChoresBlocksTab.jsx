@@ -139,7 +139,7 @@ function BlockCard({ block, allBlocks, onUpdate, onDelete }) {
         </button>
         <button
           onClick={() => onDelete(block.id)}
-          className="text-faint hover:text-red-500 border-0 bg-transparent cursor-pointer p-1"
+          className="text-faint hover:text-warn border-0 bg-transparent cursor-pointer p-1"
           title="Archive"
         >
           <X size={13} />
@@ -311,7 +311,7 @@ function BlockEditor({ block, allBlocks, onCancel, onSave }) {
       </div>
 
       {errorMsg && (
-        <div className="text-[11px] text-red-500">{errorMsg}</div>
+        <div className="text-[11px] text-warn">{errorMsg}</div>
       )}
 
       {block?.id && (

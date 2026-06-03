@@ -1,11 +1,15 @@
-import { T } from "../theme.js";
-
+// Generic "nothing here yet" placeholder (Batch 39: migrated off the
+// inline-style idiom to Tailwind tokens).
 export default function EmptyState({ label }) {
   return (
-    <div style={{ padding: "64px 0", textAlign: "center" }}>
-      <div style={{ display: "inline-block", padding: "32px 48px", border: `1px dashed ${T.border}` }}>
-        <p style={{ fontSize: 13, color: T.textDim, margin: 0, marginBottom: 6 }}>No {label.toLowerCase()} captured yet.</p>
-        <p style={{ fontSize: 11, color: T.textMuted, margin: 0 }}>Drop bullets in chat to populate this section.</p>
+    <div className="py-16 text-center">
+      <div className="inline-block px-12 py-8 border border-dashed border-line">
+        <p className="text-[13px] text-dim m-0 mb-1.5">
+          No {label.toLowerCase()} captured yet.
+        </p>
+        <p className="text-[11px] text-muted m-0">
+          Drop bullets in chat to populate this section.
+        </p>
       </div>
     </div>
   );

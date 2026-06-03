@@ -2701,6 +2701,51 @@ verified back to baseline.
 (ffmpeg + whisper) per the Batch 40 plan, and the four
 data-readiness items above.
 
+### Batch 39.1 — Design audit + first consolidation · `v0.10.38-alpha`
+2026-06-03. The code-side design audit (run after the preliminary
+40.1 functionality pass). Four parallel read-only sweeps of `src/`
+— class-string duplication, inline-style idiom, duplicate
+structural components, color/token bypasses — synthesized into
+`audits/2026-06-03/design-audit.md`, then the safe, high-value
+slice executed. The large regression-prone migrations are
+documented there as deferred (39.2).
+
+**New shared UI kit** (`components/ui.jsx`, Tailwind-native):
+class constants `LABEL_CLS` / `INPUT_CLS` / `INPUT_SURFACE_CLS` /
+`BTN_ACCENT` / `BTN_GHOST` / `BTN_GHOST_WARN`, and components
+`Card`, `StatusPill`, `StatTile`. This supersedes the old
+inline-style `primitives.jsx`, which was effectively dead (one
+live import) and has been **deleted**.
+
+**Consolidations:**
+- `Card` — the four near-identical copies (Overview, Metrics,
+  BatchMetrics, BatchPage) collapse to one import.
+- `StatusPill` now backs `BatchStatePill` and the Orders payment
+  chip.
+- The byte-identical `labelCls` (4 files) and Orders'/Inventory's
+  full button-and-input constant blocks now import from the kit.
+- Token-bypass fixes: the 5 `text-red-500` / hardcoded-`#e25c4a`
+  sites (SitesAdmin, ChoresBlocksTab, Chores) → `text-warn`.
+- Legacy inline-`style={{T.*}}` → Tailwind for the tiny files:
+  EmptyState, Suppliers, Machines, Trailers, Threads, and
+  SectionContent's `GenericItemList`.
+
+**Functionality follow-up (closes a 40.1 miss):** the Metrics
+batch-comparison table printed a raw negative "weeks on farm" for
+not-yet-arrived batches (the 40.1 scan only caught the "week -N"
+text form). Now guarded to "—", matching the dashboard and batch
+page.
+
+Verified: all 11 refactored routes render with zero console/page
+errors; Cards, chips, and migrated pages screenshot clean; the
+Metrics negatives are gone.
+
+**Deferred to 39.2:** the broad button/input constant adoption
+across ~40 sites, a styled `ConfirmDialog` replacing 27
+`window.confirm()` calls, segmented-control unification, the large
+legacy-idiom migrations (Chores, LoginGate, PlaceTree), and a
+`--c-warn-subtle` token.
+
 ---
 
 ## Overhaul design records
@@ -3108,7 +3153,13 @@ chore moves; per-plan distance/location breakdown. Likely libs:
 Leaflet or MapLibre + a geometry layer.
 
 ### Batch 39 — Design audit (code-side)
-Added 2026-06-02. Claude-led review of the front-end, run ahead of
+Added 2026-06-02. **39.1 shipped 2026-06-03 (`v0.10.38-alpha`)** —
+the audit + first (safe) consolidation slice; see Shipped. Report
+in `audits/2026-06-03/design-audit.md`. Remaining (39.2): the
+broad constant adoption, `ConfirmDialog`, segmented-control
+unification, large legacy migrations, and the warn-subtle token.
+
+Claude-led review of the front-end, run ahead of
 the recorded audit (Batch 40): component architecture (what gets
 extracted / merged / deleted), design-system consolidation
 (spacing, typography, color tokens, `primitives.jsx` coverage,

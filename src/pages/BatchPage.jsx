@@ -12,6 +12,7 @@ import { batchLifecycle, BATCH_STATES } from "../lib/metrics.js";
 import { navigate, pathForSection } from "../lib/router.js";
 import BatchMetricsSection from "../components/BatchMetrics.jsx";
 import BatchStatePill from "../components/BatchStatePill.jsx";
+import { Card } from "../components/ui.jsx";
 
 // The batch lifecycle page (Batch 20) — everything the dashboard knows
 // about one livestock batch: its lifespan timeline (arrival → pasture
@@ -565,20 +566,6 @@ function HeaderStat({ label, value }) {
         {value}
       </div>
     </div>
-  );
-}
-
-function Card({ title, icon: Icon, children }) {
-  return (
-    <section className="bg-surface border border-line py-4 px-5 flex flex-col">
-      <header className="flex items-baseline gap-2.5 mb-3">
-        {Icon && <Icon size={14} className="text-dim translate-y-0.5" />}
-        <div className="font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-bold">
-          {title}
-        </div>
-      </header>
-      {children}
-    </section>
   );
 }
 

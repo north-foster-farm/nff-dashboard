@@ -8,6 +8,7 @@ import { useInventory } from "../lib/data/useInventory.js";
 import PricingGrid from "../components/PricingGrid.jsx";
 import SalesTab from "../components/SalesTab.jsx";
 import SellTab from "../components/SellTab.jsx";
+import { LABEL_CLS } from "../components/ui.jsx";
 import {
   CONTENT_SLOTS, bundleCostFloor, currentPriceMap, fmtCents,
   groupProductsByAnimal, skuCostFloor, skuKey,
@@ -321,8 +322,7 @@ function ProductCard({
 const inputCls =
   "bg-bg border border-line text-fg text-[13px] px-2.5 py-2 outline-none " +
   "focus:border-accent font-[inherit] w-full";
-const labelCls =
-  "text-[9px] text-faint uppercase tracking-[0.12em] mb-1";
+const labelCls = LABEL_CLS;
 const btnGhostCls =
   "bg-transparent border border-line text-dim font-[inherit] text-[11px] " +
   "font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer " +

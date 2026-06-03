@@ -302,7 +302,7 @@ function PlaceNode({
         <button onClick={() => setCreatingChild(true)} className="text-faint hover:text-accent border-0 bg-transparent cursor-pointer self-center p-1" title="Add child place">
           <Plus size={14} />
         </button>
-        <button onClick={() => onDeletePlace(place.id)} className="text-faint hover:text-red-500 border-0 bg-transparent cursor-pointer self-center p-1" title="Archive">
+        <button onClick={() => onDeletePlace(place.id)} className="text-faint hover:text-warn border-0 bg-transparent cursor-pointer self-center p-1" title="Archive">
           <X size={14} />
         </button>
       </div>
@@ -523,7 +523,7 @@ function OccupantsPane({
             <span className="text-faint text-[11px]">moved in {r.movedIn}</span>
             <button
               onClick={() => onMoveOut(r.id)}
-              className="text-[10px] text-dim hover:text-red-500 border border-line bg-transparent cursor-pointer uppercase tracking-[0.12em] font-semibold px-2 py-0.5 leading-none"
+              className="text-[10px] text-dim hover:text-warn border border-line bg-transparent cursor-pointer uppercase tracking-[0.12em] font-semibold px-2 py-0.5 leading-none"
               title="Mark moved out today"
             >
               Move out

@@ -19,6 +19,10 @@ import {
   skuLabel,
 } from "../lib/productCatalog.js";
 import { formatDate } from "../lib/dates.js";
+import {
+  BTN_ACCENT as btnAccentCls, BTN_GHOST as btnGhostCls,
+  INPUT_CLS as inputCls, LABEL_CLS as labelCls, StatusPill,
+} from "../components/ui.jsx";
 
 // The Orders page (Batch 29) — customer orders against the catalog,
 // from promise to fulfillment to the box on the porch.
@@ -41,18 +45,8 @@ import { formatDate } from "../lib/dates.js";
 // Sidebar wiring: Sales → Orders lands here; the dashboard's "Open
 // orders" card counts the open + ready groups.
 
-const inputCls =
-  "bg-bg border border-line text-fg text-[12px] px-2 py-1.5 outline-none " +
-  "focus:border-accent font-[inherit]";
-const labelCls = "text-[9px] text-faint uppercase tracking-[0.12em] mb-1";
-const btnGhostCls =
-  "bg-transparent border border-line text-dim font-[inherit] text-[10px] " +
-  "font-semibold uppercase tracking-[0.12em] px-2.5 py-1.5 cursor-pointer " +
-  "hover:text-fg disabled:opacity-50";
-const btnAccentCls =
-  "inline-flex items-center gap-1.5 bg-accent text-on-accent border " +
-  "border-accent font-[inherit] text-[11px] font-semibold uppercase " +
-  "tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50";
+// Form/button class strings now live in the shared ui kit (Batch 39).
+// Aliased to the original local names so call sites read unchanged.
 
 export default function Orders({ startCreating = false }) {
   const db = useOrders();
@@ -506,14 +500,12 @@ function OrderRow({
 function PaymentChip({ order }) {
   if (order.status === "cancelled") return null;
   return order.paidAt ? (
-    <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.12em] text-resolved border border-resolved/40 px-1.5 py-0.5">
+    <StatusPill tone="resolved" className="shrink-0">
       Paid{order.paymentMethod
         ? ` · ${paymentMethodLabel(order.paymentMethod)}` : ""}
-    </span>
+    </StatusPill>
   ) : (
-    <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.12em] text-dim border border-line px-1.5 py-0.5">
-      Unpaid
-    </span>
+    <StatusPill tone="muted" className="shrink-0">Unpaid</StatusPill>
   );
 }
 
