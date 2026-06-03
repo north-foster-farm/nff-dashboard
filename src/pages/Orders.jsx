@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
 import {
-  Ban, Banknote, Check, ChevronDown, ChevronRight, PackageCheck,
-  Pencil, Plus, Receipt, RotateCcw, Trash2, Truck, X,
+  Ban, Banknote, Check, ChevronDown, ChevronRight, Package,
+  PackageCheck, Pencil, Plus, Receipt, RotateCcw, Settings2, Trash2,
+  Truck, X,
 } from "lucide-react";
 import { useOrders } from "../lib/data/useOrders.js";
 import { useCustomers } from "../lib/data/useCustomers.js";
 import { useProducts } from "../lib/data/useProducts.js";
 import { useInventory } from "../lib/data/useInventory.js";
 import {
-  FULFILLMENT_METHODS, ORDER_STATUSES, PAYMENT_METHODS, formatAddress,
-  fulfillmentLabel, orderCustomerName, orderTotalCents,
-  paymentMethodLabel,
+  EMPTY_ADDRESS, FULFILLMENT_METHODS, ORDER_STATUSES, PAYMENT_METHODS,
+  cleanAddress, formatAddress, fulfillmentLabel, orderCustomerName,
+  orderTotalCents, parcelsSummary, paymentMethodLabel,
+  shipmentStatusLabel, stateAllowed,
 } from "../lib/orders.js";
 import {
   currentPriceMap, expandSkus, fmtCents, parseDollarsToCents, skuKey,
@@ -18,8 +20,8 @@ import {
 } from "../lib/productCatalog.js";
 import { formatDate } from "../lib/dates.js";
 
-// The Orders page (Batches 29.1–29.2) — customer orders against the
-// catalog, from promise to fulfillment.
+// The Orders page (Batch 29) — customer orders against the catalog,
+// from promise to fulfillment to the box on the porch.
 //
 // An order is a promise: lines, a customer, a fulfillment method, and
 // a total. Nothing touches product_sales or inventory until the order
@@ -27,7 +29,14 @@ import { formatDate } from "../lib/dates.js";
 // the freezer counts down FIFO (same path as the POS). Lifecycle:
 // open → ready → fulfilled, plus cancelled; open orders can be edited
 // or deleted freely, fulfilled orders are frozen. Payment is a paid
-// stamp + method, capturable at any point. Shipments are 29.3.
+// stamp + method, capturable at any point.
+//
+// Shipping orders (29.3) carry a ship-to address (prefilled from the
+// customer's default, snapshotted per order) and any number of
+// shipments — parcels with dims / weight / dry ice, a manual label
+// workflow (buy on PirateShip/Shippo, paste tracking in), and a
+// cold-chain state allowlist that warns when the destination is
+// farther than frozen product should travel.
 //
 // Sidebar wiring: Sales → Orders lands here; the dashboard's "Open
 // orders" card counts the open + ready groups.
@@ -51,6 +60,7 @@ export default function Orders({ startCreating = false }) {
   const catalog = useProducts();
   const inv = useInventory();
   const [creating, setCreating] = useState(startCreating);
+  const [showSettings, setShowSettings] = useState(false);
 
   const customersById = useMemo(
     () => new Map(
@@ -64,6 +74,17 @@ export default function Orders({ startCreating = false }) {
 
   const loading = db.loading || crm.loading || catalog.loading;
 
+  // Saving an order: create/update, then optionally write the entered
+  // ship-to back to the customer record as their default address.
+  const saveCustomerDefault = async (fields) => {
+    if (fields.saveAddressAsDefault && fields.customerId
+      && fields.shipTo) {
+      await crm.updateCustomer(fields.customerId, {
+        address: fields.shipTo,
+      });
+    }
+  };
+
   return (
     <div className="max-w-[920px] flex flex-col gap-5">
       <div className="text-[11px] text-muted leading-relaxed max-w-[700px]">
@@ -75,13 +96,29 @@ export default function Orders({ startCreating = false }) {
 
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <SummaryStrip byStatus={db.byStatus} />
-        <button
-          onClick={() => setCreating(c => !c)}
-          className={btnAccentCls}
-        >
-          <Plus size={13} /> New order
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSettings(s => !s)}
+            aria-label="Shipping settings"
+            className={btnGhostCls + " py-[7px]"}
+          >
+            <Settings2 size={13} />
+          </button>
+          <button
+            onClick={() => setCreating(c => !c)}
+            className={btnAccentCls}
+          >
+            <Plus size={13} /> New order
+          </button>
+        </div>
       </div>
+
+      {showSettings && (
+        <ShippingSettingsPanel
+          db={db}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
 
       {creating && (
         <OrderForm
@@ -89,8 +126,10 @@ export default function Orders({ startCreating = false }) {
           skus={skus}
           priceMap={priceMap}
           onHand={inv.onHand}
+          allowedStates={db.shippingSettings.allowedStates}
           onSave={async (fields) => {
             await db.createOrder(fields);
+            await saveCustomerDefault(fields);
             setCreating(false);
           }}
           onCancel={() => setCreating(false)}
@@ -118,8 +157,8 @@ export default function Orders({ startCreating = false }) {
             status={status}
             orders={db.byStatus[status.id] ?? []}
             db={db}
+            crm={crm}
             customersById={customersById}
-            customers={crm.customers}
             catalog={catalog}
             skus={skus}
             priceMap={priceMap}
@@ -167,7 +206,7 @@ function SummaryStrip({ byStatus }) {
 // ── status groups ──────────────────────────────────────────────────────
 
 function StatusGroup({
-  status, orders, db, customersById, customers, catalog, skus, priceMap,
+  status, orders, db, crm, customersById, catalog, skus, priceMap,
   inv,
 }) {
   // Fulfilled / cancelled groups collapse by default; open / ready are
@@ -202,8 +241,8 @@ function StatusGroup({
               key={order.id}
               order={order}
               db={db}
+              crm={crm}
               customersById={customersById}
-              customers={customers}
               catalog={catalog}
               skus={skus}
               priceMap={priceMap}
@@ -224,7 +263,7 @@ function StatusGroup({
 // ── order rows ─────────────────────────────────────────────────────────
 
 function OrderRow({
-  order, db, customersById, customers, catalog, skus, priceMap, inv,
+  order, db, crm, customersById, catalog, skus, priceMap, inv,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -254,18 +293,32 @@ function OrderRow({
       <div className="bg-surface p-4">
         <OrderForm
           order={order}
-          customers={customers}
+          customers={crm.customers}
           skus={skus}
           priceMap={priceMap}
           onHand={inv.onHand}
+          allowedStates={db.shippingSettings.allowedStates}
           onSave={async (fields) => {
+            // Lines first (recomputes the total against the order's
+            // old shipping charge), then the header patch — which
+            // includes the final total with the new shipping charge.
+            await db.setLines(order.id, fields.lines);
             await db.updateOrder(order.id, {
               customerId: fields.customerId,
               customerName: fields.customerName,
               fulfillmentMethod: fields.fulfillmentMethod,
               notes: fields.notes,
+              shipTo: fields.shipTo,
+              shippingCents: fields.shippingCents,
+              totalCents: orderTotalCents(
+                fields.lines, fields.shippingCents),
             });
-            await db.setLines(order.id, fields.lines);
+            if (fields.saveAddressAsDefault && fields.customerId
+              && fields.shipTo) {
+              await crm.updateCustomer(fields.customerId, {
+                address: fields.shipTo,
+              });
+            }
             setEditing(false);
           }}
           onCancel={() => setEditing(false)}
@@ -315,6 +368,9 @@ function OrderRow({
           <LineList order={order} catalog={catalog} />
           <ShipToBlock shipTo={order.shipTo} />
           <Lifecycle order={order} />
+          {order.fulfillmentMethod === "shipping" && !isCancelled && (
+            <ShipmentsBlock order={order} db={db} />
+          )}
           {fulfillResult && <FulfillResult result={fulfillResult} />}
           {errorMsg && (
             <div className="text-[11px] text-warn">{errorMsg}</div>
@@ -712,6 +768,644 @@ function FulfillResult({ result }) {
   );
 }
 
+// ── addresses (Batch 29.3) ─────────────────────────────────────────────
+
+// Ship-to entry, Shippo-shaped: name / phone, street, city / state /
+// zip. Controlled by a single address object.
+function AddressFields({ value, onChange, disabled }) {
+  const set = (key, v) => onChange({ ...value, [key]: v });
+  const field = (key, placeholder, extra = "") => (
+    <input
+      value={value[key] ?? ""}
+      onChange={(e) => set(key, e.target.value)}
+      disabled={disabled}
+      placeholder={placeholder}
+      className={inputCls + " " + extra}
+    />
+  );
+  return (
+    <div className="flex flex-col gap-2 max-w-[480px]">
+      <div className="grid sm:grid-cols-2 gap-2">
+        {field("name", "Recipient name")}
+        {field("phone", "Phone")}
+      </div>
+      {field("street1", "Street address")}
+      {field("street2", "Apt / unit (optional)")}
+      <div className="grid grid-cols-[1fr_72px_100px] gap-2">
+        {field("city", "City")}
+        {field("state", "State")}
+        {field("zip", "ZIP")}
+      </div>
+    </div>
+  );
+}
+
+// ── shipments (Batch 29.3) ─────────────────────────────────────────────
+
+// A shipping order's shipments: each one is a box (or boxes) headed
+// to the door. The manual workflow until the live carrier API
+// (Batch 30): build the shipment (parcels + dry ice), buy the label
+// by hand, paste tracking in, then walk it through label_purchased →
+// shipped → delivered.
+function ShipmentsBlock({ order, db }) {
+  const shipments = db.shipmentsByOrder.get(order.id) ?? [];
+  const [pending, setPending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const create = async () => {
+    setErrorMsg(null);
+    setPending(true);
+    try {
+      await db.createShipment(order.id, {});
+    } catch (e) {
+      setErrorMsg(e?.message ?? "That didn't work.");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="text-[10px] text-dim uppercase tracking-[0.12em]">
+        Shipments
+      </div>
+      {shipments.map(s => (
+        <ShipmentCard
+          key={s.id}
+          shipment={s}
+          db={db}
+          allowedStates={db.shippingSettings.allowedStates}
+        />
+      ))}
+      {errorMsg && (
+        <div className="text-[11px] text-warn">{errorMsg}</div>
+      )}
+      <button
+        onClick={create}
+        disabled={pending || !order.shipTo}
+        className={btnGhostCls + " self-start"}
+      >
+        <Package size={11} className="inline -translate-y-px" />
+        {" "}New shipment
+      </button>
+      {!order.shipTo && (
+        <div className="text-[10px] text-faint">
+          The order needs a ship-to address first — edit the order and
+          add one.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One shipment: status header, parcels, label details, and the status
+// workflow buttons.
+function ShipmentCard({ shipment, db, allowedStates }) {
+  const isDraft = shipment.status === "draft";
+  const isLabelled = shipment.status === "label_purchased";
+  const isShipped = shipment.status === "shipped";
+  const editable = isDraft || isLabelled;
+
+  const [expanded, setExpanded] = useState(isDraft);
+  const [pending, setPending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+  // Label fields, editable while draft / label_purchased.
+  const [carrier, setCarrier] = useState(shipment.carrier ?? "");
+  const [serviceLevel, setServiceLevel] = useState(
+    shipment.serviceLevel ?? "");
+  const [shipDate, setShipDate] = useState(shipment.shipDate ?? "");
+  const [labelCostText, setLabelCostText] = useState(
+    shipment.labelCostCents != null
+      ? (shipment.labelCostCents / 100).toFixed(2)
+      : "");
+  const [trackingNumber, setTrackingNumber] = useState(
+    shipment.trackingNumber ?? "");
+  const [trackingUrl, setTrackingUrl] = useState(
+    shipment.trackingUrl ?? "");
+
+  const run = async (fn) => {
+    setErrorMsg(null);
+    setPending(true);
+    try {
+      await fn();
+    } catch (e) {
+      setErrorMsg(e?.message ?? "That didn't work.");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  // The label-field patch as currently typed.
+  const labelPatch = () => ({
+    carrier,
+    serviceLevel,
+    shipDate: shipDate || null,
+    labelCostCents: parseDollarsToCents(labelCostText),
+    trackingNumber,
+    trackingUrl,
+  });
+
+  const stateWarn = shipment.shipTo?.state
+    && !stateAllowed(shipment.shipTo.state, allowedStates);
+
+  return (
+    <div className="bg-bg border border-line">
+      {/* header */}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-transparent border-0 font-[inherit] text-left cursor-pointer"
+      >
+        {expanded
+          ? <ChevronDown size={12} className="shrink-0 text-dim" />
+          : <ChevronRight size={12} className="shrink-0 text-dim" />}
+        <span className={
+          "text-[9px] font-semibold uppercase tracking-[0.12em] px-1.5 py-0.5 border "
+          + (shipment.status === "delivered"
+            ? "text-resolved border-resolved/40"
+            : shipment.status === "cancelled"
+              ? "text-faint border-line"
+              : "text-fg border-line")
+        }>
+          {shipmentStatusLabel(shipment.status)}
+        </span>
+        <span className="flex-1 text-[11px] text-muted truncate">
+          {parcelsSummary(shipment.parcels)}
+          {shipment.carrier && ` · ${shipment.carrier}`}
+          {shipment.trackingNumber && ` · ${shipment.trackingNumber}`}
+        </span>
+        <span className="text-[10px] text-faint shrink-0">
+          {formatDate(shipment.createdAt?.slice(0, 10))}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="px-3 pb-3 pl-8 flex flex-col gap-3 border-t border-line pt-2.5">
+          {/* ship-to snapshot */}
+          <ShipToBlock shipTo={shipment.shipTo} />
+          {stateWarn && (
+            <div className="text-[11px] text-warn leading-relaxed">
+              {shipment.shipTo.state.trim().toUpperCase()} isn&rsquo;t
+              on the cold-chain allowed-states list — double-check
+              transit time before buying a label.
+            </div>
+          )}
+
+          {/* parcels */}
+          <ParcelsEditor shipment={shipment} db={db} editable={editable} />
+
+          {/* label details */}
+          {editable ? (
+            <div className="flex flex-col gap-2">
+              <div className={labelCls}>Label</div>
+              <div className="flex items-end gap-2 flex-wrap">
+                <input
+                  value={carrier}
+                  onChange={(e) => setCarrier(e.target.value)}
+                  disabled={pending}
+                  placeholder="Carrier (USPS, UPS…)"
+                  className={inputCls + " w-36"}
+                />
+                <input
+                  value={serviceLevel}
+                  onChange={(e) => setServiceLevel(e.target.value)}
+                  disabled={pending}
+                  placeholder="Service (Priority…)"
+                  className={inputCls + " w-36"}
+                />
+                <input
+                  type="date"
+                  value={shipDate}
+                  onChange={(e) => setShipDate(e.target.value)}
+                  disabled={pending}
+                  className={inputCls}
+                />
+                <input
+                  value={labelCostText}
+                  onChange={(e) => setLabelCostText(e.target.value)}
+                  disabled={pending}
+                  inputMode="decimal"
+                  placeholder="Label cost"
+                  className={inputCls + " w-24 text-right"}
+                />
+              </div>
+              <div className="flex items-end gap-2 flex-wrap">
+                <input
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  disabled={pending}
+                  placeholder="Tracking number"
+                  className={inputCls + " w-56"}
+                />
+                <input
+                  value={trackingUrl}
+                  onChange={(e) => setTrackingUrl(e.target.value)}
+                  disabled={pending}
+                  placeholder="Tracking URL (optional)"
+                  className={inputCls + " flex-1 min-w-[200px]"}
+                />
+              </div>
+            </div>
+          ) : (
+            (shipment.carrier || shipment.trackingNumber) && (
+              <div className="text-[12px] text-fg">
+                {[shipment.carrier, shipment.serviceLevel]
+                  .filter(Boolean).join(" · ")}
+                {shipment.trackingNumber && (
+                  <span className="text-muted">
+                    {" "}· {shipment.trackingUrl ? (
+                      <a
+                        href={shipment.trackingUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-accent underline"
+                      >
+                        {shipment.trackingNumber}
+                      </a>
+                    ) : shipment.trackingNumber}
+                  </span>
+                )}
+                {shipment.labelCostCents != null && (
+                  <span className="text-dim">
+                    {" "}· label {fmtCents(shipment.labelCostCents)}
+                  </span>
+                )}
+              </div>
+            )
+          )}
+
+          {errorMsg && (
+            <div className="text-[11px] text-warn">{errorMsg}</div>
+          )}
+
+          {/* status workflow */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {isDraft && (
+              <>
+                <button
+                  onClick={() => run(async () => {
+                    await db.updateShipment(shipment.id, labelPatch());
+                    await db.setShipmentStatus(
+                      shipment.id, "label_purchased");
+                  })}
+                  disabled={pending}
+                  className={btnGhostCls + " text-fg"}
+                >
+                  Label purchased
+                </button>
+                <button
+                  onClick={() => run(() =>
+                    db.updateShipment(shipment.id, labelPatch()))}
+                  disabled={pending}
+                  className={btnGhostCls}
+                >
+                  Save details
+                </button>
+                <button
+                  onClick={() => {
+                    if (!window.confirm("Delete this shipment?")) return;
+                    run(() => db.removeShipment(shipment.id));
+                  }}
+                  disabled={pending}
+                  className={btnGhostCls + " text-warn hover:text-warn ml-auto"}
+                >
+                  <Trash2 size={11} className="inline -translate-y-px" />
+                  {" "}Delete
+                </button>
+              </>
+            )}
+            {isLabelled && (
+              <>
+                <button
+                  onClick={() => run(async () => {
+                    await db.updateShipment(shipment.id, labelPatch());
+                    await db.setShipmentStatus(shipment.id, "shipped");
+                  })}
+                  disabled={pending}
+                  className={btnGhostCls + " text-fg"}
+                >
+                  <Truck size={11} className="inline -translate-y-px" />
+                  {" "}Mark shipped
+                </button>
+                <button
+                  onClick={() => run(() =>
+                    db.updateShipment(shipment.id, labelPatch()))}
+                  disabled={pending}
+                  className={btnGhostCls}
+                >
+                  Save details
+                </button>
+                <button
+                  onClick={() => run(() =>
+                    db.setShipmentStatus(shipment.id, "draft"))}
+                  disabled={pending}
+                  className={btnGhostCls}
+                >
+                  Back to draft
+                </button>
+                <button
+                  onClick={() => {
+                    if (!window.confirm(
+                      "Cancel this shipment? (Void / refund the label "
+                      + "with the carrier separately.)")) return;
+                    run(() =>
+                      db.setShipmentStatus(shipment.id, "cancelled"));
+                  }}
+                  disabled={pending}
+                  className={btnGhostCls + " text-warn hover:text-warn ml-auto"}
+                >
+                  Cancel shipment
+                </button>
+              </>
+            )}
+            {isShipped && (
+              <button
+                onClick={() => run(() =>
+                  db.setShipmentStatus(shipment.id, "delivered"))}
+                disabled={pending}
+                className={btnGhostCls + " text-fg"}
+              >
+                <Check size={11} className="inline -translate-y-px" />
+                {" "}Mark delivered
+              </button>
+            )}
+            {shipment.status === "delivered" && shipment.deliveredAt && (
+              <span className="text-[10px] text-faint">
+                Delivered {formatDate(shipment.deliveredAt.slice(0, 10))}
+              </span>
+            )}
+            {shipment.status === "cancelled" && (
+              <button
+                onClick={() => {
+                  if (!window.confirm("Delete this cancelled shipment?")) {
+                    return;
+                  }
+                  run(() => db.removeShipment(shipment.id));
+                }}
+                disabled={pending}
+                className={btnGhostCls + " text-warn hover:text-warn"}
+              >
+                <Trash2 size={11} className="inline -translate-y-px" />
+                {" "}Delete
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// The boxes in a shipment: dims / weight / dry ice per parcel,
+// replace-all save (same pattern as order lines). Read-only once the
+// shipment is past label_purchased.
+function ParcelsEditor({ shipment, db, editable }) {
+  // Drafts mirror shipment.parcels until edited.
+  const [drafts, setDrafts] = useState(() =>
+    shipment.parcels.map(parcelToDraft));
+  const [dirty, setDirty] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const patch = (i, key, v) => {
+    setDirty(true);
+    setDrafts(prev => prev.map((d, j) =>
+      j === i ? { ...d, [key]: v } : d));
+  };
+
+  const save = async () => {
+    setErrorMsg(null);
+    setPending(true);
+    try {
+      await db.setParcels(shipment.id, drafts.map(draftToParcel));
+      setDirty(false);
+    } catch (e) {
+      setErrorMsg(e?.message ?? "That didn't save.");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (!editable) {
+    return shipment.parcels.length > 0 ? (
+      <div className="flex flex-col gap-1">
+        <div className={labelCls}>Parcels</div>
+        {shipment.parcels.map((p, i) => (
+          <div key={p.id ?? i} className="text-[12px] text-fg">
+            {parcelLabel(p)}
+          </div>
+        ))}
+      </div>
+    ) : null;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className={labelCls}>Parcels</div>
+      {drafts.map((d, i) => (
+        <div key={i} className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1">
+            <input
+              value={d.lengthIn}
+              onChange={(e) => patch(i, "lengthIn", e.target.value)}
+              disabled={pending}
+              inputMode="decimal"
+              placeholder="L"
+              className={inputCls + " w-14 text-center"}
+            />
+            <span className="text-[10px] text-faint">×</span>
+            <input
+              value={d.widthIn}
+              onChange={(e) => patch(i, "widthIn", e.target.value)}
+              disabled={pending}
+              inputMode="decimal"
+              placeholder="W"
+              className={inputCls + " w-14 text-center"}
+            />
+            <span className="text-[10px] text-faint">×</span>
+            <input
+              value={d.heightIn}
+              onChange={(e) => patch(i, "heightIn", e.target.value)}
+              disabled={pending}
+              inputMode="decimal"
+              placeholder="H"
+              className={inputCls + " w-14 text-center"}
+            />
+            <span className="text-[10px] text-faint">in</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <input
+              value={d.weightLb}
+              onChange={(e) => patch(i, "weightLb", e.target.value)}
+              disabled={pending}
+              inputMode="decimal"
+              placeholder="Weight"
+              className={inputCls + " w-20 text-right"}
+            />
+            <span className="text-[10px] text-faint">lb</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <input
+              value={d.dryIceLb}
+              onChange={(e) => patch(i, "dryIceLb", e.target.value)}
+              disabled={pending}
+              inputMode="decimal"
+              placeholder="Dry ice"
+              className={inputCls + " w-20 text-right"}
+            />
+            <span className="text-[10px] text-faint">lb dry ice</span>
+          </div>
+          <button
+            onClick={() => {
+              setDirty(true);
+              setDrafts(prev => prev.filter((_, j) => j !== i));
+            }}
+            disabled={pending}
+            aria-label="Remove parcel"
+            className="bg-transparent border border-line text-dim hover:text-warn font-[inherit] w-7 h-7 cursor-pointer flex items-center justify-center disabled:opacity-40"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+      {errorMsg && (
+        <div className="text-[11px] text-warn">{errorMsg}</div>
+      )}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            setDirty(true);
+            setDrafts(prev => [...prev, {
+              lengthIn: "", widthIn: "", heightIn: "", weightLb: "",
+              dryIceLb: "",
+            }]);
+          }}
+          disabled={pending}
+          className={btnGhostCls}
+        >
+          <Plus size={11} className="inline -translate-y-px" /> Add box
+        </button>
+        {dirty && (
+          <button
+            onClick={save}
+            disabled={pending}
+            className={btnGhostCls + " text-fg"}
+          >
+            {pending ? "Saving…" : "Save parcels"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function parcelToDraft(p) {
+  const s = (v) => v == null ? "" : String(v);
+  return {
+    lengthIn: s(p.lengthIn), widthIn: s(p.widthIn),
+    heightIn: s(p.heightIn), weightLb: s(p.weightLb),
+    dryIceLb: s(p.dryIceLb),
+  };
+}
+
+function draftToParcel(d) {
+  const n = (v) => {
+    const x = Number(v);
+    return v !== "" && Number.isFinite(x) && x > 0 ? x : null;
+  };
+  return {
+    lengthIn: n(d.lengthIn), widthIn: n(d.widthIn),
+    heightIn: n(d.heightIn), weightLb: n(d.weightLb),
+    // Dry ice can legitimately be 0; only blank means null.
+    dryIceLb: d.dryIceLb === "" ? null : Math.max(0, Number(d.dryIceLb) || 0),
+  };
+}
+
+function parcelLabel(p) {
+  const dims = [p.lengthIn, p.widthIn, p.heightIn].every(v => v != null)
+    ? `${p.lengthIn}×${p.widthIn}×${p.heightIn} in`
+    : null;
+  return [
+    dims,
+    p.weightLb != null ? `${p.weightLb} lb` : null,
+    p.dryIceLb ? `${p.dryIceLb} lb dry ice` : null,
+  ].filter(Boolean).join(" · ") || "box";
+}
+
+// ── shipping settings (Batch 29.3) ─────────────────────────────────────
+
+// The cold-chain allowlist: which states frozen product may ship to
+// (transit time caps how far dry ice lasts). Comma-separated state
+// codes; empty = not configured, no warnings anywhere.
+function ShippingSettingsPanel({ db, onClose }) {
+  const settings = db.shippingSettings;
+  const [statesText, setStatesText] = useState(
+    settings.allowedStates.join(", "));
+  const [notes, setNotes] = useState(settings.notes ?? "");
+  const [pending, setPending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const save = async () => {
+    setErrorMsg(null);
+    setPending(true);
+    try {
+      const allowedStates = statesText
+        .split(/[,\s]+/)
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+      await db.updateShippingSettings({ allowedStates, notes });
+      onClose();
+    } catch (e) {
+      setErrorMsg(e?.message ?? "That didn't save.");
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="bg-surface border border-line p-4 flex flex-col gap-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg">
+        Shipping settings
+      </div>
+      <div className="text-[11px] text-muted leading-relaxed max-w-[600px]">
+        Frozen product ships with dry ice, so transit time caps how far
+        it can go. Orders and shipments headed to a state not listed
+        here get a warning (never a block). Leave empty to turn the
+        check off.
+      </div>
+      <div>
+        <div className={labelCls}>Allowed states</div>
+        <input
+          value={statesText}
+          onChange={(e) => setStatesText(e.target.value)}
+          disabled={pending}
+          placeholder="RI, MA, CT, NY, NH, VT, ME"
+          className={inputCls + " w-full max-w-[480px]"}
+        />
+      </div>
+      <div>
+        <div className={labelCls}>Notes</div>
+        <input
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          disabled={pending}
+          placeholder="Optional — carrier notes, dry-ice supplier…"
+          className={inputCls + " w-full max-w-[480px]"}
+        />
+      </div>
+      {errorMsg && (
+        <div className="text-[11px] text-warn">{errorMsg}</div>
+      )}
+      <div className="flex items-center gap-2">
+        <button onClick={save} disabled={pending} className={btnAccentCls}>
+          {pending ? "Saving…" : "Save settings"}
+        </button>
+        <button onClick={onClose} disabled={pending} className={btnGhostCls}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // The expanded order's lines, read-only.
 function LineList({ order, catalog }) {
   return (
@@ -787,7 +1481,8 @@ function draftFromLine(line, skus) {
 }
 
 function OrderForm({
-  order = null, customers, skus, priceMap, onHand, onSave, onCancel,
+  order = null, customers, skus, priceMap, onHand, allowedStates = [],
+  onSave, onCancel,
 }) {
   // Customer: a real customer id, or "" for walk-in free text.
   const [customerId, setCustomerId] = useState(order?.customerId ?? "");
@@ -800,8 +1495,40 @@ function OrderForm({
     order
       ? order.lines.map(l => draftFromLine(l, skus))
       : [{ skuIdx: "", qty: "1", totalText: null }]);
+  // Shipping (29.3): ship-to address, the charge passed to the
+  // customer, and whether to save the address back to the customer
+  // record as their default. Merge field-by-field so a stored null
+  // never replaces the empty string the inputs expect.
+  const [shipTo, setShipTo] = useState(() => {
+    const merged = { ...EMPTY_ADDRESS };
+    for (const k of Object.keys(EMPTY_ADDRESS)) {
+      const v = order?.shipTo?.[k];
+      if (v != null) merged[k] = String(v);
+    }
+    return merged;
+  });
+  const [shippingText, setShippingText] = useState(
+    order?.shippingCents != null
+      ? (order.shippingCents / 100).toFixed(2)
+      : "");
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
   const [pending, setPending] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+
+  const isShipping = fulfillmentMethod === "shipping";
+  const shippingCents = isShipping
+    ? parseDollarsToCents(shippingText)
+    : null;
+
+  // Picking a customer prefills a blank ship-to from their default
+  // address; the order keeps its own snapshot from there.
+  const pickCustomer = (id) => {
+    setCustomerId(id);
+    const customer = customers.find(c => c.id === id);
+    if (customer?.address && !cleanAddress(shipTo)) {
+      setShipTo({ ...EMPTY_ADDRESS, ...customer.address });
+    }
+  };
 
   const suggestedCents = (draft) => {
     const sku = skus[Number(draft.skuIdx)];
@@ -841,7 +1568,7 @@ function OrderForm({
     .filter(Boolean);
   const everyLinePriced = validLines.length > 0
     && validLines.every(l => l.totalCents != null);
-  const totalCents = orderTotalCents(validLines, order?.shippingCents);
+  const totalCents = orderTotalCents(validLines, shippingCents);
 
   const submit = async () => {
     setErrorMsg(null);
@@ -861,6 +1588,9 @@ function OrderForm({
         fulfillmentMethod,
         notes,
         lines: validLines,
+        shipTo: isShipping ? cleanAddress(shipTo) : null,
+        shippingCents,
+        saveAddressAsDefault: saveAsDefault,
       });
     } catch (e) {
       setErrorMsg(e?.message ?? "That didn't save.");
@@ -880,7 +1610,7 @@ function OrderForm({
           <div className={labelCls}>Customer</div>
           <select
             value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
+            onChange={(e) => pickCustomer(e.target.value)}
             disabled={pending}
             className={inputCls + " w-full"}
           >
@@ -916,6 +1646,52 @@ function OrderForm({
           </select>
         </div>
       </div>
+
+      {/* ship-to + shipping charge (29.3) */}
+      {isShipping && (
+        <div className="flex flex-col gap-2 border-l-2 border-line pl-3">
+          <div className={labelCls}>Ship to</div>
+          <AddressFields
+            value={shipTo}
+            onChange={setShipTo}
+            disabled={pending}
+          />
+          {shipTo.state.trim()
+            && !stateAllowed(shipTo.state, allowedStates) && (
+            <div className="text-[11px] text-warn leading-relaxed">
+              {shipTo.state.trim().toUpperCase()} isn&rsquo;t on the
+              cold-chain allowed-states list
+              ({allowedStates.join(", ")}). The order can still be
+              saved — check transit time before shipping frozen
+              product this far.
+            </div>
+          )}
+          <div className="flex items-end gap-3 flex-wrap">
+            <div>
+              <div className={labelCls}>Shipping charge</div>
+              <input
+                value={shippingText}
+                onChange={(e) => setShippingText(e.target.value)}
+                disabled={pending}
+                inputMode="decimal"
+                placeholder="0.00"
+                className={inputCls + " w-24 text-right"}
+              />
+            </div>
+            {customerId && (
+              <label className="flex items-center gap-1.5 text-[11px] text-muted cursor-pointer pb-1.5">
+                <input
+                  type="checkbox"
+                  checked={saveAsDefault}
+                  onChange={(e) => setSaveAsDefault(e.target.checked)}
+                  disabled={pending}
+                />
+                Save as this customer&rsquo;s default address
+              </label>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* lines */}
       <div className="flex flex-col gap-2">

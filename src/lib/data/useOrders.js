@@ -4,8 +4,8 @@ import { orderTotalCents, saleChannelForOrder } from "../orders.js";
 import { skuLabel } from "../productCatalog.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 
-// Orders data hook (Batch 29.1–29.2) — orders, their lines, and (29.3)
-// their shipments.
+// Orders data hook (Batch 29) — orders, their lines, their shipments,
+// and the shipping settings singleton.
 //
 //   useOrders() → {
 //     orders,           // shaped orders, lines attached, newest first
@@ -13,6 +13,7 @@ import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 //     byStatus,         // { open: [], ready: [], fulfilled: [],
 //                       //   cancelled: [] }
 //     shipmentsByOrder, // Map<orderId, shipments with parcels attached>
+//     shippingSettings, // { allowedStates: [], notes } (29.3)
 //     loading, error,
 //     createOrder({ customerId, customerName, fulfillmentMethod,
 //                   shipTo, shippingCents, notes, lines }),
@@ -27,10 +28,13 @@ import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 //     fulfillOrder(id, { soldOn, recordSale, allocateToSale,
 //                        productsById, paymentMethod }),
 //                                // → { shortfalls }       (29.2)
+//     createShipment(orderId, { shipTo, notes }),         // (29.3)
+//     updateShipment(id, patch),
+//     setShipmentStatus(id, status),
+//     setParcels(shipmentId, parcels),  // replace-all
+//     removeShipment(id),
+//     updateShippingSettings({ allowedStates, notes }),
 //   }
-//
-// Shipment mutations land in 29.3. The reads are all here from day
-// one so that slice only adds mutations.
 
 const ORDER_COLS =
   "id, customer_id, customer_name, status, total_cents, " +
@@ -48,8 +52,12 @@ const SHIPMENT_COLS =
 const PARCEL_COLS =
   "id, shipment_id, length_in, width_in, height_in, weight_lb, " +
   "dry_ice_lb, notes, created_at";
+const SETTINGS_COLS = "id, allowed_states, notes, updated_at";
 
-const TABLES = ["orders", "order_lines", "shipments", "shipment_parcels"];
+const TABLES = [
+  "orders", "order_lines", "shipments", "shipment_parcels",
+  "shipping_settings",
+];
 
 function shapeOrder(r) {
   return {
@@ -146,17 +154,20 @@ export function useOrders() {
   const [error, setError] = useState(null);
 
   const fetchAll = useCallback(async () => {
-    const [orderRes, lineRes, shipRes, parcelRes] = await Promise.all([
-      supabase.from("orders").select(ORDER_COLS)
-        .order("placed_at", { ascending: false }),
-      supabase.from("order_lines").select(LINE_COLS)
-        .order("sort_order"),
-      supabase.from("shipments").select(SHIPMENT_COLS)
-        .order("created_at", { ascending: false }),
-      supabase.from("shipment_parcels").select(PARCEL_COLS)
-        .order("created_at"),
-    ]);
-    const failed = [orderRes, lineRes, shipRes, parcelRes]
+    const [orderRes, lineRes, shipRes, parcelRes, settingsRes] =
+      await Promise.all([
+        supabase.from("orders").select(ORDER_COLS)
+          .order("placed_at", { ascending: false }),
+        supabase.from("order_lines").select(LINE_COLS)
+          .order("sort_order"),
+        supabase.from("shipments").select(SHIPMENT_COLS)
+          .order("created_at", { ascending: false }),
+        supabase.from("shipment_parcels").select(PARCEL_COLS)
+          .order("created_at"),
+        supabase.from("shipping_settings").select(SETTINGS_COLS)
+          .maybeSingle(),
+      ]);
+    const failed = [orderRes, lineRes, shipRes, parcelRes, settingsRes]
       .find(r => r.error);
     if (failed) { setError(failed.error); return; }
     setTables({
@@ -164,6 +175,10 @@ export function useOrders() {
       lines: (lineRes.data ?? []).map(shapeLine),
       shipments: (shipRes.data ?? []).map(shapeShipment),
       parcels: (parcelRes.data ?? []).map(shapeParcel),
+      settings: {
+        allowedStates: settingsRes.data?.allowed_states ?? [],
+        notes: settingsRes.data?.notes ?? null,
+      },
     });
   }, []);
 
@@ -478,11 +493,134 @@ export function useOrders() {
     return { shortfalls };
   }, [ordersById, fetchAll]);
 
+  // ── shipments (Batch 29.3) ─────────────────────────────────────────
+  // One shipment per physical handoff to a carrier. The order's
+  // ship_to is snapshotted onto the shipment at creation (the order's
+  // copy can keep being edited; the shipment's copy is what the label
+  // gets bought for). Status workflow: draft → label_purchased →
+  // shipped → delivered, plus cancelled. Labels are bought by hand
+  // (PirateShip/Shippo) until the Batch 30 live API.
+
+  const createShipment = useCallback(async (orderId, {
+    shipTo = null, notes = null,
+  } = {}) => {
+    const order = ordersById.get(orderId);
+    if (!order) throw new Error("Order not found.");
+    const snapshot = shipTo ?? order.shipTo;
+    if (!snapshot) {
+      throw new Error("The order needs a ship-to address first.");
+    }
+    const { data: created, error: err } = await supabase
+      .from("shipments")
+      .insert({
+        order_id: orderId,
+        status: "draft",
+        ship_to: snapshot,
+        notes: (notes ?? "").trim() || null,
+        created_by: userEmail,
+      })
+      .select(SHIPMENT_COLS)
+      .single();
+    if (err) throw err;
+    await fetchAll();
+    return shapeShipment(created);
+  }, [ordersById, userEmail, fetchAll]);
+
+  // Patch shipment fields — label details, tracking, ship-to, notes.
+  const updateShipment = useCallback(async (id, patch) => {
+    const dbPatch = {};
+    if ("shipTo" in patch) dbPatch.ship_to = patch.shipTo;
+    if ("carrier" in patch) {
+      dbPatch.carrier = patch.carrier?.trim() || null;
+    }
+    if ("serviceLevel" in patch) {
+      dbPatch.service_level = patch.serviceLevel?.trim() || null;
+    }
+    if ("shipDate" in patch) dbPatch.ship_date = patch.shipDate || null;
+    if ("labelCostCents" in patch) {
+      dbPatch.label_cost_cents = patch.labelCostCents;
+    }
+    if ("trackingNumber" in patch) {
+      dbPatch.tracking_number = patch.trackingNumber?.trim() || null;
+    }
+    if ("trackingUrl" in patch) {
+      dbPatch.tracking_url = patch.trackingUrl?.trim() || null;
+    }
+    if ("notes" in patch) dbPatch.notes = patch.notes?.trim() || null;
+    const { error: err } = await supabase.from("shipments")
+      .update(dbPatch).eq("id", id);
+    if (err) throw err;
+    await fetchAll();
+  }, [fetchAll]);
+
+  // Status transitions. Delivered stamps delivered_at; leaving
+  // delivered clears it.
+  const setShipmentStatus = useCallback(async (id, status) => {
+    const patch = { status };
+    patch.delivered_at = status === "delivered"
+      ? new Date().toISOString()
+      : null;
+    const { error: err } = await supabase.from("shipments")
+      .update(patch).eq("id", id);
+    if (err) throw err;
+    await fetchAll();
+  }, [fetchAll]);
+
+  // Replace a shipment's parcels wholesale (the parcel editor saves
+  // the whole set, same pattern as order lines).
+  const setParcels = useCallback(async (shipmentId, parcels) => {
+    const { error: delErr } = await supabase.from("shipment_parcels")
+      .delete().eq("shipment_id", shipmentId);
+    if (delErr) throw delErr;
+    const rows = (parcels ?? []).map(p => ({
+      shipment_id: shipmentId,
+      length_in: p.lengthIn ?? null,
+      width_in: p.widthIn ?? null,
+      height_in: p.heightIn ?? null,
+      weight_lb: p.weightLb ?? null,
+      dry_ice_lb: p.dryIceLb ?? null,
+      notes: (p.notes ?? "").trim() || null,
+    }));
+    if (rows.length > 0) {
+      const { error: insErr } = await supabase.from("shipment_parcels")
+        .insert(rows);
+      if (insErr) throw insErr;
+    }
+    await fetchAll();
+  }, [fetchAll]);
+
+  // Hard delete — draft shipments only (callers enforce); parcels
+  // cascade.
+  const removeShipment = useCallback(async (id) => {
+    const { error: err } = await supabase.from("shipments")
+      .delete().eq("id", id);
+    if (err) throw err;
+    await fetchAll();
+  }, [fetchAll]);
+
+  // ── shipping settings (Batch 29.3) ─────────────────────────────────
+  // The singleton allowlist row (id locked to true by the schema).
+  const updateShippingSettings = useCallback(async ({
+    allowedStates, notes,
+  }) => {
+    const patch = {};
+    if (allowedStates !== undefined) {
+      patch.allowed_states = allowedStates;
+    }
+    if (notes !== undefined) patch.notes = (notes ?? "").trim() || null;
+    const { error: err } = await supabase.from("shipping_settings")
+      .update(patch).eq("id", true);
+    if (err) throw err;
+    await fetchAll();
+  }, [fetchAll]);
+
   return {
     orders,
     ordersById,
     byStatus,
     shipmentsByOrder,
+    shippingSettings: tables?.settings
+      ?? { allowedStates: [], notes: null },
     loading: tables === null,
     error,
     createOrder,
@@ -495,5 +633,11 @@ export function useOrders() {
     setPaid,
     clearPaid,
     fulfillOrder,
+    createShipment,
+    updateShipment,
+    setShipmentStatus,
+    setParcels,
+    removeShipment,
+    updateShippingSettings,
   };
 }

@@ -67,6 +67,11 @@ export function paymentMethodLabel(method) {
 // live integration is a field-for-field pass-through:
 //   { name, street1, street2, city, state, zip, phone }
 
+export const EMPTY_ADDRESS = {
+  name: "", street1: "", street2: "", city: "", state: "", zip: "",
+  phone: "",
+};
+
 export function formatAddress(addr) {
   if (!addr) return null;
   const cityLine = [addr.city, addr.state, addr.zip]
@@ -75,6 +80,65 @@ export function formatAddress(addr) {
     .map(s => (s ?? "").trim())
     .filter(Boolean);
   return lines.length > 0 ? lines : null;
+}
+
+// Trim every field; null when nothing was entered at all (so a blank
+// address form saves as "no address" rather than an object of empty
+// strings).
+export function cleanAddress(addr) {
+  if (!addr) return null;
+  const cleaned = {};
+  let any = false;
+  for (const key of Object.keys(EMPTY_ADDRESS)) {
+    const v = (addr[key] ?? "").trim();
+    cleaned[key] = v;
+    if (v) any = true;
+  }
+  return any ? cleaned : null;
+}
+
+// ── cold-chain state allowlist ─────────────────────────────────────────
+// Product ships cold/frozen, so transit time caps how far it can go.
+// v1 is a state allowlist (shipping_settings.allowed_states) checked
+// against the ship-to state. An empty allowlist means "not configured"
+// — no warnings. The check warns, never blocks: per-order override is
+// just proceeding anyway.
+
+export function stateAllowed(state, allowedStates) {
+  if (!allowedStates || allowedStates.length === 0) return true;
+  const s = (state ?? "").trim().toUpperCase();
+  if (!s) return true;
+  return allowedStates.some(a => a.trim().toUpperCase() === s);
+}
+
+// ── shipments ──────────────────────────────────────────────────────────
+// Statuses follow the manual workflow; they map onto Shippo
+// transaction states when the live API lands (Batch 30).
+
+export const SHIPMENT_STATUSES = [
+  { id: "draft", label: "Draft" },
+  { id: "label_purchased", label: "Label purchased" },
+  { id: "shipped", label: "Shipped" },
+  { id: "delivered", label: "Delivered" },
+  { id: "cancelled", label: "Cancelled" },
+];
+
+export function shipmentStatusLabel(status) {
+  return SHIPMENT_STATUSES.find(s => s.id === status)?.label ?? status;
+}
+
+// "2 boxes · 24 lb · 5 lb dry ice" — what a shipment's parcels add up
+// to, for the collapsed shipment row.
+export function parcelsSummary(parcels) {
+  if (!parcels || parcels.length === 0) return "no parcels yet";
+  const weight = parcels.reduce((a, p) => a + (p.weightLb ?? 0), 0);
+  const dryIce = parcels.reduce((a, p) => a + (p.dryIceLb ?? 0), 0);
+  const parts = [
+    `${parcels.length} box${parcels.length === 1 ? "" : "es"}`,
+  ];
+  if (weight > 0) parts.push(`${weight} lb`);
+  if (dryIce > 0) parts.push(`${dryIce} lb dry ice`);
+  return parts.join(" · ");
 }
 
 // ── money ──────────────────────────────────────────────────────────────

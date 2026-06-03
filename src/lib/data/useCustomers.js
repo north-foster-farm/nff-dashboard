@@ -17,7 +17,8 @@ import { realtimeChannel, supabase } from "../supabase.js";
 //   }
 
 const CUSTOMER_COLS =
-  "id, name, email, phone, notes, archived_at, created_at, updated_at";
+  "id, name, email, phone, notes, address, archived_at, created_at, " +
+  "updated_at";
 const LIST_COLS = "id, title, purpose, created_at, updated_at";
 const MEMBER_COLS = "list_id, customer_id, added_at";
 
@@ -30,6 +31,8 @@ function shapeCustomer(r) {
     email: r.email,
     phone: r.phone,
     notes: r.notes,
+    // Default ship-to (Batch 29.3) — same shape as orders.ship_to.
+    address: r.address,
     archivedAt: r.archived_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -133,6 +136,7 @@ export function useCustomers() {
     if ("email" in patch) dbPatch.email = patch.email?.trim() || null;
     if ("phone" in patch) dbPatch.phone = patch.phone?.trim() || null;
     if ("notes" in patch) dbPatch.notes = patch.notes?.trim() || null;
+    if ("address" in patch) dbPatch.address = patch.address;
     if ("archivedAt" in patch) dbPatch.archived_at = patch.archivedAt;
     const { error: err } = await supabase.from("customers")
       .update(dbPatch).eq("id", id);

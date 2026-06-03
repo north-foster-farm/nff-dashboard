@@ -2590,6 +2590,48 @@ dry-ice config, manual label workflow, tracking), ship-to address
 entry, customer default addresses, the state allowlist UI, and
 shipping cost on the order total.
 
+### Batch 29.3 — Shipments · `v0.10.36-alpha`
+2026-06-03. Final slice of Orders + shipping plumbing (Batch 29):
+the cold-chain shipping pipeline, operated manually until the live
+carrier API (Batch 30 / Shippo). No new migration (0028 carries
+the whole batch's schema). **Batch 29 is complete.**
+
+**Ship-to + shipping charge** (Orders page): shipping orders get
+an address form (Shippo-shaped: name / phone / street / city /
+state / zip), a shipping-charge input folded into the order total,
+and a cold-chain warning when the destination state isn't on the
+allowlist (warn, never block — per-order override is just
+proceeding). Picking a customer prefills a blank address from
+their default; a checkbox saves the entered address back to the
+customer record (`customers.address`, now read/written by
+`useCustomers`).
+
+**Shipments** (`useOrders` + Orders page): `createShipment`
+(snapshots the order's ship-to), `updateShipment` (carrier /
+service level / ship date / label cost / tracking number + URL),
+`setShipmentStatus` (draft → label_purchased → shipped →
+delivered, plus cancelled; delivered stamps `delivered_at`),
+`setParcels` (replace-all, same pattern as order lines),
+`removeShipment`. Expanded shipping orders grow a Shipments block:
+per-shipment cards with a parcel editor (L×W×H, weight, dry-ice
+lbs), label fields, tracking links, and the status workflow —
+draft shipments can be deleted, labelled ones cancelled.
+
+**State allowlist** (`shipping_settings` + UI): the singleton row
+is now read (with realtime) and editable from a Shipping settings
+panel on the Orders page — comma-separated state codes + notes;
+empty = check off. `stateAllowed` warnings surface in the order
+form and on shipment cards.
+
+Surgical prod test of every new write path (customer address,
+shipping order, shipment + parcel, full status walk, allowlist
+update) ran clean — marked rows, exact-ID cleanup, settings
+restored.
+
+**Batch 29 wrap-up — deferred to Batch 30:** live carrier API
+(Shippo: address validation, real rates, label purchase, tracking
+webhooks), payment APIs (Stripe / Venmo), QuickBooks sync.
+
 ---
 
 ## Overhaul design records
@@ -2860,10 +2902,11 @@ Both slices shipped 2026-06-02 — see Shipped above: **28.1**
 (inventory backend + CRUD, `v0.10.32-alpha`), **28.2** (POS +
 family sale, `v0.10.33-alpha`).
 
-### Batch 29 — Orders + shipping plumbing
-**29.1 shipped 2026-06-02 (`v0.10.34-alpha`)**, **29.2 shipped
-2026-06-03 (`v0.10.35-alpha`)** — see Shipped. Remaining: 29.3
-(shipments).
+### Batch 29 — Orders + shipping plumbing ✅ DONE
+All three slices shipped — see Shipped above: **29.1** (orders
+backend + CRUD, `v0.10.34-alpha`, 2026-06-02), **29.2** (lifecycle
++ fulfillment, `v0.10.35-alpha`, 2026-06-03), **29.3** (shipments,
+`v0.10.36-alpha`, 2026-06-03).
 
 Scope settled at the 2026-06-02 workshop. Manual order creation;
 edit / interact with customer orders; customer ↔ order linking
