@@ -224,6 +224,11 @@ export function useInventory() {
   // { allocated, short }: short > 0 means the sale exceeded what
   // inventory had — the sale still records, the caller surfaces the
   // shortfall so the counts get fixed up.
+  //
+  // Lots are re-read from the database on every call (not from this
+  // hook's React state): callers loop over several allocations in one
+  // flow (POS carts, order fulfillment — Batch 29.2), and two draws
+  // against the same SKU must each see the other's decrements.
   const allocateToSale = useCallback(async ({
     saleId, productKindId, bracketId = null, quantity,
   }) => {
@@ -232,14 +237,16 @@ export function useInventory() {
       return { allocated: 0, short: 0 };
     }
     // Oldest first; tie-break on created_at for same-day lots.
-    const candidates = (tables?.lots ?? [])
-      .filter(l =>
-        l.productKindId === productKindId
-        && (l.bracketId ?? null) === (bracketId ?? null)
-        && l.quantity > 0)
-      .sort((a, b) =>
-        a.lotDate.localeCompare(b.lotDate)
-        || a.createdAt.localeCompare(b.createdAt));
+    const { data: lotRows, error: lotErr } = await supabase
+      .from("inventory_lots")
+      .select(LOT_COLS)
+      .eq("product_kind_id", productKindId)
+      .gt("quantity", 0)
+      .order("lot_date")
+      .order("created_at");
+    if (lotErr) throw lotErr;
+    const candidates = (lotRows ?? []).map(shapeLot)
+      .filter(l => (l.bracketId ?? null) === (bracketId ?? null));
 
     let allocated = 0;
     for (const lot of candidates) {
@@ -267,7 +274,7 @@ export function useInventory() {
     }
     await fetchAll();
     return { allocated, short: remaining };
-  }, [tables, userEmail, fetchAll]);
+  }, [userEmail, fetchAll]);
 
   // Undo a deleted sale's draw-down: every lot its movements touched
   // gets its quantity back, with a counter-movement explaining why

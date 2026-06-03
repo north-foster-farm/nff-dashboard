@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { realtimeChannel, supabase } from "../supabase.js";
-import { orderTotalCents } from "../orders.js";
+import { orderTotalCents, saleChannelForOrder } from "../orders.js";
+import { skuLabel } from "../productCatalog.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 
-// Orders data hook (Batch 29.1) — orders, their lines, and (29.3)
+// Orders data hook (Batch 29.1–29.2) — orders, their lines, and (29.3)
 // their shipments.
 //
 //   useOrders() → {
@@ -18,11 +19,18 @@ import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 //     updateOrder(id, patch),    // open orders only (caller enforces)
 //     setLines(orderId, lines),  // replace-all line write
 //     removeOrder(id),           // hard delete (mistakes only)
+//     markReady(id),             // open → ready          (29.2)
+//     reopenOrder(id),           // ready/cancelled → open (29.2)
+//     cancelOrder(id),           // open/ready → cancelled (29.2)
+//     setPaid(id, { method }),   // payment capture        (29.2)
+//     clearPaid(id),
+//     fulfillOrder(id, { soldOn, recordSale, allocateToSale,
+//                        productsById, paymentMethod }),
+//                                // → { shortfalls }       (29.2)
 //   }
 //
-// Lifecycle transitions (ready / fulfill / cancel) and payment land in
-// 29.2; shipment mutations land in 29.3. The reads are all here from
-// day one so those slices only add mutations.
+// Shipment mutations land in 29.3. The reads are all here from day
+// one so that slice only adds mutations.
 
 const ORDER_COLS =
   "id, customer_id, customer_name, status, total_cents, " +
@@ -321,6 +329,155 @@ export function useOrders() {
     await fetchAll();
   }, [fetchAll]);
 
+  // ── lifecycle (Batch 29.2) ─────────────────────────────────────────
+  // open → ready → fulfilled, plus cancelled. Each transition stamps
+  // its timestamp column; moving back to open clears them. Fulfillment
+  // is below (it also writes sales + inventory).
+
+  const markReady = useCallback(async (id) => {
+    const { error: err } = await supabase.from("orders")
+      .update({ status: "ready", ready_at: new Date().toISOString() })
+      .eq("id", id);
+    if (err) throw err;
+    await fetchAll();
+  }, [fetchAll]);
+
+  // Ready / cancelled → back to open. Clears whichever timestamp the
+  // departed status had stamped.
+  const reopenOrder = useCallback(async (id) => {
+    const { error: err } = await supabase.from("orders")
+      .update({ status: "open", ready_at: null, cancelled_at: null })
+      .eq("id", id);
+    if (err) throw err;
+    await fetchAll();
+  }, [fetchAll]);
+
+  // Cancelling an open/ready order costs nothing — no sales were
+  // written, no inventory moved. Fulfilled orders can't be cancelled.
+  const cancelOrder = useCallback(async (id) => {
+    const { error: err } = await supabase.from("orders")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+    if (err) throw err;
+    await fetchAll();
+  }, [fetchAll]);
+
+  // ── payment (Batch 29.2) ───────────────────────────────────────────
+  // A paid stamp + method on the order; live payment APIs are
+  // Batch 30. An order can be paid at any point in its life (deposit
+  // up front, cash at pickup, an invoice settled later).
+
+  const setPaid = useCallback(async (id, { method }) => {
+    if (!method) throw new Error("Pick a payment method.");
+    const { error: err } = await supabase.from("orders")
+      .update({
+        paid_at: new Date().toISOString(),
+        payment_method: method,
+      })
+      .eq("id", id);
+    if (err) throw err;
+    await fetchAll();
+  }, [fetchAll]);
+
+  const clearPaid = useCallback(async (id) => {
+    const { error: err } = await supabase.from("orders")
+      .update({ paid_at: null, payment_method: null })
+      .eq("id", id);
+    if (err) throw err;
+    await fetchAll();
+  }, [fetchAll]);
+
+  // ── fulfillment (Batch 29.2) ───────────────────────────────────────
+  // The moment an order becomes real money and real freezer movement:
+  // every line becomes a product_sales row (channel derived from the
+  // fulfillment method, order_id pointing back), inventory draws down
+  // FIFO (bundles expand to their components — same path as the POS),
+  // and the order is stamped fulfilled.
+  //
+  // recordSale / allocateToSale / productsById are injected from
+  // useProducts / useInventory so the data hooks stay independent.
+  //
+  // Failure tolerance: each line's sale_id is written immediately
+  // after its sale row lands, and lines that already carry a sale_id
+  // are skipped — so re-running fulfillOrder after a partial failure
+  // never double-records a sale. Inventory shortfalls warn, never
+  // block: the handoff already happened in the real world.
+  const fulfillOrder = useCallback(async (orderId, {
+    soldOn, recordSale, allocateToSale, productsById,
+    paymentMethod = null,
+  }) => {
+    const order = ordersById.get(orderId);
+    if (!order) throw new Error("Order not found.");
+    if (order.status === "fulfilled" || order.status === "cancelled") {
+      throw new Error("Only open or ready orders can be fulfilled.");
+    }
+    const channel = saleChannelForOrder(order.fulfillmentMethod);
+    const shortfalls = [];
+    for (const line of order.lines) {
+      if (line.saleId) continue; // already recorded (partial retry)
+      const product = productsById?.get(line.productKindId);
+      const bracket = (product?.sizeBrackets ?? [])
+        .find(b => b.id === line.bracketId) ?? null;
+      const sale = await recordSale({
+        soldOn,
+        productKindId: line.productKindId,
+        bracketId: line.bracketId,
+        quantity: line.quantity,
+        totalCents: line.totalCents,
+        channel,
+        notes: line.notes,
+        orderId: order.id,
+      });
+      const { error: linkErr } = await supabase.from("order_lines")
+        .update({ sale_id: sale.id }).eq("id", line.id);
+      if (linkErr) throw linkErr;
+      // Inventory draw-down: bundles expand to components; plain SKUs
+      // allocate directly.
+      const targets = product?.isBundle
+        ? (product.bundleContents ?? []).map(c => ({
+            productKindId: c.productKindId,
+            bracketId: c.bracketId ?? null,
+            quantity: (c.quantity || 1) * line.quantity,
+            label: `${product.name} → ${c.productKindId}`,
+          }))
+        : [{
+            productKindId: line.productKindId,
+            bracketId: line.bracketId,
+            quantity: line.quantity,
+            label: product
+              ? skuLabel(product, bracket)
+              : line.productKindId,
+          }];
+      for (const t of targets) {
+        const { short } = await allocateToSale({
+          saleId: sale.id,
+          productKindId: t.productKindId,
+          bracketId: t.bracketId,
+          quantity: t.quantity,
+        });
+        if (short > 0) shortfalls.push({ label: t.label, short });
+      }
+    }
+    // Stamp the order fulfilled — and paid, if payment was captured at
+    // handoff and the order wasn't already paid.
+    const patch = {
+      status: "fulfilled",
+      fulfilled_at: new Date().toISOString(),
+    };
+    if (paymentMethod && !order.paidAt) {
+      patch.paid_at = new Date().toISOString();
+      patch.payment_method = paymentMethod;
+    }
+    const { error: upErr } = await supabase.from("orders")
+      .update(patch).eq("id", orderId);
+    if (upErr) throw upErr;
+    await fetchAll();
+    return { shortfalls };
+  }, [ordersById, fetchAll]);
+
   return {
     orders,
     ordersById,
@@ -332,5 +489,11 @@ export function useOrders() {
     updateOrder,
     setLines,
     removeOrder,
+    markReady,
+    reopenOrder,
+    cancelOrder,
+    setPaid,
+    clearPaid,
+    fulfillOrder,
   };
 }

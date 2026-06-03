@@ -36,6 +36,19 @@ export function fulfillmentLabel(method) {
   return FULFILLMENT_METHODS.find(m => m.id === method)?.label ?? method;
 }
 
+// The product_sales channel a fulfilled order's sales record under,
+// derived from how the order goes out the door. Keeps the sales chart
+// honest about where revenue came from (order rows also carry
+// order_id, so order revenue stays separable from POS either way).
+export function saleChannelForOrder(fulfillmentMethod) {
+  switch (fulfillmentMethod) {
+    case "pickup": return "farm_pickup";
+    case "delivery": return "delivery";
+    case "shipping": return "shipping";
+    default: return "other";
+  }
+}
+
 // ── payment ────────────────────────────────────────────────────────────
 export const PAYMENT_METHODS = [
   { id: "cash", label: "Cash" },

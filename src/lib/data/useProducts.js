@@ -38,7 +38,7 @@ const PRICE_COLS =
   "note, created_by, created_at";
 const SALE_COLS =
   "id, sold_on, product_kind_id, bracket_id, quantity, total_cents, " +
-  "channel, notes, created_by, created_at";
+  "channel, notes, order_id, created_by, created_at";
 
 const TABLES = ["product_kinds", "product_prices", "product_sales"];
 
@@ -87,6 +87,7 @@ function shapeSale(r) {
     totalCents: r.total_cents,
     channel: r.channel,
     notes: r.notes,
+    orderId: r.order_id,
     createdBy: r.created_by,
     createdAt: r.created_at,
   };
@@ -285,10 +286,11 @@ export function useProducts() {
 
   // ── sales ──────────────────────────────────────────────────────────
   // Returns the shaped sale row so callers (the POS, Batch 28.2) can
-  // link inventory movements to it via sale_id.
+  // link inventory movements to it via sale_id. Order fulfillment
+  // (Batch 29.2) passes orderId so the sale points back at its order.
   const recordSale = useCallback(async ({
     soldOn, productKindId, bracketId = null, quantity = 1,
-    totalCents, channel = null, notes = null,
+    totalCents, channel = null, notes = null, orderId = null,
   }) => {
     if (!productKindId) throw new Error("Pick a product.");
     if (totalCents == null || totalCents < 0) {
@@ -304,6 +306,7 @@ export function useProducts() {
         total_cents: totalCents,
         channel,
         notes: (notes ?? "").trim() || null,
+        order_id: orderId,
         created_by: userEmail,
       })
       .select(SALE_COLS)

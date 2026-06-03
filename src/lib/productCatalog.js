@@ -58,6 +58,7 @@ export const SALE_CHANNELS = [
   { id: "farmers_market", label: "Farmers market" },
   { id: "farm_pickup", label: "Farm pick-up" },
   { id: "delivery", label: "Delivery" },
+  { id: "shipping", label: "Shipping" },
   { id: "wholesale", label: "Wholesale" },
   { id: "family", label: "Family" },
   { id: "other", label: "Other" },

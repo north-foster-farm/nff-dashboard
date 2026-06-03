@@ -2538,6 +2538,58 @@ payment capture, and the fulfillment → sales + inventory write
 (29.2); shipments UI, ship-to address entry, customer default
 addresses, and the state allowlist UI (29.3).
 
+### Batch 29.2 — Lifecycle + fulfillment · `v0.10.35-alpha`
+2026-06-03. Second slice of Orders (Batch 29): the order lifecycle
+becomes operable end to end — open → ready → fulfilled, plus
+cancel — and fulfillment is the moment an order turns into real
+money and real freezer movement. No new migration (0028 carries
+the whole batch's schema). Shipments (29.3) remain.
+
+**Lifecycle + payment** (`useOrders`): `markReady` / `reopenOrder`
+(ready or cancelled → open, clears stamps) / `cancelOrder`;
+`setPaid(id, { method })` + `clearPaid` — a paid stamp + method
+(cash / check / Venmo / card / other), capturable at any point in
+the order's life (deposit up front, cash at handoff, invoice
+settled later). Live payment APIs stay in Batch 30.
+
+**Fulfillment** (`useOrders.fulfillOrder`): every line becomes a
+`product_sales` row — channel derived from the fulfillment method
+(pickup → farm_pickup, delivery → delivery, shipping → shipping,
+new channel added to `SALE_CHANNELS`), `order_id` pointing back at
+the order — then inventory draws down FIFO via the same
+`allocateToSale` path as the POS (bundles expand to components),
+and the order is stamped fulfilled. Payment can be captured in the
+same step. Failure tolerance: each line's `sale_id` is written
+right after its sale row lands and already-linked lines are
+skipped, so a partial failure can be re-run without
+double-recording; inventory shortfalls warn, never block.
+`recordSale` (useProducts) gained `orderId` passthrough →
+`product_sales.order_id`.
+
+**Fix — `allocateToSale` stale reads:** the FIFO allocator now
+re-reads lots from the database on every call instead of using the
+hook's React state. Two draws against the same SKU in one flow
+(order with two lines of one product, or a bundle overlapping a
+component line — possible in the POS since 28.2) previously had
+the second draw seeing pre-first-draw quantities and overwriting
+its decrement.
+
+**Orders page**: per-status action rows — open: mark ready /
+fulfill / edit / cancel / delete; ready: fulfill / back to open /
+cancel; cancelled: reopen / delete; fulfilled: frozen. Fulfill
+opens a confirm panel: sale date, optional payment capture, and a
+per-SKU inventory-draw preview (have vs. need, bundle-expanded)
+before anything is written; shortfalls surface after as a warning
+(mirrors the POS). Payment chip on every row now shows the method;
+expanded rows show the order's lifecycle timestamps. Surgical prod
+test of the full write sequence ran clean (marked rows, exact-ID
+cleanup).
+
+**Out of scope — next slice (29.3):** shipments UI (parcels +
+dry-ice config, manual label workflow, tracking), ship-to address
+entry, customer default addresses, the state allowlist UI, and
+shipping cost on the order total.
+
 ---
 
 ## Overhaul design records
@@ -2809,8 +2861,9 @@ Both slices shipped 2026-06-02 — see Shipped above: **28.1**
 family sale, `v0.10.33-alpha`).
 
 ### Batch 29 — Orders + shipping plumbing
-**29.1 shipped 2026-06-02 (`v0.10.34-alpha`)** — see Shipped.
-Remaining: 29.2 (lifecycle + fulfillment), 29.3 (shipments).
+**29.1 shipped 2026-06-02 (`v0.10.34-alpha`)**, **29.2 shipped
+2026-06-03 (`v0.10.35-alpha`)** — see Shipped. Remaining: 29.3
+(shipments).
 
 Scope settled at the 2026-06-02 workshop. Manual order creation;
 edit / interact with customer orders; customer ↔ order linking

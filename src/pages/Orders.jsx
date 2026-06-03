@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import {
-  ChevronDown, ChevronRight, Pencil, Plus, Receipt, Trash2, Truck,
-  X,
+  Ban, Banknote, Check, ChevronDown, ChevronRight, PackageCheck,
+  Pencil, Plus, Receipt, RotateCcw, Trash2, Truck, X,
 } from "lucide-react";
 import { useOrders } from "../lib/data/useOrders.js";
 import { useCustomers } from "../lib/data/useCustomers.js";
 import { useProducts } from "../lib/data/useProducts.js";
 import { useInventory } from "../lib/data/useInventory.js";
 import {
-  FULFILLMENT_METHODS, ORDER_STATUSES, formatAddress, fulfillmentLabel,
-  orderCustomerName, orderTotalCents,
+  FULFILLMENT_METHODS, ORDER_STATUSES, PAYMENT_METHODS, formatAddress,
+  fulfillmentLabel, orderCustomerName, orderTotalCents,
+  paymentMethodLabel,
 } from "../lib/orders.js";
 import {
   currentPriceMap, expandSkus, fmtCents, parseDollarsToCents, skuKey,
@@ -17,12 +18,16 @@ import {
 } from "../lib/productCatalog.js";
 import { formatDate } from "../lib/dates.js";
 
-// The Orders page (Batch 29.1) — customer orders against the catalog.
+// The Orders page (Batches 29.1–29.2) — customer orders against the
+// catalog, from promise to fulfillment.
 //
 // An order is a promise: lines, a customer, a fulfillment method, and
 // a total. Nothing touches product_sales or inventory until the order
-// is fulfilled (Batch 29.2 wires the ready → fulfilled flow + payment;
-// 29.3 adds shipments). Open orders can be edited or deleted freely.
+// is fulfilled — fulfilling writes one sale row per line and draws
+// the freezer counts down FIFO (same path as the POS). Lifecycle:
+// open → ready → fulfilled, plus cancelled; open orders can be edited
+// or deleted freely, fulfilled orders are frozen. Payment is a paid
+// stamp + method, capturable at any point. Shipments are 29.3.
 //
 // Sidebar wiring: Sales → Orders lands here; the dashboard's "Open
 // orders" card counts the open + ready groups.
@@ -118,7 +123,7 @@ export default function Orders({ startCreating = false }) {
             catalog={catalog}
             skus={skus}
             priceMap={priceMap}
-            onHand={inv.onHand}
+            inv={inv}
           />
         ))
       )}
@@ -163,7 +168,7 @@ function SummaryStrip({ byStatus }) {
 
 function StatusGroup({
   status, orders, db, customersById, customers, catalog, skus, priceMap,
-  onHand,
+  inv,
 }) {
   // Fulfilled / cancelled groups collapse by default; open / ready are
   // the working set and stay expanded.
@@ -202,7 +207,7 @@ function StatusGroup({
               catalog={catalog}
               skus={skus}
               priceMap={priceMap}
-              onHand={onHand}
+              inv={inv}
             />
           ))}
           {orders.length === 0 && (
@@ -219,12 +224,30 @@ function StatusGroup({
 // ── order rows ─────────────────────────────────────────────────────────
 
 function OrderRow({
-  order, db, customersById, customers, catalog, skus, priceMap, onHand,
+  order, db, customersById, customers, catalog, skus, priceMap, inv,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [fulfilling, setFulfilling] = useState(false);
+  const [fulfillResult, setFulfillResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [pending, setPending] = useState(false);
   const isOpen = order.status === "open";
+  const isReady = order.status === "ready";
+  const isCancelled = order.status === "cancelled";
+
+  // Wrap a mutation: clear stale errors, surface failures inline.
+  const run = async (fn) => {
+    setErrorMsg(null);
+    setPending(true);
+    try {
+      await fn();
+    } catch (e) {
+      setErrorMsg(e?.message ?? "That didn't work.");
+    } finally {
+      setPending(false);
+    }
+  };
 
   if (editing) {
     return (
@@ -234,7 +257,7 @@ function OrderRow({
           customers={customers}
           skus={skus}
           priceMap={priceMap}
-          onHand={onHand}
+          onHand={inv.onHand}
           onSave={async (fields) => {
             await db.updateOrder(order.id, {
               customerId: fields.customerId,
@@ -291,35 +314,130 @@ function OrderRow({
         <div className="px-4 pb-4 pl-10 flex flex-col gap-3 border-t border-line pt-3">
           <LineList order={order} catalog={catalog} />
           <ShipToBlock shipTo={order.shipTo} />
+          <Lifecycle order={order} />
+          {fulfillResult && <FulfillResult result={fulfillResult} />}
           {errorMsg && (
             <div className="text-[11px] text-warn">{errorMsg}</div>
           )}
-          {isOpen && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setErrorMsg(null); setEditing(true); }}
-                className={btnGhostCls}
-              >
-                <Pencil size={11} className="inline -translate-y-px" /> Edit
-              </button>
-              <button
-                onClick={async () => {
-                  if (!window.confirm(
-                    "Delete this order? Only do this for orders "
-                    + "created by mistake.")) return;
-                  try {
-                    await db.removeOrder(order.id);
-                  } catch (e) {
-                    setErrorMsg(e?.message ?? "That didn't work.");
+
+          {fulfilling ? (
+            <FulfillPanel
+              order={order}
+              db={db}
+              catalog={catalog}
+              inv={inv}
+              onDone={(result) => {
+                setFulfilling(false);
+                setFulfillResult(result);
+              }}
+              onCancel={() => setFulfilling(false)}
+            />
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* forward transitions */}
+              {isOpen && (
+                <button
+                  onClick={() => run(() => db.markReady(order.id))}
+                  disabled={pending}
+                  className={btnGhostCls}
+                >
+                  <Check size={11} className="inline -translate-y-px" />
+                  {" "}Mark ready
+                </button>
+              )}
+              {(isOpen || isReady) && (
+                <button
+                  onClick={() => {
+                    setErrorMsg(null);
+                    setFulfillResult(null);
+                    setFulfilling(true);
+                  }}
+                  disabled={pending}
+                  className={btnGhostCls + " text-fg"}
+                >
+                  <PackageCheck size={11} className="inline -translate-y-px" />
+                  {" "}Fulfill…
+                </button>
+              )}
+
+              {/* backward transitions */}
+              {isReady && (
+                <button
+                  onClick={() => run(() => db.reopenOrder(order.id))}
+                  disabled={pending}
+                  className={btnGhostCls}
+                >
+                  <RotateCcw size={11} className="inline -translate-y-px" />
+                  {" "}Back to open
+                </button>
+              )}
+              {isCancelled && (
+                <button
+                  onClick={() => run(() => db.reopenOrder(order.id))}
+                  disabled={pending}
+                  className={btnGhostCls}
+                >
+                  <RotateCcw size={11} className="inline -translate-y-px" />
+                  {" "}Reopen
+                </button>
+              )}
+
+              {/* edit — open only */}
+              {isOpen && (
+                <button
+                  onClick={() => { setErrorMsg(null); setEditing(true); }}
+                  disabled={pending}
+                  className={btnGhostCls}
+                >
+                  <Pencil size={11} className="inline -translate-y-px" />
+                  {" "}Edit
+                </button>
+              )}
+
+              {/* payment — any non-cancelled order */}
+              {!isCancelled && (
+                <PaymentControl
+                  order={order}
+                  db={db}
+                  run={run}
+                  pending={pending}
+                />
+              )}
+
+              {/* destructive — pushed right */}
+              {(isOpen || isReady) && (
+                <button
+                  onClick={() => {
+                    if (!window.confirm(
+                      "Cancel this order? Nothing has been recorded "
+                      + "yet, so cancelling costs nothing.")) return;
+                    run(() => db.cancelOrder(order.id));
+                  }}
+                  disabled={pending}
+                  className={btnGhostCls + " text-warn hover:text-warn ml-auto"}
+                >
+                  <Ban size={11} className="inline -translate-y-px" />
+                  {" "}Cancel order
+                </button>
+              )}
+              {(isOpen || isCancelled) && (
+                <button
+                  onClick={() => {
+                    if (!window.confirm(
+                      "Delete this order? Only do this for orders "
+                      + "created by mistake.")) return;
+                    run(() => db.removeOrder(order.id));
+                  }}
+                  disabled={pending}
+                  className={
+                    btnGhostCls + " text-warn hover:text-warn"
+                    + (isCancelled ? " ml-auto" : "")
                   }
-                }}
-                className={btnGhostCls + " text-warn hover:text-warn"}
-              >
-                <Trash2 size={11} className="inline -translate-y-px" /> Delete
-              </button>
-              <span className="text-[10px] text-faint ml-auto">
-                Marking ready / fulfilled arrives in 29.2.
-              </span>
+                >
+                  <Trash2 size={11} className="inline -translate-y-px" />
+                  {" "}Delete
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -328,17 +446,269 @@ function OrderRow({
   );
 }
 
-// Unpaid / paid chip. Read-only in 29.1 — payment capture is 29.2.
+// Unpaid / paid chip on the collapsed row.
 function PaymentChip({ order }) {
   if (order.status === "cancelled") return null;
   return order.paidAt ? (
     <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.12em] text-resolved border border-resolved/40 px-1.5 py-0.5">
-      Paid
+      Paid{order.paymentMethod
+        ? ` · ${paymentMethodLabel(order.paymentMethod)}` : ""}
     </span>
   ) : (
     <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.12em] text-dim border border-line px-1.5 py-0.5">
       Unpaid
     </span>
+  );
+}
+
+// Status timestamps for the expanded view — the order's life so far.
+function Lifecycle({ order }) {
+  const stamps = [
+    { label: "Placed", at: order.placedAt },
+    { label: "Ready", at: order.readyAt },
+    { label: "Fulfilled", at: order.fulfilledAt },
+    { label: "Cancelled", at: order.cancelledAt },
+    { label: "Paid", at: order.paidAt },
+  ].filter(s => s.at);
+  if (stamps.length <= 1) return null;
+  return (
+    <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-[10px] text-faint">
+      {stamps.map(s => (
+        <span key={s.label}>
+          <span className="uppercase tracking-[0.12em]">{s.label}</span>
+          {" "}{formatDate(s.at.slice(0, 10))}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// Mark-paid control: unpaid orders get a method picker that records
+// payment on selection; paid orders show the receipt with an undo.
+function PaymentControl({ order, db, run, pending }) {
+  if (order.paidAt) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-resolved">
+        <Banknote size={11} />
+        Paid · {paymentMethodLabel(order.paymentMethod)}
+        <button
+          onClick={() => {
+            if (!window.confirm(
+              "Clear the payment record on this order?")) return;
+            run(() => db.clearPaid(order.id));
+          }}
+          disabled={pending}
+          aria-label="Clear payment"
+          className="bg-transparent border-0 text-dim hover:text-warn cursor-pointer p-0 font-[inherit] inline-flex"
+        >
+          <X size={11} />
+        </button>
+      </span>
+    );
+  }
+  return (
+    <select
+      value=""
+      onChange={(e) => {
+        if (!e.target.value) return;
+        run(() => db.setPaid(order.id, { method: e.target.value }));
+      }}
+      disabled={pending}
+      className={
+        "bg-transparent border border-line text-dim font-[inherit] " +
+        "text-[10px] font-semibold uppercase tracking-[0.12em] px-2 " +
+        "py-1.5 cursor-pointer hover:text-fg outline-none " +
+        "disabled:opacity-50"
+      }
+    >
+      <option value="">Mark paid…</option>
+      {PAYMENT_METHODS.map(m => (
+        <option key={m.id} value={m.id}>{m.label}</option>
+      ))}
+    </select>
+  );
+}
+
+// ── fulfillment (Batch 29.2) ───────────────────────────────────────────
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-` +
+    String(d.getDate()).padStart(2, "0");
+}
+
+// The confirm step between "Fulfill…" and the writes: pick the sale
+// date, optionally capture payment, see what inventory will be drawn,
+// then record. Shortfalls warn after the fact (the handoff already
+// happened in the real world); they never block.
+function FulfillPanel({ order, db, catalog, inv, onDone, onCancel }) {
+  const [soldOn, setSoldOn] = useState(todayISO());
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [pending, setPending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const submit = async () => {
+    setPending(true);
+    setErrorMsg(null);
+    try {
+      const result = await db.fulfillOrder(order.id, {
+        soldOn,
+        recordSale: catalog.recordSale,
+        allocateToSale: inv.allocateToSale,
+        productsById: catalog.productsById,
+        paymentMethod: paymentMethod || null,
+      });
+      onDone(result);
+    } catch (e) {
+      setErrorMsg(e?.message ?? "Fulfillment failed.");
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="bg-bg border border-accent p-4 flex flex-col gap-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg">
+        Fulfill this order
+      </div>
+      <div className="text-[11px] text-muted leading-relaxed">
+        This writes {order.lines.length} sale
+        line{order.lines.length === 1 ? "" : "s"} to the sales record
+        and draws the freezer counts down. A fulfilled order is frozen
+        — it can&rsquo;t be edited or cancelled afterwards.
+      </div>
+
+      <FulfillPreview order={order} catalog={catalog} inv={inv} />
+
+      <div className="flex items-end gap-3 flex-wrap">
+        <div>
+          <div className={labelCls}>Sale date</div>
+          <input
+            type="date"
+            value={soldOn}
+            onChange={(e) => setSoldOn(e.target.value)}
+            disabled={pending}
+            className={inputCls}
+          />
+        </div>
+        {!order.paidAt && (
+          <div>
+            <div className={labelCls}>Payment</div>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              disabled={pending}
+              className={inputCls}
+            >
+              <option value="">— not paid yet —</option>
+              {PAYMENT_METHODS.map(m => (
+                <option key={m.id} value={m.id}>
+                  Paid by {m.label.toLowerCase()}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {errorMsg && (
+        <div className="text-[11px] text-warn">{errorMsg}</div>
+      )}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={submit}
+          disabled={pending}
+          className={btnAccentCls}
+        >
+          <PackageCheck size={13} />
+          {pending
+            ? "Recording…"
+            : `Record fulfillment — ${fmtCents(order.totalCents)}`}
+        </button>
+        <button onClick={onCancel} disabled={pending} className={btnGhostCls}>
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Per-line preview of the inventory draw. Bundles expand to their
+// components; draws are summed per SKU so the have/need comparison is
+// honest when two lines hit the same freezer count.
+function FulfillPreview({ order, catalog, inv }) {
+  const draws = [];
+  for (const line of order.lines) {
+    const product = catalog.productsById.get(line.productKindId);
+    if (product?.isBundle) {
+      for (const c of product.bundleContents ?? []) {
+        const component = catalog.productsById.get(c.productKindId);
+        draws.push({
+          label: `${product.name} → ${component?.name ?? c.productKindId}`,
+          key: skuKey(c.productKindId, c.bracketId ?? null),
+          quantity: (c.quantity || 1) * line.quantity,
+        });
+      }
+    } else {
+      const bracket = (product?.sizeBrackets ?? [])
+        .find(b => b.id === line.bracketId) ?? null;
+      draws.push({
+        label: product ? skuLabel(product, bracket) : line.productKindId,
+        key: skuKey(line.productKindId, line.bracketId ?? null),
+        quantity: line.quantity,
+      });
+    }
+  }
+  const needByKey = new Map();
+  for (const d of draws) {
+    needByKey.set(d.key, (needByKey.get(d.key) ?? 0) + d.quantity);
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="text-[10px] text-dim uppercase tracking-[0.12em]">
+        Inventory draw
+      </div>
+      {draws.map((d, i) => {
+        const have = inv.onHand.get(d.key) ?? 0;
+        const short = (needByKey.get(d.key) ?? 0) > have;
+        return (
+          <div key={i} className="text-[12px] flex items-baseline gap-2">
+            <span className="flex-1 text-fg">{d.label}</span>
+            <span className={
+              "tabular-nums " + (short ? "text-warn" : "text-dim")
+            }>
+              −{d.quantity} of {have} on hand
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Post-fulfillment result: success, or the list of SKUs the freezer
+// counts didn't cover (mirrors the POS shortfall warning).
+function FulfillResult({ result }) {
+  return (
+    <div className={
+      "border p-3 text-[12px] leading-relaxed "
+      + (result.shortfalls.length > 0
+        ? "bg-bg border-warn text-fg"
+        : "bg-bg border-line text-resolved")
+    }>
+      Order fulfilled — sales recorded and inventory drawn down.
+      {result.shortfalls.length > 0 && (
+        <div className="text-warn mt-1.5">
+          Inventory came up short — the sales are recorded, but the
+          freezer counts didn&rsquo;t cover them:
+          <ul className="m-0 mt-1 pl-5">
+            {result.shortfalls.map((s, i) => (
+              <li key={i}>{s.label}: {s.short} short</li>
+            ))}
+          </ul>
+          Fix the lots on the Inventory page if the counts are wrong.
+        </div>
+      )}
+    </div>
   );
 }
 
