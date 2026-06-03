@@ -284,6 +284,8 @@ export function useProducts() {
   }, [userEmail, fetchAll]);
 
   // ── sales ──────────────────────────────────────────────────────────
+  // Returns the shaped sale row so callers (the POS, Batch 28.2) can
+  // link inventory movements to it via sale_id.
   const recordSale = useCallback(async ({
     soldOn, productKindId, bracketId = null, quantity = 1,
     totalCents, channel = null, notes = null,
@@ -292,18 +294,23 @@ export function useProducts() {
     if (totalCents == null || totalCents < 0) {
       throw new Error("Sale total required.");
     }
-    const { error: err } = await supabase.from("product_sales").insert({
-      sold_on: soldOn,
-      product_kind_id: productKindId,
-      bracket_id: bracketId,
-      quantity,
-      total_cents: totalCents,
-      channel,
-      notes: (notes ?? "").trim() || null,
-      created_by: userEmail,
-    });
+    const { data: created, error: err } = await supabase
+      .from("product_sales")
+      .insert({
+        sold_on: soldOn,
+        product_kind_id: productKindId,
+        bracket_id: bracketId,
+        quantity,
+        total_cents: totalCents,
+        channel,
+        notes: (notes ?? "").trim() || null,
+        created_by: userEmail,
+      })
+      .select(SALE_COLS)
+      .single();
     if (err) throw err;
     await fetchAll();
+    return shapeSale(created);
   }, [userEmail, fetchAll]);
 
   const removeSale = useCallback(async (id) => {

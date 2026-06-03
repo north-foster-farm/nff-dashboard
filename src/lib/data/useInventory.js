@@ -17,6 +17,9 @@ import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 //     adjustLot(lotId, newQuantity, { reason, notes }),
 //     moveLot(lotId, placeId),
 //     removeLot(lotId),
+//     allocateToSale({ saleId, productKindId, bracketId, quantity })
+//       → { allocated, short },        // FIFO draw-down (Batch 28.2)
+//     reverseSale(saleId),             // restore a deleted sale's lots
 //   }
 //
 // On-hand grouping uses productCatalog's skuKey (product kind ×
@@ -214,6 +217,100 @@ export function useInventory() {
     await fetchAll();
   }, [fetchAll]);
 
+  // ── sale allocation (Batch 28.2 — the POS link) ────────────────────
+  // Draw `quantity` of a SKU out of its open lots, oldest lot first
+  // (FIFO — the oldest chicken leaves the freezer first). Each lot
+  // touched gets a 'sale' movement carrying the sale_id. Returns
+  // { allocated, short }: short > 0 means the sale exceeded what
+  // inventory had — the sale still records, the caller surfaces the
+  // shortfall so the counts get fixed up.
+  const allocateToSale = useCallback(async ({
+    saleId, productKindId, bracketId = null, quantity,
+  }) => {
+    let remaining = Number(quantity);
+    if (!Number.isFinite(remaining) || remaining <= 0) {
+      return { allocated: 0, short: 0 };
+    }
+    // Oldest first; tie-break on created_at for same-day lots.
+    const candidates = (tables?.lots ?? [])
+      .filter(l =>
+        l.productKindId === productKindId
+        && (l.bracketId ?? null) === (bracketId ?? null)
+        && l.quantity > 0)
+      .sort((a, b) =>
+        a.lotDate.localeCompare(b.lotDate)
+        || a.createdAt.localeCompare(b.createdAt));
+
+    let allocated = 0;
+    for (const lot of candidates) {
+      if (remaining <= 0) break;
+      const take = Math.min(lot.quantity, remaining);
+      const { error: upErr } = await supabase.from("inventory_lots")
+        .update({
+          quantity: lot.quantity - take,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", lot.id);
+      if (upErr) throw upErr;
+      const { error: mvErr } = await supabase
+        .from("inventory_movements")
+        .insert({
+          lot_id: lot.id,
+          delta: -take,
+          reason: "sale",
+          sale_id: saleId,
+          created_by: userEmail,
+        });
+      if (mvErr) throw mvErr;
+      allocated += take;
+      remaining -= take;
+    }
+    await fetchAll();
+    return { allocated, short: remaining };
+  }, [tables, userEmail, fetchAll]);
+
+  // Undo a deleted sale's draw-down: every lot its movements touched
+  // gets its quantity back, with a counter-movement explaining why
+  // (movements stay append-only — nothing is erased). Must run BEFORE
+  // the sale row is deleted: the movements' sale_id is what finds
+  // them, and the FK nulls it on delete. Each reversed movement's
+  // sale_id is cleared as it's processed, so a retry after a partial
+  // failure never restores the same lot twice.
+  const reverseSale = useCallback(async (saleId) => {
+    const saleMovements = (tables?.movements ?? [])
+      .filter(m => m.saleId === saleId && m.reason === "sale");
+    for (const mv of saleMovements) {
+      const lot = (tables?.lots ?? []).find(l => l.id === mv.lotId);
+      if (lot) {
+        const { error: upErr } = await supabase.from("inventory_lots")
+          .update({
+            quantity: lot.quantity + Math.abs(mv.delta),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", lot.id);
+        if (upErr) throw upErr;
+        const { error: mvErr } = await supabase
+          .from("inventory_movements")
+          .insert({
+            lot_id: lot.id,
+            delta: Math.abs(mv.delta),
+            reason: "adjustment",
+            notes: "Sale deleted — quantity restored",
+            created_by: userEmail,
+          });
+        if (mvErr) throw mvErr;
+      }
+      // Mark this movement reversed (idempotency): clear its sale_id
+      // — the delete's FK would null it anyway.
+      const { error: clrErr } = await supabase
+        .from("inventory_movements")
+        .update({ sale_id: null })
+        .eq("id", mv.id);
+      if (clrErr) throw clrErr;
+    }
+    await fetchAll();
+  }, [tables, userEmail, fetchAll]);
+
   return {
     lots,
     openLots,
@@ -225,5 +322,7 @@ export function useInventory() {
     adjustLot,
     moveLot,
     removeLot,
+    allocateToSale,
+    reverseSale,
   };
 }

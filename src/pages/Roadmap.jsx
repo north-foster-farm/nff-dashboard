@@ -20,7 +20,9 @@
 // 27.1–27.3 — the catalog with photos and the four-slot
 // descriptions, the pricing grid with live margins and price
 // history, bundles, and the record-a-sale + sales-over-time
-// surface).
+// surface), "Inventory and point of sale" (Batches 28.1–28.2 —
+// lot-based inventory with the movement audit trail, and the Sell
+// tab register with FIFO draw-down and the family-sale flow).
 
 const ITEMS = [
   {
@@ -31,11 +33,6 @@ const ITEMS = [
       "Google Calendar reaches). The dashboard stays the source of " +
       "truth for edits — the phone copy is intentionally read-only so " +
       "there's no risk of two clocks disagreeing.",
-  },
-  {
-    title: "Inventory and point of sale",
-    body: "On-hand counts by SKU and location. Selling at a market " +
-      "drains inventory FIFO. An internal \"family sale\" flow.",
   },
   {
     title: "Orders",

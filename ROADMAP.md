@@ -2447,6 +2447,35 @@ Client:
 **Out of scope — 28.2:** the POS / quick-sell tab (FIFO lot
 allocation on sale, family-sale channel).
 
+### Batch 28.2 — POS + family sale · `v0.10.33-alpha`
+2026-06-02. Second slice of Batch 28: the register. No schema
+changes — 0027's `inventory_movements.sale_id` was built for this.
+
+- **`components/SellTab.jsx`** (new) — the POS register on the
+  Products page (Catalog | Pricing | **Sell** | Sales): every SKU
+  (products × brackets + bundles) as a row with current price,
+  on-hand count, and a quantity stepper; sticky cart with
+  editable per-line totals (auto from the pricing grid), grand
+  total, date / channel / notes.
+- **FIFO draw-down** — `useInventory.allocateToSale` decrements
+  open lots oldest-first, one 'sale' movement per lot touched,
+  carrying the `sale_id`. Bundles expand to their components.
+  Shortfalls warn after recording, never block.
+- **Family sale flow** — the Family channel prefills line totals
+  to $0 (consumption, not revenue) while inventory still
+  decrements; bundle on-hand shows how many complete bundles the
+  freezers could assemble.
+- **Sale deletion restores inventory** —
+  `useInventory.reverseSale` runs before `removeSale`: counter
+  adjustment movements + quantity restore, retry-safe via
+  clearing `sale_id` on reversed movements.
+- **Sales tab slimmed** — the Batch-27.3 manual record-a-sale
+  form retired (recording now goes through the Sell tab, which
+  is inventory-aware); chart + recent sales stay, with a pointer
+  to the Sell tab. `recordSale` now returns the created row.
+
+Batch 28 (Inventory + POS) is complete.
+
 ---
 
 ## Overhaul design records
@@ -2707,13 +2736,10 @@ Remaining tail:
   tab / PWA is found and refreshed — then re-run the same sweep
   on whatever project-shaped rows exist at that point.
 
-### Batch 28 — Inventory backend + Point of Sale 🔨 IN PROGRESS
-**28.1 (inventory backend + CRUD, `v0.10.32-alpha`) shipped
-2026-06-02** — see Shipped above. Remaining:
-- **28.2 — POS + family sale**: a "Sell" tab on the Products page —
-  pick SKUs + quantities, total auto-filled from the pricing grid,
-  channel picker incl. "family"; saving writes product_sales and
-  draws inventory lots down FIFO (movements carry the sale_id).
+### Batch 28 — Inventory backend + Point of Sale ✅ DONE
+Both slices shipped 2026-06-02 — see Shipped above: **28.1**
+(inventory backend + CRUD, `v0.10.32-alpha`), **28.2** (POS +
+family sale, `v0.10.33-alpha`).
 
 ### Batch 29 — Orders
 Manual order creation; edit / interact with customer orders;

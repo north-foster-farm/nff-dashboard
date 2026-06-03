@@ -1,23 +1,22 @@
 import { useMemo, useState } from "react";
-import { Banknote, Trash2 } from "lucide-react";
+import { ArrowUpRight, Banknote, Trash2 } from "lucide-react";
 import {
-  SALE_CHANNELS, currentPriceMap, fmtCents, parseDollarsToCents,
-  saleGroupKey, saleGroupLabel, salesByMonth, skuKey, skuLabel,
+  SALE_CHANNELS, fmtCents,
+  saleGroupKey, saleGroupLabel, salesByMonth, skuLabel,
 } from "../lib/productCatalog.js";
 
-// The Sales tab (Batch 27.3) — record-a-sale + sales over time.
+// The Sales tab (Batch 27.3) — sales over time + recent sales.
 //
-//   Record a sale — date / product / size / quantity / total /
-//   channel. The total pre-fills from the SKU's current price ×
-//   quantity when one is set (editable — markets round, bundles
-//   discount).
 //   Sales over time — stacked monthly bars, split by product group
 //   (the catalog's animal grouping), SVG in the house chart style
 //   (ChoresPerformanceTab histogram).
-//   Recent sales — newest first, deletable (typo recovery).
+//   Recent sales — newest first, deletable (typo recovery). Deleting
+//   a sale restores whatever inventory it drew down (Batch 28.2).
 //
-// product_sales is also the table POS (Batch 28) and Orders (Batch
-// 29) will write into, so this chart's source never changes.
+// The Batch-27.3 manual record-a-sale form retired in Batch 28.2 —
+// recording happens on the Sell tab (the POS register), which is
+// inventory-aware. This tab is the analytics side; both read
+// product_sales, which Orders (Batch 29) will write into too.
 
 // Stacking palette: stable order, themed CSS vars.
 const GROUP_COLORS = [
@@ -29,216 +28,21 @@ const GROUP_COLORS = [
   "var(--c-text-muted)",
 ];
 
-export default function SalesTab({ db, products, species }) {
+export default function SalesTab({ db, inv, species, onGoSell }) {
   return (
     <div className="flex flex-col gap-5">
-      <RecordSaleForm db={db} products={products} />
+      {/* Recording moved to the Sell tab (Batch 28.2) — keep a
+          pointer where the form used to be. */}
+      <button
+        onClick={onGoSell}
+        className="self-start inline-flex items-center gap-2 bg-surface border border-line text-fg font-[inherit] text-[12px] font-semibold px-3.5 py-2.5 cursor-pointer hover:border-accent"
+      >
+        <Banknote size={14} className="text-accent-deep shrink-0" />
+        Record sales on the Sell tab
+        <ArrowUpRight size={13} className="shrink-0 text-dim" />
+      </button>
       <SalesChart db={db} species={species} />
-      <RecentSales db={db} />
-    </div>
-  );
-}
-
-// ── record a sale ──────────────────────────────────────────────────────
-
-const inputCls =
-  "bg-bg border border-line text-fg text-[13px] px-2.5 py-2 outline-none " +
-  "focus:border-accent font-[inherit] w-full";
-const labelCls = "text-[9px] text-faint uppercase tracking-[0.12em] mb-1";
-
-function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-` +
-    String(d.getDate()).padStart(2, "0");
-}
-
-function RecordSaleForm({ db, products }) {
-  const [soldOn, setSoldOn] = useState(todayISO());
-  const [productId, setProductId] = useState("");
-  const [bracketId, setBracketId] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [total, setTotal] = useState("");
-  const [totalTouched, setTotalTouched] = useState(false);
-  const [channel, setChannel] = useState("farmers_market");
-  const [notes, setNotes] = useState("");
-  const [pending, setPending] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [savedFlash, setSavedFlash] = useState(false);
-
-  const priceMap = useMemo(
-    () => currentPriceMap(db.prices), [db.prices]);
-
-  const product = products.find(p => p.id === productId) ?? null;
-  const brackets = product && !product.isBundle
-    ? (product.sizeBrackets ?? []) : [];
-
-  // Pre-fill total = current price × quantity unless the user has
-  // typed their own number.
-  const suggestedCents = useMemo(() => {
-    if (!product) return null;
-    const price = priceMap.get(
-      skuKey(product.id, bracketId || null))?.priceCents
-      ?? priceMap.get(skuKey(product.id, null))?.priceCents;
-    const qty = Number(quantity);
-    if (price == null || isNaN(qty) || qty <= 0) return null;
-    return Math.round(price * qty);
-  }, [product, bracketId, quantity, priceMap]);
-
-  const effectiveTotal = totalTouched
-    ? total
-    : suggestedCents != null ? (suggestedCents / 100).toFixed(2) : total;
-
-  const submit = async () => {
-    const totalCents = parseDollarsToCents(effectiveTotal);
-    setPending(true);
-    setErrorMsg(null);
-    try {
-      await db.recordSale({
-        soldOn,
-        productKindId: productId,
-        bracketId: bracketId || null,
-        quantity: Number(quantity) || 1,
-        totalCents,
-        channel,
-        notes,
-      });
-      // Keep date + channel (markets log many sales in a row); clear
-      // the rest.
-      setProductId("");
-      setBracketId("");
-      setQuantity("1");
-      setTotal("");
-      setTotalTouched(false);
-      setNotes("");
-      setSavedFlash(true);
-      setTimeout(() => setSavedFlash(false), 1600);
-    } catch (err) {
-      setErrorMsg(err?.message ?? "Save failed.");
-    }
-    setPending(false);
-  };
-
-  const canSubmit = productId
-    && parseDollarsToCents(effectiveTotal) != null
-    && !pending;
-
-  return (
-    <div className="bg-surface border border-line p-4 flex flex-col gap-3">
-      <div className="text-[10px] text-dim uppercase tracking-[0.12em]">
-        Record a sale
-      </div>
-      <div className="grid sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div>
-          <div className={labelCls}>Date</div>
-          <input type="date" value={soldOn} className={inputCls}
-            onChange={(e) => setSoldOn(e.target.value)} />
-        </div>
-        <div className="sm:col-span-2">
-          <div className={labelCls}>Product</div>
-          <select
-            value={productId}
-            onChange={(e) => {
-              const next = products.find(p => p.id === e.target.value);
-              const nextBrackets = next && !next.isBundle
-                ? (next.sizeBrackets ?? []) : [];
-              setProductId(e.target.value);
-              // Single-bracket products (eggs · 1 dozen) auto-select
-              // their bracket so the price suggestion kicks in.
-              setBracketId(nextBrackets.length === 1
-                ? nextBrackets[0].id : "");
-              setTotalTouched(false);
-            }}
-            className={inputCls}
-          >
-            <option value="">— pick a product —</option>
-            {products.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.name}{p.soldOut ? " (sold out)" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <div className={labelCls}>Size</div>
-          <select
-            value={bracketId}
-            onChange={(e) => {
-              setBracketId(e.target.value);
-              setTotalTouched(false);
-            }}
-            disabled={brackets.length === 0}
-            className={inputCls + " disabled:opacity-40"}
-          >
-            <option value="">
-              {brackets.length === 0 ? "—" : "— any —"}
-            </option>
-            {brackets.map(b => (
-              <option key={b.id} value={b.id}>{b.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <div className={labelCls}>Quantity</div>
-          <input
-            value={quantity}
-            onChange={(e) => {
-              setQuantity(e.target.value);
-              setTotalTouched(false);
-            }}
-            type="number" min="0" step="any"
-            className={inputCls}
-          />
-        </div>
-        <div>
-          <div className={labelCls}>Total $</div>
-          <input
-            value={effectiveTotal}
-            onChange={(e) => {
-              setTotal(e.target.value);
-              setTotalTouched(true);
-            }}
-            placeholder="0.00"
-            inputMode="decimal"
-            className={inputCls}
-          />
-          {!totalTouched && suggestedCents != null && (
-            <div className="text-[10px] text-faint mt-1">
-              from current price
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="grid sm:grid-cols-[200px_1fr] gap-3">
-        <div>
-          <div className={labelCls}>Channel</div>
-          <select value={channel} className={inputCls}
-            onChange={(e) => setChannel(e.target.value)}>
-            {SALE_CHANNELS.map(c => (
-              <option key={c.id} value={c.id}>{c.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <div className={labelCls}>Notes</div>
-          <input value={notes} className={inputCls}
-            placeholder="optional"
-            onChange={(e) => setNotes(e.target.value)} />
-        </div>
-      </div>
-      {errorMsg && <div className="text-[11px] text-warn">{errorMsg}</div>}
-      <div className="flex items-center justify-end gap-3">
-        {savedFlash && (
-          <span className="text-[11px] text-resolved">Sale recorded.</span>
-        )}
-        <button
-          onClick={submit}
-          disabled={!canSubmit}
-          className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-4 py-2 cursor-pointer disabled:opacity-50"
-        >
-          <Banknote size={13} />
-          {pending ? "Saving…" : "Record sale"}
-        </button>
-      </div>
+      <RecentSales db={db} inv={inv} />
     </div>
   );
 }
@@ -386,9 +190,19 @@ function SalesChart({ db, species }) {
 
 // ── recent sales ───────────────────────────────────────────────────────
 
-function RecentSales({ db }) {
+function RecentSales({ db, inv }) {
   const [showAll, setShowAll] = useState(false);
   const sales = showAll ? db.sales : db.sales.slice(0, 12);
+
+  // Deleting a sale puts back whatever inventory it drew down, THEN
+  // removes the sale row. Reversal must come first — the movements'
+  // sale_id is how they're found, and deleting the sale nulls it.
+  // reverseSale is retry-safe, so a failure between the two steps is
+  // fixed by clicking delete again.
+  const remove = async (saleId) => {
+    await inv.reverseSale(saleId);
+    await db.removeSale(saleId);
+  };
 
   if (db.sales.length === 0) return null;
 
@@ -426,8 +240,10 @@ function RecentSales({ db }) {
               </div>
               <button
                 onClick={() => {
-                  if (!window.confirm("Delete this sale record?")) return;
-                  db.removeSale(sale.id).catch(() => {});
+                  if (!window.confirm(
+                    "Delete this sale record? Any inventory it sold "
+                    + "goes back into its lots.")) return;
+                  remove(sale.id).catch(() => {});
                 }}
                 title="Delete sale"
                 className="bg-transparent border-0 p-1 text-muted hover:text-warn cursor-pointer shrink-0"

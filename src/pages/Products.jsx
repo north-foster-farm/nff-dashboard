@@ -4,8 +4,10 @@ import {
   Plus, Tag, Trash2, X,
 } from "lucide-react";
 import { useProducts } from "../lib/data/useProducts.js";
+import { useInventory } from "../lib/data/useInventory.js";
 import PricingGrid from "../components/PricingGrid.jsx";
 import SalesTab from "../components/SalesTab.jsx";
+import SellTab from "../components/SellTab.jsx";
 import {
   CONTENT_SLOTS, bundleCostFloor, currentPriceMap, fmtCents,
   groupProductsByAnimal, skuCostFloor, skuKey,
@@ -23,8 +25,11 @@ import {
 //   Pricing tab — the bulk pricing grid: every SKU with live margin
 //   against its cost floor, compare-at, quick-fill, history.
 //   (Batch 27.2 — components/PricingGrid.jsx)
-//   Sales tab — record-a-sale + the sales-over-time chart + recent
-//   sales. (Batch 27.3 — components/SalesTab.jsx)
+//   Sell tab — the POS register: cart, FIFO inventory draw-down,
+//   family-sale channel. (Batch 28.2 — components/SellTab.jsx)
+//   Sales tab — the sales-over-time chart + recent sales. (Batch
+//   27.3 — components/SalesTab.jsx; its manual record-a-sale form
+//   retired in favor of the Sell tab.)
 //
 // Content patterns follow the 2026-06-02 research pass over Pat's
 // Pastured / Polyface / White Oak: fixed price per weight bracket,
@@ -33,6 +38,9 @@ import {
 
 export default function Products({ data }) {
   const db = useProducts();
+  // Inventory rides along for the Sell tab's on-hand counts + FIFO
+  // draw-down, and for restoring lots when a sale is deleted.
+  const inv = useInventory();
   const [tab, setTab] = useState("catalog");
   const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -68,6 +76,11 @@ export default function Products({ data }) {
           active={tab === "pricing"}
           onClick={() => setTab("pricing")}
           label="Pricing"
+        />
+        <Tab
+          active={tab === "sell"}
+          onClick={() => setTab("sell")}
+          label="Sell"
         />
         <Tab
           active={tab === "sales"}
@@ -106,8 +119,16 @@ export default function Products({ data }) {
           perBird={perBird}
           cutCtx={cutCtx}
         />
+      ) : tab === "sell" ? (
+        <SellTab db={db} inv={inv} products={db.products} />
       ) : tab === "sales" ? (
-        <SalesTab db={db} products={db.products} species={species} />
+        <SalesTab
+          db={db}
+          inv={inv}
+          products={db.products}
+          species={species}
+          onGoSell={() => setTab("sell")}
+        />
       ) : (
         <>
           {creating && (
