@@ -2412,6 +2412,41 @@ changes — every picker writes through existing tables
   its subtree), opened in Agenda view with a place-context chip.
   Derived from placements — no event→place schema needed.
 
+### Batch 28.1 — Inventory backend + CRUD · `v0.10.32-alpha`
+2026-06-02. First slice of Batch 28 (Inventory + POS). Lot-based
+inventory on real tables, replacing the Batch-4 static stub.
+Design decisions (settled with James): lots (not aggregate
+counts), storage locations are places, POS will live as a tab on
+the Products page (28.2).
+
+Migration `0027_inventory.sql` (additive):
+- **`inventory_lots`** — product kind × bracket × lot date ×
+  place (FK → places), with `quantity` (current) and
+  `initial_quantity`. The Batch-4 `egg_lots` / `chicken_lots`
+  placeholders are superseded but left in place.
+- **`inventory_movements`** — append-only audit: created /
+  adjustment / spoilage / sale (28.2), with `sale_id` FK →
+  product_sales for the POS link.
+
+Client:
+- **`useInventory`** hook — lots + movements, realtime, on-hand
+  rollup by SKU (productCatalog's `skuKey`); createLot /
+  adjustLot / moveLot / removeLot, every quantity change paired
+  with a movement row.
+- **Inventory page rebuilt** (Tailwind, DB-backed): summary
+  tiles per product, lots grouped by product kind with
+  depleted-lot collapse, per-lot expand → recount / spoilage
+  adjustment, move-to-place, delete (mistakes only), and the
+  movement history.
+- **Metrics "cuts ordered"** now reads real inventory lots
+  (joined on lot date = processing date, filtered to the
+  species' products, summing initial_quantity).
+- **`data.inventory` slice retired** from useReferenceData —
+  nothing read it anymore; two dead queries per app load gone.
+
+**Out of scope — 28.2:** the POS / quick-sell tab (FIFO lot
+allocation on sale, family-sale channel).
+
 ---
 
 ## Overhaul design records
@@ -2672,9 +2707,13 @@ Remaining tail:
   tab / PWA is found and refreshed — then re-run the same sweep
   on whatever project-shaped rows exist at that point.
 
-### Batch 28 — Inventory backend + Point of Sale
-Inventory schema + CRUD; on-hand by SKU/location. POS marks items
-sold so inventory decrements correctly. Internal "family sale" flow.
+### Batch 28 — Inventory backend + Point of Sale 🔨 IN PROGRESS
+**28.1 (inventory backend + CRUD, `v0.10.32-alpha`) shipped
+2026-06-02** — see Shipped above. Remaining:
+- **28.2 — POS + family sale**: a "Sell" tab on the Products page —
+  pick SKUs + quantities, total auto-filled from the pricing grid,
+  channel picker incl. "family"; saving writes product_sales and
+  draws inventory lots down FIFO (movements carry the sale_id).
 
 ### Batch 29 — Orders
 Manual order creation; edit / interact with customer orders;

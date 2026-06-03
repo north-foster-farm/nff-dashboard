@@ -17,12 +17,17 @@ import { progressOf } from "../projects.js";
 // Keys exposed:
 //   Batch 1 — suppliers, machines, trailers, feeds
 //   Batch 2 — livestock ({species}), feedSchedules, chores ({definitions})
-//   Batch 3 — events ({kinds}), productKinds, inventory ({eggLots, chickenLots})
+//   Batch 3 — events ({kinds}), productKinds
 //   Batch 4 — threads, orders, updates, projects
 //
 // This is the complete migrated reference set. Anything still living in
 // nff-data.json (costs, model notes, meta) is intentionally left there:
 // it's static config / display prose with no editing surface.
+//
+// The old `inventory` slice (egg_lots + chicken_lots, Batch-4
+// placeholders) was retired in Batch 28.1 — real inventory lives in
+// inventory_lots via useInventory(), and nothing reads data.inventory
+// anymore.
 const INITIAL = {
   suppliers: null,
   machines: null,
@@ -33,7 +38,6 @@ const INITIAL = {
   chores: null,
   events: null,
   productKinds: null,
-  inventory: null,
   threads: null,
   orders: null,
   updates: null,
@@ -57,7 +61,6 @@ export function useReferenceData() {
     loadChores().then(v => !cancelled && setState(s => ({ ...s, chores: v })));
     loadEvents().then(v => !cancelled && setState(s => ({ ...s, events: v })));
     loadProductKinds().then(v => !cancelled && setState(s => ({ ...s, productKinds: v })));
-    loadInventory().then(v => !cancelled && setState(s => ({ ...s, inventory: v })));
     loadThreads().then(v => !cancelled && setState(s => ({ ...s, threads: v })));
     loadOrders().then(v => !cancelled && setState(s => ({ ...s, orders: v })));
     loadUpdates().then(v => !cancelled && setState(s => ({ ...s, updates: v })));
@@ -563,47 +566,6 @@ async function loadProductKinds() {
     yieldShareOfDressedWeight: p.yield_share_of_dressed_weight,
     sizeBrackets: p.size_brackets
   }));
-}
-
-// Inventory: egg_lots + chicken_lots, empty at launch. Shape matches what
-// Inventory.jsx reads (`data.inventory.eggLots`, `data.inventory.chickenLots`).
-// `modelNotes` stays JSON-only like events.
-async function loadInventory() {
-  const [eggRes, chickenRes] = await Promise.all([
-    supabase
-      .from("egg_lots")
-      .select("id, collection_date, carton_count, eggs_per_carton, location, notes")
-      .order("collection_date", { ascending: false }),
-    supabase
-      .from("chicken_lots")
-      .select("id, product_kind_id, size_bracket_id, processing_date, quantity, location, notes")
-      .order("processing_date", { ascending: false })
-  ]);
-  if (eggRes.error) { console.error("loadInventory:eggs", eggRes.error); return null; }
-  if (chickenRes.error) { console.error("loadInventory:chicken", chickenRes.error); return null; }
-
-  return {
-    eggLots: eggRes.data.map(e => ({
-      id: e.id,
-      collectionDate: e.collection_date,
-      cartonCount: e.carton_count,
-      eggsPerCarton: e.eggs_per_carton,
-      location: e.location,
-      notes: e.notes
-    })),
-    chickenLots: chickenRes.data.map(c => ({
-      id: c.id,
-      productKindId: c.product_kind_id,
-      sizeBracketId: c.size_bracket_id,
-      processingDate: c.processing_date,
-      quantity: c.quantity,
-      location: c.location,
-      notes: c.notes
-    })),
-    // Same pattern as events.modelNotes — carry forward display prose
-    // from the JSON since we didn't migrate it.
-    modelNotes: NFF_DATA.inventory?.modelNotes ?? []
-  };
 }
 
 // Threads — open questions / decision records. Status is "open" or

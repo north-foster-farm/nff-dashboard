@@ -5,6 +5,8 @@ import { useWeightSamples } from "../lib/data/useWeightSamples.js";
 import { useEggCollections } from "../lib/data/useEggCollections.js";
 import { useMortalityLog } from "../lib/data/useMortalityLog.js";
 import { useProcessingDates } from "../lib/data/useProcessingDates.js";
+import { useInventory } from "../lib/data/useInventory.js";
+import { useProducts } from "../lib/data/useProducts.js";
 import {
   averageDailyGain, feedConversionRatio, fmtMetric, henHousedProduction,
   isLayerSpecies, isMeatSpecies, layerFeedEfficiency, layingRate,
@@ -34,6 +36,10 @@ export default function Metrics({ data }) {
   const { collections } = useEggCollections(null);
   const { events: mortalityEvents } = useMortalityLog(null);
   const { processingDateByBatchId } = useProcessingDates();
+  // Real inventory lots (Batch 28.1) — the "cuts ordered" column reads
+  // these instead of the retired static JSON chicken lots.
+  const { lots: inventoryLots } = useInventory();
+  const { productsById } = useProducts();
 
   const ctx = useMemo(() => ({
     feedSchedules: data.feedSchedules ?? [],
@@ -67,7 +73,8 @@ export default function Metrics({ data }) {
           samplesByGroup={samplesByGroup}
           mortalityByGroup={mortalityByGroup}
           processingDateByBatchId={processingDateByBatchId}
-          chickenLots={data.inventory?.chickenLots ?? []}
+          inventoryLots={inventoryLots}
+          productsById={productsById}
           ctx={ctx}
         />
       ))}
@@ -92,7 +99,7 @@ export default function Metrics({ data }) {
 
 function BroilerComparison({
   species, samplesByGroup, mortalityByGroup, processingDateByBatchId,
-  chickenLots, ctx,
+  inventoryLots, productsById, ctx,
 }) {
   // Newest batches first; batches with no arrival date sink to the
   // bottom (they can't compute much anyway).
@@ -112,13 +119,20 @@ function BroilerComparison({
     const mort = mortalityStats(batch, mortality);
     const weeks = weeksTimeline(batch, species, processingISO);
 
-    // "Cuts ordered": chicken lots recorded on this batch's processing
-    // day. chicken_lots has no batch FK, so the processing date is the
-    // join key — blank until a processing date exists and lots are in.
+    // "Cuts ordered": inventory lots created on this batch's
+    // processing day (Batch 28.1 — real inventory_lots, not the old
+    // static stub). The lot date is the join key, filtered to this
+    // species' products so an egg count on the same day doesn't leak
+    // in. initial_quantity, not quantity — sales drawing a lot down
+    // shouldn't shrink what the processing day produced.
     const cuts = processingISO
-      ? chickenLots
-        .filter(l => l.processingDate === processingISO)
-        .reduce((a, l) => a + (l.quantity ?? 0), 0)
+      ? inventoryLots
+        .filter(l => {
+          const product = productsById.get(l.productKindId);
+          return l.lotDate === processingISO
+            && product?.sourceSpeciesId === species.id;
+        })
+        .reduce((a, l) => a + (l.initialQuantity ?? 0), 0)
       : null;
 
     return { batch, fcr, adg, uni, mort, weeks, cuts, processingISO };
