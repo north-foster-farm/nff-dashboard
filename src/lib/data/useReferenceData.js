@@ -153,6 +153,31 @@ export function useReferenceData() {
     return () => { cancelled = true; supabase.removeChannel(channel); };
   }, []);
 
+  // Keep the orders slice live (Batch 29.1). The Orders page writes
+  // through useOrders, but the sidebar count and the dashboard's
+  // "Open orders" card read `data.orders` from here.
+  useEffect(() => {
+    let cancelled = false;
+    let scheduled = false;
+    const refresh = () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(async () => {
+        scheduled = false;
+        const v = await loadOrders();
+        if (!cancelled && v) setState(s => ({ ...s, orders: v }));
+      }, 120);
+    };
+    const channel = realtimeChannel("refdata:orders:stream")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        refresh
+      )
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(channel); };
+  }, []);
+
   // Keep the projects slice live (Batch 22). The Projects pages write
   // through useProjects / useProject, but the sidebar count, dashboard
   // card, and schedule timeline all read `data.projects` from here.
@@ -592,23 +617,31 @@ async function loadThreads() {
   });
 }
 
-// Orders / updates / projects — empty at launch, but we still surface
-// them as empty arrays so downstream filters / map calls Just Work.
+// Orders — the sidebar count and the dashboard card read this slice;
+// the Orders page itself uses the richer useOrders() hook. Batch 29.1
+// extended the columns (customer FK, lifecycle timestamps, payment);
+// only the fields those two surfaces need are loaded here.
 async function loadOrders() {
   const { data, error } = await supabase
     .from("orders")
-    .select("id, customer_name, status, total_cents, notes, placed_at, fulfilled_at, line_items")
+    .select(
+      "id, customer_id, customer_name, status, total_cents, notes, " +
+      "placed_at, ready_at, fulfilled_at, cancelled_at, paid_at"
+    )
     .order("placed_at", { ascending: false });
   if (error) { console.error("loadOrders:", error); return null; }
   return data.map(o => ({
     id: o.id,
+    customerId: o.customer_id,
     customerName: o.customer_name,
     status: o.status,
     totalCents: o.total_cents,
     notes: o.notes,
     placedAt: o.placed_at,
+    readyAt: o.ready_at,
     fulfilledAt: o.fulfilled_at,
-    lineItems: o.line_items
+    cancelledAt: o.cancelled_at,
+    paidAt: o.paid_at
   }));
 }
 

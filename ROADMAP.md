@@ -2476,6 +2476,68 @@ changes — 0027's `inventory_movements.sale_id` was built for this.
 
 Batch 28 (Inventory + POS) is complete.
 
+### Batch 29.1 — Orders backend + CRUD · `v0.10.34-alpha`
+2026-06-02. First slice of Orders + shipping plumbing (Batch 29):
+all of the batch's schema in one migration, the orders hook, and
+the Orders page. Lifecycle + fulfillment (29.2) and shipments
+(29.3) come next.
+
+Migration `0028_orders.sql` (all of Batch 29's schema — one prod
+push for the whole batch):
+- **`orders` extended** — the 0006 placeholder grows the real
+  model: `customer_id` FK, `ready_at` / `cancelled_at` lifecycle
+  timestamps, `paid_at` + `payment_method`, `fulfillment_method`
+  (pickup / delivery / shipping), `ship_to` jsonb snapshot,
+  `shipping_cents`, `created_by`, `updated_at` + touch trigger,
+  and check constraints for the settled enums (safe to add — the
+  table has been empty since 0006 created it schema-only).
+- **`order_lines`** — one row per line: product × bracket ×
+  quantity × price. `sale_id` links a line to the product_sales
+  row written at fulfillment (29.2). Replaces the 0006
+  `line_items` jsonb (left in place, never read).
+- **`shipments` + `shipment_parcels`** — Shippo-shaped (shipment
+  → parcels → label) so the Batch 30 live API drops in without a
+  remodel: carrier / service level / ship date / label cost /
+  tracking; parcels carry dims + weight + dry-ice lbs (the
+  cold-chain coolant). Read by the hook now, written by 29.3.
+- **`shipping_settings`** — singleton state allowlist for the
+  cold-chain distance cap (29.3 UI).
+- **`customers.address`** (default ship-to, jsonb) and
+  **`product_sales.order_id`** (fulfillment sales point back at
+  their order).
+- Admin RLS + realtime on every new table.
+
+**Orders lib** (`lib/orders.js`, pure): statuses, fulfillment +
+payment methods, Shippo-shaped address formatting, order totals,
+customer display names.
+
+**Hook** (`lib/data/useOrders.js`): orders with lines attached
+(newest first), status grouping, shipments with parcels attached,
+`createOrder` / `updateOrder` / `setLines` / `removeOrder`.
+Lifecycle transitions are 29.2; shipment mutations are 29.3.
+
+**Orders page** (`pages/Orders.jsx`): status-grouped list (open /
+ready / fulfilled / cancelled, working set expanded by default),
+summary strip (open / ready counts + awaiting value), new-order
+form — customer picker with walk-in free-text fallback, line
+editor with price prefill from current prices and on-hand counts,
+fulfillment method, notes — and expandable order rows with edit /
+delete while open.
+
+**Wiring**: Sales → Orders lands on the page (placeholder
+retired); the sidebar count and the dashboard "Open orders" card
+now count open + ready orders, update live via a new
+`refdata:orders` realtime subscription, and the card deep-links
+to the page. Two Batch-28 leftovers fixed along the way: the
+"Point of sale" sidebar action now opens the Products page's Sell
+tab, and "Add to inventory" opens Inventory with the new-lot form
+already open (both previously dead-ended on ComingSoon).
+
+**Out of scope — next slices:** ready / fulfilled / cancel flows,
+payment capture, and the fulfillment → sales + inventory write
+(29.2); shipments UI, ship-to address entry, customer default
+addresses, and the state allowlist UI (29.3).
+
 ---
 
 ## Overhaul design records
@@ -2747,6 +2809,9 @@ Both slices shipped 2026-06-02 — see Shipped above: **28.1**
 family sale, `v0.10.33-alpha`).
 
 ### Batch 29 — Orders + shipping plumbing
+**29.1 shipped 2026-06-02 (`v0.10.34-alpha`)** — see Shipped.
+Remaining: 29.2 (lifecycle + fulfillment), 29.3 (shipments).
+
 Scope settled at the 2026-06-02 workshop. Manual order creation;
 edit / interact with customer orders; customer ↔ order linking
 (deferred here from Batch 24); and the cold-chain shipping

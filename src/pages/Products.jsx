@@ -36,12 +36,12 @@ import {
 // products named "Animal, Cut", sold-out items stay visible, the
 // four-part description recipe.
 
-export default function Products({ data }) {
+export default function Products({ data, initialTab = "catalog" }) {
   const db = useProducts();
   // Inventory rides along for the Sell tab's on-hand counts + FIFO
   // draw-down, and for restoring lots when a sale is deleted.
   const inv = useInventory();
-  const [tab, setTab] = useState("catalog");
+  const [tab, setTab] = useState(initialTab);
   const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
 

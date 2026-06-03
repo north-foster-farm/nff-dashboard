@@ -19,11 +19,11 @@ import { formatDate } from "../lib/dates.js";
 // tree — add freezers/fridges under House / Barn / Fred via Edit
 // places.
 
-export default function Inventory() {
+export default function Inventory({ startCreating = false }) {
   const catalog = useProducts();
   const inv = useInventory();
   const { places, placesById, loading: sitesLoading } = useSites();
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(startCreating);
 
   // Lots grouped by product kind, in catalog (ordinal) order. Kinds
   // with no lots don't render a group.

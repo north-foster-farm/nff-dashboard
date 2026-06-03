@@ -16,7 +16,9 @@ import {
   obligationPlaceIds
 } from "../lib/chores.js";
 import { displayPlace } from "../lib/places.js";
-import { navigate, pathForBatch, pathForProject } from "../lib/router.js";
+import {
+  navigate, pathForBatch, pathForProject, pathForSection,
+} from "../lib/router.js";
 import { useProcessingDates } from "../lib/data/useProcessingDates.js";
 import { isMeatSpecies, weeksTimeline } from "../lib/metrics.js";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
@@ -848,15 +850,20 @@ function ProjectsInProgressCard({ data }) {
 }
 
 function OpenOrdersCard({ data }) {
-  const open = (data.orders ?? []).filter(o => o.status === "open" || o.status === "pending");
+  // Open + ready orders are the ones still awaiting action (Batch
+  // 29.1's lifecycle: open → ready → fulfilled, plus cancelled).
+  const open = (data.orders ?? []).filter(
+    o => o.status === "open" || o.status === "ready");
   return (
     <Card title="Open orders" icon={Receipt}>
       {open.length === 0 ? (
         <EmptyLine>No open orders.</EmptyLine>
       ) : (
-        <div className="text-[13px] text-fg">
-          {open.length} {open.length === 1 ? "order" : "orders"} awaiting action
-        </div>
+        <QuickOpenRow
+          label={`${open.length} ${open.length === 1 ? "order" : "orders"}`
+            + " awaiting action"}
+          onOpen={() => navigate(pathForSection("orders"))}
+        />
       )}
     </Card>
   );

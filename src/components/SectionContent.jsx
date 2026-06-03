@@ -28,6 +28,7 @@ import Processes from "../pages/Processes.jsx";
 import Customers from "../pages/Customers.jsx";
 import FeedSchedulesPage from "../pages/FeedSchedulesPage.jsx";
 import Metrics from "../pages/Metrics.jsx";
+import Orders from "../pages/Orders.jsx";
 
 export default function SectionContent({
   section, data, onOpenEvent, onNavigate, onOpenRounds,
@@ -102,6 +103,15 @@ export default function SectionContent({
     case "resources_trailers": return <Trailers data={data} />;
     case "products": return <Products data={data} />;
     case "inventory": return <Inventory data={data} />;
+    // The Sales group (Batch 29.1). "Point of sale" is the Sell tab on
+    // the Products page (shipped in 28.2 — this deep link was the
+    // missing wiring); "Add to inventory" opens Inventory with the
+    // new-lot form already open (same pattern, Batch 28.1 leftover).
+    case "orders": return <Orders />;
+    case "point_of_sale":
+      return <Products data={data} initialTab="sell" key="sell" />;
+    case "add_to_inventory":
+      return <Inventory data={data} startCreating key="new-lot" />;
     case "schedule": return <Schedule data={data} onOpenEvent={onOpenEvent} />;
     case "chores": return <Chores data={data} />;
     case "projects":

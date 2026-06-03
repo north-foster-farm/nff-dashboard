@@ -90,11 +90,13 @@ export const SECTIONS = [
   // deep link and SectionContent case keeps working unchanged.
   { id: "products", group: "Products", label: "All products", icon: Tag, description: "What NFF sells — the catalog: photos, descriptions, size brackets, and prices, grouped by animal", getCount: () => null },
   { id: "inventory", group: "Products", label: "Inventory", icon: Boxes, description: "Current stock — egg cartons in the fridge, chicken lots in freezers, FIFO-ordered", getCount: () => null },
-  { id: "add_to_inventory", group: "Products", label: "Add to inventory", icon: PackagePlus, kind: "action", description: "Quick form to record new lots — eggs collected, broiler lots after processing day. Placeholder.", getCount: () => null },
+  { id: "add_to_inventory", group: "Products", label: "Add to inventory", icon: PackagePlus, kind: "action", description: "Quick form to record new lots — eggs collected, broiler lots after processing day.", getCount: () => null },
 
-  { id: "orders", group: "Sales", label: "Orders", icon: Receipt, description: "Customer orders against inventory and event sales — placeholder until the sales model is built.",
-    getCount: (d) => (d.orders ?? []).filter(o => o.status === "open").length },
-  { id: "point_of_sale", group: "Sales", label: "Point of sale", icon: Banknote, kind: "action", description: "Record a sale on the spot at a market or event — drains inventory FIFO. Placeholder.", getCount: () => null },
+  // Orders (Batch 29.1): the count is everything still awaiting action
+  // — open plus ready-but-not-fulfilled.
+  { id: "orders", group: "Sales", label: "Orders", icon: Receipt, description: "Customer orders — what's been promised, to whom, and for how much. Fulfilling an order records the sale and draws down inventory.",
+    getCount: (d) => (d.orders ?? []).filter(o => o.status === "open" || o.status === "ready").length },
+  { id: "point_of_sale", group: "Sales", label: "Point of sale", icon: Banknote, kind: "action", description: "Record a sale on the spot at a market or event — drains inventory FIFO. Opens the Products page's Sell tab.", getCount: () => null },
 
   { id: "livestock_layers", group: "Animals", label: "Layers", icon: Egg, getCount: () => null },
   { id: "livestock_broilers", group: "Animals", label: "Broilers", icon: Bird, getCount: () => null },
