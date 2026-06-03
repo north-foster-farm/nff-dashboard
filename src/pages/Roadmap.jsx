@@ -23,6 +23,9 @@
 // surface), "Inventory and point of sale" (Batches 28.1–28.2 —
 // lot-based inventory with the movement audit trail, and the Sell
 // tab register with FIFO draw-down and the family-sale flow).
+//
+// Graveyarded (cut from the plan, not shipped — see ROADMAP.md →
+// Graveyard): "Bookmarks", "Voice control" (both 2026-06-02).
 
 const ITEMS = [
   {
@@ -66,11 +69,6 @@ const ITEMS = [
       "Postgres full-text index.",
   },
   {
-    title: "Bookmarks",
-    body: "Pin any page or entity to a per-user bookmarks list, " +
-      "surfaced in the sidebar.",
-  },
-  {
     title: "iPhone-friendly",
     body: "Every page audited at iPhone widths. Add to Home Screen via " +
       "a PWA install prompt.",
@@ -92,9 +90,12 @@ const ITEMS = [
       "automatically.",
   },
   {
-    title: "Voice control",
-    body: "Talk to the app — \"log Saturday's farmers market, six dozen " +
-      "eggs sold\" — and have it interpret, confirm, then record.",
+    title: "The big audit",
+    body: "A full pass over everything that's shipped: a code-side " +
+      "review of the app's component architecture and design system, " +
+      "then a recorded walkthrough of the whole app — every bug, rough " +
+      "edge, and design inconsistency goes on one list and gets fixed " +
+      "in order.",
   },
   {
     title: "Mileage tracker",

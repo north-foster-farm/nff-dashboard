@@ -2660,6 +2660,11 @@ Numbering history (for anyone reading old commit messages):
   (37), and slices of Offline (old 33), App-wide search (old 30),
   and the mobile pass (old 32) were pulled forward into the
   farm-map MVP.
+- → 40 on 2026-06-02: Batches 34 (bookmarking) and 38 (voice
+  control) moved to the Graveyard (numbers retired with them);
+  Batch 39 (design audit) and Batch 40 (functionality + UX audit)
+  added; the live carrier-label integration (Shippo) folded into
+  Batch 30's scope.
 
 ### Batch 23 — Processes ✅ SHIPPED
 Shipped `v0.10.20-alpha` (2026-06-02) — see the Shipped section
@@ -2741,13 +2746,56 @@ Both slices shipped 2026-06-02 — see Shipped above: **28.1**
 (inventory backend + CRUD, `v0.10.32-alpha`), **28.2** (POS +
 family sale, `v0.10.33-alpha`).
 
-### Batch 29 — Orders
-Manual order creation; edit / interact with customer orders;
-shipment creation from order (integration scoped here).
+### Batch 29 — Orders + shipping plumbing
+Scope settled at the 2026-06-02 workshop. Manual order creation;
+edit / interact with customer orders; customer ↔ order linking
+(deferred here from Batch 24); and the cold-chain shipping
+pipeline modeled in-app, operated manually until the live carrier
+API lands (Batch 30).
+
+Workshop decisions:
+- Orders write `product_sales` + decrement inventory **at
+  fulfillment** — an open order is a promise; cancelling an open
+  order costs nothing. The sales chart stays a record of actual
+  money.
+- Lifecycle: open → ready → fulfilled, plus cancelled. Edits
+  allowed while open; fulfilled orders are frozen.
+- Payment tracking: paid flag + method (cash / check / Venmo /
+  card / other) + paid-on date. Live payment APIs stay in
+  Batch 30.
+- Addresses: customers get a default ship-to; each order
+  snapshots / overrides it at order time.
+- Cold-chain limit: products ship cold/frozen, so transit time is
+  capped — v1 is a state allowlist with per-order override.
+- The shipment model is designed around Shippo's object shapes
+  (shipment → parcels → label) so the live API drops in later
+  without a remodel. Until then: buy labels on PirateShip/Shippo
+  by hand, paste tracking numbers in.
+
+Slices:
+- **29.1 — Orders backend + CRUD**: migration `0028_orders.sql`
+  carries all of Batch 29's schema in one prod push (orders table
+  extensions, `order_lines`, `shipments` + parcels,
+  `customers.address`, `product_sales.order_id`); `useOrders`
+  hook; Orders page (status-grouped list, create/edit, customer
+  picker, line editor with price prefill); nav + Overview card
+  wiring.
+- **29.2 — Lifecycle + fulfillment**: ready / fulfilled / cancel
+  flows, fulfillment writes sales rows + FIFO inventory draw-down
+  (same `allocateToSale` path as POS), payment tracking UI.
+- **29.3 — Shipments**: create-shipment-from-order (parcels +
+  dry-ice coolant config, allowlist check with override, manual
+  label workflow, tracking), shipping cost passed onto the order
+  total.
 
 ### Batch 30 — Commerce integrations
 Stripe (cards / online payments); Venmo (where API exists);
 QuickBooks (accounting sync). E-comm front-end if needed.
+**Added 2026-06-02:** the live carrier-label integration — Shippo
+(address validation, real-time rates, label purchase, tracking
+webhooks) against the Batch 29 shipment model. Batch 29 builds the
+cold-chain shipping pipeline operated manually; this batch makes
+it live.
 
 ### Batch 31 — Google Calendar sync (push-only first; two-way deferred)
 Now owns the **push-only sync** originally scoped into Batch 19
@@ -2795,11 +2843,6 @@ comprehensive. Likely Postgres `tsvector` + a client palette
 with D1 disambiguation already shipped in Batch 18 — this batch is
 the full cross-entity cmd-K palette.
 
-### Batch 34 — App-wide bookmarking
-Per-user bookmarks of arbitrary entities/pages, surfaced in nav.
-Table `user_bookmarks (user_email, target_type, target_id, label,
-sort_order)`.
-
 ### Batch 35 — iOS / mobile-responsive pass
 Audit every page for iPhone widths. PWA manifest + install prompt
 for Add to Home Screen. Lands after Tailwind so responsive
@@ -2834,10 +2877,66 @@ occupied / available in Y"); commit a movement plan → scheduled
 chore moves; per-plan distance/location breakdown. Likely libs:
 Leaflet or MapLibre + a geometry layer.
 
-### Batch 38 — Voice / natural-language control
-Speech-to-text on device; intent → tool-call mapping via Claude;
-confirmation step for state-changing actions. High-priority once
-foundational batches land.
+### Batch 39 — Design audit (code-side)
+Added 2026-06-02. Claude-led review of the front-end, run ahead of
+the recorded audit (Batch 40): component architecture (what gets
+extracted / merged / deleted), design-system consolidation
+(spacing, typography, color tokens, `primitives.jsx` coverage,
+Tailwind idiom consistency), and UI/UX patterns visible from code
+(empty states, form layouts, button variants). Output is a written
+report + refactor plan checked into `audits/`, then executed as
+`fix:` / `chore:` commits.
+
+### Batch 40 — Functionality + UX audit (recorded walkthrough)
+Added 2026-06-02. The screen-recording audit workflow, then the
+audit itself. Design/UX issues are treated exactly like
+functionality bugs — one backlog, fixed in sequence. Settled at
+the 2026-06-02 discussion:
+
+- **Capture (James):** ⌘⇧5 screen recording with the mic on,
+  narrating issues while demonstrating them on screen. Files land
+  in a gitignored `audits/raw/`. Several shorter recordings (one
+  per app area) are fine.
+- **Process (Claude):** `scripts/process-audit.sh` — ffmpeg
+  extracts the audio, whisper.cpp (local, runs on the M1, nothing
+  leaves the machine) produces a timestamped transcript, ffmpeg
+  pulls a video frame per transcript segment. Claude reads the
+  transcript + frames and writes `audits/<date>/findings.md`: one
+  entry per issue — page, James's words, the frame, a diagnosis
+  (file / component, proposed fix), size estimate, checkbox.
+- **Pilot first:** a 2–3 minute test clip proves the pipeline and
+  tunes the findings format before the full walkthrough.
+- **Triage (together, ~15 min):** correct misreads, kill
+  non-issues, set priority order, and pre-authorize the fix list.
+- **Execute (Claude, while James is at the farm):** work the list
+  top-down — fix, verify in the running app, check off, next.
+  Each finding becomes its own `fix:` commit straight to main
+  (pre-authorized at triage; this is the standing exception to
+  the ask-before-each-commit rule). Anything needing a migration
+  or prod push is parked for James's return — that never happens
+  unattended.
+
+The same pipeline drives the Batch 35 responsiveness audit when
+that batch runs.
+
+---
+
+## Graveyard
+
+Features cut from the plan — kept so the reasoning isn't lost.
+Batch numbers are retired with them, leaving gaps in Upcoming.
+
+### Batch 34 — App-wide bookmarking · cut 2026-06-02
+Was: per-user bookmarks of arbitrary entities/pages, surfaced in
+nav, via a `user_bookmarks (user_email, target_type, target_id,
+label, sort_order)` table. Cut: James doesn't expect to need it —
+the sidebar plus the upcoming app-wide search (Batch 33) cover
+the navigate-to-anything need.
+
+### Batch 38 — Voice / natural-language control · cut 2026-06-02
+Was: speech-to-text on device; intent → tool-call mapping via
+Claude; confirmation step for state-changing actions. Cut: James
+doesn't expect to need it at all.
 
 ---
 
