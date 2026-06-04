@@ -302,7 +302,8 @@ prerequisites:
 
 - The Instagram account must be a **Business or Creator** account
   (a personal IG account **cannot** publish via API), and it must be
-  **linked to a Facebook Page**.
+  **linked to a Facebook Page**. ✅ The farm **has a Business IG** —
+  this path is available; just confirm the FB-Page link.
 - A **Meta developer app** at developers.facebook.com, using **Facebook
   Login** to obtain a **long-lived access token**.
 - **App Review** by Meta for the permissions
@@ -332,31 +333,31 @@ Server-only — all posting happens in a Netlify function.
 > caption + media ready to paste) instead of true auto-publish. Decide
 > when Batch 32 is scoped.
 
-## 9. GitHub API — blog authoring via PR (Batch 32, **pending tech decision**)
+## 9. GitHub API — possible blog *publish* target (Batch 32, **pending architecture**)
 
-**Unblocks:** the blog-authoring-wraps-PRs idea — *if* the public site
-turns out to be a GitHub-repo static site.
+**Decided (2026-06-04):** the blog **review** (line/threaded comments,
+diffs, resolve, 1-click accept, the 3-gate AI+human pipeline) lives
+**entirely in the dashboard** — *not* GitHub PRs (James's dad won't use
+GitHub). So GitHub is **not** the review surface.
 
-**This one is gated on a design decision, not just a signup** (see the
-open questions James + Claude need to settle). Two shapes:
+GitHub's *only* possible role is as the **publish target**: on publish,
+the app renders a **Hugo-compatible markdown file** (front matter +
+body) and has to get it into the site's content so Hugo rebuilds.
+Whether that needs the GitHub API depends on an unresolved architecture
+call:
 
-- **Wrap real GitHub:** the dashboard uses the GitHub API to branch →
-  commit the post (e.g. a markdown file) → open a PR → merge; the merge
-  triggers the site's build (Netlify/Vercel/Pages). Needs API access.
-  - Auth: a **GitHub App** installed on the site repo (recommended —
-    scoped, revocable), or a **fine-grained PAT** limited to that repo
-    with `contents` + `pull_requests` write.
-  - **Secrets →** Netlify env: GitHub App id + private key (or the PAT),
-    server-only.
-- **Emulate the workflow in-app:** model draft → in-review → approved →
-  published entirely in the dashboard (Batch 32 already sketches a
-  "needs review" thread + AI-review gate), and only push to the site on
-  approve via a **build hook / content-API write**. **No GitHub API
-  needed** in this shape.
+- **Public site is a separate repo** → commit the generated file via
+  the **GitHub API** (a **GitHub App** scoped to that repo, or a
+  fine-grained **PAT** with `contents` write) + a build trigger.
+  **Secrets →** Netlify env (App id + private key, or PAT), server-only.
+- **Site folds into the monorepo** beside the app (James leans
+  monorepo) → publishing is an internal write into the content dir +
+  a build; **no GitHub credential needed.**
 
-Which one depends on where the public site lives and what it's built
-with — unresolved; don't provision a GitHub credential until that's
-decided.
+Also unresolved: the redesign brings **ecommerce/JS**, so the site may
+move off pure Hugo. **Don't provision a GitHub credential until the
+site-redesign architecture (Hugo-vs-JS-framework, monorepo layout,
+build trigger) is settled** — see the blog spec in ROADMAP Batch 32.
 
 ## At-a-glance index
 
@@ -375,7 +376,7 @@ decided.
 | QuickBooks | accounting (Batch 30) | developer.intuit.com | OAuth client + realm | Netlify |
 | Venmo | payments (Batch 30) | — | **none** — deep-link/QR pre-fills pay screen (no confirm); real accept = PayPal/Braintree | — (build task) |
 | **Meta (Instagram + Facebook)** | social posting (Batch 32) | developers.facebook.com | app id/secret + long-lived page/IG token (**App Review required**) | Netlify |
-| **GitHub** | blog-via-PR (Batch 32, *pending tech decision*) | github.com | GitHub App (id + private key) or fine-grained PAT | Netlify |
+| **GitHub** | blog *publish* target only if site is a separate repo (Batch 32, *pending architecture*); review is in-app, not GitHub | github.com | GitHub App (id + private key) or fine-grained PAT — **maybe none** if monorepo | Netlify |
 | File storage | files cross-cutting | R2 / B2 / S3 | access key id + secret | Netlify (presigned) |
 | Google Drive | file pull-in | Google Cloud | OAuth client | Netlify |
 | Google Calendar | GCal push (Batch 31) | Google Cloud | service account / OAuth | Netlify |

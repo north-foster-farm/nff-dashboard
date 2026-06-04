@@ -3189,25 +3189,85 @@ already-live page in place.
 
 Social posts: same shell + real social-network integrations + true
 scheduling. **Instagram** is the primary target — publishing via the
-**Meta Graph API (Instagram Content Publishing)**, which requires a
-Business/Creator IG account linked to a Facebook Page + a Meta app +
-**App Review** for the publish permissions (the most gated
-integration; budget for review). Facebook Page posts ride the same
-API. IG has no native scheduling, so schedule server-side (a Netlify
-scheduled function fires the publish). Credentials in
+**Meta Graph API (Instagram Content Publishing)**. The farm **has a
+Business IG**, so the official path is available; it still needs the
+IG account linked to a Facebook Page + a Meta app + **App Review** for
+the publish permissions (the most gated integration; budget for
+review). Facebook Page posts ride the same API. IG has no native
+scheduling, so schedule server-side (a Netlify scheduled function
+fires the publish). Credentials in
 `docs/integrations-and-credentials.md`.
 
-**Blog posts** (added 2026-06-04): authoring will **wrap (or emulate)
-GitHub's PR workflow** — draft → review → approve → publish. Two
-shapes, decision pending the public site's stack/host: (a) **wrap
-real GitHub** — the dashboard uses the GitHub API to branch → commit
-the post (markdown) → open a PR → merge, and the merge triggers the
-site build (needs a GitHub App / PAT); or (b) **emulate in-app** —
-model the draft/review/approve states in the dashboard (reuses the
-"needs review" thread + AI-review gate above) and push to the site on
-approve via a build hook / content-API write (no GitHub API). Settle
-the site stack first — see the open questions in the working notes.
 Content calendar: calendar UI + auto-add to schedule.
+
+#### Blog authoring & publishing (design settled 2026-06-04)
+Big subsystem — likely its own batch when sequenced. The decision:
+**the dashboard is the CMS.** All authoring + review happens in our
+app (James's dad will never touch GitHub, and the review needs to be
+usable by a non-technical reviewer); git is only the *publish target*,
+never the review surface.
+
+**Context shaping it:** the public site exists but is being
+**redesigned from the ground up**, and the redesign introduces
+**ecommerce** — a large JS surface. The site is **Hugo** today; James
+prefers **monorepos**. If we can author → review → render a Hugo
+markdown file → commit it → rebuild, that's the win.
+
+**Content model:**
+- **Body:** markdown — covers bold/italic, ordered/unordered lists,
+  h3–h6, links, images + alt text.
+- **Beyond plain markdown (need handling):** embedded **video** and
+  image **captions** (markdown shortcodes / structured blocks).
+- **User-editable fields:** post type, meta description (+ more TBD).
+- **Auto metadata:** title tag, published + updated dates, OpenGraph,
+  schema markup (JSON-LD).
+
+**In-app review system (emulate a PR, DB-backed — do NOT use GitHub's):**
+versioned documents with **diffs** between versions; **line-anchored,
+threaded comments** with **resolve**; AI **suggestions rendered as
+proposed diffs** with **1-click accept**. The whole surface lives in
+the dashboard.
+
+**3-gate publish pipeline** — runs when a post is marked *ready for
+review* (or a new version is saved while under review):
+1. **AI tone & voice check** on the prose → suggests fixes, flags
+   unfixable issues → **must pass to publish**.
+2. **Content/schema check** → image/file sizes valid, headings not too
+   long, all custom fields filled, etc. → flags issues → **must pass
+   to publish**.
+3. **Human review** → reviewer comments + approves/rejects. Approve =
+   human gate passed; reject → author revises → the loop restarts.
+
+All three pass → post is **ready to publish or schedule**. On publish/
+schedule it **locks** (visible but uneditable); any change requires a
+**new review cycle**. (The "CI pre-commit hooks" James wants *are* this
+pipeline — it runs in-app, server-side, before anything ships;
+optionally a real CI on the site repo can validate the Hugo build as a
+backstop.)
+
+**Publish mechanism** (gated on the architecture decisions below): on
+publish, render the post to a **Hugo-compatible markdown file** (front
+matter carrying all the metadata) and get it into the site's content
+so Hugo rebuilds — commit via the **GitHub API** + build trigger if the
+site is a **separate repo**, or write into the content dir + trigger
+the build if it lives in the **monorepo** beside the app.
+
+**Open architecture decisions (settle when the redesign is scoped —
+they gate the publish mechanism + whether a GitHub credential is even
+needed):**
+- **Stay Hugo, or move to a JS framework (Astro / Next / …)?** The
+  ecommerce layer needs dynamic JS — either Hugo-for-content + JS
+  islands for commerce, or one JS framework doing both. Determines
+  whether "generate a Hugo markdown file" stays the publish target.
+- **Monorepo layout:** dashboard + public site (+ shared packages) in
+  one repo? If so, publishing is an internal write + build; if
+  separate repos, it's a cross-repo commit via the GitHub API.
+- **Build/deploy trigger:** host build (Netlify/…) fired by the
+  commit, vs a content-API write.
+
+Recommend a short **site-redesign architecture session** before
+building this — it's entangled with the ecommerce + monorepo
+decisions, which have impact well beyond the blog.
 
 ### Batch 33 — App-wide search ✅ SHIPPED
 Shipped `v0.10.40-alpha` (2026-06-03) — see the Shipped section
