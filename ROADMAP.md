@@ -3346,6 +3346,44 @@ Adjacent ideas, probably their own batches:
 - Fuel + repair cost tracking, totalled into a per-mile cost
   alongside the deduction view.
 
+### Event time footprint — setup / breakdown / travel buffers
+Added 2026-06-03 (James). An event's *real* time commitment is
+bigger than its published window. A farmers market that "runs 9–1"
+actually eats the morning: drive there, set up the stall, work the
+market, break down, drive home. Processing days have the same
+shape — haul + setup before, cleanup + haul after. Today the app
+only models the event window (start/end time), so the schedule,
+Now, and Rounds all under-state how long you're actually tied up
+and *when you have to leave*.
+
+The idea: events carry **travel-to**, **setup**, **breakdown**, and
+**travel-home** buffers around their core window. Most relevant for
+markets and processing days; probably opt-in per event kind (a
+market kind defaults to, say, 45 min travel + 30 min setup + 20 min
+breakdown + 45 min home; a one-off pickup needs none).
+
+Where it shows up:
+- **Schedule** — the occupied block spans buffers + core, maybe
+  with the core window emphasized and buffers shaded. Nothing else
+  should schedule into the buffer time.
+- **Now / leave-by** — the actionable signal isn't "market at 9," it's
+  "leave by 8:15." Surface a "leave by" on the Now card and on the
+  event itself.
+- **Rounds / chores** — buffer time is unavailable for chores; the
+  day's capacity shrinks accordingly.
+
+Data shape (sketch): buffer minutes on the event kind as defaults,
+overridable per occurrence — e.g.
+`travel_to_min / setup_min / breakdown_min / travel_home_min` on
+`event_kinds` (defaults) and nullable overrides on
+`event_occurrences`. Pure-additive migration; the renderers expand
+the displayed/blocked window from these.
+
+Pairs naturally with the **Mileage tracker** above (same "a market
+costs more than its hours" theme — one models the time footprint,
+the other the miles/dollars) and could share the per-event-kind
+defaults UI.
+
 ### Daily quote / artwork rotation + unlock gallery
 Added 2026-05-06. Spec + dataset already drafted; assets sit at
 `.ignored/quotes-and-artwork/` (44 quotes, 54 artwork candidates
