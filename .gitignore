@@ -17,3 +17,8 @@ dist
 
 # Override global config for migration SQL files
 !supabase/migrations/*.sql
+
+# Raw audit screen recordings — large, may contain anything on screen.
+audits/raw/
+# Processed transcripts + frames (intermediate; findings.md is the keeper).
+audits/*/processed/
