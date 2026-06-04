@@ -8,13 +8,12 @@ import { T } from "../theme.js";
 import { formatDate, formatTime12h } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
 import {
-  getChoresForDay, CHORE_CATEGORIES, CHORE_PERIODS,
-  displayDeadlineConcrete,
+  getChoresForDay, displayDeadlineConcrete, describeChoreAnchor,
   getBlockTimeLabelForPeriod, getBlockStartMinutesForPeriod,
-  getEarliestChoreInPeriod,
   formatTime12hShort, resolveAssignee,
   obligationPlaceIds
 } from "../lib/chores.js";
+import { resolveBlockMinutes } from "../lib/sunTimes.js";
 import { displayPlace } from "../lib/places.js";
 import {
   navigate, pathForBatch, pathForProject, pathForSection,
@@ -61,8 +60,8 @@ export default function Overview({ data, onNavigate }) {
   // both chore-scoped and block-scoped rules.
   const { rulesByChoreId, rulesByBlockId } = useChoreAssignmentRules();
   const ruleOpts = useMemo(
-    () => ({ rulesByChoreId, rulesByBlockId }),
-    [rulesByChoreId, rulesByBlockId]
+    () => ({ rulesByChoreId, rulesByBlockId, blocks }),
+    [rulesByChoreId, rulesByBlockId, blocks]
   );
 
   return (
@@ -191,50 +190,30 @@ function isoFromDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
-// Per spec: chores with period === "evening" can fall anywhere in [18:00,
-// 23:59] ∪ [00:00, 04:59]. For the timeline we visually split that wide
-// bucket into "evening" (post-sunset) and "pre_dawn" (early-morning) so a
-// 3 AM chore renders chronologically alongside other early-morning items
-// instead of being hidden inside the 8 PM rollup.
-function bucketForChore(inst) {
-  const p = inst.chore.period;
-  if (p !== "evening") return p;
-  const min = timeToMinutes(inst.chore.startTime) ?? 0;
-  return min < 5 * 60 ? "pre_dawn" : "evening";
+// minutes-of-day → "HH:MM" (inverse of timeToMinutes).
+function minutesToHHMM(min) {
+  const m = ((min % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:`
+    + `${String(m % 60).padStart(2, "0")}`;
 }
 
-const BUCKET_LABEL = {
-  morning: "Morning chores",
-  afternoon: "Afternoon chores",
-  evening: "Evening chores",
-  pre_dawn: "Pre-dawn chores",
-  anytime: "Anytime chores"
-};
-
-// Build the chore-group rollups for a day. One row per bucket containing
-// the earliest start time + member count.
+// Build the chore-group rollups for a day — one row per BLOCK, ordered
+// downstream by the block's resolved start time, carrying its member
+// count. Chores with no block fall into an "anytime" bucket.
 function rollupChoresForDay(data, dayDate, ruleOpts) {
+  const blocks = ruleOpts?.blocks ?? [];
   const instances = getChoresForDay(data, dayDate, ruleOpts);
-  const byBucket = {};
+  const byBlock = {};
   for (const inst of instances) {
-    const key = bucketForChore(inst);
-    (byBucket[key] ??= []).push(inst);
+    (byBlock[inst.chore.blockId ?? "anytime"] ??= []).push(inst);
   }
-  return Object.keys(byBucket).map((bucket) => {
-    const items = byBucket[bucket];
-    // Earliest by clock time within the bucket. For evening (post-sunset)
-    // the literal startTime is already monotonic (18:00–23:59) so we don't
-    // need the wrap-aware sort.
-    let earliestMin = Infinity;
-    let earliestHHMM = null;
-    for (const inst of items) {
-      const min = timeToMinutes(inst.chore.startTime);
-      if (min != null && min < earliestMin) {
-        earliestMin = min;
-        earliestHHMM = inst.chore.startTime;
-      }
-    }
-    return { bucket, items, startMin: earliestMin, startHHMM: earliestHHMM };
+  return Object.keys(byBlock).map((bucket) => {
+    const block = blocks.find((b) => b.id === bucket) ?? null;
+    const startMin = block
+      ? (resolveBlockMinutes(dayDate, block.startKind, block.startMinutes)
+         ?? block.startMinutes ?? null)
+      : null;
+    return { bucket, block, items: byBlock[bucket], startMin };
   });
 }
 
@@ -347,7 +326,7 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
       if (r.startMin != null && r.startMin < tomorrowMorningCutoff) {
         // Pre-morning rollup → always include in Tomorrow.
         filteredRollups.push(r);
-      } else if (r.bucket === "morning") {
+      } else if (r.block?.name?.toLowerCase() === "morning") {
         // Morning rollup → only include if a single named assignee owns it,
         // and surface that name in place of the item count.
         const assignee = getRollupAssignee(r, tomorrow, ruleOpts);
@@ -470,7 +449,8 @@ function buildTimelineItems({
   }
   for (const r of choreRollups) {
     const count = r.items.length;
-    const isEvening = r.bucket === "evening";
+    // The end-of-day block is anchored to sunset → show the sundown time.
+    const isSunset = r.block?.startKind === "sunset";
     // If the rollup carries an explicit assignee (e.g. tomorrow's morning
     // is owned by Jim), show the name in the right column instead of the
     // item count.
@@ -486,13 +466,11 @@ function buildTimelineItems({
       kind: "chore-group",
       id: `chores:${r.bucket}`,
       bucket: r.bucket,
-      // Sort key for evening uses the rollup's startMin (e.g. 8 PM = 1200).
-      // Pre-dawn already gets its own bucket via bucketForChore.
       startMin: r.startMin,
-      timeLabel: isEvening
+      timeLabel: isSunset
         ? sundownLabel
-        : (r.startHHMM ? formatTime12hShort(r.startHHMM) : ""),
-      title: BUCKET_LABEL[r.bucket] ?? `${r.bucket} chores`,
+        : (r.startMin != null ? formatTime12hShort(minutesToHHMM(r.startMin)) : ""),
+      title: r.block ? `${r.block.name} chores` : "Anytime chores",
       detail,
       detailIcon: r.assignee ? "user" : null,
       modifiedCount
@@ -635,12 +613,20 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
     })
     .slice(0, UPCOMING_LIMIT);
 
-  const byPeriod = {};
+  // Group by block, ordered by the block's resolved start time.
+  const byBlock = {};
   for (const inst of upcoming) {
-    (byPeriod[inst.chore.period] ??= []).push(inst);
+    (byBlock[inst.chore.blockId ?? "anytime"] ??= []).push(inst);
   }
-  const orderedPeriods = Object.keys(byPeriod).sort(
-    (a, b) => (CHORE_PERIODS[a]?.order ?? 99) - (CHORE_PERIODS[b]?.order ?? 99)
+  const blockById = new Map((blocks ?? []).map(b => [b.id, b]));
+  const startOf = (key) => {
+    const b = blockById.get(key);
+    if (!b) return 99999; // anytime / unknown → last
+    return resolveBlockMinutes(today, b.startKind, b.startMinutes)
+      ?? b.startMinutes ?? 99998;
+  };
+  const orderedKeys = Object.keys(byBlock).sort(
+    (a, b) => startOf(a) - startOf(b)
   );
 
   return (
@@ -649,11 +635,11 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
         <EmptyLine>No more chores on the list today.</EmptyLine>
       ) : (
         <div className="flex flex-col gap-3">
-          {orderedPeriods.map(p => (
-            <UpcomingPeriodGroup
-              key={p}
-              period={p}
-              instances={byPeriod[p]}
+          {orderedKeys.map(key => (
+            <UpcomingBlockGroup
+              key={key}
+              block={blockById.get(key) ?? null}
+              instances={byBlock[key]}
               blocks={blocks}
               completions={completions}
               placesById={placesById}
@@ -666,15 +652,17 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
   );
 }
 
-function UpcomingPeriodGroup({
-  period, instances, blocks, completions, placesById, choreCtx,
+function UpcomingBlockGroup({
+  block, instances, blocks, completions, placesById, choreCtx,
 }) {
-  const meta = CHORE_PERIODS[period];
-  const timeLabel = getBlockTimeLabelForPeriod(instances, period, blocks) || meta?.hint || "";
+  const label = block?.name ?? "Anytime";
+  const timeLabel = block
+    ? getBlockTimeLabelForPeriod(instances, block.name.toLowerCase(), blocks)
+    : "";
   return (
     <div>
       <div className="text-[11px] text-fg uppercase tracking-[0.14em] font-bold mb-1.5">
-        {meta?.label ?? period}
+        {label}
         {timeLabel && <span className="text-muted font-medium ml-2">{timeLabel}</span>}
       </div>
       <div className="flex flex-col gap-0.5">
@@ -772,7 +760,7 @@ function UpcomingChoreRow({
             )}
           </div>
           <div className="text-[12px] text-muted mt-px">
-            {CHORE_CATEGORIES[chore.category]?.label ?? chore.category} · {displayDeadlineConcrete(chore)}
+            {describeChoreAnchor(chore, choreCtx)} · {displayDeadlineConcrete(chore)}
           </div>
         </div>
       </div>

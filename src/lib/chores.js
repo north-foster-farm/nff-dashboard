@@ -2,26 +2,34 @@
 // expand them into concrete instances for that day, with computed deadline
 // and resolved assignee.
 
-import { CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS } from "../data/choreSeeds.js";
+import {
+  CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS,
+  CHORE_BLOCK_IDS, CHORE_BLOCKS_META, CHORE_OWNERS,
+} from "../data/choreSeeds.js";
 import { sunMinutesOfDay } from "./sunTimes.js";
 import { descendantIds } from "./places.js";
 
-export { CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS };
+export {
+  CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS,
+  CHORE_BLOCK_IDS, CHORE_BLOCKS_META, CHORE_OWNERS,
+};
+
+// Short weekday names, Sun=0…Sat=6 (matches stored frequency/weekday
+// values). Module-level so frequency + deadline formatters share it.
+const DOW_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Display label for a block slug (new model). Falls back to the raw
+// slug if it isn't one of the five known blocks.
+function blockSlugLabel(slug) {
+  return CHORE_BLOCKS_META[slug]?.label ?? slug ?? "";
+}
 
 // The canonical list of chore definitions the app shows. Once a backend
-// exists, this source flips to whatever is in the DB and the seeds are used
-// only for initial insertion. Demo-tagged chores from the seeds are *always*
-// merged in so design fixtures (e.g. the 3 AM "Overnight brooder check"
-// that exercises the pre-dawn / Tomorrow timeline rendering) survive even
-// after DB-backed chores override the seed list.
+// exists, this source flips to whatever is in the DB and the seeds are
+// used only for initial insertion (the empty-DB dev fallback).
 export function getAllChoreDefinitions(data) {
   const fromData = data?.chores?.definitions ?? [];
-  const demoSeeds = CHORE_SEEDS.filter(c => (c.tags ?? []).includes("demo"));
-  if (fromData.length > 0) {
-    const existingIds = new Set(fromData.map(c => c.id));
-    return [...fromData, ...demoSeeds.filter(c => !existingIds.has(c.id))];
-  }
-  return CHORE_SEEDS;
+  return fromData.length > 0 ? fromData : CHORE_SEEDS;
 }
 
 // Day-of-week in local time, Sun=0…Sat=6 (matches stored frequency values).
@@ -64,6 +72,19 @@ export function isChoreActiveOn(chore, date) {
       return isInLastWeekOfMonth(date)
         && dow >= (f.preferredDay ?? 1)
         && dow <= (f.latestDay ?? 5);
+    // ── New (block) model ────────────────────────────────────────────
+    case "weekly":
+      // Fires on each listed weekday (Monday-only, or Mon/Wed/Fri).
+      return (f.days ?? []).includes(dow);
+    case "monthly_last_week":
+      // Last week of the month, on weekday f.day.
+      return isInLastWeekOfMonth(date) && dow === (f.day ?? 1);
+    case "every_n":
+      return firesEveryN(f, date);
+    case "event":
+      // Event/batch/landmark-triggered chores never fire on their own;
+      // they're materialized by the process/automation engine.
+      return false;
     case "once":
       // One-time chores (auto-created by automations) fire on their
       // date and keep nagging until completed. Completion retires the
@@ -71,6 +92,42 @@ export function isChoreActiveOn(chore, date) {
       // the definitions list entirely — so "active forever after its
       // date" never outlives the chore being done.
       return Boolean(f.date) && localISODate(date) >= f.date;
+    default:
+      return false;
+  }
+}
+
+// every_n recurrence: { n, unit: days|weeks|months|years, day? }.
+// `day` (when present) is a weekday (Sun=0…Sat=6) the chore lands on.
+// Anchored to the epoch so it's deterministic without a per-chore start
+// date (the spec's only user is the egg-washer clean = every 3 months
+// on a Monday → the first Monday of Jan/Apr/Jul/Oct).
+function firesEveryN(f, date) {
+  const n = Math.max(1, f.n ?? 1);
+  const day = f.day; // optional weekday
+  const dow = date.getDay();
+  switch (f.unit) {
+    case "days": {
+      const epochDay = Math.floor(date.getTime() / 86400000);
+      return epochDay % n === 0;
+    }
+    case "weeks": {
+      if (day != null && dow !== day) return false;
+      const epochWeek = Math.floor(date.getTime() / (7 * 86400000));
+      return epochWeek % n === 0;
+    }
+    case "months": {
+      const absMonth = date.getFullYear() * 12 + date.getMonth();
+      if (absMonth % n !== 0) return false;
+      if (day == null) return date.getDate() === 1;
+      // First occurrence of `day` weekday in the month.
+      return dow === day && date.getDate() <= 7;
+    }
+    case "years": {
+      if (date.getMonth() !== 0) return false; // January
+      if (day == null) return date.getDate() === 1;
+      return dow === day && date.getDate() <= 7;
+    }
     default:
       return false;
   }
@@ -126,9 +183,92 @@ function fridayOfLastWeekOfMonth(date) {
   return endOfDay(fri);
 }
 
-// Resolve a chore's deadline for the given date.
-export function computeDeadline(chore, date) {
+// ── Block helpers (new deadline + start-time model) ──────────────────
+// `blocks` is the useChoreBlocks shape: { id, name, startKind,
+// startMinutes, durationMinutes, isActive }.
+
+// Resolve a block by uuid (chore.blockId) or by slug (deadline refs).
+function findBlock(ref, blocks) {
+  if (!ref || !blocks) return null;
+  const id = CHORE_BLOCK_IDS[ref] ?? ref;
+  return blocks.find((b) => b.id === id) ?? null;
+}
+
+// A block's start minutes-of-day on `date` (sun events resolve per-day).
+function blockStartMin(block, date) {
+  if (!block) return null;
+  if (block.startKind === "fixed") return block.startMinutes ?? 0;
+  return sunMinutesOfDay(date, block.startKind);
+}
+
+function blockEndMin(block, date) {
+  const s = blockStartMin(block, date);
+  return s == null ? null : s + (block.durationMinutes ?? 0);
+}
+
+// Active blocks ordered by their resolved start minutes on `date`.
+function orderedBlocks(blocks, date) {
+  return (blocks ?? [])
+    .filter((b) => b.isActive !== false)
+    .map((b) => ({ b, min: blockStartMin(b, date) ?? 0 }))
+    .sort((x, y) => x.min - y.min)
+    .map((x) => x.b);
+}
+
+// The next date on/after `date` whose weekday is `weekday` (Sun=0).
+function nextWeekdayOnOrAfter(date, weekday) {
+  const out = startOfDay(date);
+  out.setDate(out.getDate() + ((weekday - out.getDay() + 7) % 7));
+  return out;
+}
+
+// A minutes-of-day value as a Date on `baseDate`.
+function dateAtMinutes(baseDate, minutes) {
+  const out = startOfDay(baseDate);
+  out.setMinutes(minutes);
+  return out;
+}
+
+// Resolve a new-model block-reference deadline ({ kind: ... }) to a
+// concrete Date. Degrades to end-of-day when blocks aren't available.
+function resolveBlockDeadline(d, chore, date, blocks) {
+  switch (d.kind) {
+    case "midnight":
+    case "none":
+      return endOfDay(date);
+    case "following_block": {
+      const ord = orderedBlocks(blocks, date);
+      const idx = ord.findIndex((b) => b.id === chore.blockId);
+      const next = idx >= 0 ? ord[idx + 1] : null;
+      const m = blockStartMin(next, date);
+      return m != null ? dateAtMinutes(date, m) : endOfDay(date);
+    }
+    case "block": {
+      const m = blockEndMin(findBlock(d.block, blocks), date);
+      return m != null ? dateAtMinutes(date, m) : endOfDay(date);
+    }
+    case "block_on_weekday": {
+      const target = nextWeekdayOnOrAfter(date, d.weekday ?? 5);
+      const m = blockEndMin(findBlock(d.block, blocks), target);
+      return m != null ? dateAtMinutes(target, m) : endOfDay(target);
+    }
+    case "block_at_offset": {
+      const target = startOfDay(date);
+      target.setDate(target.getDate() + (d.offset_days ?? 0));
+      const m = blockEndMin(findBlock(d.block, blocks), target);
+      return m != null ? dateAtMinutes(target, m) : endOfDay(target);
+    }
+    default:
+      return endOfDay(date);
+  }
+}
+
+// Resolve a chore's deadline for the given date. New-model chores carry
+// a block-reference deadline ({ kind: ... }, needs `blocks`); legacy
+// chores carry the old { type: ... } jsonb.
+export function computeDeadline(chore, date, blocks) {
   const d = chore.deadline;
+  if (d?.kind) return resolveBlockDeadline(d, chore, date, blocks);
   switch (d?.type) {
     case "offset_hours": {
       const start = atTime(date, chore.startTime);
@@ -144,6 +284,16 @@ export function computeDeadline(chore, date) {
     default:
       return endOfDay(date);
   }
+}
+
+// A chore's start time as a Date on `date`. New-model chores derive it
+// from their block's resolved start; legacy chores use chore.startTime.
+function choreStartAt(chore, date, blocks) {
+  if (chore.blockId && blocks) {
+    const m = blockStartMin(findBlock(chore.blockId, blocks), date);
+    if (m != null) return dateAtMinutes(date, m);
+  }
+  return atTime(date, chore.startTime);
 }
 
 // Resolve who is assigned to a chore on a given day. Returns an
@@ -213,14 +363,15 @@ function pickRule(rules, dow) {
 // Expand a chore definition into a concrete instance for `date`, or null if
 // it doesn't fire that day. `opts` flows through to the assignment resolver
 // (rulesByChoreId, rulesByBlockId from useChoreAssignmentRules).
-export function expandChoreForDay(chore, date, opts) {
+export function expandChoreForDay(chore, date, opts = {}) {
   if (!isChoreActiveOn(chore, date)) return null;
+  const blocks = opts.blocks;
   return {
     choreId: chore.id,
     chore,
     date,
-    startAt: atTime(date, chore.startTime),
-    deadlineAt: computeDeadline(chore, date),
+    startAt: choreStartAt(chore, date, blocks),
+    deadlineAt: computeDeadline(chore, date, blocks),
     assignees: resolveAssignees(chore, date, opts),
     assignee: resolveAssignee(chore, date, opts),
   };
@@ -243,7 +394,7 @@ export function getChoresForDay(data, date, opts) {
 // Short human-readable string describing a chore's frequency.
 export function describeFrequency(chore) {
   const f = chore.frequency;
-  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const DOW = DOW_SHORT;
   switch (f?.type) {
     case "daily": return "Every day";
     case "specific_days": return (f.days || []).map(d => DOW[d]).join(" & ");
@@ -251,6 +402,20 @@ export function describeFrequency(chore) {
       return `Weekly — ${DOW[f.preferredDay]} preferred, by ${DOW[f.latestDay]}`;
     case "monthly_last_week_window":
       return `Monthly (last week) — ${DOW[f.preferredDay]} preferred, by ${DOW[f.latestDay]}`;
+    // ── New (block) model ────────────────────────────────────────────
+    case "weekly": {
+      const days = (f.days || []).map(d => DOW[d]);
+      return days.length ? days.join(" / ") : "Weekly";
+    }
+    case "monthly_last_week":
+      return `Monthly (last week) — ${DOW[f.day ?? 1]}`;
+    case "every_n": {
+      const unit = (f.n ?? 1) === 1
+        ? (f.unit || "").replace(/s$/, "") : f.unit;
+      const base = `Every ${f.n ?? 1} ${unit}`;
+      return f.day != null ? `${base} — ${DOW[f.day]}` : base;
+    }
+    case "event": return "Event-triggered";
     case "once": {
       const d = parseLocalISODate(f.date);
       if (!d) return "One-time";
@@ -364,6 +529,10 @@ export function getBlockStartMinutesForPeriod(instances, period, blocks) {
 // Short display for a chore's start time, respecting evening chores that are
 // anchored to sunset rather than a literal clock time.
 export function displayStartTime(chore) {
+  // New model: a chore's time is its block (resolved elsewhere with the
+  // live block schedule); fall back to the block label here.
+  if (chore.block) return blockSlugLabel(chore.block);
+  if (!chore.period && !chore.startTime) return "—";
   if (chore.period === "evening") return "After sunset";
   const [h, m] = (chore.startTime || "00:00").split(":").map(Number);
   const ampm = h >= 12 ? "PM" : "AM";
@@ -390,6 +559,18 @@ export function displayStartTime(chore) {
 // active block list from useChoreBlocks (camelCase shape).
 export function choreDaysRemaining(chore, now = new Date(), blocks = []) {
   if (!chore) return null;
+  // New model: the multi-day "window" now lives in the block-reference
+  // deadline, not the frequency. Only a weekday-anchored deadline gets a
+  // countdown pill; same-day kinds carry their info in the label.
+  if (chore.deadline?.kind) {
+    if (chore.deadline.kind !== "block_on_weekday") return null;
+    const today = startOfDay(now);
+    const target = nextWeekdayOnOrAfter(today, chore.deadline.weekday ?? 5);
+    const days = Math.round(
+      (target.getTime() - today.getTime()) / 86400000
+    );
+    return days > 0 ? { kind: "days", days } : { kind: "today" };
+  }
   const f = chore.frequency;
   const hasWindow =
     f?.type === "weekly_window" || f?.type === "monthly_last_week_window";
@@ -501,9 +682,33 @@ function startOfDay(d) {
   return out;
 }
 
+// Human label for a new-model block-reference deadline ({ kind: ... }).
+function describeBlockDeadline(d) {
+  switch (d.kind) {
+    case "following_block": return "by the next block";
+    case "block": return d.block === "end_of_day"
+      ? "by end of day" : `by end of ${blockSlugLabel(d.block)}`;
+    case "midnight": return "by midnight";
+    case "block_on_weekday": {
+      const wd = DOW_SHORT[d.weekday ?? 5];
+      return d.block === "end_of_day"
+        ? `by ${wd} end of day` : `by ${wd} ${blockSlugLabel(d.block)}`;
+    }
+    case "block_at_offset": {
+      const off = d.offset_days ?? 0;
+      const rel = off === 0 ? "day of"
+        : off < 0 ? `${-off}d before` : `${off}d after`;
+      return `by ${blockSlugLabel(d.block)} (${rel})`;
+    }
+    case "none": return "no fixed deadline";
+    default: return "—";
+  }
+}
+
 // Short display for a chore's deadline (relative to its start).
 export function displayDeadline(chore) {
   const d = chore.deadline;
+  if (d?.kind) return describeBlockDeadline(d);
   switch (d?.type) {
     case "offset_hours": return `within ${d.hours}h of start`;
     case "end_of_day": return "by end of day";
@@ -519,6 +724,7 @@ export function displayDeadline(chore) {
 // abstract definition lists where we don't know what day we're talking about.
 export function displayDeadlineConcrete(chore) {
   const d = chore.deadline;
+  if (d?.kind) return describeBlockDeadline(d);
   switch (d?.type) {
     case "offset_hours": {
       const [h, m] = (chore.startTime || "00:00").split(":").map(Number);

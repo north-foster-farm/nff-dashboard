@@ -1,247 +1,545 @@
-// Chore seed data. Kept in JS (not JSON) so we can use factories to avoid
-// repeating the huge number of shared fields across morning/afternoon/evening
-// variants of the same routine. The shape returned is the canonical chore
-// definition record; when we migrate to Supabase, a seed script reads this
-// module and inserts one row per entry.
+// Chore seed data — REBUILT to the chore spec
+// (.ignored/nff-chores-spec.md), per the staged plan in
+// .ignored/chores-rebuild-reconciliation.md. This module is the
+// source of truth Phase C reads to (re)insert chore_definitions on the
+// live DB; it writes no rows itself.
 //
-// Chore definition schema:
-//   id: string                           stable identifier
-//   title: string                        short human-readable label
-//   category: string                     mobile_coops | sheep | chicken_tractors | brooders | wash_eggs
-//   description?: string                 optional extra context
-//   frequency: object                    see below
-//   period: "morning" | "afternoon" | "evening" | "anytime"
-//   startTime: "HH:MM"                   24h. Evening chores use the 20:00 placeholder but the UI renders them as "after sunset".
-//   deadline: object                     see below
-//   assignment: null | {default, byDayOfWeek?}
-//   tags: string[]
+// What changed vs. the organically-grown seed set:
+//   * The 3-period model (morning/afternoon/evening) is replaced by the
+//     spec's 5 daily BLOCKS (morning, midmorning, early_afternoon,
+//     late_afternoon, end_of_day), referenced by stable slug.
+//   * Chores carry an OWNER (the animal/equipment they belong to and
+//     follow around the farm), not a display `category`. The `layers`
+//     owner is gone — egg work at the house is place-scoped.
+//   * Deadlines are BLOCK-REFERENCE jsonb (Option A hybrid), not
+//     clock-hour offsets.
+//   * Recurrence gains the generalized `every_n` variant (months, etc.).
+//   * Checklists ride on the chore (mkt-load-vehicle) — Phase C splits
+//     them into chore_checklist_items (migration 0029).
+//   * Event/process- and batch-triggered chores (§5, §6) live in their
+//     own exports with `trigger` metadata; the recurring engine treats
+//     them as inert (`frequency.type === "event"`).
+//   * The two demo_* chores are dropped.
+//
+// Manual landmarks are ON HOLD (no engine foundation yet). The six
+// post-return chores are captured in DEFERRED_LANDMARK_CHORES but are
+// NOT seeded.
+//
+// ── Chore definition schema (new shape) ──────────────────────────────
+//   id:          string   stable identifier
+//   title:       string   short human-readable label (spec "name")
+//   type:        "chore" | "chore_modifier"
+//   block:       BlockSlug | null   one of the 5 block slugs below
+//   owner:       "brooder" | "chicken_tractor" | "mobile_coop" |
+//                "sheep" | "none" | "event"
+//   place:       PlaceSlug | "derived" | null
+//                fixed: brooder_one | mobile_brooder | pasture | barn |
+//                house | cold_storage. "derived" = resolved from a
+//                mobile owner's current location. null = place-less.
+//   activation:  "owner_occupied" | "sheep_present" | "always" | "event"
+//   frequency:   Frequency  (see below)
+//   deadline:    Deadline   (block-reference jsonb, see below)
+//   description?: string | null
+//   tags?:       string[]
+//   checklist?:  { label, optional }[]   (mkt-load-vehicle only)
+//   trigger?:    { kind, ref, offset? }  (event/batch/landmark chores)
+//   scheduleOffsetDays?: int  spawn day relative to the event/trigger
+//   timeWindow?: { start, end }  fixed clock window (proc-load-crates)
+//   immediate?:  bool  created at trigger time (landmark chores)
 //
 // frequency variants:
-//   {type:"daily"}                                      — every day
-//   {type:"specific_days", days:[2,5]}                  — Tue & Fri (JS Sun=0…Sat=6)
-//   {type:"weekly_window", preferredDay, latestDay}     — do Mon, may slip through Fri
-//   {type:"monthly_last_week_window", preferredDay, latestDay}  — last week of month, ditto
+//   { type:"daily" }
+//   { type:"weekly", days:[1] }              JS Sun=0…Sat=6 (1 = Mon)
+//   { type:"monthly_last_week", day:1 }      last week of month, weekday
+//   { type:"every_n", n:3, unit:"months", day:1 }
+//                                            unit ∈ days|weeks|months|years
+//   { type:"event" }                         triggered, no recurrence
 //
-// deadline variants:
-//   {type:"offset_hours", hours:2}           — N hours after startTime
-//   {type:"end_of_day"}                      — 23:59 same day
-//   {type:"end_of_week_friday"}              — Fri 23:59 of the containing week
-//   {type:"end_of_month_week_friday"}        — Fri 23:59 of the last week of month
+// deadline variants (Option A hybrid — block slugs, rename-proof):
+//   { kind:"following_block" }               due by start of next block
+//   { kind:"block", block:"end_of_day" }     due by that block, same day
+//   { kind:"midnight" }                      natural end of calendar day
+//   { kind:"block_on_weekday", weekday:5,
+//     block:"end_of_day" }                   next weekday ≥ sched. date
+//   { kind:"block_at_offset", offset_days:-1,
+//     block:"end_of_day" }                   block N days from the event
+//   { kind:"none" }                          no deadline (externally forced)
 
+// ── Block slugs ──────────────────────────────────────────────────────
+const MORNING = "morning";
+const MIDMORNING = "midmorning";
+const EARLY_AFTERNOON = "early_afternoon";
+const LATE_AFTERNOON = "late_afternoon";
+const END_OF_DAY = "end_of_day";
+
+// Weekday constants (JS getDay(): Sun=0…Sat=6).
+const MON = 1;
+const WED = 3;
+const FRI = 5;
+
+// ── Deadline builders ────────────────────────────────────────────────
+const followingBlock = () => ({ kind: "following_block" });
+const byBlock = (block) => ({ kind: "block", block });
+const byMidnight = () => ({ kind: "midnight" });
+const noDeadline = () => ({ kind: "none" });
+const byWeekdayBlock = (weekday, block) =>
+  ({ kind: "block_on_weekday", weekday, block });
+const byEventOffsetBlock = (offsetDays, block) =>
+  ({ kind: "block_at_offset", offset_days: offsetDays, block });
+
+// ── Frequency builders ───────────────────────────────────────────────
 const DAILY = { type: "daily" };
-const DEADLINE_2H = { type: "offset_hours", hours: 2 };
-const DEADLINE_EOD = { type: "end_of_day" };
-const DEADLINE_FRI = { type: "end_of_week_friday" };
-const DEADLINE_MONTH_FRI = { type: "end_of_month_week_friday" };
+const weekly = (...days) => ({ type: "weekly", days });
+const monthlyLastWeek = (day) => ({ type: "monthly_last_week", day });
+const everyN = (n, unit, day) => ({ type: "every_n", n, unit, day });
+const EVENT = { type: "event" };
 
-// Factory for a daily chore in a given period.
-function daily({ id, title, category, description, tags = [], period, startTime, deadline }) {
-  return {
-    id, title, category, description,
-    frequency: DAILY, period, startTime,
-    deadline: deadline || (period === "evening" ? DEADLINE_EOD : DEADLINE_2H),
-    assignment: null,
-    tags
+// ── Owner / place / activation presets ───────────────────────────────
+// "Chores belong to the animal or movable equipment, not the place they
+// occupy." Mobile owners derive their place from current location.
+const BROODER = { owner: "brooder", place: "derived",
+  activation: "owner_occupied" };
+const TRACTOR = { owner: "chicken_tractor", place: "derived",
+  activation: "owner_occupied" };
+const COOP = { owner: "mobile_coop", place: "derived",
+  activation: "owner_occupied" };
+const SHEEP_BARN = { owner: "sheep", place: "barn",
+  activation: "sheep_present" };
+const AT_HOUSE = { owner: "none", place: "house", activation: "always" };
+const AT_COLD = { owner: "none", place: "cold_storage",
+  activation: "always" };
+
+// Build a chore record, dropping undefined optional keys so the seed
+// stays tidy. `base` carries the owner/place/activation preset.
+function chore(base, o) {
+  const rec = {
+    id: o.id,
+    title: o.title,
+    type: o.type || "chore",
+    block: o.block ?? null,
+    owner: base.owner,
+    place: base.place,
+    activation: base.activation,
+    frequency: o.frequency || DAILY,
+    deadline: o.deadline,
+    description: o.description ?? null,
+    tags: o.tags ?? [],
   };
-}
-
-// Groups of chores that share the same (period, startTime, category) except
-// for id/title/description/tags. Reduces repetition.
-function dailyGroup(period, startTime, category, items) {
-  return items.map(([id, title, description, tags = []]) =>
-    daily({ id, title, category, description, tags, period, startTime })
-  );
-}
-
-const MORNING = ["morning", "08:00"];
-const AFTERNOON = ["afternoon", "14:00"];
-const EVENING = ["evening", "20:00"];
-
-const LAYERS = ["layers"];
-const BROILERS = ["broilers"];
-const SHEEP = ["sheep"];
-const DATA = (...rest) => [...rest, "data-capture"];
-
-export const CHORE_SEEDS = [
-  // ── MORNING (~8 AM) ──────────────────────────────────────────────────────
-  // Titles are kept short — the category column ("Mobile coops", "Sheep",
-  // etc.) is rendered next to the title everywhere a chore appears, so any
-  // species/equipment qualifier in the title would be redundant.
-  ...dailyGroup(...MORNING, "mobile_coops", [
-    ["mc_open_am", "Open coops", "Open the doors of the mobile coops to release layers for the day.", LAYERS],
-    ["mc_dump_feed_am", "Dump leftover feed", null, LAYERS],
-    ["mc_fill_feeders_am", "Fill feeders", "Amount per feed schedule.", [...LAYERS, "feed"]],
-    ["mc_fill_water_am", "Fill waterers / water reservoir", null, LAYERS],
-    ["mc_collect_eggs_am", "Collect eggs", null, DATA(...LAYERS)],
-    ["mc_log_obs_am", "Log mortalities and observations", null, DATA(...LAYERS)]
-  ]),
-  ...dailyGroup(...MORNING, "sheep", [
-    ["sheep_feed_am", "Feed — 1 flake of hay", "Currently 1 flake of hay in the morning. See feed schedule.", [...SHEEP, "feed"]],
-    ["sheep_water_am", "Check / fill waterer", null, SHEEP]
-  ]),
-  ...dailyGroup(...MORNING, "chicken_tractors", [
-    ["ct_move_am", "Move to fresh grass", null, [...BROILERS, "pasture"]],
-    ["ct_dump_feed_am", "Dump leftover feed", null, BROILERS],
-    ["ct_fill_feeders_am", "Fill feeders", "Amount per feed schedule.", [...BROILERS, "feed"]],
-    ["ct_dump_waterers_am", "Dump / rinse waterers", null, BROILERS],
-    ["ct_fill_water_am", "Fill water reservoir", null, BROILERS],
-    ["ct_log_obs_am", "Log mortalities and observations", null, DATA(...BROILERS)]
-  ]),
-  ...dailyGroup(...MORNING, "brooders", [
-    ["brooder_dump_feed_am", "Dump leftover feed", null, BROILERS],
-    ["brooder_fill_feeders_am", "Fill feeders", "Amount per feed schedule.", [...BROILERS, "feed"]],
-    ["brooder_dump_waterers_am", "Dump / rinse waterers", null, BROILERS],
-    ["brooder_fill_water_am", "Fill water reservoir", "If chicks are 10 days or younger, fill with 95°F water.", [...BROILERS, "brooder"]],
-    ["brooder_check_bedding_am", "Check bedding", null, [...BROILERS, "brooder"]],
-    ["brooder_log_temp_am", "Log temperature, mortalities, and observations", null, DATA(...BROILERS, "brooder")]
-  ]),
-
-  // ── AFTERNOON (~2 PM) ────────────────────────────────────────────────────
-  ...dailyGroup(...AFTERNOON, "mobile_coops", [
-    ["mc_dump_feed_pm", "Dump leftover feed", null, LAYERS],
-    ["mc_fill_feeders_pm", "Fill feeders", "Amount per feed schedule.", [...LAYERS, "feed"]],
-    ["mc_fill_water_pm", "Fill waterers / water reservoir", null, LAYERS],
-    ["mc_collect_eggs_pm", "Collect eggs", null, DATA(...LAYERS)],
-    ["mc_raise_perches_pm", "Raise perches", null, LAYERS],
-    ["mc_log_obs_pm", "Log mortalities and observations", null, DATA(...LAYERS)]
-  ]),
-  ...dailyGroup(...AFTERNOON, "sheep", [
-    ["sheep_feed_pm", "Feed — half scoop of grain", "Currently a half scoop of grain in the afternoon. See feed schedule.", [...SHEEP, "feed"]],
-    ["sheep_water_pm", "Check / fill waterer", null, SHEEP]
-  ]),
-  ...dailyGroup(...AFTERNOON, "chicken_tractors", [
-    ["ct_move_pm", "Move to fresh grass", null, [...BROILERS, "pasture"]],
-    ["ct_dump_feed_pm", "Dump leftover feed", null, BROILERS],
-    ["ct_fill_feeders_pm", "Fill feeders", "Amount per feed schedule.", [...BROILERS, "feed"]],
-    ["ct_dump_waterers_pm", "Dump / rinse waterers", null, BROILERS],
-    ["ct_fill_water_pm", "Fill water reservoir", null, BROILERS],
-    ["ct_log_obs_pm", "Log mortalities and observations", null, DATA(...BROILERS)]
-  ]),
-  ...dailyGroup(...AFTERNOON, "brooders", [
-    ["brooder_dump_feed_pm", "Dump leftover feed", null, BROILERS],
-    ["brooder_fill_feeders_pm", "Fill feeders", "Amount per feed schedule.", [...BROILERS, "feed"]],
-    ["brooder_dump_waterers_pm", "Dump / rinse waterers", null, BROILERS],
-    ["brooder_fill_water_pm", "Fill water reservoir", "If chicks are 10 days or younger, fill with 95°F water.", [...BROILERS, "brooder"]],
-    ["brooder_check_bedding_pm", "Check bedding", null, [...BROILERS, "brooder"]],
-    ["brooder_log_temp_pm", "Log temperature, mortalities, and observations", null, DATA(...BROILERS, "brooder")]
-  ]),
-  ...dailyGroup(...AFTERNOON, "wash_eggs", [
-    ["wash_eggs_pm", "Wash eggs collected during the day", "Wash all eggs collected during the day, leave out to dry.", LAYERS]
-  ]),
-
-  // ── EVENING (after sunset) ───────────────────────────────────────────────
-  ...dailyGroup(...EVENING, "mobile_coops", [
-    ["mc_close_eve", "Close coops", null, LAYERS],
-    ["mc_lower_perches_eve", "Lower perches", null, LAYERS],
-    ["mc_log_obs_eve", "Log mortalities and observations", null, DATA(...LAYERS)]
-  ]),
-  ...dailyGroup(...EVENING, "sheep", [
-    ["sheep_water_eve", "Check / fill waterer", null, SHEEP]
-  ]),
-  ...dailyGroup(...EVENING, "chicken_tractors", [
-    ["ct_move_eve", "Move to fresh grass", null, [...BROILERS, "pasture"]],
-    ["ct_check_water_eve", "Check / fill water reservoir", null, BROILERS],
-    ["ct_log_obs_eve", "Log mortalities and observations", null, DATA(...BROILERS)]
-  ]),
-  ...dailyGroup(...EVENING, "brooders", [
-    ["brooder_check_water_eve", "Check / fill water reservoir", "If chicks are 10 days or younger, fill with 95°F water.", [...BROILERS, "brooder"]],
-    ["brooder_log_temp_eve", "Log temperature, mortalities, and observations", null, DATA(...BROILERS, "brooder")]
-  ]),
-  ...dailyGroup(...EVENING, "wash_eggs", [
-    ["eggs_pack_eve", "Pack eggs into cartons", null, LAYERS],
-    ["eggs_refrigerate_eve", "Refrigerate eggs", null, LAYERS],
-    ["eggs_inventory_eve", "Add cartons to inventory", null, DATA(...LAYERS)]
-  ]),
-
-  // ── TWICE WEEKLY (Tue & Fri ~9 AM) ───────────────────────────────────────
-  {
-    id: "move_mobile_coops", title: "Move coops", category: "mobile_coops",
-    description: "Relocate mobile coops within the layer pasture using the tractor.",
-    frequency: { type: "specific_days", days: [2, 5] },
-    period: "morning", startTime: "09:00",
-    deadline: DEADLINE_EOD,
-    assignment: null, tags: [...LAYERS, "tractor"]
-  },
-
-  // ── WEEKLY (Mon ~2 PM, by sunset Fri) ────────────────────────────────────
-  ...[
-    ["weekly_grit", "Check / fill grit", "mobile_coops", [...LAYERS, "weekly"]],
-    ["weekly_oyster_shell", "Check / fill oyster shell", "mobile_coops", [...LAYERS, "weekly"]],
-    ["weekly_sheep_minerals", "Check / fill minerals", "sheep", [...SHEEP, "weekly"]],
-    ["weekly_clean_nest_grate", "Clean dust from nest box grate", "mobile_coops", [...LAYERS, "weekly"]],
-    ["weekly_powerwash_waterers", "Power wash waterers", "mobile_coops", ["weekly"]],
-    ["weekly_powerwash_feeders", "Power wash feeders", "mobile_coops", ["weekly"]]
-  ].map(([id, title, category, tags]) => ({
-    id, title, category,
-    frequency: { type: "weekly_window", preferredDay: 1, latestDay: 5 },
-    period: "afternoon", startTime: "14:00",
-    deadline: DEADLINE_FRI,
-    assignment: null, tags
-  })),
-
-  // ── MONTHLY (last week of month, Mon ~2 PM, by sunset Fri) ───────────────
-  ...[
-    ["monthly_mc_powerwash", "Interior power wash", [...LAYERS, "monthly"]],
-    ["monthly_nest_deep_clean", "Nest box deep clean", [...LAYERS, "monthly"]]
-  ].map(([id, title, tags]) => ({
-    id, title, category: "mobile_coops",
-    frequency: { type: "monthly_last_week_window", preferredDay: 1, latestDay: 5 },
-    period: "afternoon", startTime: "14:00",
-    deadline: DEADLINE_MONTH_FRI,
-    assignment: null, tags
-  })),
-
-  // ── DEMO: overnight check (3 AM daily) ──────────────────────────────────
-  // Exercises the schedule timeline's pre-morning highlight + the
-  // "Tomorrow" subheading. Treated as an evening-period chore because
-  // anything starting before 5 AM is bucketed there per the time-window
-  // spec.
-  daily({
-    id: "demo_overnight_check",
-    title: "Overnight brooder check",
-    category: "brooders",
-    description: "Demo chore — peek at the brooders before sunrise.",
-    tags: ["demo", "overnight"],
-    period: "evening",
-    startTime: "03:00",
-    deadline: DEADLINE_2H
-  }),
-
-  // ── DEMO: morning chores assigned to Jim ────────────────────────────────
-  // Lets the schedule timeline show Tomorrow's morning chores under the
-  // Tomorrow heading with the assignee's name in the right column.
-  {
-    ...daily({
-      id: "demo_morning_assigned",
-      title: "Walk the layers' coop perimeter",
-      category: "mobile_coops",
-      description: "Demo chore — pretend Jim takes morning today.",
-      tags: ["demo", "assigned"],
-      period: "morning",
-      startTime: "08:00",
-      deadline: DEADLINE_2H
-    }),
-    assignment: { default: "Jim" }
+  if (o.checklist) rec.checklist = o.checklist;
+  if (o.trigger) rec.trigger = o.trigger;
+  if (o.scheduleOffsetDays != null) {
+    rec.scheduleOffsetDays = o.scheduleOffsetDays;
   }
+  if (o.timeWindow) rec.timeWindow = o.timeWindow;
+  if (o.immediate) rec.immediate = true;
+  return rec;
+}
+
+// ── §6.3 mkt-load-vehicle checklist ──────────────────────────────────
+const MKT_LOAD_CHECKLIST = [
+  { label: "Tent", optional: false },
+  { label: "Tent weights", optional: false },
+  { label: "Black crate with yellow lid", optional: false },
+  { label: "Clear crate", optional: false },
+  { label: "8' table", optional: false },
+  { label: "6' table", optional: true },
+  { label: "Chair(s)", optional: false },
+  { label: "Sandwich board with graphics", optional: false },
+  { label: "Sandwich board with prices", optional: false },
+  { label: "Cash box", optional: false },
+  { label: "Coolers of eggs", optional: false },
+  { label: "Coolers of chicken", optional: false },
+  { label: "Shopping bags", optional: false },
+  { label: "Hand truck", optional: true },
+  { label: "2 × green straps", optional: false },
+  { label: "Hanging photography", optional: true },
 ];
 
-// Category display metadata.
+// ─────────────────────────────────────────────────────────────────────
+// §4 — RECURRING CHORE CATALOG
+// ─────────────────────────────────────────────────────────────────────
+export const CHORE_SEEDS = [
+  // ── 4.1 Morning ────────────────────────────────────────────────────
+  // Daily — deadline "midmorning" = the following block.
+  chore(BROODER, { id: "m-brood-water", title: "Fill waterer",
+    block: MORNING, deadline: followingBlock() }),
+  chore(BROODER, { id: "m-brood-feed", title: "Fill feeder",
+    block: MORNING, deadline: followingBlock() }),
+  chore(TRACTOR, { id: "m-tractor-broiler-water", title: "Fill waterer",
+    block: MORNING, deadline: followingBlock() }),
+  chore(TRACTOR, { id: "m-tractor-broiler-feed", title: "Fill feeder",
+    block: MORNING, deadline: followingBlock(),
+    tags: ["feed"],
+    description:
+      "Last feed the day before processing — the withhold "
+      + "(mod-proc-no-feed) starts midmorning, so this one stands." }),
+  chore(TRACTOR, { id: "m-tractor-move",
+    title: "Move chicken tractor to fresh grass",
+    block: MORNING, deadline: followingBlock() }),
+  chore(COOP, { id: "m-coop-open", title: "Open mobile coop",
+    block: MORNING, deadline: followingBlock() }),
+  chore(COOP, { id: "m-coop-feed", title: "Fill feeders",
+    block: MORNING, deadline: followingBlock() }),
+  chore(COOP, { id: "m-coop-water", title: "Fill waterers",
+    block: MORNING, deadline: followingBlock() }),
+  chore(SHEEP_BARN, { id: "m-sheep-water", title: "Fill waterer",
+    block: MORNING, deadline: followingBlock() }),
+
+  // Weekly — Monday.
+  chore(COOP, { id: "m-coop-move-weekly",
+    title: "Move mobile coop to fresh grass",
+    block: MORNING, frequency: weekly(MON),
+    deadline: followingBlock() }),
+  chore(COOP, { id: "m-coop-pwash-equip",
+    title: "Pressure wash waterers and feeders",
+    block: MORNING, frequency: weekly(MON),
+    deadline: byBlock(END_OF_DAY) }),
+  chore(AT_HOUSE, { id: "m-lawn-mow", title: "Mow the lawn",
+    block: MORNING, frequency: weekly(MON),
+    deadline: byWeekdayBlock(FRI, LATE_AFTERNOON) }),
+
+  // Monthly — last week of month, Monday.
+  chore(SHEEP_BARN, { id: "m-sheep-minerals", title: "Fill minerals",
+    block: MORNING, frequency: monthlyLastWeek(MON),
+    deadline: followingBlock() }),
+  chore(SHEEP_BARN, { id: "m-sheep-pwash-trough",
+    title: "Pressure wash sheep water trough",
+    block: MORNING, frequency: monthlyLastWeek(MON),
+    deadline: followingBlock() }),
+
+  // ── 4.2 Midmorning ─────────────────────────────────────────────────
+  // Daily.
+  chore(BROODER, { id: "mm-brood-water", title: "Fill waterers",
+    block: MIDMORNING, deadline: followingBlock() }),
+  chore(BROODER, { id: "mm-brood-feed", title: "Fill feeders",
+    block: MIDMORNING, deadline: followingBlock() }),
+  chore(TRACTOR, { id: "mm-tractor-water", title: "Fill waterer",
+    block: MIDMORNING, deadline: followingBlock() }),
+  chore(TRACTOR, { id: "mm-tractor-feed", title: "Fill feeder",
+    block: MIDMORNING, deadline: followingBlock(), tags: ["feed"],
+    description:
+      "Withheld the day before processing — see mod-proc-no-feed." }),
+  chore(COOP, { id: "mm-coop-water", title: "Fill waterers",
+    block: MIDMORNING, deadline: followingBlock() }),
+  chore(COOP, { id: "mm-coop-feed", title: "Fill feeders",
+    block: MIDMORNING, deadline: followingBlock() }),
+  chore(COOP, { id: "mm-coop-eggs", title: "Collect eggs",
+    block: MIDMORNING, deadline: followingBlock(),
+    tags: ["data-capture"] }),
+
+  // Monthly — last week of month, Monday.
+  chore(COOP, { id: "mm-coop-pwash-interior",
+    title: "Pressure wash nest boxes and coop interior",
+    block: MIDMORNING, frequency: monthlyLastWeek(MON),
+    deadline: byWeekdayBlock(FRI, END_OF_DAY) }),
+
+  // Every 3 months — Monday.
+  chore(AT_HOUSE, { id: "mm-egg-washer-clean", title: "Clean egg washer",
+    block: MIDMORNING, frequency: everyN(3, "months", MON),
+    deadline: byWeekdayBlock(FRI, END_OF_DAY) }),
+
+  // Weekly — Mon / Wed / Fri.
+  chore(AT_HOUSE, { id: "mm-compost-eggs",
+    title: "Compost discarded eggs",
+    block: MIDMORNING, frequency: weekly(MON, WED, FRI),
+    deadline: byBlock(END_OF_DAY) }),
+
+  // ── 4.3 Early Afternoon ────────────────────────────────────────────
+  chore(BROODER, { id: "ea-brood-water", title: "Fill waterers",
+    block: EARLY_AFTERNOON, deadline: followingBlock() }),
+  chore(BROODER, { id: "ea-brood-feed", title: "Fill feeders",
+    block: EARLY_AFTERNOON, deadline: followingBlock() }),
+  chore(COOP, { id: "ea-coop-water", title: "Fill waterers",
+    block: EARLY_AFTERNOON, deadline: followingBlock() }),
+  chore(COOP, { id: "ea-coop-feed", title: "Fill feeders",
+    block: EARLY_AFTERNOON, deadline: followingBlock() }),
+
+  // ── 4.4 Late Afternoon ─────────────────────────────────────────────
+  // Daily — "collect eggs" deadline is the following block (decision #3).
+  chore(BROODER, { id: "la-brood-water", title: "Fill waterers",
+    block: LATE_AFTERNOON, deadline: followingBlock() }),
+  chore(BROODER, { id: "la-brood-feed", title: "Fill feeders",
+    block: LATE_AFTERNOON, deadline: followingBlock() }),
+  chore(COOP, { id: "la-coop-eggs", title: "Collect eggs",
+    block: LATE_AFTERNOON, deadline: followingBlock(),
+    tags: ["data-capture"] }),
+  chore(COOP, { id: "la-coop-water", title: "Fill waterers",
+    block: LATE_AFTERNOON, deadline: byBlock(END_OF_DAY) }),
+  chore(COOP, { id: "la-coop-feed", title: "Fill feeders",
+    block: LATE_AFTERNOON, deadline: byBlock(END_OF_DAY) }),
+  chore(TRACTOR, { id: "la-tractor-rinse-water",
+    title: "Rinse and refill waterer",
+    block: LATE_AFTERNOON, deadline: byBlock(END_OF_DAY),
+    description:
+      "The late-afternoon tractor water fill (thorough: rinse first)." }),
+  chore(TRACTOR, { id: "la-tractor-feed", title: "Fill feeder",
+    block: LATE_AFTERNOON, deadline: byBlock(END_OF_DAY), tags: ["feed"],
+    description:
+      "Withheld the day before processing — see mod-proc-no-feed." }),
+  chore(AT_HOUSE, { id: "la-wash-eggs", title: "Wash eggs",
+    block: LATE_AFTERNOON, deadline: byBlock(END_OF_DAY) }),
+  chore(COOP, { id: "la-coop-raise-perches", title: "Raise perches",
+    block: LATE_AFTERNOON, deadline: byBlock(END_OF_DAY) }),
+
+  // Weekly — Monday.
+  chore(COOP, { id: "la-coop-grit", title: "Fill grit",
+    block: LATE_AFTERNOON, frequency: weekly(MON),
+    deadline: byWeekdayBlock(FRI, END_OF_DAY) }),
+  chore(COOP, { id: "la-coop-oyster", title: "Fill oyster shell",
+    block: LATE_AFTERNOON, frequency: weekly(MON),
+    deadline: byWeekdayBlock(FRI, END_OF_DAY) }),
+
+  // ── 4.5 End of Day ─────────────────────────────────────────────────
+  chore(COOP, { id: "eod-coop-close", title: "Close mobile coop",
+    block: END_OF_DAY, deadline: byBlock(END_OF_DAY) }),
+  chore(COOP, { id: "eod-coop-lower-perches", title: "Lower perches",
+    block: END_OF_DAY, deadline: byBlock(END_OF_DAY) }),
+  chore(COOP, { id: "eod-coop-water", title: "Fill waterers",
+    block: END_OF_DAY, deadline: byBlock(END_OF_DAY) }),
+  chore(COOP, { id: "eod-coop-feed", title: "Fill feeders",
+    block: END_OF_DAY, deadline: byBlock(END_OF_DAY) }),
+  chore(TRACTOR, { id: "eod-tractor-water", title: "Fill waterer",
+    block: END_OF_DAY, deadline: byBlock(END_OF_DAY) }),
+  chore(TRACTOR, { id: "eod-tractor-feed", title: "Fill feeder",
+    block: END_OF_DAY, deadline: byBlock(END_OF_DAY), tags: ["feed"],
+    description:
+      "Withheld the day before processing — see mod-proc-no-feed." }),
+  chore(AT_HOUSE, { id: "eod-pack-cartons",
+    title: "Pack eggs into cartons",
+    block: END_OF_DAY, deadline: byMidnight() }),
+  chore(AT_HOUSE, { id: "eod-add-cartons-inventory",
+    title: "Add cartons to inventory",
+    block: END_OF_DAY, deadline: byMidnight(),
+    tags: ["data-capture"] }),
+  chore(AT_COLD, { id: "eod-refrigerate-eggs", title: "Refrigerate eggs",
+    block: END_OF_DAY, deadline: byMidnight() }),
+];
+
+// ─────────────────────────────────────────────────────────────────────
+// §5 / §6.3 — EVENT-TRIGGERED CHORES
+// Spawned by a calendar event (processing day, farmers market). Phase B2
+// wires these onto the Processes subsystem (process_steps spawning
+// chores, not tasks — audit F85). `frequency: EVENT` keeps them inert in
+// the recurring engine. `trigger.offset` / `scheduleOffsetDays` are the
+// spawn day relative to the event date.
+// ─────────────────────────────────────────────────────────────────────
+const EVENT_OF = (ref, offset) => ({ kind: "event", ref, offset });
+const PROC = "processing_day";
+const MARKET = "farmers_market_or_popup";
+const AS_EVENT = { owner: "event", place: "house", activation: "event" };
+const AS_EVENT_BARN = { owner: "event", place: "barn",
+  activation: "event" };
+const AS_EVENT_COLD = { owner: "event", place: "cold_storage",
+  activation: "event" };
+const AS_EVENT_NOWHERE = { owner: "event", place: null,
+  activation: "event" };
+
+export const EVENT_CHORES = [
+  // ── §5.1 Processing — day before (offset −1) ───────────────────────
+  chore(TRACTOR, { id: "proc-stage-crates-trailer",
+    title: "Stage chicken crates and trailer",
+    block: LATE_AFTERNOON, frequency: EVENT,
+    trigger: EVENT_OF(PROC, -1), scheduleOffsetDays: -1,
+    deadline: byBlock(END_OF_DAY),
+    description:
+      "Tractor occupied by the batch due for processing tomorrow." }),
+  chore(AS_EVENT, { id: "proc-stage-coolers",
+    title: "Stage coolers for processing",
+    block: LATE_AFTERNOON, frequency: EVENT,
+    trigger: EVENT_OF(PROC, -1), scheduleOffsetDays: -1,
+    deadline: byBlock(END_OF_DAY) }),
+
+  // ── §5.2 Processing — day of (offset 0) ────────────────────────────
+  chore(TRACTOR, { id: "proc-load-crates",
+    title: "Load chickens into crates",
+    block: MORNING, frequency: EVENT,
+    trigger: EVENT_OF(PROC, 0), scheduleOffsetDays: 0,
+    timeWindow: { start: "03:00", end: "05:30" },
+    deadline: noDeadline(),
+    description: "Forced by departure for the processor." }),
+  chore(AS_EVENT_BARN, { id: "proc-pwash-crates",
+    title: "Pressure wash chicken crates",
+    block: EARLY_AFTERNOON, frequency: EVENT,
+    trigger: EVENT_OF(PROC, 0), scheduleOffsetDays: 0,
+    deadline: byBlock(EARLY_AFTERNOON) }),
+  chore(AS_EVENT_BARN, { id: "proc-pwash-deck",
+    title: "Pressure wash deck over trailer",
+    block: EARLY_AFTERNOON, frequency: EVENT,
+    trigger: EVENT_OF(PROC, 0), scheduleOffsetDays: 0,
+    deadline: byBlock(EARLY_AFTERNOON) }),
+  chore(TRACTOR, { id: "proc-tractor-reset",
+    title: "Clean out and reset chicken tractors",
+    block: EARLY_AFTERNOON, frequency: EVENT,
+    trigger: EVENT_OF(PROC, 0), scheduleOffsetDays: 0,
+    deadline: byBlock(EARLY_AFTERNOON),
+    description:
+      "Tractors previously occupied by birds sent for processing." }),
+
+  // ── §5.3 Processing — day after (offset +1) ────────────────────────
+  // Place-less: the processor is not a registry place (decision #4).
+  chore(AS_EVENT_NOWHERE, { id: "proc-pickup",
+    title: "Pick up chicken from processor",
+    block: MORNING, frequency: EVENT,
+    trigger: EVENT_OF(PROC, 1), scheduleOffsetDays: 1,
+    deadline: byWeekdayBlock(FRI, LATE_AFTERNOON),
+    description:
+      "Variable window — due late-afternoon Friday of the same week." }),
+
+  // ── §6.3 Farmers market / pop-up — before the market ───────────────
+  chore(AS_EVENT, { id: "mkt-prep-preorders", title: "Prep preorders",
+    block: MIDMORNING, frequency: EVENT,
+    trigger: EVENT_OF(MARKET, -3), scheduleOffsetDays: -3,
+    deadline: byEventOffsetBlock(-1, END_OF_DAY),
+    description: "Due end of day the night before the market." }),
+  chore(AS_EVENT, { id: "mkt-load-vehicle",
+    title: "Load farmers market equipment into vehicle",
+    block: null, frequency: EVENT,
+    trigger: EVENT_OF(MARKET, -1), scheduleOffsetDays: -1,
+    deadline: byEventOffsetBlock(0, EARLY_AFTERNOON),
+    checklist: MKT_LOAD_CHECKLIST }),
+];
+
+// ─────────────────────────────────────────────────────────────────────
+// §6.2 — BATCH-ATTRIBUTE-TRIGGERED CHORES
+// Created when a broiler batch's move_to_pasture_date is set. The
+// dashboard surfaces a standing need to fill that date when it's empty.
+// ─────────────────────────────────────────────────────────────────────
+export const BATCH_CHORES = [
+  chore(BROODER, { id: "batch-clean-brooders",
+    title: "Clean out previously occupied brooders",
+    block: MIDMORNING, frequency: EVENT,
+    trigger: { kind: "batch_attr", ref: "move_to_pasture_date" },
+    scheduleOffsetDays: 0,
+    deadline: followingBlock(),
+    description:
+      "Scheduled midmorning on the batch's move_to_pasture_date." }),
+];
+
+// ─────────────────────────────────────────────────────────────────────
+// §6.1 — CHORE MODIFIERS (standing, condition-driven)
+// A modifier suppresses an otherwise-scheduled chore. A suppressed chore
+// does NOT appear in the schedule at all (not shown-as-skipped).
+//
+// The day before processing, broilers get their MORNING feed
+// (m-tractor-broiler-feed stands) and then the feeder is withheld from
+// midmorning on, emptying their gut for the processor. So this modifier
+// suppresses the three later-block tractor feeders for any tractor
+// occupied by the batch due for processing the next day. (Confirmed with
+// James 2026-06-04: the later-block tractor feed/water chores were
+// missing from §4 — now added in midmorning/late_afternoon/end_of_day.)
+// ─────────────────────────────────────────────────────────────────────
+export const CHORE_MODIFIER_SEEDS = [
+  {
+    id: "mod-proc-no-feed",
+    title: "Withhold tractor feed before processing",
+    type: "chore_modifier",
+    trigger: EVENT_OF(PROC, -1),
+    modifierEffect: "suppress",
+    modifierCondition:
+      "tractor_occupied_by_batch_due_for_processing_next_day",
+    // Exact chores suppressed (owner chicken_tractor, the feeders from
+    // midmorning on); the morning feeder is intentionally NOT here.
+    modifierTargetIds: [
+      "mm-tractor-feed", "la-tractor-feed", "eod-tractor-feed",
+    ],
+    modifierBlocks: [MIDMORNING, LATE_AFTERNOON, END_OF_DAY],
+    description:
+      "Birds shouldn't be fed after the morning the day before "
+      + "processing.",
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────
+// DEFERRED — manual-landmark post-return chores (§5.4, §6.3)
+// Landmarks are ON HOLD: no engine foundation (no landmark trigger, no
+// trigger-time override). Captured here for when/if landmarks are built;
+// NOT seeded. Each is immediate (trigger-time override) with an
+// end-of-day deadline.
+// ─────────────────────────────────────────────────────────────────────
+export const DEFERRED_LANDMARK_CHORES = [
+  // returned_from_processor
+  { id: "proc-sort-freezers", title: "Sort chicken by lot in freezers",
+    owner: "event", place: "cold_storage", immediate: true,
+    trigger: { kind: "landmark", ref: "returned_from_processor" },
+    deadline: byBlock(END_OF_DAY) },
+  { id: "proc-log-inventory", title: "Log chicken in inventory",
+    owner: "event", place: "cold_storage", immediate: true,
+    trigger: { kind: "landmark", ref: "returned_from_processor" },
+    deadline: byBlock(END_OF_DAY) },
+  { id: "proc-sanitize-coolers", title: "Sanitize coolers",
+    owner: "event", place: "house", immediate: true,
+    trigger: { kind: "landmark", ref: "returned_from_processor" },
+    deadline: byBlock(END_OF_DAY) },
+  // returned_from_market
+  { id: "mkt-return-inventory",
+    title: "Return unsold product to inventory",
+    owner: "event", place: "cold_storage", immediate: true,
+    trigger: { kind: "landmark", ref: "returned_from_market" },
+    deadline: byBlock(END_OF_DAY) },
+  { id: "mkt-cash-out", title: "Cash out the cash box",
+    owner: "event", place: "house", immediate: true,
+    trigger: { kind: "landmark", ref: "returned_from_market" },
+    deadline: byBlock(END_OF_DAY) },
+  { id: "mkt-sanitize-coolers", title: "Sanitize coolers",
+    owner: "event", place: "house", immediate: true,
+    trigger: { kind: "landmark", ref: "returned_from_market" },
+    deadline: byBlock(END_OF_DAY) },
+];
+
+// Convenience: every active definition this rebuild seeds (recurring +
+// event + batch). Excludes modifiers and the deferred landmark chores.
+export const ALL_CHORE_DEFINITIONS = [
+  ...CHORE_SEEDS, ...EVENT_CHORES, ...BATCH_CHORES,
+];
+
+// ── Block metadata + ids (live ids verified against prod 2026-06-04) ──
+// Phase C maps `block` slug → block_id via CHORE_BLOCK_IDS. The display
+// order here is chronological (the live sort_order is non-chronological
+// and gets re-numbered to match during the cutover).
+export const CHORE_BLOCK_IDS = {
+  morning: "9f576986-7524-4e71-a6b4-4e0965f310ac",
+  midmorning: "f6eeb73f-775d-48a6-9b2e-ead74acf72c0",
+  early_afternoon: "b05763c7-0c46-4d0f-8d86-b4bfcaa893ad",
+  late_afternoon: "e6bed0d7-931b-45d5-b61e-b6fff5306fb1",
+  end_of_day: "34ca2d90-cfea-4b2d-9edb-6e9f4cf7cf5d",
+};
+
+export const CHORE_BLOCKS_META = {
+  morning: { label: "Morning", hint: "early AM", order: 1 },
+  midmorning: { label: "Mid-Morning", hint: "10 AM", order: 2 },
+  early_afternoon: { label: "Early Afternoon", hint: "1 PM", order: 3 },
+  late_afternoon: { label: "Late Afternoon", hint: "4 PM", order: 4 },
+  end_of_day: { label: "End of Day", hint: "after sunset", order: 5 },
+};
+
+// Owner display metadata (supersedes CHORE_CATEGORIES).
+export const CHORE_OWNERS = {
+  brooder: { label: "Brooder", order: 1 },
+  chicken_tractor: { label: "Chicken tractor", order: 2 },
+  mobile_coop: { label: "Mobile coop", order: 3 },
+  sheep: { label: "Sheep", order: 4 },
+  none: { label: "Farm / house", order: 5 },
+  event: { label: "Event", order: 6 },
+};
+
+// ── LEGACY display metadata — DEPRECATED ─────────────────────────────
+// Retained only so the not-yet-migrated engine/UI (lib/chores.js,
+// Overview.jsx, Chores.jsx, SpeciesPage.jsx) keep importing cleanly
+// while the live DB still serves the old period/category shape. The
+// block/owner model above supersedes both. Remove once the engine
+// consumes blocks/owners (Phase C — engine swap, James-gated).
 export const CHORE_CATEGORIES = {
   mobile_coops: { label: "Mobile coops", order: 1 },
   sheep: { label: "Sheep", order: 2 },
   chicken_tractors: { label: "Chicken tractors", order: 3 },
   brooders: { label: "Brooders", order: 4 },
   wash_eggs: { label: "Wash eggs", order: 5 },
-  // One-time chores created by automations (feed orders, brooder
-  // cleanouts after a batch moves to pasture). They retire on
-  // completion instead of recurring.
-  one_time: { label: "One-time", order: 6 }
+  one_time: { label: "One-time", order: 6 },
 };
 
-// Period display metadata.
 export const CHORE_PERIODS = {
   morning: { label: "Morning", hint: "8 AM", order: 1 },
   afternoon: { label: "Afternoon", hint: "2 PM", order: 2 },
   evening: { label: "Evening", hint: "after sunset", order: 3 },
-  anytime: { label: "Anytime", hint: "", order: 4 }
+  anytime: { label: "Anytime", hint: "", order: 4 },
 };

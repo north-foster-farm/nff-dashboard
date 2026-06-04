@@ -2823,6 +2823,53 @@ a migration / new routes — a future slice.
 
 ---
 
+### Batch 41 — Chores rebuild: block-model engine + soft cutover · `v0.10.41-alpha`
+2026-06-04. Clean-slate replacement of the organically-grown chore
+set with the spec (`.ignored/nff-chores-spec.md`), plus the engine
+rewrite that renders it. Soft, reversible cutover on the live DB.
+
+**Source of truth.** `src/data/choreSeeds.js` rebuilt to the spec:
+48 recurring chores on the 5 daily blocks (morning … end_of_day,
+referenced by stable slug via `CHORE_BLOCK_IDS`), each owned by an
+animal / equipment (brooder / chicken_tractor / mobile_coop / sheep)
+or place-scoped (house / cold_storage). Block-reference deadlines
+(`following_block` / `block` / `midnight` / `block_on_weekday` /
+`block_at_offset`), generalized `every_n` recurrence, and a feed/water
+fill-out across the blocks for brooders, mobile coops, and tractors
+(the tractor morning feed stands; the day-before withhold skips
+midmorning→EOD via `mod-proc-no-feed`). `src/data/processSeeds.js`
+adds the two event processes (processing day, market / pop-up) whose
+steps spawn the event chores; the market load checklist rides in the
+step body. Dropped the `layers` owner, the 3-period model, and the
+demo chores + the demo-merge scaffolding in `getAllChoreDefinitions`.
+
+**Engine** (`src/lib/chores.js`): `isChoreActiveOn`, `computeDeadline`,
+`describeFrequency`, and the deadline/start helpers learn the new
+frequency + block-reference deadline vocab, resolved against the live
+block schedule; legacy paths kept for back-compat. `Overview`,
+`Chores`, and `SpeciesPage` group + label by block + owner (anchor)
+instead of period + category.
+
+**Cutover** (`scripts/chores-cutover.mjs` — dry-run by default,
+discrete `--apply` steps, backup-gated): created the `Cold storage`
+place under the House, renumbered `chore_blocks.sort_order`
+chronologically (1..5), soft-deleted the 76 old definitions
+(`retired_at`, reversible), inserted the initial 38 (anchors mirror
+the existing verified rows), and seeded the two processes (off).
+Verified on prod: 38 active / 76 retired. The brooder + mobile-coop
+feed/water fill-out (10 more, taking the seed to 48) is staged for a
+follow-up `--apply` insert.
+
+**Deferred:** the 6 manual-landmark post-return chores (no engine
+support yet); the F69 `batch-clean-brooders` trigger reconciliation;
+the F85 `process_steps.kind='task'` rename; migration 0029 (the
+rename-proof `chore_blocks.slug` + a `chore_checklist_items` table)
+is authored but not pushed — unneeded for the cutover. Phase D hard-
+delete of the retired defs + disposable history waits on James's
+sign-off in the new UI.
+
+---
+
 ## Overhaul design records
 
 Three overhauls jumped the original plan's queue, each kicked off by

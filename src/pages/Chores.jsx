@@ -5,7 +5,6 @@ import {
 } from "lucide-react";
 import { T } from "../theme.js";
 import {
-  CHORE_CATEGORIES,
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete,
   obligationPlaceIds, describeChoreAnchor,
@@ -186,9 +185,15 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   );
   const today = useMemo(() => new Date(), []);
   const { rulesByChoreId, rulesByBlockId } = useChoreAssignmentRules();
+  // Block schedule: powers the block-grouped Today tab AND is threaded
+  // into the engine so new-model block-reference deadlines + block-
+  // derived start times resolve against the live block times.
+  const { blocks } = useChoreBlocks();
   const instances = useMemo(
-    () => getChoresForDay(data, today, { rulesByChoreId, rulesByBlockId }),
-    [data, today, rulesByChoreId, rulesByBlockId]
+    () => getChoresForDay(
+      data, today, { rulesByChoreId, rulesByBlockId, blocks }
+    ),
+    [data, today, rulesByChoreId, rulesByBlockId, blocks]
   );
 
   // In "mine" mode, show chores assigned to the current user OR unassigned.
@@ -202,11 +207,6 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   });
 
   const userEmail = useCurrentUserEmail();
-  // Block-aware period labels: "Morning · 6 AM" comes from the
-  // configured Morning block, so editing the block window in
-  // Settings → Sites & blocks updates every chore display in one
-  // shot. Falls back to instance-derived times when no block matches.
-  const { blocks } = useChoreBlocks();
 
   // Group instances by their block_id (the new schema), with a single
   // "" bucket for chores that have no block (anytime). Order blocks by
@@ -333,7 +333,12 @@ function TodayTab({ data, currentUser, onChangeUser }) {
 // can sort them to the bottom of their bucket on the Today tab.
 function isWindowy(chore) {
   const t = chore?.frequency?.type;
-  return (t === "weekly_window" || t === "monthly_last_week_window") ? 1 : 0;
+  if (t === "weekly_window" || t === "monthly_last_week_window") return 1;
+  // New model: the multi-day window now lives in the deadline — a
+  // weekday- or event-offset-anchored deadline spans past its block.
+  const k = chore?.deadline?.kind;
+  if (k === "block_on_weekday" || k === "block_at_offset") return 1;
+  return 0;
 }
 
 // One time-of-day block on the Today tab. Blocks order by today's
@@ -671,7 +676,6 @@ function AllChoresTab({ data }) {
       c.title.toLowerCase().includes(q)
       || (c.description ?? "").toLowerCase().includes(q)
       || (c.tags ?? []).some(t => t.toLowerCase().includes(q))
-      || (CHORE_CATEGORIES[c.category]?.label ?? "").toLowerCase().includes(q)
       || describeChoreAnchor(c, choreCtx).toLowerCase().includes(q)
     );
     if (sort === "alpha") {
@@ -1067,7 +1071,7 @@ function ChoreDefinitionRow({
               onCancel={onCancelEdit}
               onSave={onSaveEdit}
             />
-          : <ExpandedChoreDetail chore={chore} />
+          : <ExpandedChoreDetail chore={chore} blockById={blockById} />
       )}
     </div>
   );
@@ -1208,52 +1212,93 @@ function ScheduleQuickEdit({ chore, blocks, onSave, onCancel }) {
 }
 
 // ── Frequency quick-edit ───────────────────────────────────────────
-// Type select; "specific_days" expands inline 7-day toggles.
-// weekly_window / monthly_last_week_window types are preserved when
-// already present (read-only label here); converting to daily or
-// specific-days commits via the type select.
+// New (block) model frequencies:
+//   daily | weekly{days} | monthly_last_week{day} | every_n{n,unit,day?}
+//   | event (read-only — event-triggered chores are materialized by the
+//   process engine, not hand-edited here).
+const FREQ_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 function FrequencyQuickEdit({ chore, onSave, onCancel }) {
   const initial = chore.frequency ?? { type: "daily" };
   const [type, setType] = useState(initial.type ?? "daily");
   const [days, setDays] = useState(
     Array.isArray(initial.days) ? initial.days : []
   );
+  const [day, setDay] = useState(
+    typeof initial.day === "number" ? initial.day : 1
+  );
+  const [n, setN] = useState(initial.n ?? 1);
+  const [unit, setUnit] = useState(initial.unit ?? "months");
 
-  const submit = async (nextType, nextDays) => {
-    let freq;
-    if (nextType === "daily") {
-      freq = { type: "daily" };
-    } else if (nextType === "specific_days") {
-      freq = { type: "specific_days", days: nextDays };
-    } else {
-      // Preserve the original payload for window types (we don't
-      // surface their sub-fields in quick-edit yet).
-      freq = initial.type === nextType ? initial : { type: nextType };
-    }
-    await onSave({ frequency: freq });
-  };
-
-  const toggleDay = async (d) => {
-    const next = days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort();
-    setDays(next);
-    if (type === "specific_days" && next.length > 0) {
-      await onSave({ frequency: { type: "specific_days", days: next } });
-    }
-  };
+  const save = (next) => onSave({ frequency: next });
 
   const onTypeChange = (newType) => {
     setType(newType);
-    if (newType === "daily") {
-      submit("daily", []);
-    } else if (newType === "specific_days") {
-      // Wait for at least one day to be picked before saving.
-      if (days.length > 0) submit("specific_days", days);
-    } else {
-      submit(newType, []);
+    if (newType === "daily") save({ type: "daily" });
+    else if (newType === "weekly") {
+      if (days.length > 0) save({ type: "weekly", days });
+    } else if (newType === "monthly_last_week") {
+      save({ type: "monthly_last_week", day });
+    } else if (newType === "every_n") {
+      save({ type: "every_n", n, unit, day });
+    }
+    // "event" is read-only; no commit.
+  };
+
+  const toggleDay = (d) => {
+    const next = days.includes(d)
+      ? days.filter(x => x !== d)
+      : [...days, d].sort((a, b) => a - b);
+    setDays(next);
+    if (type === "weekly" && next.length > 0) {
+      save({ type: "weekly", days: next });
     }
   };
 
-  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const pickDay = (d) => {
+    setDay(d);
+    if (type === "monthly_last_week") {
+      save({ type: "monthly_last_week", day: d });
+    } else if (type === "every_n") {
+      save({ type: "every_n", n, unit, day: d });
+    }
+  };
+
+  const changeN = (val) => {
+    const v = Math.max(1, parseInt(val, 10) || 1);
+    setN(v);
+    if (type === "every_n") save({ type: "every_n", n: v, unit, day });
+  };
+  const changeUnit = (u) => {
+    setUnit(u);
+    if (type === "every_n") save({ type: "every_n", n, unit: u, day });
+  };
+
+  const dayButtons = (selected, onPick, multi) => (
+    <span style={{ display: "inline-flex", gap: 2 }}>
+      {FREQ_DOW.map((label, idx) => {
+        const on = multi ? selected.includes(idx) : selected === idx;
+        return (
+          <button
+            key={idx}
+            onClick={() => onPick(idx)}
+            aria-pressed={on}
+            style={{
+              border: `1px solid ${T.border}`,
+              background: on ? T.rowActive : "transparent",
+              color: on ? T.text : T.textDim,
+              font: "inherit", fontSize: 11, fontWeight: 600,
+              padding: "2px 6px", cursor: "pointer",
+              textTransform: "uppercase", letterSpacing: "0.06em",
+            }}
+            title={`${on ? "Remove" : "Add"} ${label}`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </span>
+  );
 
   return (
     <span
@@ -1268,35 +1313,40 @@ function FrequencyQuickEdit({ chore, onSave, onCancel }) {
         style={editChipInputStyle}
       >
         <option value="daily">Every day</option>
-        <option value="specific_days">Specific days</option>
-        <option value="weekly_window">Weekly window</option>
-        <option value="monthly_last_week_window">Monthly window</option>
+        <option value="weekly">Weekly (days)</option>
+        <option value="monthly_last_week">Monthly (last week)</option>
+        <option value="every_n">Every N…</option>
+        <option value="event">Event-triggered</option>
       </select>
-      {type === "specific_days" && (
-        <span style={{ display: "inline-flex", gap: 2 }}>
-          {DOW.map((label, idx) => {
-            const on = days.includes(idx);
-            return (
-              <button
-                key={idx}
-                onClick={() => toggleDay(idx)}
-                aria-pressed={on}
-                style={{
-                  border: `1px solid ${T.border}`,
-                  background: on ? T.rowActive : "transparent",
-                  color: on ? T.text : T.textDim,
-                  font: "inherit", fontSize: 11, fontWeight: 600,
-                  padding: "2px 6px", cursor: "pointer",
-                  textTransform: "uppercase", letterSpacing: "0.06em",
-                }}
-                title={`${on ? "Remove" : "Add"} ${label}`}
-              >
-                {label}
-              </button>
-            );
-          })}
+
+      {type === "weekly" && dayButtons(days, toggleDay, true)}
+      {type === "monthly_last_week" && dayButtons(day, pickDay, false)}
+      {type === "every_n" && (
+        <>
+          <input
+            type="number" min="1" value={n}
+            onChange={(e) => changeN(e.target.value)}
+            style={{ ...editChipInputStyle, width: 48 }}
+          />
+          <select
+            value={unit}
+            onChange={(e) => changeUnit(e.target.value)}
+            style={editChipInputStyle}
+          >
+            <option value="days">days</option>
+            <option value="weeks">weeks</option>
+            <option value="months">months</option>
+            <option value="years">years</option>
+          </select>
+          {dayButtons(day, pickDay, false)}
+        </>
+      )}
+      {type === "event" && (
+        <span style={{ color: T.textMuted, fontSize: 11 }}>
+          materialized by the process engine
         </span>
       )}
+
       <button
         onClick={onCancel}
         style={{
@@ -1332,7 +1382,7 @@ function describeChoreSchedule(chore, blockById) {
   return displayStartTime(chore);
 }
 
-function ExpandedChoreDetail({ chore }) {
+function ExpandedChoreDetail({ chore, blockById }) {
   return (
     <div style={{ padding: "8px 16px 16px 42px", borderTop: `1px solid ${T.border}`, background: T.surfaceAlt }}>
       {chore.description && (
@@ -1340,7 +1390,12 @@ function ExpandedChoreDetail({ chore }) {
       )}
       <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, margin: 0 }}>
         <Field label="Frequency" value={describeFrequency(chore)} />
-        <Field label="Start" value={displayStartTime(chore)} />
+        <Field
+          label="Block"
+          value={blockById
+            ? describeChoreSchedule(chore, blockById)
+            : displayStartTime(chore)}
+        />
         <Field label="Deadline" value={displayDeadline(chore)} />
         <Field label="Assignment" value={describeAssignment(chore.assignment)} />
       </dl>
