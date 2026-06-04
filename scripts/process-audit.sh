@@ -11,6 +11,13 @@
 # Usage:
 #   scripts/process-audit.sh                  # process every clip in audits/raw/
 #   scripts/process-audit.sh path/to/clip.mov # process one clip
+#   scripts/process-audit.sh --cleanup        # …and Trash each clip after
+#
+# Once a clip is processed, the transcript + frames are the durable
+# record; the source .mov (often hundreds of MB) is disposable. With
+# --cleanup (or CLEANUP=1) each clip is moved to the macOS Trash after
+# it processes cleanly — recoverable from Finder until the Trash empties,
+# never a hard delete.
 #
 # Env overrides:
 #   WHISPER_BIN    (default: whisper-cli)
@@ -18,6 +25,7 @@
 #   RAW_DIR        (default: audits/raw)
 #   OUT_ROOT       (default: audits/<today>/processed)
 #   FRAME_WIDTH    (default: 1280)
+#   CLEANUP        (set to 1, same as passing --cleanup)
 
 set -euo pipefail
 
@@ -31,9 +39,33 @@ WHISPER_MODEL="${WHISPER_MODEL:-$HOME/.cache/whisper.cpp/ggml-base.en.bin}"
 RAW_DIR="${RAW_DIR:-audits/raw}"
 OUT_ROOT="${OUT_ROOT:-audits/$(date +%F)/processed}"
 FRAME_WIDTH="${FRAME_WIDTH:-1280}"
+CLEANUP="${CLEANUP:-0}"
+
+# ── flags ─────────────────────────────────────────────────────────────
+# --cleanup is order-independent; strip it so the rest of "$@" is clips.
+args=()
+for a in "$@"; do
+  case "$a" in
+    --cleanup) CLEANUP=1 ;;
+    *)         args+=("$a") ;;
+  esac
+done
+set -- "${args[@]+"${args[@]}"}"
 
 # ── preflight ─────────────────────────────────────────────────────────
 fail() { echo "error: $*" >&2; exit 1; }
+
+# Move a processed clip to the macOS Trash (recoverable), never rm.
+# Falls back to a no-op with a warning if ~/.Trash is unavailable.
+trash_clip() {
+  local f="$1" dest="$HOME/.Trash"
+  [ -d "$dest" ] || { echo "  ! no $dest — left $f in place"; return; }
+  local base; base="$(basename "$f")"
+  # de-collide: a same-named clip already in the Trash gets a suffix.
+  local target="$dest/$base"
+  if [ -e "$target" ]; then target="$dest/${base%.*}-$$.${base##*.}"; fi
+  mv "$f" "$target" && echo "  ⌫ trashed $base"
+}
 
 command -v ffmpeg >/dev/null 2>&1 || fail "ffmpeg not found (brew install ffmpeg)"
 command -v "$WHISPER_BIN" >/dev/null 2>&1 \
@@ -137,6 +169,10 @@ PY
   # tidy: the wav is large and disposable
   rm -f "$wav"
   echo "  → $out/transcript.md"
+  # only Trash the source once transcript.md exists (i.e. it processed)
+  if [ "$CLEANUP" = "1" ] && [ -f "$out/transcript.md" ]; then
+    trash_clip "$clip"
+  fi
   echo
 done
 
