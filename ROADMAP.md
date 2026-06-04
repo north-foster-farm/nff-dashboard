@@ -3346,43 +3346,91 @@ Adjacent ideas, probably their own batches:
 - Fuel + repair cost tracking, totalled into a per-mile cost
   alongside the deduction view.
 
-### Event time footprint — setup / breakdown / travel buffers
-Added 2026-06-03 (James). An event's *real* time commitment is
-bigger than its published window. A farmers market that "runs 9–1"
-actually eats the morning: drive there, set up the stall, work the
-market, break down, drive home. Processing days have the same
-shape — haul + setup before, cleanup + haul after. Today the app
-only models the event window (start/end time), so the schedule,
-Now, and Rounds all under-state how long you're actually tied up
-and *when you have to leave*.
+### Event time footprint — setup / breakdown + live travel time
+Added 2026-06-03, expanded same day (James). An event's *real* time
+commitment is bigger than its published window. A farmers market
+that "runs 9–1" actually eats the day: drive there, set up the
+stall, work the market, break down, drive home — and then there's
+*more work at home* (store the processed chickens, put away the
+tent and coolers, pressure-wash the crates and trailer). Processing
+days have the same shape. Today the app only models the event
+window (start/end time), so the Schedule, Now, and Rounds all
+under-state how long you're tied up and *when you have to leave*.
 
-The idea: events carry **travel-to**, **setup**, **breakdown**, and
-**travel-home** buffers around their core window. Most relevant for
-markets and processing days; probably opt-in per event kind (a
-market kind defaults to, say, 45 min travel + 30 min setup + 20 min
-breakdown + 45 min home; a one-off pickup needs none).
+Two parts: fixed setup/breakdown buffers, and **live, predicted
+travel time**.
 
-Where it shows up:
-- **Schedule** — the occupied block spans buffers + core, maybe
-  with the core window emphasized and buffers shaded. Nothing else
-  should schedule into the buffer time.
-- **Now / leave-by** — the actionable signal isn't "market at 9," it's
-  "leave by 8:15." Surface a "leave by" on the Now card and on the
-  event itself.
-- **Rounds / chores** — buffer time is unavailable for chores; the
-  day's capacity shrinks accordingly.
+**1. Setup / breakdown — per-event, defaulted.**
+`setup_min` / `breakdown_min` with **per-event-kind defaults that are
+overridable per occurrence** (a market kind defaults to e.g. 30 min
+setup + 20 min breakdown; a one-off pickup needs none; this specific
+processing day might need more). Pure-additive: defaults on
+`event_kinds`, nullable overrides on `event_occurrences`.
 
-Data shape (sketch): buffer minutes on the event kind as defaults,
-overridable per occurrence — e.g.
-`travel_to_min / setup_min / breakdown_min / travel_home_min` on
-`event_kinds` (defaults) and nullable overrides on
-`event_occurrences`. Pure-additive migration; the renderers expand
-the displayed/blocked window from these.
+**2. Travel time — looked up, not typed.** James's call: don't make
+us guess the drive. Like iOS Maps predicting traffic/ETA for a
+*future* departure, the app should look up travel time both **to**
+and **home from** the event:
+- **Lookups are scheduled, not one-shot.** Run at: event creation,
+  then **T-1 day**, **T-3 hours**, and **T-30 min** relative to the
+  computed *leave-by* time. Goal: anticipate major delays early
+  enough to plan around them.
+- **Leave-by = event_start − setup − travel_to**, recomputed on
+  every lookup as predicted traffic shifts.
+- **Arrive-home = event_end + breakdown + travel_home**, so we can
+  tell when we'll actually be back (and when the post-event work can
+  start).
+- **Alerting:** if the leave-by time changes **within 1 day of the
+  event**, fire a **push notification + an in-app alert**. (Reuses
+  the Batch 11.3 web-push infra.)
 
-Pairs naturally with the **Mileage tracker** above (same "a market
-costs more than its hours" theme — one models the time footprint,
-the other the miles/dollars) and could share the per-event-kind
-defaults UI.
+**3. Post-event work.** Getting home isn't the end — many events
+have a tail of chores (store chickens, stow tent/coolers,
+pressure-wash crates + trailer, …). These should be modeled so they
+land on the day's plan after arrive-home, not forgotten. Likely a
+**process expansion** (Batch 23) or post-event chore set keyed to
+the event kind, anchored at arrive-home.
+
+**Where it shows up:**
+- **Schedule** — the occupied block spans travel + setup + core +
+  breakdown + travel-home + post-event work, with the core window
+  emphasized and buffers shaded. Nothing else schedules into it.
+- **Now / leave-by** — the actionable signal is "leave by 8:15,"
+  with a live "traffic looks heavy, leave 20 min earlier" when a
+  lookup moves it.
+- **Rounds / chores** — buffer + travel + post-event time is
+  unavailable for other chores; the day's capacity shrinks.
+
+**Build notes / dependencies:**
+- **Maps/traffic API with future-departure prediction.** This is a
+  web app, so MapKit JS or (more likely) Google's Routes/Directions
+  API with `departure_time` + a traffic model. Needs an **API key
+  (credentials → Batch 30 territory)** and has per-lookup cost — the
+  scheduled-lookup cadence above keeps the call count bounded.
+- **Geocoded endpoints.** Origin = the farm's coordinates;
+  destination = the event's location. Events need a real
+  address/lat-lng to route to (markets, plants) — see the data-audit
+  prerequisite below.
+- **A scheduler for the timed re-lookups** (creation / T-1d / T-3h /
+  T-30m). Server-side: Supabase scheduled function / pg_cron / edge
+  job, or an extension of the Batch 19 automations engine. Each run
+  recomputes ETA → updates leave-by/arrive-home → diffs against the
+  last value → notifies on change.
+- Pairs with the **Mileage tracker** (same "a market costs more than
+  its hours" theme — one models time, the other miles/dollars) and
+  could share both the per-event-kind defaults UI and the geocoded
+  endpoints.
+
+This has grown past a single batch — realistically: (a) setup/
+breakdown buffers + the schedule/Now rendering first (no external
+deps), then (b) the live travel-time + scheduled lookups + alerts
+(needs the maps key + scheduler), then (c) post-event work modeling.
+
+**⚠ Data-audit prerequisite (James's to-do):** before this can be
+accurate, James needs to go back over the existing events and make
+sure each captures its real footprint — setup/breakdown estimates,
+a routable location for travel lookups, and the post-event work that
+follows it home. The feature is only as good as that per-event data.
 
 ### Daily quote / artwork rotation + unlock gallery
 Added 2026-05-06. Spec + dataset already drafted; assets sit at
