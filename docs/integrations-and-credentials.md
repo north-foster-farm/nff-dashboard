@@ -215,15 +215,37 @@ is solid.
 - **Secrets →** Netlify env `QUICKBOOKS_CLIENT_ID` /
   `QUICKBOOKS_CLIENT_SECRET` (+ stored per-connection tokens), server-only.
 
-### Venmo — reality check
-There is **no general Venmo API** for programmatically accepting
-arbitrary payments (PayPal owns Venmo; access is via **PayPal /
-Braintree Checkout** with Venmo as a funding source, for business
-accounts). Options: (a) accept Venmo *through* PayPal Braintree, or
-(b) keep recording Venmo payments **manually** (the Orders flow already
-supports a "Venmo" payment method). Recommend (b) until volume
-justifies the PayPal Braintree integration. No standalone Venmo key to
-get.
+### Venmo — deep link / QR (no API, no key)
+There's **no API to accept or confirm** a Venmo payment programmatically
+(PayPal owns Venmo; real acceptance is only via **PayPal / Braintree
+Checkout** with Venmo as a funding source). **But** — to your question —
+you *can* generate a link/QR that opens Venmo with the **recipient,
+amount, and note pre-filled**, no credential required:
+
+- **App deep link:**
+  `venmo://paycharge?txn=pay&recipients=<username>&amount=<amount>&note=<note>`
+- **Web fallback:**
+  `https://venmo.com/<username>?txn=pay&amount=<amount>&note=<note>`
+  (redirects into the app on mobile).
+- **QR code:** encode that deep link with a client-side QR library (no
+  account) → customer scans → their Venmo opens on the pre-filled pay
+  screen.
+
+So the dashboard *can* render a "Pay with Venmo" button + QR on an
+order/checkout with the amount baked in. Caveats to set expectations:
+- **No confirmation comes back** — there's no webhook/callback, so the
+  order still gets **marked paid manually** (the Orders flow already has
+  a "Venmo" payment method; this just removes the typing).
+- **Amount pre-fill is reliable in the app, flakier on desktop web** —
+  test on real devices.
+- For business use, set up a **Venmo business profile** (using a personal
+  account for sales violates Venmo's ToS); business profiles also have
+  their own shareable pay link/QR.
+
+**No key to get.** This is a build task (generate the link/QR), not an
+integration. If you later want *real* acceptance + confirmation, that's
+**PayPal/Braintree** (its own account + keys) — fold into the Stripe
+work if/when it's worth it.
 
 ---
 
@@ -268,6 +290,74 @@ create/update/cancel).
 
 ---
 
+## 8. Meta Graph API — Instagram + Facebook posting (Batch 32)
+
+**Unblocks:** publishing Instagram posts (and Facebook Page posts) from
+the social/content-calendar — the social half of Batch 32.
+
+The honest part first: **Instagram publishing is the most gated
+integration here.** The official path is the **Instagram Content
+Publishing API** (part of Meta's Graph API), and it has hard
+prerequisites:
+
+- The Instagram account must be a **Business or Creator** account
+  (a personal IG account **cannot** publish via API), and it must be
+  **linked to a Facebook Page**.
+- A **Meta developer app** at developers.facebook.com, using **Facebook
+  Login** to obtain a **long-lived access token**.
+- **App Review** by Meta for the permissions
+  (`instagram_content_publish`, `instagram_basic`, `pages_show_list`,
+  `pages_read_engagement`, and `pages_manage_posts` if you also post to
+  the Page) **before** it works for anything but the app's own test
+  users. Budget time for this review.
+
+Once approved, publishing is a two-step Graph call (create a media
+container → publish it); supports images, carousels, video/Reels.
+**Scheduling** isn't native for IG — schedule server-side (a Netlify
+scheduled function fires the publish at the chosen time). Facebook Page
+posts use the **same** Graph API + token.
+
+**Steps (high level):**
+- developers.facebook.com → Create App (Business type).
+- Add **Instagram** + **Facebook Login** products.
+- Convert the IG account to Business/Creator, link it to the FB Page.
+- Generate a long-lived token; submit for App Review.
+
+**Secrets →** Netlify env: `META_APP_ID`, `META_APP_SECRET`, plus the
+stored long-lived **page/IG access token** (refreshed periodically).
+Server-only — all posting happens in a Netlify function.
+
+> If Meta's review/business-account hurdle is too much up front, a
+> common interim is a **scheduling reminder** ("post this now" with the
+> caption + media ready to paste) instead of true auto-publish. Decide
+> when Batch 32 is scoped.
+
+## 9. GitHub API — blog authoring via PR (Batch 32, **pending tech decision**)
+
+**Unblocks:** the blog-authoring-wraps-PRs idea — *if* the public site
+turns out to be a GitHub-repo static site.
+
+**This one is gated on a design decision, not just a signup** (see the
+open questions James + Claude need to settle). Two shapes:
+
+- **Wrap real GitHub:** the dashboard uses the GitHub API to branch →
+  commit the post (e.g. a markdown file) → open a PR → merge; the merge
+  triggers the site's build (Netlify/Vercel/Pages). Needs API access.
+  - Auth: a **GitHub App** installed on the site repo (recommended —
+    scoped, revocable), or a **fine-grained PAT** limited to that repo
+    with `contents` + `pull_requests` write.
+  - **Secrets →** Netlify env: GitHub App id + private key (or the PAT),
+    server-only.
+- **Emulate the workflow in-app:** model draft → in-review → approved →
+  published entirely in the dashboard (Batch 32 already sketches a
+  "needs review" thread + AI-review gate), and only push to the site on
+  approve via a **build hook / content-API write**. **No GitHub API
+  needed** in this shape.
+
+Which one depends on where the public site lives and what it's built
+with — unresolved; don't provision a GitHub credential until that's
+decided.
+
 ## At-a-glance index
 
 | Integration | For (feature / batch) | Account | Key(s) | Lives in |
@@ -283,7 +373,9 @@ create/update/cancel).
 | Stripe | card payments (Batch 30) | dashboard.stripe.com | `pk_` + `sk_` + `whsec_` | Netlify (+ `pk_` client) |
 | Shippo | labels/tracking (Batch 30) | goshippo.com | API token | Netlify |
 | QuickBooks | accounting (Batch 30) | developer.intuit.com | OAuth client + realm | Netlify |
-| Venmo | payments (Batch 30) | — | none (via PayPal/Braintree or manual) | — |
+| Venmo | payments (Batch 30) | — | **none** — deep-link/QR pre-fills pay screen (no confirm); real accept = PayPal/Braintree | — (build task) |
+| **Meta (Instagram + Facebook)** | social posting (Batch 32) | developers.facebook.com | app id/secret + long-lived page/IG token (**App Review required**) | Netlify |
+| **GitHub** | blog-via-PR (Batch 32, *pending tech decision*) | github.com | GitHub App (id + private key) or fine-grained PAT | Netlify |
 | File storage | files cross-cutting | R2 / B2 / S3 | access key id + secret | Netlify (presigned) |
 | Google Drive | file pull-in | Google Cloud | OAuth client | Netlify |
 | Google Calendar | GCal push (Batch 31) | Google Cloud | service account / OAuth | Netlify |

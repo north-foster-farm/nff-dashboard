@@ -3139,8 +3139,12 @@ Slices:
   total.
 
 ### Batch 30 — Commerce integrations
-Stripe (cards / online payments); Venmo (where API exists);
-QuickBooks (accounting sync). E-comm front-end if needed.
+Stripe (cards / online payments); QuickBooks (accounting sync).
+E-comm front-end if needed. **Venmo:** no accept/confirm API, but a
+**deep link / QR** can pre-fill the pay screen (recipient + amount +
+note) with no credential — a build task, payment still confirmed
+manually; real acceptance would be PayPal/Braintree. See
+`docs/integrations-and-credentials.md`.
 **Added 2026-06-02:** the live carrier-label integration — Shippo
 (address validation, real-time rates, label purchase, tracking
 webhooks) against the Batch 29 shipment model. Batch 29 builds the
@@ -3184,7 +3188,26 @@ be idempotent so re-publishing an edited update updates the
 already-live page in place.
 
 Social posts: same shell + real social-network integrations + true
-scheduling. Content calendar: calendar UI + auto-add to schedule.
+scheduling. **Instagram** is the primary target — publishing via the
+**Meta Graph API (Instagram Content Publishing)**, which requires a
+Business/Creator IG account linked to a Facebook Page + a Meta app +
+**App Review** for the publish permissions (the most gated
+integration; budget for review). Facebook Page posts ride the same
+API. IG has no native scheduling, so schedule server-side (a Netlify
+scheduled function fires the publish). Credentials in
+`docs/integrations-and-credentials.md`.
+
+**Blog posts** (added 2026-06-04): authoring will **wrap (or emulate)
+GitHub's PR workflow** — draft → review → approve → publish. Two
+shapes, decision pending the public site's stack/host: (a) **wrap
+real GitHub** — the dashboard uses the GitHub API to branch → commit
+the post (markdown) → open a PR → merge, and the merge triggers the
+site build (needs a GitHub App / PAT); or (b) **emulate in-app** —
+model the draft/review/approve states in the dashboard (reuses the
+"needs review" thread + AI-review gate above) and push to the site on
+approve via a build hook / content-API write (no GitHub API). Settle
+the site stack first — see the open questions in the working notes.
+Content calendar: calendar UI + auto-add to schedule.
 
 ### Batch 33 — App-wide search ✅ SHIPPED
 Shipped `v0.10.40-alpha` (2026-06-03) — see the Shipped section
