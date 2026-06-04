@@ -3497,3 +3497,212 @@ etc.). When the feature lands, prompt James to seed two lessons:
   process to have meat for the first farmers market resulted in
   birds too small.
 - Processing day needs an exhaustive checklist.
+
+---
+
+## Feature handoff — 2026-06-03
+
+A batch of feature requests from James, source of record at
+`docs/handoffs/2026-06-03-feature-handoff.md` (verbatim). To be
+reprioritized and merged with existing batches when sequenced. Two
+items below (Claude agent, YoLink + transactional email) were added
+in the same session and aren't in the original doc. Credential/
+account setup for all the integrations these imply is walked through
+in `docs/integrations-and-credentials.md`.
+
+Overarching context that shapes several of these: **a two-person,
+interrupt-driven operation** — chores break the day ~5×, so the app
+should *reduce* variability and push toward single-focus execution,
+not add more to juggle.
+
+### Operator scheduling & availability
+Schedule **working hours** and **time off** for both James and his
+dad. Two coexisting modes: **recurring rules** ("weekends we quit at
+5," "no projects on weekends — chores only") that set a standing
+baseline, and **ad-hoc one-off blocks** (appointments, errands,
+vacation) that override/carve exceptions. Design considerations
+(not committed): **availability-at-a-glance** (who can take a task
+right now), a **reason/category** per block (time off vs appointment
+vs hard-stop), and feeding recurring patterns into what gets
+scheduled/surfaced. Feeds the schedule-reflow + conflicts work
+below.
+
+### Projects rework — forced-ranked priority (major rework of Batch 22)
+The big one. A reframe of how projects drive the schedule:
+- **Single forced-ranked list.** Every queued project ranked
+  against every other — no plural "high priority" flags. The top is
+  *the* focus, and working on anything else should be **painful by
+  design** (the app actively directs to one thing).
+- **Projects only.** Chores (non-negotiable) and events (external)
+  get scheduled as needed; **projects fill the remaining time.** The
+  real question: which project fills the non-chore/non-event gaps?
+- **Drag reorder** that cascades (move P1 → slot 2, P2 becomes top);
+  the **Today view** reflects the new top project's tasks.
+- **Tandem work** (two projects in parallel) must be *possible* but
+  is the accommodated exception, not the happy path.
+- **Lock-to-date** is the deliberate escape hatch to jump the queue,
+  available at any level (project / phase / step / task). Locked
+  items stay put; the schedule **flows around** them. No "out of
+  sequence" warning for a deliberate lock — but a lock that creates
+  a *conflict* must surface (see Conflicts).
+- **Schedule reflow:** debounced so rapid planning doesn't trigger a
+  recalc per change — **ceiling ~30s** (James walked back longer),
+  plus a manual "reflow" button *and* an automatic fallback.
+- **Stale indicator:** when the schedule is out of sync with the
+  current ranking, show a clear "stale" flag wherever priorities
+  live, with a "sync/update" action anywhere it appears — so the
+  view never silently rearranges; the user deliberately syncs.
+
+### Projects — dates as light-touch metadata (part of the rework)
+Traditional start/end/duration fields don't fit: durations are
+unknowable under constant context-switching, and it mostly doesn't
+matter ("focus on the next thing till done," not "finish by X").
+Dates have value only as **manual positioning** ("do this when it
+cools off, ~September") — useful *metadata*, **never fed into
+scheduling logic** (that would defeat the forced ranking). A
+not-yet-actionable project (rake leaves) goes to the **Unprioritized
+bucket** with an optional plain-text timing note, not a date on the
+ranked list.
+
+### Projects — Unprioritized bucket (backlog; part of the rework)
+A backlog for anything **not yet scoped or not yet actionable** — a
+one-line idea, a partial task list, a seasonal/conditional project.
+Default landing spot for projects promoted from "Just a Thought."
+Moves into the active ranked list when committed to. **Explicitly
+replaces any "On Hold" concept** (no duplication).
+
+### Projects — repeatable via clone-from-stub (part of the rework)
+Projects are one-off by nature, but the same *kind* recurs (building
+chicken tractors — they break and get rebuilt). Need a one-click
+**clone/reboot** of an existing project so the task structure isn't
+rebuilt from scratch. **Explicitly rejected:** a formal Templates
+folder (too much infra) — clone from a stub instead. **Time tracking
+is explicitly OUT of scope** — too much overhead, don't build it.
+
+### "Just a thought" → quick convert (extends Batch 21)
+Add quick actions on a captured thought to convert it into a
+**Project / Chore / Event** — route the text into the right place.
+Converting to a Project lands it in the **Unprioritized bucket**.
+Its own distinct feature, separate from the projects rework. (Pairs
+with the Claude agent below, which can do the same by request.)
+
+### Conflicts as a first-class concept (new; scheduling)
+Conflict *indication* becomes its own thing. In a two-person op,
+when two things need the same slot, someone has to take each — so
+collisions must be caught **well in advance** to plan the split.
+Sources: locked tasks colliding with chores/sequence; chore vs event
+overlap; **two events at once** (clearest case); any scheduling
+collision. Behavior: **very prominent flags** (their own "special
+sauce," not a quiet warning); **no severity levels** for now (all
+equally needing resolution). Don't warn for a deliberate out-of-
+sequence lock; *do* surface when a lock (or anything) creates a real
+conflict.
+
+### Notifications — channels & routing (extends Batch 11.3 + Settings)
+Behavior/routing, not the notification UI. Three channels: **push**
+(exists), **in-app** (the inbox/alerts), and **email** (blocked on
+transactional email — below). In **Settings**, a per-notification-
+type × channel **grid of checkboxes** (multi-select, plus "none") —
+a notification can fire on several channels at once. Plus **in-app
+mute** per type so low-value notifications never enter the inbox
+(pain point: logging in to a pile of junk and clearing all).
+"Round finished" is the example to make configurable.
+
+### Wish list → asset pipeline (new top-level feature)
+A **prioritized list of things to acquire** (anything that costs
+money — goods, services, merch). Item: title, priority (H/M/L),
+cost estimate, optional product URL, description, image, captured-
+by/when. **Image:** auto-fetch from a product URL; for plain-text
+items, auto-pull a relevant image (likely via the **Anthropic/Claude
+API** parsing the description — see agent/credentials); manual upload
+overrides. **Reactions:** a thumbs-up "I agree" endorsement and a
+skeptical 🤨 raised-eyebrow (explicitly *not* a neutral "meh").
+Lifecycle: create/edit/delete + **Purchased** (clears it).
+Filter/group by category and by priority (manual order within a
+priority). **On Purchase → Asset:** pre-fill the asset-creation form
+(in the matching stubbed category — tractor → tractor section) with
+the wish-list data, let the user tweak each field, then save. Mostly
+automated, user keeps final control.
+
+### Asset subsystem — expand + link to work (extends Resources)
+Flesh out the still-stubbed asset pages (equipment, etc.). Assets =
+things the farm owns; the value is knowing what exists and what's
+tied up. **Link assets to projects, chores, AND events** — when an
+asset is committed it's unavailable elsewhere that day (processing
+needs the F-150 + deck-over trailer; overlapping markets need
+"market kit A" vs "kit B"). Any asset type is linkable. **Metadata:**
+universal purchase date; type-specific — vehicles get fuel type +
+**mileage history shown on the vehicle's own page** (mileage is
+recorded *against the specific vehicle*, not abstractly), machinery
+gets an **hours** field; more type fields later. Depends on the
+**Mileage tracker** (already in this section) for the logging
+mechanism — model the asset pages to accommodate it.
+
+### Storage locations, lots & bins — FIFO (extends Batches 28 + 29)
+Product lives across **multiple freezers/bins**; multiple chicken
+batches; eggs daily. **Stock rotation (FIFO)** matters for food
+safety + freshness. Add: **lot tracking** (each processing batch →
+lot id — partly exists from Batch 28), **storage location / bin
+assignment** (which freezer, which bin/partition/shelf each lot
+lives in), and **fulfillment integration** — an order's fulfillment
+ticket shows *where* the item is stored; pulling it decrements that
+lot. (Separately flagged: James wants advice on the *physical*
+organization scheme — cardboard partitions etc. — designed apart
+from the app; the app just makes lot+location tracking easy
+regardless.)
+
+### File storage — cross-cutting (new)
+A general file-storage capability many entities use: **cut sheets →
+processing events**, **photos/videos → product pages**, **media →
+the social/content calendar**, and more. Backend likely **S3 or an
+S3-compatible alternative** (Cloudflare R2 / Backblaze B2 / DO
+Spaces — cheaper egress, drop-in API; decision deferred). **Google
+Drive pull-in** desired (there's an existing Drive account) — import
+files from Drive, not just local upload. **Versioning** flagged for
+design: a never-destroy + latest-pointer **manifest** pattern, plus
+possibly hosting **brand assets** (logo, typefaces) — discuss before
+building. (Note: the app already has Supabase Storage buckets for
+product photos + project files — this generalizes that, and may
+migrate or sit alongside it.)
+
+### Guest / contributor access (lightweight; extends auth)
+Gated, limited access for occasional helpers — **explicitly NOT a
+full RBAC/permission grid.** Page/section-level **allow-list**: pick
+which sections a verified guest can see (Sarah → social/content +
+its files + post scheduling; a farm-sitter → chores, maybe
+schedule). **Magic-link sign-in** with a **persistent session** (no
+constant re-auth — the current Google-email-only gate needs checking
+for what's supported). **Time-limited** with **auto-revocation** —
+"access for this weekend" — expiry applies to guests only.
+
+### Claude-powered agent (new; in-app chat + email-to-agent)
+A conversational agent that lets James or his dad *do work in the
+app by asking* — "add a just-a-thought," "someone wants on our
+mailing list, add them," "I forgot to mark chore X done earlier, do
+it for me." Two entry points:
+- **In-app chat window** — a chat surface in the dashboard.
+- **Email the app** — send a request to a dedicated address; the
+  agent handles it and replies. (Depends on **inbound email parse**
+  — see transactional email + credentials.)
+Implementation shape: the **Anthropic/Claude API** with **tool use**,
+where the tools wrap the app's existing mutations (create inbox
+item, add customer + list membership, complete a chore, create an
+event, etc.). State-changing actions confirm before committing
+(matching the app's existing confirm pattern), and everything is
+scoped to the authenticated operator. Server-side for the email path
+(a Netlify function), client-side for chat. Big feature — phase as:
+chat + a starter tool set first, then the email channel. Pairs with
+"just a thought → convert" (same intent, different surface).
+
+### Integrations newly named (YoLink + transactional email)
+- **Transactional email** (SendGrid / Mailgun / similar) — the
+  dependency under *Notifications (email channel)*, *Guest access
+  (magic links)*, the *Claude agent (email-to-agent inbound parse)*,
+  and *Farm updates (Batch 32 blasts)*. Needs outbound API + a
+  verified sending domain (SPF/DKIM/DMARC) and inbound parse routing.
+  See credentials doc.
+- **YoLink API** — the farm's **smart thermometers**. Pull
+  temperature readings (freezers — ties straight into the cold-chain
+  + lots/bins + alerts above; brooders; etc.) and drive alerts when
+  a reading crosses a threshold. YoLink Cloud API (UAID + secret →
+  token; HTTP/MQTT). See credentials doc.
