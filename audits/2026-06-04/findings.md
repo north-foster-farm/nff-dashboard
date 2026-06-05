@@ -2174,7 +2174,11 @@ the overdue section by default into a one-line summary (mirroring the
 existing "12 done today" collapse) with click-to-expand drill-down.
 Keep the same row styling.
 
-### F134 — Clarify the per-chore-row iconography on Now  ·  S  ·  `[ ]`  ·  *design, clarify*
+### F134 — Clarify the per-chore-row iconography on Now  ·  S  ·  `[~]`  ·  *design, clarify*
+> Partly done 2026-06-04 (fce874b): multi-block clusters collapse to one
+> glyph + "xN" count (James: swap to clearer glyphs + count badge). The
+> base time-of-day icon set is left for a visual review pass.
+
 > "The iconography is a little bit confusing. It's not clear what these
 > symbols represent." — [00:06]
 
@@ -2205,7 +2209,11 @@ re-openable) rather than a dead-end. Tightly coupled to F138.
 
 ## Chores
 
-### F136 — Restore some indentation in the block → place chore nesting  ·  M  ·  `[ ]`  ·  *design*
+### F136 — Restore some indentation in the block → place chore nesting  ·  M  ·  `[x]`  ·  *design*
+> Done 2026-06-04 (fce874b): place headers carry an alt-surface fill +
+> left rule, and the Today place tree is inset under each block header
+> (James: do both).
+
 > "We've got the morning main group directly positioned above the first
 > sub item with no indentation. And the first sub item under barn
 > positioned without any indentation either… visually it doesn't work,
