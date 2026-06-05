@@ -2136,3 +2136,138 @@ Pairs with F2/F24 (link affordances).
   respectively — folded above, not new findings.
 - Sheep page: "all the same things apply here that I was saying before"
   — F126 (chores), F129 (more info), F125 (no feed schedule). — [24:07]–[24:30].
+
+---
+
+---
+
+# Chores-verification pass — new block-model chores (2026-06-04, eve)
+
+Source: `Screen Recording 2026-06-04 at 10.49.14 PM.mov` (6:26, 62
+segments). Processed:
+`audits/2026-06-04/processed/chores-verify-2026-06-04/`.
+
+Scope: a targeted re-walkthrough recorded after the Batch 41 chores
+rebuild shipped — the top bar reads `v0.10.41-alpha`, so this is the new
+bundle. James verifies the block model on `/now`, `/rounds`, and
+`/chores`, confirms most of it works, and flags six follow-ups.
+Findings continue from F132.
+
+## Now page
+
+### F133 — Collapse the Now overdue chore list by default  ·  S  ·  `[ ]`  ·  *design*
+> "There's a ton of chores in here. By default, let's fold all of these
+> items up. And if there's overdue stuff, let's show it collapsed just
+> like 12 done today… let's roll it all up unless there's a good
+> reason." — [00:13]–[00:30]
+
+Frame: `frames/0003_00-13.jpg`. `src/pages/Now.jsx` renders the overdue
+chore tree fully expanded — place group after place group (Mobile
+Brooder, House, Cold Storage, Pasture C → Mobile Coop 1/2…). Collapse
+the overdue section by default into a one-line summary (mirroring the
+existing "12 done today" collapse) with click-to-expand drill-down.
+Keep the same row styling.
+
+### F134 — Clarify the per-chore-row iconography on Now  ·  S  ·  `[ ]`  ·  *design, clarify*
+> "The iconography is a little bit confusing. It's not clear what these
+> symbols represent." — [00:06]
+
+Frame: `frames/0003_00-13.jpg`. Each row trails a cluster of small
+glyphs (anchor / occupancy / assignee markers — e.g. the figures + sun
+after "Fill feeders") whose meaning isn't legible at a glance. Add
+tooltips or labels, or reduce to a single clear indicator. Pairs with
+the F28 hover-for-definition theme.
+
+## Rounds
+
+### F135 — Rounds runner opens straight to a "DONE" screen and reads as broken  ·  ?  ·  `[ ]`  ·  *bug*
+> "We're gonna start the rounds. Uncheck any chore, morning done. So
+> this is weird… Start morning rounds. Okay, so this is not working
+> anymore. There are no errors… none of these rounds screens are working
+> at this point." — [00:44]–[01:22]
+
+Frame: `frames/0010_01-00.jpg`. Launching the mid-morning round drops
+straight onto the completion screen — "MID-MORNING DONE / 1:00:00 / Ran
+12h 50m past the window / Un-checking any chore in this block will
+reopen the run / CLOSE". Because every chore in the block is already
+checked, `onAutoDone → endRun` (`src/pages/Rounds.jsx:231`) flips the
+run to `done` the instant it opens, so there's no apparent way to *run*
+it — it looks dead. The same flow worked later in the clip ([05:15]
+"this one did work… not sure why"), so it's intermittent. The runner
+should open in a runnable state (or make the done-screen obviously
+re-openable) rather than a dead-end. Tightly coupled to F138.
+
+## Chores
+
+### F136 — Restore some indentation in the block → place chore nesting  ·  M  ·  `[ ]`  ·  *design*
+> "We've got the morning main group directly positioned above the first
+> sub item with no indentation. And the first sub item under barn
+> positioned without any indentation either… visually it doesn't work,
+> it's hard to parse. I'd much rather sacrifice the space, or use some
+> coloration to… see where the parent items are." — [02:00]–[02:38];
+> reiterated "the nesting, I'd like to see it reverted a little bit" —
+> [06:12]
+
+Frame: `frames/0018_02-06.jpg`. On Chores → Today the block header
+(MORNING) and the top-level place group (BARN / BROODERS / PASTURES) sit
+at the same left edge with no indent step, so the hierarchy
+block → place → sub-place → chore is hard to read. Re-introduce an
+indentation step per level and/or color/rule the parent rows. The
+explicit ask is to trade the space-saving back for legibility.
+
+### F137 — Surface chore meta (anchor, block, timeframe) on Today rows and every chore list  ·  M  ·  `[ ]`  ·  *design, pattern*
+> "The today screen under Chores, each chore only has the name and the
+> deadline and a message icon. All Chores on the other hand shows what
+> the chore is related to, which group of animals, when it's supposed to
+> be done, what block, and the timeframe for completing it. That
+> information is important to surface on this today page and pretty much
+> anywhere else where we have a list of chores." — [03:00]–[03:29]
+
+Frames: `frames/0027_03-05.jpg` (Today, sparse) vs `frames/0028_03-11.jpg`
+(All Chores, rich). All Chores rows carry a meta line — "Brooders ·
+occupied · Mid-Morning (10 AM) · Every day" — while Today rows show only
+the name + "by the next block" + comment icon. Render the same
+`describeChoreAnchor` + block + timeframe meta on the Today rows, and
+standardize it across every chore list (Now, Rounds, Species pages).
+
+### F138 — Make Rounds start/stop/cancel conventional; one person ends the round for everyone  ·  L  ·  `[ ]`  ·  *design, bug*
+> "When someone has joined a round of chores and one person wants to end
+> those chores, one person needs to be able to end the chores for
+> everybody… that's completely opposite of what I described initially,
+> but… somebody's going to put their phone back in their pocket… The way
+> we start rounds, cancel rounds, stop rounds, all of that UX doesn't
+> feel very good… I'd like just the start and stop and cancel
+> interactions to be more conventional… so that when you stop the round,
+> the thing happens that you think is going to happen." — [04:20]–[05:58]
+
+Frames: `frames/0042_04-30.jpg`–`frames/0056_05-52.jpg`. James reverses
+his earlier multi-client design: ending a round should close it for all
+participants from any one phone — it "doesn't have to play with state on
+both clients," just be effective and predictable. Rework the
+start/finish/cancel flow in `src/pages/Rounds.jsx`
+(`startRun`/`endRun`/`finishRun`/`cancelRun`, the `ColdOpen` launcher,
+and the done-screen) into conventional single-actor controls with
+obvious outcomes. This is the headline ask of the clip; it subsumes
+F135.
+
+## Confirmed working — new block-model chores
+
+- Deadline-by-next-block displays on the Today rows: "we've got our
+  deadlines over here by the next block. That makes sense." — [01:45].
+  (The Batch 41 block-deadline engine reads correctly.)
+- The place-grouped block model renders end-to-end on `/now` and
+  `/chores` — Cold Storage, Brooders, and Mobile Coops all present and
+  populated (frames 0003, 0018, 0028).
+- Overall: "that's pretty much all I've got for the new chores
+  implementation. Seems to be working pretty well otherwise." —
+  [06:19]–[06:26].
+
+## Cross-references / parked (chores-verification pass)
+
+- Schedule still shows "5 chore blocks" not interleaved — "same problem
+  as I've done before… we'll address that down the road" — [01:30].
+  Restates **F54** (replace the N-blocks bar with the blocks in
+  sequence); not a new finding.
+- Processes page still shows "tasks": "we can still see that tasks are
+  in here… we're going to address this pretty soon" — [03:43]. Restates
+  **F85** (kill tasks from processes).

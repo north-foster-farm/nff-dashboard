@@ -59,7 +59,15 @@ until emptied). Transcripts + frames live in
 
 **Remaining in `audits/raw/`: none — all clips processed.** ✅
 
-**Next finding number (if more clips arrive): F133.**
+**Verification pass (2026-06-04, eve):** after Batch 41 shipped, James
+recorded a 6:26 re-walkthrough of the new block-model chores on the
+`v0.10.41-alpha` bundle. Processed to
+`processed/chores-verify-2026-06-04/`; findings **F133–F138** appended to
+`findings.md` (Now collapse + iconography, Rounds done-screen + the
+start/stop/cancel rework, chore-nesting indentation, row-meta on Today).
+Verdict: "seems to be working pretty well otherwise."
+
+**Next finding number (if more clips arrive): F139.**
 
 ---
 
