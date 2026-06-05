@@ -6,7 +6,7 @@ import {
   CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS,
   CHORE_BLOCK_IDS, CHORE_BLOCKS_META, CHORE_OWNERS,
 } from "../data/choreSeeds.js";
-import { sunMinutesOfDay } from "./sunTimes.js";
+import { sunMinutesOfDay, displayBlockSide } from "./sunTimes.js";
 import { descendantIds } from "./places.js";
 
 export {
@@ -538,6 +538,19 @@ export function displayStartTime(chore) {
   const ampm = h >= 12 ? "PM" : "AM";
   const h12 = ((h + 11) % 12) + 1;
   return m === 0 ? `${h12} ${ampm}` : `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+// Block-aware schedule label, e.g. "Mid-Morning (10 AM)". Resolves the
+// chore's blockId against a live blockId -> block Map (from
+// useChoreBlocks); falls back to the plain start-time label when the
+// chore has no block or the map is unavailable. Shared by the Chores
+// tab, the Now surface, and the species pages (F137).
+export function describeChoreSchedule(chore, blockById) {
+  if (chore.blockId && blockById) {
+    const b = blockById.get(chore.blockId);
+    if (b) return `${b.name} (${displayBlockSide(b.startKind, b.startMinutes)})`;
+  }
+  return displayStartTime(chore);
 }
 
 // ── Days-remaining + last-chance-block (Batch 11.1) ──────────────────

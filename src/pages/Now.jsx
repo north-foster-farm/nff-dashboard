@@ -11,6 +11,7 @@ import { computePlaceStatus } from "../lib/placeStatus.js";
 import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import { BlockBadgeList } from "../components/BlockBadge.jsx";
+import { describeChoreAnchor, describeFrequency } from "../lib/chores.js";
 import {
   PlaceTreeNode, PlaceTreeSection, groupByPlaceTree,
 } from "../components/PlaceTree.jsx";
@@ -190,6 +191,7 @@ export default function Now({ onOpenRounds }) {
             childrenByParent={childrenByParent}
             completions={completions}
             onCheckOff={checkOff}
+            choreCtx={choreCtx}
           />
 
           {/* Undo affordances for chores just checked off above */}
@@ -317,7 +319,7 @@ function formatBlockDuration(minutes) {
 
 // ── Overdue / done list ───────────────────────────────────────────────
 function ObligationList({
-  buckets, roots, childrenByParent, completions, onCheckOff,
+  buckets, roots, childrenByParent, completions, onCheckOff, choreCtx,
 }) {
   const { overdue, done } = buckets;
   // Both lists roll up by default so the Now surface stays calm — tap a
@@ -366,6 +368,7 @@ function ObligationList({
               childrenByParent={childrenByParent}
               completions={completions}
               onCheckOff={onCheckOff}
+              choreCtx={choreCtx}
             />
           )}
         </div>
@@ -404,6 +407,7 @@ function ObligationList({
               childrenByParent={childrenByParent}
               completions={completions}
               onCheckOff={onCheckOff}
+              choreCtx={choreCtx}
             />
           )}
         </div>
@@ -417,7 +421,7 @@ function ObligationList({
 // tab. Places with nothing in this bucket don't render at all.
 function ObligationGroup({
   title, tone, obligations, roots, childrenByParent,
-  completions, onCheckOff,
+  completions, onCheckOff, choreCtx,
 }) {
   const grouped = useMemo(() => groupByPlaceTree({
     entries: obligations,
@@ -433,6 +437,7 @@ function ObligationGroup({
       obligation={o}
       completions={completions}
       onCheckOff={onCheckOff}
+      choreCtx={choreCtx}
     />
   );
   const keyOf = (o) => `${o.chore.id}|${o.placeId ?? "farm"}`;
@@ -491,10 +496,17 @@ function ObligationGroup({
 // what the fat round button at the top is for). The place is carried
 // by the tree header above, so the row stays lean for phone widths:
 // checkbox, title, block badge(s).
-function ObligationRow({ obligation: o, completions, onCheckOff }) {
+function ObligationRow({ obligation: o, completions, onCheckOff, choreCtx }) {
   const queued = completions.isQueued?.(o.chore.id, o.placeId) ?? false;
   const blocks = o.blocks ?? (o.block ? [o.block] : []);
   const [pending, setPending] = useState(false);
+
+  // F137 — surface which group of animals the chore belongs to and its
+  // recurrence under the title (the block already shows as the badge).
+  const metaLine = [
+    choreCtx ? describeChoreAnchor(o.chore, choreCtx) : null,
+    describeFrequency(o.chore),
+  ].filter(Boolean).join(" · ");
 
   const onToggle = async () => {
     if (pending) return;
@@ -520,7 +532,7 @@ function ObligationRow({ obligation: o, completions, onCheckOff }) {
   return (
     <div
       className={
-        "w-full grid grid-cols-[auto_minmax(0,1fr)] items-center " +
+        "w-full grid grid-cols-[auto_minmax(0,1fr)] items-start " +
         "gap-3 px-3 py-3 bg-surface " +
         (o.done ? "opacity-60" : "")
       }
@@ -544,34 +556,41 @@ function ObligationRow({ obligation: o, completions, onCheckOff }) {
       >
         <Check size={13} strokeWidth={3} />
       </button>
-      <span className="min-w-0 text-[14px] leading-snug break-words">
-        <span
-          className={
-            o.done ? "text-muted line-through" : "text-fg font-medium"
-          }
-        >
-          {o.chore.title}
+      <div className="min-w-0">
+        <span className="text-[14px] leading-snug break-words">
+          <span
+            className={
+              o.done ? "text-muted line-through" : "text-fg font-medium"
+            }
+          >
+            {o.chore.title}
+          </span>
+          {(o.chore.automationEmissionId || o.chore.processExpansionId) && (
+            <Sparkles
+              size={12}
+              className="inline ml-1.5 align-middle text-accent-deep"
+              aria-label="Created by an automation"
+            />
+          )}
+          {queued && (
+            <CloudOff
+              size={12}
+              className="inline ml-1.5 align-middle text-warn"
+              aria-label="Saved on this device — not synced yet"
+            />
+          )}
+          <BlockBadgeList
+            blocks={blocks}
+            tone={o.status === "overdue" ? "warn" : "default"}
+            className="ml-1.5 align-middle"
+          />
         </span>
-        {(o.chore.automationEmissionId || o.chore.processExpansionId) && (
-          <Sparkles
-            size={12}
-            className="inline ml-1.5 align-middle text-accent-deep"
-            aria-label="Created by an automation"
-          />
+        {metaLine && (
+          <div className="text-[11px] text-muted leading-snug mt-0.5">
+            {metaLine}
+          </div>
         )}
-        {queued && (
-          <CloudOff
-            size={12}
-            className="inline ml-1.5 align-middle text-warn"
-            aria-label="Saved on this device — not synced yet"
-          />
-        )}
-        <BlockBadgeList
-          blocks={blocks}
-          tone={o.status === "overdue" ? "warn" : "default"}
-          className="ml-1.5 align-middle"
-        />
-      </span>
+      </div>
     </div>
   );
 }

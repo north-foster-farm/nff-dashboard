@@ -7,7 +7,7 @@ import { T } from "../theme.js";
 import {
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete,
-  obligationPlaceIds, describeChoreAnchor,
+  obligationPlaceIds, describeChoreAnchor, describeChoreSchedule,
 } from "../lib/chores.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
@@ -1394,18 +1394,6 @@ const editChipInputStyle = {
   padding: "2px 6px",
   fontFamily: "inherit",
 };
-
-// Block label for the row's secondary line.
-function describeChoreSchedule(chore, blockById) {
-  if (chore.blockId) {
-    const b = blockById.get(chore.blockId);
-    if (b) {
-      const startLabel = displayBlockSide(b.startKind, b.startMinutes);
-      return `${b.name} (${startLabel})`;
-    }
-  }
-  return displayStartTime(chore);
-}
 
 function ExpandedChoreDetail({ chore, blockById }) {
   return (

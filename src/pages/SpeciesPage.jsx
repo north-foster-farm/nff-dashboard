@@ -12,8 +12,10 @@ import { supabase } from "../lib/supabase.js";
 import { navigate, pathForBatch, pathForSection } from "../lib/router.js";
 import {
   getAllChoreDefinitions, describeFrequency, describeChoreAnchor,
+  describeChoreSchedule,
 } from "../lib/chores.js";
 import { useSites } from "../lib/data/useSites.js";
+import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import ActivityRow from "../components/ActivityRow.jsx";
@@ -613,6 +615,7 @@ function StageReadRow({ stage }) {
 // ── Chores tab ────────────────────────────────────────────────────────
 function SpeciesChoresTab({ species, chores }) {
   const { choreCtx } = useSites();
+  const { blockById } = useChoreBlocks();
   if (chores.length === 0) {
     return (
       <div className="bg-surface border border-line px-6 py-8 text-center">
@@ -630,14 +633,16 @@ function SpeciesChoresTab({ species, chores }) {
       </div>
       <div className="flex flex-col gap-px bg-line border border-line">
         {chores.map(c => (
-          <SpeciesChoreRow key={c.id} chore={c} choreCtx={choreCtx} />
+          <SpeciesChoreRow
+            key={c.id} chore={c} choreCtx={choreCtx} blockById={blockById}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function SpeciesChoreRow({ chore, choreCtx }) {
+function SpeciesChoreRow({ chore, choreCtx, blockById }) {
   return (
     <div className="bg-surface px-4 py-3">
       <div className="flex items-baseline justify-between gap-2.5 mb-1.5 flex-wrap">
@@ -662,6 +667,7 @@ function SpeciesChoreRow({ chore, choreCtx }) {
       )}
       <div className="text-[11px] text-muted">
         {describeChoreAnchor(chore, choreCtx)}
+        {" · "}{describeChoreSchedule(chore, blockById)}
         {" · "}{describeFrequency(chore)}
       </div>
     </div>
