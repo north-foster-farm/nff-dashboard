@@ -57,10 +57,13 @@ export default function BlockBadge({
   );
 }
 
-// A row of badges — one per block, sorted by today's resolved start
-// time. Used by consolidated overdue rows on the Now surface, where
-// each badge marks one missed block. Tight: the icons sit shoulder to
-// shoulder so two or three missed blocks read as one quiet cluster.
+// A compact block indicator for a chore that may span several blocks
+// (e.g. an overdue row missed in more than one block on the Now
+// surface). A single block shows its lone time-of-day glyph. Several
+// blocks collapse to ONE representative glyph (the earliest) plus a
+// "xN" count — a row of three near-identical tiny sun icons read as
+// confusing noise (F134), so the cluster becomes one glyph + a number,
+// with every block's name still in the tooltip.
 export function BlockBadgeList({
   blocks, tone = "default", size = 11, className = "",
 }) {
@@ -71,13 +74,31 @@ export function BlockBadgeList({
     return sa - sb;
   });
   if (sorted.length === 0) return null;
+  if (sorted.length === 1) {
+    return (
+      <span className={"inline-flex items-center shrink-0 " + className}>
+        <BlockBadge block={sorted[0]} tone={tone} size={size} />
+      </span>
+    );
+  }
+
+  const Icon = blockIcon(sorted[0]);
+  const names = sorted.map(b => b?.name ?? "Anytime").join(", ");
+  const label = `${sorted.length} blocks: ${names}`;
   return (
     <span
-      className={"inline-flex items-center gap-0.5 shrink-0 " + className}
+      title={label}
+      aria-label={label}
+      className={
+        "inline-flex items-center gap-0.5 shrink-0 " +
+        (tone === "warn" ? "text-warn " : "text-faint ") +
+        className
+      }
     >
-      {sorted.map((b, i) => (
-        <BlockBadge key={b?.id ?? i} block={b} tone={tone} size={size} />
-      ))}
+      <Icon size={size} strokeWidth={2} />
+      <span className="text-[10px] font-semibold leading-none">
+        ×{sorted.length}
+      </span>
     </span>
   );
 }

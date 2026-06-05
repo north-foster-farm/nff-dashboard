@@ -105,12 +105,19 @@ export function PlaceTreeNode({
           sizes, so centering their line boxes leaves the count looking
           sunken — aligning their text baselines is what reads as
           "lined up". The chevron self-centers against the row. */}
+      {/* F136 — parent place headers carry a subtle alt-surface fill and
+          a left rule (accent at the top level, line below) so the
+          hierarchy reads by colour as well as indentation, without the
+          dark-gray fill that reads as "disabled" (cf. F46/F83). */}
       <button
         onClick={() => setUserOpen(o => (o == null ? !(subtreeCount > 0) : !o))}
         style={{
           display: "flex", alignItems: "baseline", gap: 8, width: "100%",
-          background: "transparent", border: "none", cursor: "pointer",
-          padding: "8px 0", fontFamily: "inherit", textAlign: "left",
+          background: T.surfaceAlt,
+          border: "none",
+          borderLeft: `2px solid ${depth === 0 ? T.accent : T.border}`,
+          cursor: "pointer",
+          padding: "7px 10px", fontFamily: "inherit", textAlign: "left",
         }}
         aria-expanded={open}
       >
@@ -183,8 +190,11 @@ export function PlaceTreeSection({
         onClick={() => setOpen(o => !o)}
         style={{
           display: "flex", alignItems: "baseline", gap: 8, width: "100%",
-          background: "transparent", border: "none", cursor: "pointer",
-          padding: "8px 0", fontFamily: "inherit", textAlign: "left",
+          background: T.surfaceAlt,
+          border: "none",
+          borderLeft: `2px solid ${dimmed ? T.border : T.accent}`,
+          cursor: "pointer",
+          padding: "7px 10px", fontFamily: "inherit", textAlign: "left",
         }}
         aria-expanded={open}
       >

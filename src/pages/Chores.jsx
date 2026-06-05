@@ -389,16 +389,21 @@ function BlockGroup({
         </div>
       </button>
       {!collapsed && (
-        <TodayPlaceTree
-          instances={instances}
-          roots={roots}
-          childrenByParent={childrenByParent}
-          completions={completions}
-          choreCtx={choreCtx}
-          currentUserEmail={currentUserEmail}
-          blocks={blocks}
-          blockById={blockById}
-        />
+        // F136 — inset the place tree under the block header so the
+        // block -> place -> chore hierarchy steps inward instead of all
+        // sharing the left edge.
+        <div style={{ paddingLeft: 18 }}>
+          <TodayPlaceTree
+            instances={instances}
+            roots={roots}
+            childrenByParent={childrenByParent}
+            completions={completions}
+            choreCtx={choreCtx}
+            currentUserEmail={currentUserEmail}
+            blocks={blocks}
+            blockById={blockById}
+          />
+        </div>
       )}
     </div>
   );
