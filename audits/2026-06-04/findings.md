@@ -1199,7 +1199,10 @@ person. This is the `chore_modifiers` / per-instance override surface
 
 ## Data cleanup
 
-### F73 — Delete the "Overnight brooder check" demo chore  ·  S  ·  `[ ]`  ·  *data, parked*
+### F73 — Delete the "Overnight brooder check" demo chore  ·  S  ·  `[x]`  ·  *data, parked*
+> Done in Batch 41 (b0ff48f): both `demo_*` chores were dropped from the
+> seeds and never existed as DB rows — no prod delete needed.
+
 > "I do know that this demo chore needs to be completely deleted… The
 > overnight brooder check, this was a placeholder demo. It has since
 > been replaced by the process that wraps processing days. So this task
@@ -2155,7 +2158,10 @@ Findings continue from F132.
 
 ## Now page
 
-### F133 — Collapse the Now overdue chore list by default  ·  S  ·  `[ ]`  ·  *design*
+### F133 — Collapse the Now overdue chore list by default  ·  S  ·  `[x]`  ·  *design*
+> Done 2026-06-04 (commit 3a0477a): overdue list rolls up behind a
+> warn-toned "N overdue" summary, expands on tap, like "N done today".
+
 > "There's a ton of chores in here. By default, let's fold all of these
 > items up. And if there's overdue stuff, let's show it collapsed just
 > like 12 done today… let's roll it all up unless there's a good
@@ -2215,7 +2221,11 @@ block → place → sub-place → chore is hard to read. Re-introduce an
 indentation step per level and/or color/rule the parent rows. The
 explicit ask is to trade the space-saving back for legibility.
 
-### F137 — Surface chore meta (anchor, block, timeframe) on Today rows and every chore list  ·  M  ·  `[ ]`  ·  *design, pattern*
+### F137 — Surface chore meta (anchor, block, timeframe) on Today rows and every chore list  ·  M  ·  `[~]`  ·  *design, pattern*
+> Partly done 2026-06-04 (commit bde196c): Today rows now show
+> `describeChoreAnchor · block (time) · frequency`. Remaining: extend the
+> same meta to the Now overdue rows and the species-page chore lists.
+
 > "The today screen under Chores, each chore only has the name and the
 > deadline and a message icon. All Chores on the other hand shows what
 > the chore is related to, which group of animals, when it's supposed to
