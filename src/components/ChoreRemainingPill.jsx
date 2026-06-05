@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { choreDaysRemaining } from "../lib/chores.js";
+import {
+  choreDaysRemaining, displayDeadlineDateShort,
+} from "../lib/chores.js";
 
-// Small inline pill that surfaces "(N days left)" / "due today" /
-// "overran" for chores whose window spans multiple blocks or days.
-// Returns null when the pill doesn't apply (single-block daily chores).
+// Small inline pill that surfaces the deadline date + countdown — e.g.
+// "Fri Jun 6 · 4 days left" / "due today" / "overran" — for chores whose
+// window spans multiple days. Returns null when the pill doesn't apply
+// (single-block daily chores).
 //
 // Style variants follow the urgency:
 //   days      — neutral (textDim on surfaceAlt)
@@ -31,7 +34,9 @@ export default function ChoreRemainingPill({ chore, blocks, className = "" }) {
     label = "overran";
     tone = "overran";
   } else if (r.kind === "days") {
-    label = r.days === 1 ? "1 day left" : `${r.days} days left`;
+    const days = r.days === 1 ? "1 day left" : `${r.days} days left`;
+    const date = displayDeadlineDateShort(chore, now, blocks);
+    label = date ? `${date} · ${days}` : days;
     tone = "days";
   } else {
     return null;

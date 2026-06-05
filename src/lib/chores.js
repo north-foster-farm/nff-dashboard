@@ -638,6 +638,21 @@ export function displayDaysRemaining(chore, now, blocks) {
   return "";
 }
 
+const MON_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// "Fri Jun 6" — the resolved deadline DATE for a chore whose window
+// spans multiple days (the only chores choreDaysRemaining counts down).
+// Returns "" for same-day chores, so callers can render it only when a
+// real future deadline date applies.
+export function displayDeadlineDateShort(chore, now = new Date(), blocks = []) {
+  const r = choreDaysRemaining(chore, now, blocks);
+  if (!r || r.kind !== "days") return "";
+  const d = computeDeadline(chore, now, blocks);
+  if (!d) return "";
+  return `${DOW_SHORT[d.getDay()]} ${MON_SHORT[d.getMonth()]} ${d.getDate()}`;
+}
+
 // Resolve a chore's window deadline date given today. Returns a Date
 // pointing at the latest day of the chore's window (start-of-day),
 // or null if today isn't inside the window.

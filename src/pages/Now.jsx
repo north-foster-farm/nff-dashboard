@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Check, ChevronRight, CloudOff, Play, Sparkles, Square,
+  AlertTriangle, Check, ChevronRight, CloudOff, Play, Sparkles, Square,
 } from "lucide-react";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
@@ -320,6 +320,10 @@ function ObligationList({
   buckets, roots, childrenByParent, completions, onCheckOff,
 }) {
   const { overdue, done } = buckets;
+  // Both lists roll up by default so the Now surface stays calm — tap a
+  // count to drill in (F133). Overdue still leads with a warn-toned,
+  // count-forward summary so a missed block is never hidden, just folded.
+  const [showOverdue, setShowOverdue] = useState(false);
   const [showDone, setShowDone] = useState(false);
 
   if (overdue.length === 0 && done.length === 0) {
@@ -335,15 +339,36 @@ function ObligationList({
   return (
     <div className="flex flex-col gap-5">
       {overdue.length > 0 && (
-        <ObligationGroup
-          title="Overdue"
-          tone="warn"
-          obligations={overdue}
-          roots={roots}
-          childrenByParent={childrenByParent}
-          completions={completions}
-          onCheckOff={onCheckOff}
-        />
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setShowOverdue(s => !s)}
+            className={
+              "self-start inline-flex items-center gap-1.5 text-[10px] " +
+              "uppercase tracking-[0.16em] font-semibold text-warn " +
+              "hover:text-warn bg-transparent border-0 cursor-pointer p-0"
+            }
+          >
+            <AlertTriangle size={12} className="shrink-0" />
+            {overdue.length} overdue
+            <ChevronRight
+              size={12}
+              className={
+                "shrink-0 transition-transform " +
+                (showOverdue ? "rotate-90" : "")
+              }
+            />
+          </button>
+          {showOverdue && (
+            <ObligationGroup
+              tone="warn"
+              obligations={overdue}
+              roots={roots}
+              childrenByParent={childrenByParent}
+              completions={completions}
+              onCheckOff={onCheckOff}
+            />
+          )}
+        </div>
       )}
       {overdue.length === 0 && (
         <div className="bg-surface border border-line px-5 py-6 text-center">
