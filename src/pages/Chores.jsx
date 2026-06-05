@@ -188,7 +188,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   // Block schedule: powers the block-grouped Today tab AND is threaded
   // into the engine so new-model block-reference deadlines + block-
   // derived start times resolve against the live block times.
-  const { blocks } = useChoreBlocks();
+  const { blocks, blockById } = useChoreBlocks();
   const instances = useMemo(
     () => getChoresForDay(
       data, today, { rulesByChoreId, rulesByBlockId, blocks }
@@ -320,6 +320,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
             choreCtx={choreCtx}
             currentUserEmail={userEmail}
             blocks={blocks}
+            blockById={blockById}
             collapsed={collapsedSet.has(key)}
             onToggleCollapsed={() => toggleCollapsed(key)}
           />
@@ -349,7 +350,7 @@ function isWindowy(chore) {
 // `domId` is the jump-nav scroll target.
 function BlockGroup({
   block, domId, instances, roots, childrenByParent, completions, choreCtx,
-  currentUserEmail, blocks, collapsed, onToggleCollapsed,
+  currentUserEmail, blocks, blockById, collapsed, onToggleCollapsed,
 }) {
   const headerLabel = block ? block.name : "Anytime";
   const timeLabel = block
@@ -396,6 +397,7 @@ function BlockGroup({
           choreCtx={choreCtx}
           currentUserEmail={currentUserEmail}
           blocks={blocks}
+          blockById={blockById}
         />
       )}
     </div>
@@ -409,7 +411,7 @@ function BlockGroup({
 // rendered branch matches the All chores tree exactly.
 function TodayPlaceTree({
   instances, roots, childrenByParent, completions, choreCtx,
-  currentUserEmail, blocks,
+  currentUserEmail, blocks, blockById,
 }) {
   const {
     entriesByPlace, farmEntries, subtreeCounts, topLevel,
@@ -471,6 +473,8 @@ function TodayPlaceTree({
       completions={completions}
       currentUserEmail={currentUserEmail}
       blocks={blocks}
+      blockById={blockById}
+      choreCtx={choreCtx}
     />
   );
   const keyOf = ({ inst, placeId }) => `${inst.choreId}|${placeId ?? "farm"}`;
@@ -511,11 +515,22 @@ function TodayPlaceTree({
 // chore: checkbox, title, queued glyph, assignees + deadline meta, and
 // the sticky-note button.
 function TodayObligationRow({
-  inst, placeId, completions, currentUserEmail, blocks,
+  inst, placeId, completions, currentUserEmail, blocks, blockById, choreCtx,
 }) {
   const { chore, assignees } = inst;
   const isDone = completions.isDone(chore.id, placeId);
   const queued = completions.isQueued?.(chore.id, placeId) ?? false;
+
+  // F137 — surface the same context the All chores rows carry: what the
+  // chore is anchored to (animal group / place), its block + time of
+  // day, and its recurrence. The place-tree header already names the
+  // place, but the anchor adds the species/occupancy detail and the
+  // schedule + frequency aren't otherwise visible on this do-surface.
+  const metaLine = [
+    choreCtx ? describeChoreAnchor(chore, choreCtx) : null,
+    blockById ? describeChoreSchedule(chore, blockById) : displayStartTime(chore),
+    describeFrequency(chore),
+  ].filter(Boolean).join(" · ");
 
   // Batch 23 — date-bound modifiers on this chore today (from a
   // process expansion or placed by hand). The winner changes how the
@@ -575,6 +590,11 @@ function TodayObligationRow({
               />
             )}
           </div>
+          {metaLine && (
+            <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>
+              {metaLine}
+            </div>
+          )}
           {effects.prependText && (
             <div style={{
               fontSize: 12, color: T.accentDeep, fontWeight: 500, marginTop: 2,
