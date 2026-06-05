@@ -2229,10 +2229,12 @@ block → place → sub-place → chore is hard to read. Re-introduce an
 indentation step per level and/or color/rule the parent rows. The
 explicit ask is to trade the space-saving back for legibility.
 
-### F137 — Surface chore meta (anchor, block, timeframe) on Today rows and every chore list  ·  M  ·  `[~]`  ·  *design, pattern*
-> Partly done 2026-06-04 (commit bde196c): Today rows now show
-> `describeChoreAnchor · block (time) · frequency`. Remaining: extend the
-> same meta to the Now overdue rows and the species-page chore lists.
+### F137 — Surface chore meta (anchor, block, timeframe) on Today rows and every chore list  ·  M  ·  `[x]`  ·  *design, pattern*
+> Done 2026-06-04 (bde196c + 06e2420): Today rows show
+> `anchor · block (time) · frequency`; Now overdue/done rows gained
+> anchor + frequency (block stays the badge); species rows gained the
+> block. describeChoreSchedule promoted to lib/chores.js as the shared
+> helper.
 
 > "The today screen under Chores, each chore only has the name and the
 > deadline and a message icon. All Chores on the other hand shows what
