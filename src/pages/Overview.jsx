@@ -8,9 +8,14 @@ import { T } from "../theme.js";
 import { formatDate, formatTime12h } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
 import {
+  rollupChoresForDay,
+  getRollupAssignee,
+  todaysMorningCutoff,
+} from "../lib/schedule/deriveDay.js";
+import {
   getChoresForDay, displayDeadlineConcrete, describeChoreAnchor,
-  getBlockTimeLabelForPeriod, getBlockStartMinutesForPeriod,
-  formatTime12hShort, resolveAssignee,
+  getBlockTimeLabelForPeriod,
+  formatTime12hShort,
   obligationPlaceIds
 } from "../lib/chores.js";
 import { resolveBlockMinutes } from "../lib/sunTimes.js";
@@ -195,49 +200,6 @@ function minutesToHHMM(min) {
   const m = ((min % 1440) + 1440) % 1440;
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:`
     + `${String(m % 60).padStart(2, "0")}`;
-}
-
-// Build the chore-group rollups for a day — one row per BLOCK, ordered
-// downstream by the block's resolved start time, carrying its member
-// count. Chores with no block fall into an "anytime" bucket.
-function rollupChoresForDay(data, dayDate, ruleOpts) {
-  const blocks = ruleOpts?.blocks ?? [];
-  const instances = getChoresForDay(data, dayDate, ruleOpts);
-  const byBlock = {};
-  for (const inst of instances) {
-    (byBlock[inst.chore.blockId ?? "anytime"] ??= []).push(inst);
-  }
-  return Object.keys(byBlock).map((bucket) => {
-    const block = blocks.find((b) => b.id === bucket) ?? null;
-    const startMin = block
-      ? (resolveBlockMinutes(dayDate, block.startKind, block.startMinutes)
-         ?? block.startMinutes ?? null)
-      : null;
-    return { bucket, block, items: byBlock[bucket], startMin };
-  });
-}
-
-function todaysMorningCutoff(data, dayDate, blocks, ruleOpts) {
-  return getBlockStartMinutesForPeriod(
-    getChoresForDay(data, dayDate, ruleOpts),
-    "morning",
-    blocks
-  );
-}
-
-// If every chore in the rollup that has an assignee resolves to the same
-// single person on `dayDate`, return that name. Otherwise null. Loose rule:
-// unassigned chores are ignored — the moment one *named* assignee owns the
-// rollup it counts as "assigned to that person". Multi-assignee rules
-// produce a joined "James · Jim" label, so the rollup-assignee summary
-// only fires when every chore resolves to the exact same combo.
-function getRollupAssignee(rollup, dayDate, ruleOpts) {
-  const names = new Set();
-  for (const inst of rollup.items) {
-    const a = resolveAssignee(inst.chore, dayDate, ruleOpts);
-    if (a) names.add(a);
-  }
-  return names.size === 1 ? [...names][0] : null;
 }
 
 function TodayScheduleCard({ data, today, blocks, ruleOpts }) {

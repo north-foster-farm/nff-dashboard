@@ -3446,9 +3446,20 @@ versioned capture).
   `src/lib/capture/`, and the first schema `schedule.confirmed_day` v1.
   Migration 0030 (additive; an in-migration sanity block proves
   `pg_jsonschema` on push). Metrics/KPI schemas fold in later.
-- **41.3+ →** the derive-the-draft engine (S3), the accordion Today +
-  confirm (S4–S5 = MVP), then search / non-work-time / man-down /
-  week-silhouette / reminders / drift (S6–S11).
+- **41.3 — derive-the-draft engine. ✅ SHIPPED `v0.10.44-alpha`
+  (2026-06-24).** `src/lib/schedule/deriveDay.js` — the one client-side day
+  assembler folding chore fan-out + events + active projects into a
+  structured, regenerable, offline-computed day (blocks carry their member
+  chores, for both Overview's rollup and the S4 accordion). Relocated
+  `rollupChoresForDay`/`getRollupAssignee`/`todaysMorningCutoff` out of
+  Overview (behavior-preserving) and deleted the dead `useTimelineItems`
+  hook. Pure code — no migration. A documented `foldDeltas` seam awaits S6.
+  DEFERRED to a later authorized cleanup migration: dropping the dead
+  `timeline_items` view + the orphaned `chore_runs` (both safe; chore_runs
+  parity was verified in 41.1).
+- **41.4+ →** the accordion Today + tick (S4), confirm (S5 = MVP), then
+  search / non-work-time / man-down / week-silhouette / reminders / drift
+  (S6–S11).
 
 ---
 
