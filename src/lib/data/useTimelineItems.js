@@ -83,7 +83,7 @@ export function useTimelineItems({ fromISO, toISO } = {}) {
         { event: "*", schema: "public", table: "event_occurrences" },
         refresh)
       .on("postgres_changes",
-        { event: "*", schema: "public", table: "chore_runs" },
+        { event: "*", schema: "public", table: "commitments" },
         refresh)
       .subscribe();
     return () => { supabase.removeChannel(channel); };

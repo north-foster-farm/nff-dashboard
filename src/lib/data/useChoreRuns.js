@@ -162,8 +162,9 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    supabase.from("chore_runs")
+    supabase.from("commitments")
       .select(SELECT_COLS)
+      .eq("source_type", "chore_block")
       .gte("run_date", sinceISO)
       .order("run_date", { ascending: false })
       .order("started_at", { ascending: false })
@@ -189,16 +190,17 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
       scheduled = true;
       setTimeout(async () => {
         scheduled = false;
-        const res = await supabase.from("chore_runs")
+        const res = await supabase.from("commitments")
           .select(SELECT_COLS)
+          .eq("source_type", "chore_block")
           .gte("run_date", sinceISO)
           .order("run_date", { ascending: false })
           .order("started_at", { ascending: false });
         if (!res.error) setRuns(res.data ?? []);
       }, 80);
     };
-    const channel = realtimeChannel(`chore_runs:stream:${instanceId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "chore_runs" }, refresh)
+    const channel = realtimeChannel(`commitments:stream:${instanceId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "commitments" }, refresh)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [instanceId, sinceISO]);

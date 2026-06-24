@@ -2862,7 +2862,7 @@ follow-up `--apply` insert.
 
 **Deferred:** the 6 manual-landmark post-return chores (no engine
 support yet); the F69 `batch-clean-brooders` trigger reconciliation;
-the F85 `process_steps.kind='task'` rename; migration 0029 (the
+the F85 `process_steps.kind='task'` rename; migration 0030 (the
 rename-proof `chore_blocks.slug` + a `chore_checklist_items` table)
 is authored but not pushed — unneeded for the cutover. Phase D hard-
 delete of the retired defs + disposable history waits on James's
@@ -3412,6 +3412,36 @@ discussion:
 
 The same pipeline drives the Batch 35 responsiveness audit when
 that batch runs.
+
+### Batch 41 — Schedule (the commitment layer)
+Added 2026-06-24. The missing day-plan layer between chores
+(generative) and the calendar (temporal): a day-atomic plan that
+auto-composes chores + projects + events into one **draft**, which the
+operators **confirm** — a durable, glanceable, Rounds-executed day.
+Designed end-to-end via the Scope Workshop → Scope Document → Design
+Bracket; full spec + the work-backwards build plan live in
+`.ignored/schedule-feature/` (scope-document.md, the-design.md,
+versioned-capture-substrate.md, build-plan.md). The chosen design is
+the single-open accordion (`mockups/minimalist.html`).
+
+Built commitments-first over an S1–S11 plan (S1–S5 = the MVP: draft →
+one-tap confirm → tick, married to Rounds, offline, recorded as a
+versioned capture).
+
+- **41.1 — commitments foundation. ✅ SHIPPED `v0.10.42-alpha`
+  (2026-06-24).** Generalized `chore_runs` into the unified
+  `commitments` timeline (one row per claim on a block of someone's
+  time; `chore_block` kind only for now). Migration 0029 is additive —
+  create + copy every chore_runs row uuid-preserving, repoint the
+  `chore_run_participants` + `activity_log` FKs and the `timeline_items`
+  view; `chore_runs` is left orphaned and dropped in a later batch
+  (after S3 removes the view and parity holds). Repointed the
+  run-lifecycle read/write paths (useChoreRuns, useRunHistory, outbox,
+  the notify-run-done push function). Row-count parity verified in prod
+  (10 → 10).
+- **41.2+ →** capture substrate, derive-the-draft engine, the accordion
+  Today + confirm (MVP), then search / non-work-time / man-down /
+  week-silhouette / reminders / drift (S6–S11).
 
 ---
 

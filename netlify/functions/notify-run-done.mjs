@@ -66,9 +66,10 @@ export default async (req) => {
   // 1. Atomically claim the row. Only fires once even if the client
   //    posts twice — the WHERE notified_at IS NULL is the lock.
   const claim = await supabase
-    .from("chore_runs")
+    .from("commitments")
     .update({ notified_at: new Date().toISOString() })
     .eq("id", runId)
+    .eq("source_type", "chore_block")
     .eq("state", "done")
     .is("notified_at", null)
     .select("id, block_id, run_date, started_at, ended_at")

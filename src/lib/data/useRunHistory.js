@@ -31,8 +31,9 @@ export function useRunHistory({ days = 30 } = {}) {
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    supabase.from("chore_runs")
+    supabase.from("commitments")
       .select(SELECT_COLS)
+      .eq("source_type", "chore_block")
       .gte("run_date", sinceISO)
       .order("run_date", { ascending: true })
       .order("started_at", { ascending: true })
@@ -51,17 +52,18 @@ export function useRunHistory({ days = 30 } = {}) {
       scheduled = true;
       setTimeout(async () => {
         scheduled = false;
-        const res = await supabase.from("chore_runs")
+        const res = await supabase.from("commitments")
           .select(SELECT_COLS)
+          .eq("source_type", "chore_block")
           .gte("run_date", sinceISO)
           .order("run_date", { ascending: true })
           .order("started_at", { ascending: true });
         if (!res.error) setRows(res.data ?? []);
       }, 80);
     };
-    const channel = realtimeChannel(`chore_runs:history:${instanceId}`)
+    const channel = realtimeChannel(`commitments:history:${instanceId}`)
       .on("postgres_changes",
-        { event: "*", schema: "public", table: "chore_runs" },
+        { event: "*", schema: "public", table: "commitments" },
         refresh,
       )
       .subscribe();

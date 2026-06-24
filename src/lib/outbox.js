@@ -327,8 +327,8 @@ async function execEggCollectionInsert(p) {
 }
 
 // ── Run lifecycle executors (Batch 17 — hardened Rounds) ───────────
-// chore_runs writes go through the outbox so a run can start, finish,
-// or cancel with no signal. Updates key off the natural
+// Run writes (chore_block commitments) go through the outbox so a run
+// can start, finish, or cancel with no signal. Updates key off the natural
 // (block_id, run_date) identity instead of the row uuid: an offline-
 // created run carries a client-generated uuid that may lose the race
 // to a row another device inserted for the same block + day, and the
@@ -340,8 +340,9 @@ const RUN_COLS =
 
 async function selectRun(blockId, runDate) {
   const { data, error } = await supabase
-    .from("chore_runs")
+    .from("commitments")
     .select(RUN_COLS)
+    .eq("source_type", "chore_block")
     .eq("block_id", blockId)
     .eq("run_date", runDate);
   if (error) throw asError(error);
@@ -354,9 +355,10 @@ async function selectRun(blockId, runDate) {
 // downgrades to an UPDATE of the existing row.
 async function execRunStart(p) {
   const { data, error } = await supabase
-    .from("chore_runs")
+    .from("commitments")
     .insert({
       id: p.id,
+      source_type: "chore_block",
       block_id: p.blockId,
       run_date: p.runDate,
       state: "in_progress",
@@ -380,7 +382,7 @@ async function execRunStart(p) {
     patch.started_by_email = p.email;
   }
   const { data: updated, error: updErr } = await supabase
-    .from("chore_runs")
+    .from("commitments")
     .update(patch)
     .eq("id", existing.id)
     .select(RUN_COLS);
@@ -393,8 +395,9 @@ async function execRunStart(p) {
 // permanently — treat as a no-op rather than wedging the queue.
 async function updateRunByKey(p, patch) {
   const { data, error } = await supabase
-    .from("chore_runs")
+    .from("commitments")
     .update(patch)
+    .eq("source_type", "chore_block")
     .eq("block_id", p.blockId)
     .eq("run_date", p.runDate)
     .select(RUN_COLS);
@@ -437,8 +440,9 @@ function execRunCancel(p) {
 // from another device) counts as success.
 async function execRunDelete(p) {
   const { error } = await supabase
-    .from("chore_runs")
+    .from("commitments")
     .delete()
+    .eq("source_type", "chore_block")
     .eq("block_id", p.blockId)
     .eq("run_date", p.runDate);
   if (error) throw asError(error);
