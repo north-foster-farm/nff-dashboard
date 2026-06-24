@@ -1,6 +1,6 @@
 import {
   Home, Bird, Egg, PawPrint, Wrench, Truck, Wheat,
-  Calendar, ListChecks, Tent, Sparkles, Package, Tag, Boxes, Activity,
+  Calendar, CalendarCheck, ListChecks, Tent, Sparkles, Package, Tag, Boxes, Activity,
   FolderKanban, Workflow, NotebookPen, MessageCircleQuestion,
   Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
   CalendarRange, Store, Cog, Sunrise, Telescope,
@@ -47,7 +47,8 @@ export const SECTIONS = [
   // with numbers: cross-batch comparison sheets + the metric registry.
   { id: "metrics", group: null, label: "Metrics", icon: ChartLine, description: "Performance numbers side by side — FCR, daily gain, uniformity, and mortality per broiler batch; hen-housed production and feed efficiency per layer flock.", getCount: () => null },
 
-  { id: "schedule", group: "Planning", label: "Schedule", icon: Calendar, description: "Calendar and timeline view of everything date-bound", getCount: () => null },
+  { id: "schedule", group: "Planning", label: "Schedule", icon: CalendarCheck, description: "Today's plan — chores, projects, and events as one agreed day", getCount: () => null },
+  { id: "calendar", group: "Planning", label: "Calendar", icon: Calendar, description: "Calendar and timeline view of everything date-bound", getCount: () => null },
   { id: "events_all_types", group: "Planning", label: "Events", flyoutTitle: "Events", icon: CalendarRange, kind: "flyout",
     children: [
       // First child is the unfiltered Agenda view (replaces the

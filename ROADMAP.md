@@ -3457,9 +3457,25 @@ versioned capture).
   DEFERRED to a later authorized cleanup migration: dropping the dead
   `timeline_items` view + the orphaned `chore_runs` (both safe; chore_runs
   parity was verified in 41.1).
-- **41.4+ →** the accordion Today + tick (S4), confirm (S5 = MVP), then
-  search / non-work-time / man-down / week-silhouette / reminders / drift
-  (S6–S11).
+- **41.4 — the Schedule accordion Today view. ✅ SHIPPED `v0.10.45-alpha`
+  (2026-06-24).** `src/pages/Schedule.jsx` — the Minimalist single-open
+  block accordion (per the-design.md / mockups/minimalist.html): the
+  current block expanded, others collapsed to a `name · done/total` line,
+  done blocks recede (forward focus); inline ticks via the shared
+  `ChoreCheckRow` (extracted from Rounds) write `chore_completions` through
+  the outbox — one completion truth, offline `CloudOff`; tick→seal
+  auto-advances to the next undone block; "Open rounds" deep-links the
+  Rounds takeover; jump-to-now. Renders from the S3 `deriveDay` engine.
+  Freed the name: the old events surface became **Calendar** (`/calendar`);
+  the new accordion owns **Schedule** (`/schedule`). Phone-first, DRAFT-only
+  (a static "Draft" pill). Verified live by James.
+- **41.5 — confirm (S5 = MVP).** One-tap whole-day Confirm writing a
+  `schedule.confirmed_day` capture (via the 41.2 substrate), draft↔confirmed
+  states, the source-changed-after-confirm ribbon. Closes the MVP.
+- **41.6+ →** search-to-add / non-work-time / man-down / desktop week
+  + load-silhouette / reminders / drift (S6–S11). Deferred from 41.4: the
+  desktop day-rail, per-person start-time line, the seal worked-window
+  stamp, the should→must box (S8).
 
 ---
 

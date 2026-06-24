@@ -9,6 +9,7 @@ import Suppliers from "../pages/Suppliers.jsx";
 import Feeds from "../pages/Feeds.jsx";
 import Chores from "../pages/Chores.jsx";
 import Threads from "../pages/Threads.jsx";
+import Calendar from "../pages/Calendar.jsx";
 import Schedule from "../pages/Schedule.jsx";
 import SpeciesPage from "../pages/SpeciesPage.jsx";
 import BatchPage from "../pages/BatchPage.jsx";
@@ -60,14 +61,14 @@ export default function SectionContent({
     // Folded into Schedule's Agenda view (Batch 14.1). Deep links
     // to /events/all keep landing here; the page just opens with a
     // different default view.
-    return <Schedule data={data} onOpenEvent={onOpenEvent} initialView="agenda" />;
+    return <Calendar data={data} onOpenEvent={onOpenEvent} initialView="agenda" />;
   }
   if (section.id.startsWith("events_")) {
     // Per-kind sidebar children → Schedule with that kind's filter
     // pre-applied (Batch 14.2). The standalone EventKindPage retired.
     const ek = getEventKindFromSectionId(section.id, data);
     if (!ek) return <ComingSoon featureName={section.label} />;
-    return <Schedule
+    return <Calendar
       data={data}
       onOpenEvent={onOpenEvent}
       initialFilter={ek.id}
@@ -111,7 +112,8 @@ export default function SectionContent({
       return <Products data={data} initialTab="sell" key="sell" />;
     case "add_to_inventory":
       return <Inventory data={data} startCreating key="new-lot" />;
-    case "schedule": return <Schedule data={data} onOpenEvent={onOpenEvent} />;
+    case "calendar": return <Calendar data={data} onOpenEvent={onOpenEvent} />;
+    case "schedule": return <Schedule data={data} />;
     case "chores": return <Chores data={data} />;
     case "projects":
       // Project detail deep links (/projects/<projectId>) carry the
