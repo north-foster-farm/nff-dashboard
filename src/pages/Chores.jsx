@@ -526,15 +526,18 @@ function TodayObligationRow({
   const isDone = completions.isDone(chore.id, placeId);
   const queued = completions.isQueued?.(chore.id, placeId) ?? false;
 
-  // F137 — surface the same context the All chores rows carry: what the
-  // chore is anchored to (animal group / place), its block + time of
-  // day, and its recurrence. The place-tree header already names the
-  // place, but the anchor adds the species/occupancy detail and the
-  // schedule + frequency aren't otherwise visible on this do-surface.
+  // F137 surfaced anchor + schedule + frequency here so the do-surface
+  // carries the same context as All chores. D2 trims the redundancy:
+  // this row already sits under a block section header naming the block
+  // + time, so the per-row schedule echo ("Morning (sunrise)") is
+  // dropped, and "every day" — true of nearly every row — is suppressed
+  // so only a deviating recurrence (e.g. "Mondays") shows. The anchor
+  // stays: its species/occupancy detail is the part the place-tree node
+  // doesn't already carry.
+  const isDaily = (chore?.frequency?.type ?? "daily") === "daily";
   const metaLine = [
     choreCtx ? describeChoreAnchor(chore, choreCtx) : null,
-    blockById ? describeChoreSchedule(chore, blockById) : displayStartTime(chore),
-    describeFrequency(chore),
+    isDaily ? null : describeFrequency(chore),
   ].filter(Boolean).join(" · ");
 
   // Batch 23 — date-bound modifiers on this chore today (from a

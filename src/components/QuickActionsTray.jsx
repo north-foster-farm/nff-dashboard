@@ -308,6 +308,49 @@ function PrimaryButton({ children, disabled, onClick }) {
   );
 }
 
+// ── Quantity stepper (shared) ─────────────────────────────────────────
+// R6: one quantity control for both Mortality and Eggs so the sheets
+// read as one component in two configs. − / typeable centre / +. Value
+// is a string so the centre stays freely typeable (large egg counts);
+// each sheet parses + validates. Empty input steps up to `min`.
+function QuantityStepper({ value, onChange, min = 1, placeholder }) {
+  const num = Number(value);
+  const base = Number.isFinite(num) ? num : min - 1;
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => onChange(String(Math.max(min, base - 1)))}
+        className="w-10 h-10 border border-line bg-surface text-fg cursor-pointer hover:bg-row-hover text-[18px] font-bold shrink-0"
+        aria-label="Decrease"
+      >
+        −
+      </button>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={min}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className={
+          "flex-1 bg-surface border border-line text-fg " +
+          "text-[18px] font-bold text-center px-3 py-2 " +
+          "focus:outline-none focus:border-fg"
+        }
+      />
+      <button
+        type="button"
+        onClick={() => onChange(String(base + 1))}
+        className="w-10 h-10 border border-line bg-surface text-fg cursor-pointer hover:bg-row-hover text-[18px] font-bold shrink-0"
+        aria-label="Increase"
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
 // ── Note sheet ────────────────────────────────────────────────────────
 function NoteSheet({
   runId, seedPlaceId, placeOptions, placesById,
@@ -536,9 +579,10 @@ function MortalitySheet({
 }) {
   const [placeId, setPlaceId] = useState(seedPlaceId);
   const [groupId, setGroupId] = useState(null);
-  const [count, setCount] = useState(1);
+  const [count, setCount] = useState("1");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const parsedCount = Number(count);
 
   // Pull livestock_group labels just for cohorts present at places
   // we can address. Cheaper than wiring useReferenceData through.
@@ -592,11 +636,20 @@ function MortalitySheet({
       }));
   }, [placeId, batchPlacements, childrenByParent, groupLabels]);
 
-  // Reset cohort selection when place changes.
-  useEffect(() => { setGroupId(null); }, [placeId]);
+  // R7: at a stop with a single cohort, preselect it; otherwise drop a
+  // selection the place change invalidated (keeps a still-valid one).
+  useEffect(() => {
+    if (candidates.length === 1) {
+      setGroupId(candidates[0].id);
+    } else {
+      setGroupId(prev =>
+        prev && candidates.some(c => c.id === prev) ? prev : null
+      );
+    }
+  }, [candidates]);
 
   const submit = async () => {
-    if (!groupId || count < 1) return;
+    if (!groupId || !(parsedCount >= 1)) return;
     setSaving(true);
     setError(null);
     try {
@@ -608,7 +661,7 @@ function MortalitySheet({
       await onLogMortality({
         groupId,
         groupLabel,
-        count,
+        count: parsedCount,
         runId,
         placeId: placeId ?? null,
       });
@@ -628,11 +681,11 @@ function MortalitySheet({
       footer={
         <PrimaryButton
           onClick={submit}
-          disabled={saving || !groupId || count < 1}
+          disabled={saving || !groupId || !(parsedCount >= 1)}
         >
           {saving
             ? "Saving…"
-            : `Log ${count} ${count === 1 ? "loss" : "losses"}`}
+            : `Log ${parsedCount || 0} ${parsedCount === 1 ? "loss" : "losses"}`}
         </PrimaryButton>
       }
     >
@@ -690,35 +743,7 @@ function MortalitySheet({
             <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
               How many
             </label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setCount(c => Math.max(1, c - 1))}
-                className="w-10 h-10 border border-line bg-surface text-fg cursor-pointer hover:bg-row-hover text-[18px] font-bold"
-                aria-label="Decrease"
-              >
-                −
-              </button>
-              <input
-                type="number"
-                min={1}
-                value={count}
-                onChange={(e) => setCount(Math.max(1, Number(e.target.value) || 1))}
-                className={
-                  "flex-1 bg-surface border border-line text-fg " +
-                  "text-[18px] font-bold text-center px-3 py-2 " +
-                  "focus:outline-none focus:border-fg"
-                }
-              />
-              <button
-                type="button"
-                onClick={() => setCount(c => c + 1)}
-                className="w-10 h-10 border border-line bg-surface text-fg cursor-pointer hover:bg-row-hover text-[18px] font-bold"
-                aria-label="Increase"
-              >
-                +
-              </button>
-            </div>
+            <QuantityStepper value={count} onChange={setCount} min={1} />
           </div>
         )}
         {error && <div className="text-[12px] text-warn">{error}</div>}
@@ -898,19 +923,11 @@ function EggsSheet({
             <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
               How many eggs
             </label>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
+            <QuantityStepper
               value={count}
-              autoFocus
-              onChange={(e) => setCount(e.target.value)}
+              onChange={setCount}
+              min={1}
               placeholder="0"
-              className={
-                "bg-surface border border-line text-fg " +
-                "text-[18px] font-bold text-center px-3 py-2 " +
-                "focus:outline-none focus:border-fg w-full"
-              }
             />
           </div>
         )}

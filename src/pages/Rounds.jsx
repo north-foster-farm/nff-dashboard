@@ -363,6 +363,9 @@ function RecentRuns({ runs, blocks, onResumeRun, onDeleteRun }) {
     for (const b of blocks ?? []) m.set(b.id, b);
     return m;
   }, [blocks]);
+  // Styled delete confirm (R4, same treatment) — holds the run pending
+  // confirmation instead of a window.confirm().
+  const [pendingDelete, setPendingDelete] = useState(null);
   return (
     <div className="w-full flex flex-col gap-2 mt-2">
       <div className="text-[10px] text-muted uppercase tracking-[0.16em] font-semibold text-center">
@@ -400,13 +403,7 @@ function RecentRuns({ runs, blocks, onResumeRun, onDeleteRun }) {
               )}
               {r.state === "canceled" && (
                 <button
-                  onClick={() => {
-                    const ok = window.confirm(
-                      "Delete this canceled run? The block will read " +
-                      "as never-run for that day."
-                    );
-                    if (ok) onDeleteRun(r.id);
-                  }}
+                  onClick={() => setPendingDelete(r.id)}
                   className="text-muted hover:text-warn border-0 bg-transparent cursor-pointer p-1 flex items-center"
                   title="Delete this canceled run"
                   aria-label="Delete this canceled run"
@@ -418,6 +415,52 @@ function RecentRuns({ runs, blocks, onResumeRun, onDeleteRun }) {
           );
         })}
       </ul>
+
+      {pendingDelete && (
+        <div
+          className="fixed inset-0 z-[160] bg-black/40 flex items-center justify-center p-6"
+          onClick={() => setPendingDelete(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface border border-line w-full max-w-[340px] p-5 flex flex-col gap-4"
+          >
+            <div className="flex flex-col gap-2">
+              <h2 className="font-heading text-[19px] font-bold -tracking-[0.02em] text-fg m-0">
+                Delete this canceled run?
+              </h2>
+              <p className="text-[13px] text-dim leading-relaxed m-0">
+                The{" "}
+                <span className="text-fg font-semibold">
+                  {blockById.get(
+                    runs.find(r => r.id === pendingDelete)?.blockId
+                  )?.name ?? "block"}
+                </span>{" "}
+                round for that day will read as never-run. This can't be
+                undone.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setPendingDelete(null)}
+                className="bg-accent text-on-accent border-0 px-4 py-3 cursor-pointer text-[12px] uppercase tracking-[0.12em] font-semibold"
+              >
+                Keep it
+              </button>
+              <button
+                onClick={() => {
+                  const id = pendingDelete;
+                  setPendingDelete(null);
+                  onDeleteRun(id);
+                }}
+                className="bg-transparent text-warn border border-line px-4 py-3 cursor-pointer text-[12px] uppercase tracking-[0.12em] font-semibold hover:border-warn"
+              >
+                Delete run
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -552,6 +595,50 @@ function DoingSurface({
     return out;
   }, [blockChores, choreCtx, placesById]);
 
+  // Progress for the header (R1): done / total across this block's
+  // obligations. This is the hero number — elapsed time is demoted to a
+  // secondary signal so the run reads as a checklist, not a stopwatch.
+  const doneCount = useMemo(
+    () => blockObligations.filter(o =>
+      completions.isDone(o.chore.id, o.placeId)
+    ).length,
+    [blockObligations, completions]
+  );
+  const totalCount = blockObligations.length;
+  const pct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
+
+  // Live overrun: how far past the block's window we are right now.
+  // Elapsed stays on screen (overrun accountability is an explicit value
+  // of this farm) and tints warn once we're past the window — the same
+  // signal isOverran() shows on the wrap card, but live during the run.
+  const liveOverran = useMemo(() => {
+    if (!block) return null;
+    const d = new Date(now);
+    const startMin = resolveBlockMinutes(
+      d, block.startKind, block.startMinutes
+    );
+    if (startMin === null) return null;
+    const endMin = startMin + (block.durationMinutes ?? 0);
+    const nowMin = d.getHours() * 60 + d.getMinutes();
+    if (nowMin <= endMin) return null;
+    const overMin = nowMin - endMin;
+    if (overMin < 60) return `${overMin}m`;
+    const h = Math.floor(overMin / 60);
+    const m = overMin % 60;
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  }, [block, now]);
+
+  // Styled cancel dialog (R4) — replaces the window.confirm() below.
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  useEffect(() => {
+    if (!showCancelDialog) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setShowCancelDialog(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showCancelDialog]);
+
   // Auto-derive run completion: every obligation checked → done; any
   // un-checked while done → resume. Guard against the trivial 0/0
   // case (no chores in the block) — never auto-flip then.
@@ -657,60 +744,83 @@ function DoingSurface({
     <div className="bg-bg text-fg min-h-dvh flex flex-col font-body">
       <div className="sticky top-0 z-30">
         {/* Status bar */}
-        <header className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-line bg-surface">
-          <div className="flex flex-col">
-            <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
-              {block?.name ?? "Rounds"}
+        <header className="px-4 sm:px-6 py-3 border-b border-line bg-surface">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col min-w-0">
+              <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
+                {block?.name ?? "Rounds"}
+              </div>
+              {/* Progress is the hero (R1): the run reads as a checklist,
+                  not a ticking stopwatch. */}
+              <div className="font-heading text-[20px] font-bold -tracking-[0.02em] text-fg leading-tight">
+                {doneCount}
+                <span className="text-[13px] text-muted font-semibold">
+                  {" "}/ {totalCount} done
+                </span>
+              </div>
             </div>
-            <div className="font-heading text-[20px] font-bold -tracking-[0.02em] text-fg leading-tight">
-              {formatElapsed(elapsed)}
+            {/* Queued / not-synced indicator (Batch 16.2) — the field
+                surface is exactly where offline capture happens, so it
+                gets the loudest placement. */}
+            <OutboxIndicator />
+            <div className="ml-auto flex items-center gap-1">
+              {/* Elapsed demoted to secondary, but kept on screen —
+                  overrun accountability is an explicit value of this
+                  farm. Tints warn once past the block's window. */}
+              <span
+                className={
+                  "font-ui text-[11px] tabular-nums mr-1 shrink-0 " +
+                  (liveOverran ? "text-warn font-semibold" : "text-muted")
+                }
+                title={
+                  liveOverran
+                    ? `Elapsed ${formatElapsed(elapsed)} — ` +
+                      `${liveOverran} past the window`
+                    : `Elapsed ${formatElapsed(elapsed)}`
+                }
+              >
+                {formatElapsed(elapsed)}
+                {liveOverran ? ` +${liveOverran}` : ""}
+              </span>
+              <button
+                onClick={() => setShowCancelDialog(true)}
+                className="text-muted hover:text-warn p-2 cursor-pointer bg-transparent border-0 text-[10px] uppercase tracking-[0.12em] font-semibold"
+                title="Cancel this run"
+              >
+                Cancel
+              </button>
+              {/* Finish: "I'm done" — ends the run outright when solo;
+                  with others still in the run, it waits for them. Chores
+                  left unchecked simply read as overdue afterward. */}
+              <button
+                onClick={async () => {
+                  const result = await onFinishRun();
+                  if (result && !result.ended) {
+                    setWaitingOn(result.waitingOn);
+                  }
+                }}
+                className="bg-accent text-on-accent border-0 px-3 py-1.5 cursor-pointer text-[10px] uppercase tracking-[0.12em] font-semibold"
+                title="Finish — end this round even if chores are left"
+              >
+                Finish
+              </button>
+              <button
+                onClick={onClose}
+                className="text-muted hover:text-fg p-2 cursor-pointer bg-transparent border-0"
+                title="Exit (run keeps going — resume from Now)"
+              >
+                <X size={16} />
+              </button>
             </div>
           </div>
-          {/* Queued / not-synced indicator (Batch 16.2) — the field
-              surface is exactly where offline capture happens, so it
-              gets the loudest placement. */}
-          <OutboxIndicator />
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={async () => {
-                const ok = window.confirm(
-                  "Cancel this run? Chores stay as ticked but the run is " +
-                  "marked canceled instead of done."
-                );
-                if (!ok) return;
-                const result = await onCancelRun();
-                if (result && !result.ended) {
-                  setWaitingOn(result.waitingOn);
-                }
-              }}
-              className="text-muted hover:text-warn p-2 cursor-pointer bg-transparent border-0 text-[10px] uppercase tracking-[0.12em] font-semibold"
-              title="Cancel this run"
-            >
-              Cancel
-            </button>
-            {/* Finish: "I'm done" — ends the run outright when solo;
-                with others still in the run, it waits for them. Chores
-                left unchecked simply read as overdue afterward. */}
-            <button
-              onClick={async () => {
-                const result = await onFinishRun();
-                if (result && !result.ended) {
-                  setWaitingOn(result.waitingOn);
-                }
-              }}
-              className="bg-accent text-on-accent border-0 px-3 py-1.5 cursor-pointer text-[10px] uppercase tracking-[0.12em] font-semibold"
-              title="Finish — end this round even if chores are left"
-            >
-              Finish
-            </button>
-            <button
-              onClick={onClose}
-              className="text-muted hover:text-fg p-2 cursor-pointer bg-transparent border-0"
-              title="Exit (run keeps going — resume from Now)"
-            >
-              <X size={16} />
-            </button>
-          </div>
+          {totalCount > 0 && (
+            <div className="mt-2.5 h-1.5 bg-line overflow-hidden">
+              <div
+                className="h-full bg-accent transition-[width] duration-300"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          )}
         </header>
 
         {/* Multi-person: this user has finished, others haven't. */}
@@ -784,6 +894,53 @@ function DoingSurface({
         onLogMortality={logMortality}
         onLogEggCollection={logEggCollection}
       />
+
+      {/* Styled cancel dialog (R4) — in-app, matches the design system
+          and replaces the cyan window.confirm() "Cancel / OK"
+          double-negative. Explicit verbs; the destructive action is the
+          lower-weight secondary. Same cancel semantics as before. */}
+      {showCancelDialog && (
+        <div
+          className="fixed inset-0 z-[160] bg-black/40 flex items-center justify-center p-6"
+          onClick={() => setShowCancelDialog(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface border border-line w-full max-w-[340px] p-5 flex flex-col gap-4"
+          >
+            <div className="flex flex-col gap-2">
+              <h2 className="font-heading text-[19px] font-bold -tracking-[0.02em] text-fg m-0">
+                Cancel this round?
+              </h2>
+              <p className="text-[13px] text-dim leading-relaxed m-0">
+                Your ticked chores stay done — the round itself is marked{" "}
+                <span className="text-fg font-semibold">canceled</span>{" "}
+                instead of finished. You can start a fresh round any time.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setShowCancelDialog(false)}
+                className="bg-accent text-on-accent border-0 px-4 py-3 cursor-pointer text-[12px] uppercase tracking-[0.12em] font-semibold"
+              >
+                Keep going
+              </button>
+              <button
+                onClick={async () => {
+                  setShowCancelDialog(false);
+                  const result = await onCancelRun();
+                  if (result && !result.ended) {
+                    setWaitingOn(result.waitingOn);
+                  }
+                }}
+                className="bg-transparent text-warn border border-line px-4 py-3 cursor-pointer text-[12px] uppercase tracking-[0.12em] font-semibold hover:border-warn"
+              >
+                Cancel round
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -798,45 +955,54 @@ function PlaceSwitcher({
   kindTags, selectedKindTag, onSelectKindTag,
 }) {
   return (
-    <nav className="flex items-center gap-1 px-4 sm:px-6 py-2 border-b border-line bg-surface-alt overflow-x-auto no-scrollbar">
-      {groupMode === "kind" ? (
-        <>
-          <SwitcherChip
-            active={selectedKindTag === null}
-            onClick={() => onSelectKindTag(null)}
-          >
-            All kinds
-          </SwitcherChip>
-          {kindTags.map(tag => (
-            <SwitcherChip
-              key={tag}
-              active={selectedKindTag === tag}
-              onClick={() => onSelectKindTag(tag)}
-            >
-              {kindTagLabel(tag)}
-            </SwitcherChip>
-          ))}
-        </>
-      ) : (
-        <>
-          <SwitcherChip
-            active={selectedPlaceId === null}
-            onClick={() => onSelect(null)}
-          >
-            Everywhere
-          </SwitcherChip>
-          {places.map(p => (
-            <SwitcherChip
-              key={p.id}
-              active={selectedPlaceId === p.id}
-              onClick={() => onSelect(p.id)}
-            >
-              {p.name}
-            </SwitcherChip>
-          ))}
-        </>
-      )}
-      <div className="ml-auto flex items-center pl-3 shrink-0 gap-0">
+    // R8: the chips scroll in their own track with a right-edge fade so
+    // the overflow ("Brooders", "Pastures"…) is discoverable; the
+    // Place/Kind toggle is pinned outside the scroll so the fade never
+    // sits over it.
+    <nav className="flex items-stretch border-b border-line bg-surface-alt">
+      <div className="relative flex-1 min-w-0">
+        <div className="flex items-center gap-1 px-4 sm:px-6 py-2 overflow-x-auto no-scrollbar">
+          {groupMode === "kind" ? (
+            <>
+              <SwitcherChip
+                active={selectedKindTag === null}
+                onClick={() => onSelectKindTag(null)}
+              >
+                All kinds
+              </SwitcherChip>
+              {kindTags.map(tag => (
+                <SwitcherChip
+                  key={tag}
+                  active={selectedKindTag === tag}
+                  onClick={() => onSelectKindTag(tag)}
+                >
+                  {kindTagLabel(tag)}
+                </SwitcherChip>
+              ))}
+            </>
+          ) : (
+            <>
+              <SwitcherChip
+                active={selectedPlaceId === null}
+                onClick={() => onSelect(null)}
+              >
+                Everywhere
+              </SwitcherChip>
+              {places.map(p => (
+                <SwitcherChip
+                  key={p.id}
+                  active={selectedPlaceId === p.id}
+                  onClick={() => onSelect(p.id)}
+                >
+                  {p.name}
+                </SwitcherChip>
+              ))}
+            </>
+          )}
+        </div>
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-surface-alt to-transparent" />
+      </div>
+      <div className="flex items-center pl-2 pr-4 sm:pr-6 shrink-0 gap-0 border-l border-line">
         <GroupModeButton
           active={groupMode === "place"}
           onClick={() => onChangeGroupMode("place")}
@@ -1117,15 +1283,17 @@ function AllDoneButton({ obligations, completions, className = "" }) {
       onClick={onClick}
       disabled={pending}
       className={
-        "inline-flex items-center font-[inherit] text-[10px] " +
+        "inline-flex items-center gap-1 font-[inherit] text-[10px] " +
         "font-semibold uppercase tracking-[0.12em] px-2 py-1 cursor-pointer " +
         "border border-line bg-transparent text-dim leading-none " +
+        "whitespace-nowrap " +
         "hover:border-fg hover:text-fg transition-colors duration-100 " +
         "disabled:opacity-50 disabled:cursor-not-allowed " + className
       }
       title="Mark every chore in this group done"
     >
-      All taken care of
+      <Check size={11} className="shrink-0" />
+      Mark all done
     </button>
   );
 }
