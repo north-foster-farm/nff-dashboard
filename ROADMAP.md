@@ -2862,7 +2862,7 @@ follow-up `--apply` insert.
 
 **Deferred:** the 6 manual-landmark post-return chores (no engine
 support yet); the F69 `batch-clean-brooders` trigger reconciliation;
-the F85 `process_steps.kind='task'` rename; migration 0030 (the
+the F85 `process_steps.kind='task'` rename; migration 0031 (the
 rename-proof `chore_blocks.slug` + a `chore_checklist_items` table)
 is authored but not pushed — unneeded for the cutover. Phase D hard-
 delete of the retired defs + disposable history waits on James's
@@ -3439,8 +3439,15 @@ versioned capture).
   run-lifecycle read/write paths (useChoreRuns, useRunHistory, outbox,
   the notify-run-done push function). Row-count parity verified in prod
   (10 → 10).
-- **41.2+ →** capture substrate, derive-the-draft engine, the accordion
-  Today + confirm (MVP), then search / non-work-time / man-down /
+- **41.2 — versioned-capture substrate. ✅ SHIPPED `v0.10.43-alpha`
+  (2026-06-24).** The reusable durable-record layer: `capture_schemas` +
+  `captures` + the `record_capture` RPC (server-validated by
+  `pg_jsonschema`), client-side `ajv` validation + an upcaster harness in
+  `src/lib/capture/`, and the first schema `schedule.confirmed_day` v1.
+  Migration 0030 (additive; an in-migration sanity block proves
+  `pg_jsonschema` on push). Metrics/KPI schemas fold in later.
+- **41.3+ →** the derive-the-draft engine (S3), the accordion Today +
+  confirm (S4–S5 = MVP), then search / non-work-time / man-down /
   week-silhouette / reminders / drift (S6–S11).
 
 ---

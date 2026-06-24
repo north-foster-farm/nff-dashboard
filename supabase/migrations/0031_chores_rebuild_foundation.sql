@@ -1,4 +1,4 @@
--- 0030_chores_rebuild_foundation.sql
+-- 0031_chores_rebuild_foundation.sql
 -- Phase A of the chores rebuild (spec: .ignored/nff-chores-spec.md,
 -- plan: .ignored/chores-rebuild-reconciliation.md). Purely ADDITIVE —
 -- no drops, no truncates, no data deletes. Two foundation pieces the

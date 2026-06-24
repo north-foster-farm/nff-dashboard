@@ -270,6 +270,24 @@ async function execRunEvent(p) {
   return data;
 }
 
+// Versioned capture (Schedule S2) via the record_capture SECURITY DEFINER
+// RPC — re-validated server-side by pg_jsonschema, append-only, idempotent
+// on the client-generated id.
+async function execCaptureInsert(p) {
+  const { data, error } = await supabase.rpc("record_capture", {
+    p_id: p.id,
+    p_schema_id: p.schemaId,
+    p_schema_version: p.schemaVersion,
+    p_captured_on: p.capturedOn,
+    p_doc: p.doc,
+    p_subject_type: p.subjectType ?? null,
+    p_subject_id: p.subjectId ?? null,
+    p_supersedes: p.supersedes ?? null,
+  });
+  if (error) throw asError(error);
+  return { captureId: data };
+}
+
 // ADDITIVE mortality merge: read the cohort count at sync time and
 // subtract the op's delta — never write an absolute count captured
 // when the op was queued. Two offline phones each logging "1 dead"
@@ -478,6 +496,7 @@ const EXECUTORS = {
   run_resume: execRunResume,
   run_cancel: execRunCancel,
   run_delete: execRunDelete,
+  capture_insert: execCaptureInsert,
 };
 
 // ── Queue state + subscriptions ─────────────────────────────────────

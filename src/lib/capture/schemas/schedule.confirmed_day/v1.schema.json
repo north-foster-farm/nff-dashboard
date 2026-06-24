@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schedule.confirmed_day/v1",
+  "title": "Confirmed day (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["date", "confirmed_by", "confirmed_at", "blocks"],
+  "properties": {
+    "date": { "type": "string" },
+    "confirmed_by": { "type": "string" },
+    "confirmed_at": { "type": "string" },
+    "people": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "planned_start": { "type": ["string", "null"] },
+          "actual_start": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["block_id", "label"],
+        "properties": {
+          "block_id": { "type": "string" },
+          "label": { "type": "string" },
+          "planned_start": { "type": ["string", "null"] },
+          "planned_end": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "shoulds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "label", "outcome"],
+        "properties": {
+          "ref": { "type": "string" },
+          "label": { "type": "string" },
+          "outcome": { "type": "string", "enum": ["pulled", "deferred"] },
+          "reason": { "type": ["string", "null"] },
+          "hard_deadline": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_type", "label"],
+        "properties": {
+          "source_type": { "type": "string" },
+          "source_ref": {},
+          "label": { "type": "string" },
+          "block_id": { "type": ["string", "null"] },
+          "clock_time": { "type": ["string", "null"] },
+          "assignee": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}
