@@ -2862,7 +2862,7 @@ follow-up `--apply` insert.
 
 **Deferred:** the 6 manual-landmark post-return chores (no engine
 support yet); the F69 `batch-clean-brooders` trigger reconciliation;
-the F85 `process_steps.kind='task'` rename; migration 0031 (the
+the F85 `process_steps.kind='task'` rename; migration 0032 (the
 rename-proof `chore_blocks.slug` + a `chore_checklist_items` table)
 is authored but not pushed — unneeded for the cutover. Phase D hard-
 delete of the retired defs + disposable history waits on James's
@@ -3469,13 +3469,24 @@ versioned capture).
   Freed the name: the old events surface became **Calendar** (`/calendar`);
   the new accordion owns **Schedule** (`/schedule`). Phone-first, DRAFT-only
   (a static "Draft" pill). Verified live by James.
-- **41.5 — confirm (S5 = MVP).** One-tap whole-day Confirm writing a
-  `schedule.confirmed_day` capture (via the 41.2 substrate), draft↔confirmed
-  states, the source-changed-after-confirm ribbon. Closes the MVP.
+- **41.5 — confirm (S5). ✅ SHIPPED `v0.10.46-alpha` (2026-06-24) — THE MVP
+  IS COMPLETE (S1–S5).** One-tap whole-day "Confirm today · N blocks · M
+  chores" → builds the frozen planned shape (date / confirmed_by /
+  confirmed_at / blocks / entries — reference + labels only) and writes a
+  `schedule.confirmed_day` capture via the 41.2 substrate (client ajv +
+  server pg_jsonschema, rides the outbox); flips to a green ✓ Confirmed
+  pill; `readCaptures` on load restores the confirmed state (persists across
+  reload/device, newest snapshot wins); a source-changed-after-confirm
+  ribbon (diffs the live chore set vs the snapshot, surfaced not applied).
+  Verified live by James end-to-end (confirm → capture lands in prod →
+  persists on reload). Includes migration `0031` — a hotfix stripping the
+  `$schema`/`$id` metadata from the confirmed_day schema that pg_jsonschema
+  (XX000) couldn't validate; semantics unchanged.
 - **41.6+ →** search-to-add / non-work-time / man-down / desktop week
-  + load-silhouette / reminders / drift (S6–S11). Deferred from 41.4: the
-  desktop day-rail, per-person start-time line, the seal worked-window
-  stamp, the should→must box (S8).
+  + load-silhouette / reminders / drift (S6–S11). Deferred: the desktop
+  day-rail, per-person start-time line, the seal worked-window stamp, the
+  should→must box (S8); and the DB cleanup (drop the dead `timeline_items`
+  view + orphaned `chore_runs`).
 
 ---
 

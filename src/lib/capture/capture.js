@@ -50,7 +50,11 @@ export async function readCaptures(schemaId, filter = {}) {
   if (subjectId) q = q.eq("subject_id", subjectId);
   if (fromDate) q = q.gte("captured_on", fromDate);
   if (toDate) q = q.lte("captured_on", toDate);
-  q = q.order("captured_on", { ascending: false });
+  // captured_on first (the business day), then captured_at so that among
+  // several captures for the SAME day the newest is row 0 (a re-confirm
+  // supersedes the earlier snapshot on read).
+  q = q.order("captured_on", { ascending: false })
+    .order("captured_at", { ascending: false });
 
   const { data, error } = await q;
   if (error) throw error;

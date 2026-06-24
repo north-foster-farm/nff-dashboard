@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import { ChevronRight, ArrowDownToLine, ListChecks } from "lucide-react";
+import { ChevronRight, ArrowDownToLine, ListChecks, Check } from "lucide-react";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
@@ -11,6 +11,9 @@ import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { navigate } from "../lib/router.js";
+import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
+import { recordCapture, readCaptures } from "../lib/capture/capture.js";
+import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
 // The Schedule — S4 of the Schedule feature. The phone-first, single-open
 // accordion of the day's chore BLOCKS: exactly one block expanded (the one
@@ -31,6 +34,14 @@ const REDUCED_MOTION =
 function minutesNow() {
   const d = new Date();
   return d.getHours() * 60 + d.getMinutes();
+}
+
+// Local YYYY-MM-DD (not UTC) — the capture's business day.
+function ymdLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 // Sort key: real blocks by resolved start time, the block-less "anytime"
@@ -138,6 +149,92 @@ export default function Schedule({ data }) {
     });
   };
 
+  // ── Confirm (S5) — the day's commitment, written as a versioned
+  // schedule.confirmed_day capture (the S2 substrate). ───────────────
+  const email = useCurrentUserEmail();
+  const dateISO = useMemo(() => ymdLocal(today), [today]);
+
+  // The confirmed snapshot for today, if any. null = a draft. A
+  // just-confirmed day sets this optimistically; cross-device truth
+  // arrives from the captures read on load.
+  const [confirmedDoc, setConfirmedDoc] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    readCaptures("schedule.confirmed_day", {
+      subjectType: "schedule_day", subjectId: dateISO,
+    }).then((rows) => {
+      if (!cancelled && rows.length) setConfirmedDoc(rows[0].doc);
+    }).catch(() => { /* offline / unauth — stays a draft */ });
+    return () => { cancelled = true; };
+  }, [dateISO]);
+
+  const totalChores = useMemo(
+    () => counts.reduce((s, c) => s + c.total, 0), [counts]);
+
+  // The frozen planned shape (schedule.confirmed_day v1). Reference +
+  // labels only — never a copy of source content.
+  const buildConfirmedDoc = () => ({
+    date: dateISO,
+    confirmed_by: email ?? "unknown",
+    confirmed_at: new Date().toISOString(),
+    blocks: orderedBlocks.filter((b) => b.block).map((b) => ({
+      block_id: b.bucket,
+      label: b.block.name,
+      planned_start: b.startMin != null ? formatMinutesOfDay(b.startMin) : null,
+      planned_end: null,
+    })),
+    entries: blockRows.flatMap((b) => b.rows.map((row) => ({
+      source_type: "chore",
+      label: row.chore.title,
+      block_id: b.block ? b.bucket : null,
+      clock_time: null,
+      assignee: null,
+      source_ref: { chore_id: row.chore.id, place_id: row.placeId ?? null },
+    }))),
+  });
+
+  const confirmDay = async () => {
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      const doc = buildConfirmedDoc();
+      // Validates client-side (ajv) + server-side (pg_jsonschema), rides
+      // the outbox. Throws on an invalid doc.
+      recordCapture("schedule.confirmed_day", doc, {
+        capturedOn: dateISO, subjectType: "schedule_day", subjectId: dateISO,
+      });
+      setConfirmedDoc(doc);
+    } catch (e) {
+      console.error("[schedule] confirm failed", e);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  // Source-changed-after-confirm: today's chores vs the confirmed
+  // snapshot. Surfaced, never auto-applied.
+  const changes = useMemo(() => {
+    if (!confirmedDoc) return null;
+    const keyOf = (sr) => `${sr?.chore_id ?? ""}|${sr?.place_id ?? ""}`;
+    const confirmedKeys = new Set(
+      (confirmedDoc.entries ?? []).map((e) => keyOf(e.source_ref)));
+    const currentKeys = new Set();
+    const added = [];
+    for (const b of blockRows) {
+      for (const row of b.rows) {
+        const k = `${row.chore.id}|${row.placeId ?? ""}`;
+        currentKeys.add(k);
+        if (!confirmedKeys.has(k)) added.push(row.chore.title);
+      }
+    }
+    const removed = (confirmedDoc.entries ?? [])
+      .filter((e) => !currentKeys.has(keyOf(e.source_ref)))
+      .map((e) => e.label);
+    const total = added.length + removed.length;
+    return total ? { total, added, removed } : null;
+  }, [confirmedDoc, blockRows]);
+
   const loading =
     blocksLoading || sitesLoading || completions.loading;
 
@@ -149,10 +246,41 @@ export default function Schedule({ data }) {
     <div className="max-w-2xl mx-auto pb-24">
       <PageHeader title="Schedule" subtitle={dateLabel} />
 
+      {/* Source-changed-after-confirm ribbon — informs, never auto-applies. */}
+      {changes && (
+        <div className="px-3 py-2 mb-3 border border-warn text-[12px] text-warn">
+          <span className="font-semibold">
+            {changes.total} change{changes.total === 1 ? "" : "s"} since you confirmed
+          </span>
+          <span className="text-dim ml-2">
+            {[
+              ...changes.added.map((t) => "+ " + t),
+              ...changes.removed.map((t) => "− " + t),
+            ].slice(0, 4).join(" · ")}
+          </span>
+        </div>
+      )}
+
       <div className="px-1 mb-3 flex items-center gap-2">
-        <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-dim border border-line px-2 py-0.5">
-          Draft
-        </span>
+        {confirmedDoc ? (
+          <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-resolved border border-resolved px-2 py-0.5 inline-flex items-center gap-1">
+            <Check size={12} strokeWidth={3} /> Confirmed
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={confirmDay}
+            disabled={confirming || loading || blockRows.length === 0}
+            className="text-[12px] font-medium px-3 py-1 bg-accent text-on-accent disabled:opacity-50"
+          >
+            Confirm today
+            {totalChores > 0 && (
+              <span className="opacity-80">
+                {" "}· {orderedBlocks.filter((b) => b.block).length} blocks · {totalChores} chores
+              </span>
+            )}
+          </button>
+        )}
         <OutboxIndicator />
       </div>
 

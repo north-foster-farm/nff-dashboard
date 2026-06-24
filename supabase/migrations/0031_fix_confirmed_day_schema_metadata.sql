@@ -1,4 +1,23 @@
-{
+-- 0031_fix_confirmed_day_schema_metadata.sql
+-- Schedule feature — S5 hotfix.
+--
+-- record_capture validates each capture against the stored JSON Schema
+-- with pg_jsonschema. That validator errors internally (XX000) on the
+-- schedule.confirmed_day v1 schema's draft-2020-12 metadata ($schema +
+-- $id) — the S2 in-migration sanity check passed only because it used a
+-- trivial schema without them. The schema uses only draft-agnostic
+-- keywords, so stripping $schema/$id leaves the validation semantics
+-- unchanged. The in-repo source of truth
+-- (src/lib/capture/schemas/schedule.confirmed_day/v1.schema.json) is
+-- updated to match.
+--
+-- First applied as a surgical hotfix to unblock Confirm; this migration
+-- records it for reproducibility (a fresh rebuild gets the stripped
+-- schema). A single-row UPDATE of a schema that had never successfully
+-- validated a doc; idempotent.
+
+update public.capture_schemas
+set json_schema = '{
   "title": "Confirmed day (v1)",
   "type": "object",
   "additionalProperties": false,
@@ -66,4 +85,5 @@
       }
     }
   }
-}
+}'::jsonb
+where schema_id = 'schedule.confirmed_day' and version = 1;
