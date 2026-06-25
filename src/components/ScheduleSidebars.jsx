@@ -1,42 +1,227 @@
-// Desktop-only Schedule sidebars (S9). The day-rail spine pins the whole
-// day's shape beside the accordion; the week list shows seven days as
-// fullness silhouettes (bar height = item count). Both are hidden on phone
-// (the accordion is the whole surface there) and appear at lg+.
+import { LayoutList, AlertTriangle } from "lucide-react";
+import { blockIcon } from "./BlockBadge.jsx";
+import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
-// Scale an item count to a bar size in px, between min and max.
+// Schedule navigators (Design Bracket 2 — the day-spine + accordion rework).
+// The day is navigated by its SHAPE: a load-spine (desktop, vertical) / a
+// day-strip (phone, horizontal) is the primary control; selecting a segment
+// drives the center to that one block (master-detail). Both read as a labelled
+// TIME AXIS — each segment carries the block's sun-position glyph + start time,
+// over a faint dawn->night wash — so tapping reads as "pick a time of day,"
+// not "poke a box."
+//
+// Two coordinated markers everywhere a "current vs chosen" split exists:
+//   the CLOCK's pick gets a RING (now);  YOUR pick gets a FILL (focus/selected).
+// Same rule on the spine, the strip, and the week pane (today=ring, viewed=fill).
+
+// The day's light as a token wash: dawn warm -> midday neutral -> night cool.
+const WASH_V = "linear-gradient(180deg,rgba(230,184,90,0.085) 0%,"
+  + "rgba(173,200,173,0.04) 40%,rgba(120,140,175,0.04) 72%,"
+  + "rgba(70,92,135,0.11) 100%)";
+const WASH_H = "linear-gradient(90deg,rgba(230,184,90,0.11) 0%,"
+  + "rgba(173,200,173,0.05) 40%,rgba(120,140,175,0.05) 72%,"
+  + "rgba(70,92,135,0.14) 100%)";
+
+// Scale an item count to a bar size in px, between min and min+span.
 function barSize(count, max, min, span) {
   if (!count) return min;
   return Math.round(min + (count / Math.max(1, max)) * span);
 }
 
-// The thin left spine: one bar per block, tallest = heaviest, warn-tinted
-// when the block has a man-down, accent for the block "now" is in.
-export function DayRailSpine({ blocks, nowBucket }) {
+// Compact clock label ("6a", "8:30a", "1p") — the time axis.
+function compactTime(min) {
+  if (min == null) return "";
+  return formatMinutesOfDay(min).replace(":00", "");
+}
+
+// ── Desktop load-spine (the primary navigator) ──────────────────────────
+export function DayRailSpine({
+  blocks, focus, nowBucket, onPick, onWholeDay, totalItems,
+}) {
   const max = blocks.reduce((m, b) => Math.max(m, b.count), 1);
+  const overview = focus == null;
   return (
-    <div className="hidden lg:flex flex-col items-center gap-1 border-r border-line py-5 px-2 bg-surface">
-      <div className="text-[9px] font-ui uppercase tracking-[0.14em] text-faint mb-1">
-        Day
+    <div className="hidden lg:flex flex-col w-[180px] shrink-0 border-r border-line bg-surface relative">
+      <div className="absolute inset-0 pointer-events-none z-0"
+        style={{ background: WASH_V }} />
+      <div className="relative z-[1] eyebrow text-[9px] text-faint px-3 pt-4 pb-2">
+        Day · sunrise → night
       </div>
-      {blocks.map((b) => (
-        <div
-          key={b.bucket}
-          title={`${b.name} · ${b.count}`}
-          style={{ height: barSize(b.count, max, 6, 34) + "px" }}
-          className={
-            "w-7 rounded-sm " +
-            (b.hasManDown ? "bg-warn"
-              : b.bucket === nowBucket ? "bg-accent"
-              : b.allDone ? "bg-resolved/40" : "bg-line")
-          }
-        />
-      ))}
+      {/* Whole-day overview affordance — the explicit way back to the agenda. */}
+      <button
+        type="button"
+        onClick={onWholeDay}
+        title="Show the whole day (overview)"
+        className={
+          "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2.5 text-left "
+          + "border-b border-line cursor-pointer transition-colors "
+          + (overview ? "bg-row-active text-fg" : "text-dim hover:bg-row-hover hover:text-fg")
+        }
+      >
+        <LayoutList size={16}
+          className={"shrink-0 " + (overview ? "text-accent" : "")} />
+        <span className="flex-1 min-w-0 leading-tight">
+          <span className="block text-[13px] font-medium">Whole day</span>
+          <span className="block text-[10px] text-faint">
+            overview · {totalItems} items
+          </span>
+        </span>
+        {overview && (
+          <span className="eyebrow text-[9px] text-accent">open</span>
+        )}
+      </button>
+
+      {blocks.map((b) => {
+        const isNow = b.bucket === nowBucket;
+        const isFocus = b.bucket === focus;
+        const Icon = blockIcon(b.block);
+        const h = barSize(b.count, max, 16, 34);
+        const fillH = b.count ? Math.round(h * (b.done / b.count)) : 0;
+        return (
+          <button
+            key={b.bucket}
+            type="button"
+            onClick={() => onPick(b.bucket)}
+            title={`${b.name} · ${b.done}/${b.count}`}
+            className={
+              "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 text-left "
+              + "min-h-[52px] border-b border-[color:var(--surface-alt)] cursor-pointer "
+              + "transition-colors "
+              + (isFocus ? "bg-row-active" : "hover:bg-row-hover")
+              + (b.allDone ? " opacity-55" : "")
+            }
+          >
+            {/* the gauge: height = load, fill rises with done; ring = now */}
+            <span
+              className="relative shrink-0 w-[16px] flex flex-col-reverse"
+              style={{
+                height: h + "px",
+                background: "var(--surface-alt)",
+                boxShadow: isNow
+                  ? "0 0 0 2px var(--resolved)"
+                  : "inset 0 0 0 1px #2a322a",
+              }}
+            >
+              <span style={{ height: fillH + "px", background: "var(--resolved)" }} />
+            </span>
+            <Icon
+              size={15}
+              className={"shrink-0 "
+                + (isFocus ? "text-accent" : isNow ? "text-warn" : "text-faint")}
+            />
+            <span className="flex-1 min-w-0">
+              <span className={
+                "block text-[13px] truncate "
+                + (isFocus ? "font-semibold text-fg" : "text-fg")
+              }>
+                {b.name}
+              </span>
+              <span className="block text-[10px] text-faint [font-variant-numeric:tabular-nums]">
+                {compactTime(b.startMin)}{isNow ? " · now" : ""}
+              </span>
+            </span>
+            {b.hasManDown && (
+              <AlertTriangle size={13} className="shrink-0 text-warn" />
+            )}
+            {isFocus && (
+              <span className="absolute right-0 top-0 bottom-0 w-[2px] bg-accent" />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-// The right week list: a day-list of silhouettes (not a 7-column grid).
-export function WeekList({ week, todayISO, ymd, onPickDay }) {
+// ── Phone day-strip (the navigable time axis — James's tweak) ───────────
+export function DayStrip({
+  blocks, focus, nowBucket, onPick, onWholeDay,
+}) {
+  const max = blocks.reduce((m, b) => Math.max(m, b.count), 1);
+  const overview = focus == null;
+  return (
+    <div className="lg:hidden border-b border-line bg-surface">
+      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+        <span className="eyebrow text-[10px] text-faint">Day · tap a time</span>
+        <button
+          type="button"
+          onClick={onWholeDay}
+          className={
+            "inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 "
+            + "border cursor-pointer transition-colors "
+            + (overview
+              ? "border-accent-deep bg-[color:var(--row-active)] text-accent"
+              : "border-line text-muted hover:text-dim")
+          }
+        >
+          <LayoutList size={12} /> Whole day
+        </button>
+      </div>
+      <div className="relative px-4 pb-2">
+        <div className="absolute left-4 right-4 top-0 bottom-[34px] pointer-events-none z-0"
+          style={{ background: WASH_H }} />
+        <div className="relative z-[1] flex items-end gap-1.5 border-b border-line">
+          {blocks.map((b) => {
+            const isNow = b.bucket === nowBucket;
+            const isFocus = b.bucket === focus;
+            const Icon = blockIcon(b.block);
+            const h = barSize(b.count, max, 14, 40);
+            const fillH = b.count ? Math.round(h * (b.done / b.count)) : 0;
+            return (
+              <button
+                key={b.bucket}
+                type="button"
+                onClick={() => onPick(b.bucket)}
+                title={`${b.name} · ${b.done}/${b.count}`}
+                className={
+                  "flex-1 min-w-0 flex flex-col items-center cursor-pointer "
+                  + (b.allDone ? "opacity-60" : "")
+                }
+              >
+                <span className="relative w-full h-[56px] flex items-end justify-center">
+                  {b.hasManDown && (
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-warn"
+                      style={{ boxShadow: "0 0 0 2px var(--bg)" }} />
+                  )}
+                  <span
+                    className="relative w-full flex flex-col-reverse"
+                    style={{
+                      height: h + "px",
+                      background: "var(--surface-alt)",
+                      boxShadow: isNow
+                        ? "0 0 0 2px var(--resolved)"
+                        : isFocus
+                          ? "inset 0 0 0 1px var(--accent)"
+                          : "inset 0 0 0 1px #2a322a",
+                    }}
+                  >
+                    <span style={{ height: fillH + "px", background: "var(--resolved)" }} />
+                  </span>
+                </span>
+                <Icon size={14}
+                  className={"mt-1.5 " + (isNow ? "text-resolved" : "text-faint")} />
+                <span className={
+                  "mt-0.5 pb-0.5 text-[10.5px] [font-variant-numeric:tabular-nums] "
+                  + "border-b-2 transition-colors "
+                  + (isFocus
+                    ? "text-accent font-bold border-accent"
+                    : isNow
+                      ? "text-resolved font-bold border-transparent"
+                      : "text-faint border-transparent")
+                }>
+                  {compactTime(b.startMin)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Week pane: today = ring, viewed = fill (the dual-marker graft) ──────
+export function WeekList({ week, todayISO, selectedISO, ymd, onPickDay }) {
   return (
     <div className="hidden lg:block border-l border-line py-5 px-4 bg-surface w-[300px]">
       <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.16em] text-faint mb-4">
@@ -46,19 +231,21 @@ export function WeekList({ week, todayISO, ymd, onPickDay }) {
         {week.days.map((day) => {
           const iso = ymd(day.date);
           const isToday = iso === todayISO;
+          const isSel = iso === selectedISO;
           return (
             <button
               key={iso}
               type="button"
               onClick={() => onPickDay?.(day.date)}
               className={
-                "w-full flex items-center gap-3 px-2 py-2 text-left rounded-sm " +
-                (isToday ? "bg-row-active" : "hover:bg-row-hover")
+                "w-full flex items-center gap-3 px-2 py-2 text-left border cursor-pointer "
+                + (isSel ? "bg-row-active " : "hover:bg-row-hover ")
+                + (isToday ? "border-resolved" : "border-transparent")
               }
             >
               <span className={
-                "w-12 shrink-0 text-[12px] [font-variant-numeric:tabular-nums] " +
-                (isToday ? "font-semibold text-fg" : "text-dim")
+                "w-12 shrink-0 text-[12px] [font-variant-numeric:tabular-nums] "
+                + (isSel ? "font-semibold text-fg" : "text-dim")
               }>
                 {day.date.toLocaleDateString("en-US", {
                   weekday: "short",
@@ -72,21 +259,33 @@ export function WeekList({ week, todayISO, ymd, onPickDay }) {
                     title={`${b.name} · ${b.count}`}
                     style={{ height: barSize(b.count, week.max, 3, 25) + "px" }}
                     className={
-                      "flex-1 min-w-[3px] rounded-sm " +
-                      (b.count ? "bg-accent/70" : "bg-line")
+                      "flex-1 min-w-[3px] "
+                      + (b.count ? "bg-accent/70" : "bg-line")
                     }
                   />
                 ))}
               </span>
-              <span className="w-6 shrink-0 text-right text-[11px] text-faint [font-variant-numeric:tabular-nums]">
+              <span className="w-10 shrink-0 text-right text-[11px] text-faint [font-variant-numeric:tabular-nums] inline-flex items-center justify-end gap-1">
+                {isToday && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-resolved"
+                    title="Today" />
+                )}
                 {day.total}
               </span>
             </button>
           );
         })}
       </div>
-      <div className="mt-5 pt-4 border-t border-line text-[11px] text-faint font-ui">
-        Taller bar = heavier block. Tap a day to open it.
+      <div className="mt-5 pt-4 border-t border-line text-[11px] text-faint font-ui space-y-1">
+        <div>Taller bar = heavier block. Tap a day to open it.</div>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1">
+            <span className="w-3 h-3 border border-resolved inline-block" /> today
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-3 h-3 bg-[color:var(--row-active)] inline-block" /> viewing
+          </span>
+        </div>
       </div>
     </div>
   );

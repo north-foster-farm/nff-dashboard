@@ -5,6 +5,16 @@
    write `dark:bg-foo` etc. and have it activate when data-theme="dark". */
 @custom-variant dark (&:where(html[data-theme="dark"], html[data-theme="dark"] *));
 
+/* Tailwind v4's preflight no longer sets `cursor: pointer` on <button>, so
+   clickable controls (the chore-row ellipses, icon buttons, etc.) read as
+   non-interactive. Restore it app-wide for enabled buttons + role=button. */
+@layer base {
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
 /*
   Design tokens. Each token resolves to a CSS custom property defined in
   index.html, where the [data-theme="dark|light"] selector swaps palettes.

@@ -103,7 +103,7 @@ export default function ChoreCheckRow({
             <button
               type="button"
               onClick={() => setShowHist((s) => !s)}
-              className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1 hover:text-fg"
+              className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1 hover:text-fg cursor-pointer"
             >
               edited
             </button>
@@ -134,7 +134,7 @@ export default function ChoreCheckRow({
         <button
           type="button"
           onClick={onEdit}
-          className="shrink-0 text-faint hover:text-fg"
+          className="shrink-0 text-faint hover:text-fg cursor-pointer"
           aria-label="Edit this item"
         >
           <MoreHorizontal size={16} />
@@ -144,7 +144,7 @@ export default function ChoreCheckRow({
         <button
           type="button"
           onClick={onRemove}
-          className="shrink-0 text-faint hover:text-warn"
+          className="shrink-0 text-faint hover:text-warn cursor-pointer"
           aria-label="Remove from today"
         >
           <X size={16} />

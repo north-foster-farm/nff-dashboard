@@ -3607,8 +3607,32 @@ versioned capture).
   (lands in "anytime" today; movable via the edit sheet), the event
   buffer/equipment checklist, and the richer should→must box.
   **This re-completes every screen in the minimalist mockup.**
-- **41.15+ →** reminders (S10) / looking-back + drift (S11). Deferred: the
-  DB cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
+- **41.15 — day-spine + accordion rework (Design Bracket 2). AUTHORED
+  `v0.10.56-alpha` (2026-06-25); pure frontend.** After James's live test of
+  the desktop Schedule, a focused Design Bracket (3 stances → coded
+  head-to-head → the Design, `the-design2.md`) reworked the interaction model.
+  Winner = **Rethinker master-detail** + grafts. The single-open accordion is
+  replaced by a **master-detail** surface: the center renders exactly ONE
+  thing — the focused block's checklist, an event's panel, or (nothing
+  focused) the **whole-day overview agenda** — so you never scroll past an
+  open block to reach the next (the founding complaint). New `focus` model
+  (`focusSel`: null=follow-now / "overview" / a bucket); picking the open
+  block collapses to the overview (closable). The **spine is now the
+  navigator**: `DayRailSpine` (desktop) + new `DayStrip` (phone) are clickable
+  load gauges that read as a **time axis** — each segment carries the block's
+  sun-position glyph + start time over a dawn→night wash (James's tweak: no
+  blank boxes; "tap a time of day"). A **ring/fill dual-marker** (clock's
+  pick = ring/now, your pick = fill/focus) runs on the spine, the strip, and
+  the **week pane** (today = ring, viewed day = fill + a today dot). An
+  explicit **"Whole day"** affordance returns to the overview; seal→advance
+  now drives `focus`; the man-down leak + Cover render on the overview row and
+  the detail. Plus a global `@layer base` rule restoring `cursor: pointer` on
+  enabled buttons (Tailwind v4 dropped it) — fixes the row ellipses + every
+  icon button. Deferred: per-person split load lanes (single-lane first),
+  wiring the Week/Month tabs (next), event markers on the axis.
+- **41.16+ →** Week/Month center views + tab wiring · reminders (S10) ·
+  looking-back + drift (S11). Deferred: the DB cleanup (drop the dead
+  `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

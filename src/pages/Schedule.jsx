@@ -30,7 +30,7 @@ import ScheduleEditSheet from "../components/ScheduleEditSheet.jsx";
 import ReservationSheet from "../components/ReservationSheet.jsx";
 import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
-import { DayRailSpine, WeekList } from "../components/ScheduleSidebars.jsx";
+import { DayRailSpine, DayStrip, WeekList } from "../components/ScheduleSidebars.jsx";
 import { weekFullness } from "../lib/schedule/weekView.js";
 import { isActiveProject } from "../lib/projects.js";
 import BlockBadge from "../components/BlockBadge.jsx";
@@ -254,7 +254,7 @@ function AdHocRow({
             <button
               type="button"
               onClick={() => setShowHist((s) => !s)}
-              className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1 hover:text-fg"
+              className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1 hover:text-fg cursor-pointer"
             >
               edited
             </button>
@@ -274,7 +274,7 @@ function AdHocRow({
         <button
           type="button"
           onClick={onEdit}
-          className="shrink-0 text-faint hover:text-fg"
+          className="shrink-0 text-faint hover:text-fg cursor-pointer"
           aria-label="Edit this task"
         >
           <MoreHorizontal size={16} />
@@ -283,7 +283,7 @@ function AdHocRow({
       <button
         type="button"
         onClick={() => onRemove(commitment.id)}
-        className="shrink-0 text-faint hover:text-warn"
+        className="shrink-0 text-faint hover:text-warn cursor-pointer"
         aria-label="Remove task"
       >
         <X size={16} />
@@ -597,11 +597,16 @@ export default function Schedule({ data }) {
     [blockRows, nowMin],
   );
 
-  // Desktop day-rail spine (S9) — one entry per block of the viewed day.
+  // The day-spine / phone-strip segments — one per chore block of the viewed
+  // day, carrying the load (count), done, time, and the man-down flag so the
+  // navigator reads as a labelled time axis (Design Bracket 2).
   const spineBlocks = useMemo(() => blockRows.map((b, i) => ({
     bucket: b.bucket,
     name: b.block?.name ?? "Anytime",
+    block: b.block,
+    startMin: b.startMin,
     count: b.rows.length,
+    done: counts[i].done,
     allDone: counts[i].total > 0 && counts[i].done === counts[i].total,
     hasManDown: b.rows.some((r) => manDown.has(r.key)),
   })), [blockRows, counts, manDown]);
@@ -610,53 +615,53 @@ export default function Schedule({ data }) {
   const week = useMemo(
     () => weekFullness(data, today, ruleOpts), [data, today, ruleOpts]);
 
-  // Single-open accordion. `openBucket` is the user's explicit pick;
-  // until they tap, the open block follows "now".
-  const [openBucket, setOpenBucket] = useState(null);
-  const open = openBucket ?? nowBucket;
-  const openRef = useRef(null);
+  // Master-detail focus (Design Bracket 2). The day is navigated by its shape
+  // (the spine / phone strip); the center renders exactly ONE block, or the
+  // whole-day overview agenda. `focusSel`: null = follow "now", "overview" =
+  // the agenda, or a bucket id. `focus` is the resolved open block (null =
+  // overview) — this dissolves the "scroll past the open block" problem.
+  const [focusSel, setFocusSel] = useState(null);
+  const focus = focusSel === null
+    ? nowBucket
+    : focusSel === "overview" ? null : focusSel;
+  const focusRef = useRef(null);
 
-  // Jump-to-now appears only once the open block scrolls out of view (the
-  // mockup's behaviour) — until then there's nothing to jump back to.
-  const [showJump, setShowJump] = useState(false);
-  useEffect(() => {
-    const el = openRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setShowJump(false);
-      return;
-    }
-    const io = new IntersectionObserver(
-      ([e]) => setShowJump(!e.isIntersecting), { threshold: 0 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [open, timeline.length]);
+  // Picking the already-open block collapses to the overview (closable);
+  // picking another opens it.
+  const pickBlock = (bucket) => setFocusSel((cur) => {
+    const resolved = cur === null ? nowBucket : cur === "overview" ? null : cur;
+    return resolved === bucket ? "overview" : bucket;
+  });
+  const showOverview = () => setFocusSel("overview");
 
-  // tick -> seal: when the open block flips to fully done, advance to the
-  // next not-yet-done block (forward focus). Fires only on the transition,
-  // so manually reopening a finished block doesn't bounce away.
+  // The "Now" affordance is offered only when you're not already on the now
+  // block (in the overview, or browsing a later block).
+  const showJump = focus !== nowBucket;
+  const jumpToNow = () => {
+    setFocusSel(null);
+    focusRef.current?.scrollIntoView?.({
+      behavior: REDUCED_MOTION ? "auto" : "smooth", block: "center",
+    });
+  };
+
+  // tick -> seal: when the focused block flips to fully done, advance focus to
+  // the next not-yet-done block (forward focus). Fires only on the transition.
   const sealRef = useRef(null);
   useEffect(() => {
-    const i = blockRows.findIndex((b) => b.bucket === open);
+    if (focus == null) { sealRef.current = null; return; }
+    const i = blockRows.findIndex((b) => b.bucket === focus);
     if (i < 0) { sealRef.current = null; return; }
     const c = counts[i];
     const isComplete = c.total > 0 && c.done === c.total;
-    const wasComplete = sealRef.current?.bucket === open && sealRef.current.complete;
+    const wasComplete = sealRef.current?.bucket === focus && sealRef.current.complete;
     if (isComplete && !wasComplete) {
       const next = blockRows.findIndex(
         (b, j) => j > i && counts[j].total > counts[j].done,
       );
-      if (next >= 0) setOpenBucket(blockRows[next].bucket);
+      if (next >= 0) setFocusSel(blockRows[next].bucket);
     }
-    sealRef.current = { bucket: open, complete: isComplete };
-  }, [counts, open, blockRows]);
-
-  const jumpToNow = () => {
-    setOpenBucket(nowBucket);
-    openRef.current?.scrollIntoView({
-      behavior: REDUCED_MOTION ? "auto" : "smooth",
-      block: "center",
-    });
-  };
+    sealRef.current = { bucket: focus, complete: isComplete };
+  }, [counts, focus, blockRows]);
 
   // ── Confirm (S5) — the day's commitment, written as a versioned
   // schedule.confirmed_day capture (the S2 substrate). ───────────────
@@ -923,11 +928,64 @@ export default function Schedule({ data }) {
     weekday: "long", month: "short", day: "numeric",
   });
 
+  // The real calendar today (the week pane's "today" ring) — distinct from
+  // `dateISO`, the day being viewed (its "selected" fill).
+  const realTodayISO = useMemo(() => ymdLocal(new Date()), []);
+
+  // The focused timeline entry (a block or an event), or null = overview.
+  const focusEntry = focus == null
+    ? null : (timeline.find((e) => e.bucket === focus) ?? null);
+
+  // Man-down leak + awaiting-ack lines for a block entry — shared by the
+  // overview rows and the open detail. `pad` sets the left indent.
+  const blockAlerts = (b, pad) => (
+    <>
+      {b.rows.filter((r) => manDown.has(r.key)).map((r) => (
+        <button
+          key={"leak|" + r.key}
+          type="button"
+          onClick={() => openCover(r, b)}
+          className={"w-full flex items-center gap-2 pr-4 pb-3 -mt-1 text-left cursor-pointer " + pad}
+        >
+          <AlertTriangle size={14} className="shrink-0 text-warn" />
+          <span className="flex-1 text-[12.5px] text-warn">{leakLine(r)}</span>
+          <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-warn border border-warn px-1.5 py-0.5">
+            Cover
+          </span>
+        </button>
+      ))}
+      {b.rows.filter((r) => r.edit?.cover && !r.edit.cover.ack
+        && !manDown.has(r.key)).map((r) => (
+        <div key={"ack|" + r.key}
+          className={"flex items-center gap-2 pr-4 pb-3 -mt-1 " + pad}>
+          <Check size={13} className="shrink-0 text-resolved" />
+          <span className="flex-1 text-[12px] text-dim">
+            {rowLabel(r)} covered by {r.edit.cover.by} · awaiting ack
+          </span>
+          <button
+            type="button"
+            onClick={() => acknowledgeCover(r, b.bucket)}
+            className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-accent border border-line px-1.5 py-0.5 hover:border-accent cursor-pointer"
+          >
+            Acknowledge
+          </button>
+        </div>
+      ))}
+    </>
+  );
+
   return (
     <div className="max-w-2xl lg:max-w-[1120px] mx-auto">
      <div className="lg:flex lg:items-start">
-      {/* Desktop day-rail spine — the whole day's shape, always in view. */}
-      <DayRailSpine blocks={spineBlocks} nowBucket={nowBucket} />
+      {/* Desktop load-spine — the day's shape AND the navigator. */}
+      <DayRailSpine
+        blocks={spineBlocks}
+        focus={focus}
+        nowBucket={nowBucket}
+        onPick={pickBlock}
+        onWholeDay={showOverview}
+        totalItems={totalRows}
+      />
 
       <div className="flex-1 min-w-0 pb-24 lg:px-8">
       <div className="flex items-start justify-between">
@@ -972,7 +1030,7 @@ export default function Schedule({ data }) {
             type="button"
             onClick={confirmDay}
             disabled={confirming || loading || timeline.length === 0}
-            className="text-[12px] font-medium px-3 py-1 bg-accent text-on-accent disabled:opacity-50"
+            className="text-[12px] font-medium px-3 py-1 bg-accent text-on-accent disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           >
             Confirm today
             {(totalRows > 0 || eventEntries.length > 0) && (
@@ -989,14 +1047,14 @@ export default function Schedule({ data }) {
           <button
             type="button"
             onClick={() => setAddingTimeOff(true)}
-            className="text-[12px] font-medium text-dim hover:text-fg inline-flex items-center gap-1"
+            className="text-[12px] font-medium text-dim hover:text-fg inline-flex items-center gap-1 cursor-pointer"
           >
             <Ban size={14} /> Time off
           </button>
           <button
             type="button"
             onClick={() => setPicking(true)}
-            className="text-[12px] font-medium text-accent inline-flex items-center gap-1"
+            className="text-[12px] font-medium text-accent inline-flex items-center gap-1 cursor-pointer"
           >
             <Plus size={14} /> Add chore
           </button>
@@ -1026,157 +1084,174 @@ export default function Schedule({ data }) {
         </ul>
       )}
 
+      {/* Phone day-strip — the navigable time axis (lg:hidden). */}
+      {!loading && timeline.length > 0 && (
+        <DayStrip
+          blocks={spineBlocks}
+          focus={focus}
+          nowBucket={nowBucket}
+          onPick={pickBlock}
+          onWholeDay={showOverview}
+        />
+      )}
+
       {loading ? (
         <div className="px-4 py-10 text-center text-dim text-sm">Loading the day…</div>
       ) : timeline.length === 0 ? (
-        <div className="border border-dashed border-line">
+        <div className="border border-dashed border-line mt-3">
           <div className="px-4 py-8 text-center text-dim text-sm">
             Nothing on the schedule today.
           </div>
           <AddTaskRow onAdd={(title) => addTask(title, null)} />
         </div>
-      ) : (
-        <ol className="border border-line divide-y divide-line">
+      ) : focus == null ? (
+        /* ── Whole-day overview agenda (collapse-all / nothing focused) ── */
+        <ol className="border border-line divide-y divide-line mt-3 lg:mt-0">
           {timeline.map((entry) => {
             if (entry.kind === "event") {
+              const occ = entry.occ;
+              const sm = hmToMin(occ.startTime);
               return (
-                <EventEntry
-                  key={entry.bucket}
-                  occ={entry.occ}
-                  isOpen={entry.bucket === open}
-                  onToggle={() => setOpenBucket(entry.bucket)}
-                />
+                <li key={entry.bucket}>
+                  <button
+                    type="button"
+                    onClick={() => pickBlock(entry.bucket)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-row-hover cursor-pointer"
+                  >
+                    <span className="shrink-0 w-2.5 h-2.5 rounded-full"
+                      style={{ background: T.cat[occ.kindId] || T.cat.default }} />
+                    <span className="flex-1 min-w-0 truncate text-[14px] text-fg">
+                      {occ.instanceLabel}
+                    </span>
+                    <span className="shrink-0 text-[12px] text-dim [font-variant-numeric:tabular-nums]">
+                      {sm == null ? "all day" : formatMinutesOfDay(sm)}
+                    </span>
+                    <ChevronRight size={16} className="shrink-0 text-faint" />
+                  </button>
+                </li>
               );
             }
             const b = entry;
-            const isOpen = b.bucket === open;
             const { done, total } = countByBucket.get(b.bucket) ?? { done: 0, total: 0 };
             const allDone = total > 0 && done === total;
-            // Forward focus: a collapsed, fully-done block recedes.
-            const dimmed = !isOpen && allDone;
+            const isNow = b.bucket === nowBucket;
             return (
-              <li key={b.bucket} ref={isOpen ? openRef : null}>
-                {/* Block header — always visible, the collapse/expand toggle. */}
+              <li key={b.bucket} ref={isNow ? focusRef : null}>
+                {isNow && (
+                  <div className="px-4 pt-2">
+                    <div className="border-t border-resolved" />
+                    <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.14em] text-resolved mt-1">
+                      Now{b.startMin != null ? " · " + formatMinutesOfDay(b.startMin) : ""}
+                    </div>
+                  </div>
+                )}
                 <button
                   type="button"
-                  onClick={() => setOpenBucket(b.bucket)}
+                  onClick={() => pickBlock(b.bucket)}
                   className={
-                    "w-full flex items-center gap-3 px-4 py-3 text-left " +
-                    (isOpen ? "bg-row-active" : "hover:bg-row-hover") +
-                    (dimmed ? " opacity-60" : "")
+                    "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-row-hover cursor-pointer "
+                    + (allDone ? "opacity-60" : "")
                   }
-                  aria-expanded={isOpen}
                 >
                   {b.block && <BlockBadge block={b.block} />}
-                  <span className={
-                    "flex-1 min-w-0 truncate text-[14px] " +
-                    (isOpen ? "font-semibold text-fg" : "text-fg")
-                  }>
+                  <span className="flex-1 min-w-0 truncate text-[14px] text-fg">
                     {b.block?.name ?? "Anytime"}
                   </span>
                   <span className="shrink-0 text-[12px] [font-variant-numeric:tabular-nums] text-dim">
                     {allDone ? "done" : `${done}/${total}`}
                   </span>
-                  <ChevronRight
-                    size={16}
-                    className={
-                      "shrink-0 text-faint transition-transform " +
-                      (isOpen ? "rotate-90" : "")
-                    }
-                  />
+                  <ChevronRight size={16} className="shrink-0 text-faint" />
                 </button>
-
-                {/* Man-down leak (S8) — one warn line per conflicted row,
-                    visible even while the block is collapsed. */}
-                {b.rows.filter((r) => manDown.has(r.key)).map((r) => (
-                  <button
-                    key={"leak|" + r.key}
-                    type="button"
-                    onClick={() => openCover(r, b)}
-                    className="w-full flex items-center gap-2 pl-[18px] pr-4 pb-3 -mt-1 text-left"
-                  >
-                    <AlertTriangle size={14} className="shrink-0 text-warn" />
-                    <span className="flex-1 text-[12.5px] text-warn">
-                      {leakLine(r)}
-                    </span>
-                    <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-warn border border-warn px-1.5 py-0.5">
-                      Cover
-                    </span>
-                  </button>
-                ))}
-                {/* Awaiting-acknowledgment (S60a) after a cover. */}
-                {b.rows.filter((r) => r.edit?.cover && !r.edit.cover.ack
-                  && !manDown.has(r.key)).map((r) => (
-                  <div
-                    key={"ack|" + r.key}
-                    className="flex items-center gap-2 pl-[18px] pr-4 pb-3 -mt-1"
-                  >
-                    <Check size={13} className="shrink-0 text-resolved" />
-                    <span className="flex-1 text-[12px] text-dim">
-                      {rowLabel(r)} covered by {r.edit.cover.by} · awaiting ack
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => acknowledgeCover(r, b.bucket)}
-                      className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-accent border border-line px-1.5 py-0.5 hover:border-accent"
-                    >
-                      Acknowledge
-                    </button>
-                  </div>
-                ))}
-
-                {/* The one open block: its checklist + add + the Rounds entry. */}
-                {isOpen && (
-                  <div className="bg-surface">
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={onReorder(b)}
-                    >
-                      <SortableContext
-                        items={b.rows.map((r) => r.key)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <ul>
-                          {b.rows.map((row, ri) => (
-                            <DraggableRow
-                              key={row.key}
-                              row={row}
-                              completions={completions}
-                              blocks={blocks}
-                              removeDelta={removeDelta}
-                              setDone={setDone}
-                              onEdit={() => openEdit(row, b, ri)}
-                            />
-                          ))}
-                        </ul>
-                      </SortableContext>
-                    </DndContext>
-                    <AddTaskRow
-                      onAdd={(title) => addTask(title, b.block ? b.bucket : null)}
-                    />
-                    {b.block && (
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/rounds/${b.bucket}`)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-accent hover:bg-row-hover border-t border-line"
-                      >
-                        <ListChecks size={15} />
-                        Open rounds
-                        <ChevronRight size={15} />
-                      </button>
-                    )}
-                  </div>
-                )}
+                {blockAlerts(b, "pl-[18px]")}
               </li>
             );
           })}
         </ol>
+      ) : focusEntry?.kind === "event" ? (
+        /* ── One event's detail ── */
+        <ol className="border border-line mt-3 lg:mt-0">
+          <EventEntry occ={focusEntry.occ} isOpen onToggle={showOverview} />
+        </ol>
+      ) : focusEntry ? (
+        /* ── One block's detail (master-detail; never scroll past others) ── */
+        <div ref={focusRef} className="border border-line mt-3 lg:mt-0">
+          {(() => {
+            const b = focusEntry;
+            const { done, total } = countByBucket.get(b.bucket) ?? { done: 0, total: 0 };
+            const allDone = total > 0 && done === total;
+            return (
+              <>
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
+                  {b.block && <BlockBadge block={b.block} />}
+                  <span className="flex-1 min-w-0 truncate text-[15px] font-semibold text-fg">
+                    {b.block?.name ?? "Anytime"}
+                  </span>
+                  {b.startMin != null && (
+                    <span className="shrink-0 text-[12px] text-faint [font-variant-numeric:tabular-nums]">
+                      {formatMinutesOfDay(b.startMin)}
+                    </span>
+                  )}
+                  <span className="shrink-0 text-[12px] [font-variant-numeric:tabular-nums] text-dim">
+                    {allDone ? "done" : `${done}/${total}`}
+                  </span>
+                </div>
+                {blockAlerts(b, "pl-4")}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={onReorder(b)}
+                >
+                  <SortableContext
+                    items={b.rows.map((r) => r.key)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <ul>
+                      {b.rows.map((row, ri) => (
+                        <DraggableRow
+                          key={row.key}
+                          row={row}
+                          completions={completions}
+                          blocks={blocks}
+                          removeDelta={removeDelta}
+                          setDone={setDone}
+                          onEdit={() => openEdit(row, b, ri)}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
+                <AddTaskRow
+                  onAdd={(title) => addTask(title, b.block ? b.bucket : null)}
+                />
+                {b.block && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/rounds/${b.bucket}`)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-accent hover:bg-row-hover border-t border-line cursor-pointer"
+                  >
+                    <ListChecks size={15} />
+                    Open rounds
+                    <ChevronRight size={15} />
+                  </button>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      ) : (
+        /* focus points at a block that no longer exists — offer the agenda */
+        <div className="border border-dashed border-line mt-3 px-4 py-8 text-center text-dim text-sm">
+          <button type="button" onClick={showOverview}
+            className="text-accent cursor-pointer">
+            Show the whole day
+          </button>
+        </div>
       )}
       </div>{/* /center column */}
 
-      {/* Desktop week list — fullness silhouettes; tap a day to open it. */}
-      <WeekList week={week} todayISO={dateISO} ymd={ymdLocal} onPickDay={setToday} />
+      {/* Desktop week list — today = ring, viewed day = fill; tap to open. */}
+      <WeekList week={week} todayISO={realTodayISO} selectedISO={dateISO}
+        ymd={ymdLocal} onPickDay={setToday} />
      </div>{/* /lg workbench flex */}
 
       {picking && (
