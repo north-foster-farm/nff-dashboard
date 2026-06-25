@@ -5,12 +5,14 @@ import {
 } from "../outbox.js";
 
 // Schedule placement deltas (S6) — the authored, schedule-local
-// commitments that aren't chore-block runs: ad-hoc one-off tasks and
-// notes added to a day. (Extra chores / project nodes / events arrive in
-// later batches.) Read for one day, with the outbox overlaid so an add /
+// commitments that aren't chore-block runs: ad-hoc one-off tasks, notes,
+// pulled chores, and pulled project steps added to a day. (Events are
+// derived, not deltas.) Read for one day, with the outbox overlaid so an add /
 // remove / done-toggle shows instantly and survives offline, reconciled by
 // realtime when the op syncs.
-const DELTA_TYPES = ["ad_hoc", "note", "chore", "override", "reservation"];
+const DELTA_TYPES = [
+  "ad_hoc", "note", "chore", "project_node", "override", "reservation",
+];
 const COLS =
   "id, source_type, source_ref, block_id, run_date, clock_time, " +
   "assignee, reason, overrides, history, state";
@@ -124,6 +126,23 @@ export function useScheduleDeltas(dateISO) {
     });
     return id;
   };
+  // Pull a project STEP onto the day (S6 — project-node add). Renders as a
+  // checkable row whose done-state lives on the commitment; the source_ref
+  // carries the step title + its project's title for the sub-line. The
+  // 'project_node' source_type was already whitelisted by migration 0034.
+  const addProject = (node, blockId = null) => {
+    const id = crypto.randomUUID();
+    enqueueOp("commitment_insert", {
+      id, sourceType: "project_node",
+      sourceRef: {
+        project_id: node.projectId, step_id: node.stepId ?? null,
+        title: node.title, project_title: node.projectTitle ?? null,
+        block_id: blockId ?? null,
+      },
+      runDate: dateISO,
+    });
+    return id;
+  };
   const removeDelta = (id) => enqueueOp("commitment_delete", { id });
   const setDone = (id, done) =>
     enqueueOp("commitment_set_state", { id, state: done ? "done" : "scheduled" });
@@ -213,7 +232,7 @@ export function useScheduleDeltas(dateISO) {
 
   return {
     deltas, loading: serverRows === null,
-    addTask, addChore, removeDelta, setDone,
+    addTask, addChore, addProject, removeDelta, setDone,
     upsertOverride, updateDelta, addReservation,
   };
 }

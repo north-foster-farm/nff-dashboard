@@ -3590,9 +3590,25 @@ versioned capture).
   instead of being permanently visible. (The mockup's round "+" add FAB was
   intentionally not added — the toolbar's "Add chore" / "Time off" already
   cover it without duplicating the affordance.)
-- **41.14+ →** project-work rows (placement delta + migration) / reminders
-  (S10) / drift (S11). Deferred: the DB cleanup (drop the dead
-  `timeline_items` view + orphaned `chore_runs`).
+- **41.14 — project-work rows. AUTHORED `v0.10.55-alpha` (2026-06-25); NO
+  migration needed.** Closes the last minimalist-mockup gap (Hero 1's
+  project row + Hero 4's Project search category). A schedulable project
+  "node" = an incomplete step of an active project. Picking one in the
+  search writes a `project_node` commitment (`useScheduleDeltas.addProject`,
+  source_ref = {project_id, step_id, title, project_title}); it folds onto
+  the day like an ad-hoc row (foldDeltas is generic) and renders through the
+  generalised `AdHocRow` — a checkable row whose done-state lives on the
+  commitment, with a "project" pill and an italic project-title sub-line.
+  Counts/seal/man-down/edit/cross-day all treat it as a commitment-backed
+  row; it folds into the confirm capture as a `project_node` entry.
+  **No migration:** the `commitments.source_type` CHECK constraint already
+  whitelisted `'project_node'` (and `'event'`) back in migration 0034 — the
+  planned 0035 was unnecessary. Deferred: a block-picker on project add
+  (lands in "anytime" today; movable via the edit sheet), the event
+  buffer/equipment checklist, and the richer should→must box.
+  **This re-completes every screen in the minimalist mockup.**
+- **41.15+ →** reminders (S10) / looking-back + drift (S11). Deferred: the
+  DB cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

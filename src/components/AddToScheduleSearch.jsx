@@ -11,7 +11,8 @@ import { obligationPlaceIds, describeChoreAnchor } from "../lib/chores.js";
 // Picking a place (or a single-place chore) writes the same chore_completion
 // path as Rounds. Project nodes share this list in a later slice.
 export default function AddToScheduleSearch({
-  chores, choreCtx, onAddChore, onAddTask, onClose,
+  chores, choreCtx, projectNodes = [], onAddChore, onAddProject, onAddTask,
+  onClose,
 }) {
   const [q, setQ] = useState("");
   // The chore being place-narrowed (step 2), or null (step 1).
@@ -60,6 +61,15 @@ export default function AddToScheduleSearch({
         (g.title + " " + (g.sublabel ?? "")).toLowerCase().includes(needle))
       .slice(0, 50);
   }, [groups, q]);
+
+  const projectResults = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const list = needle
+      ? projectNodes.filter((n) =>
+        (n.title + " " + (n.projectTitle ?? "")).toLowerCase().includes(needle))
+      : projectNodes;
+    return list.slice(0, 20);
+  }, [projectNodes, q]);
 
   const pickGroup = (g) => {
     if (g.places.length <= 1) {
@@ -221,6 +231,38 @@ export default function AddToScheduleSearch({
                       Add “{q.trim()}” as a task
                     </span>
                   </button>
+                </>
+              )}
+
+              {onAddProject && projectResults.length > 0 && (
+                <>
+                  <div className="px-4 py-1.5 mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-faint">
+                    Project
+                  </div>
+                  <ul>
+                    {projectResults.map((n) => (
+                      <li key={n.stepId}>
+                        <button
+                          type="button"
+                          onClick={() => { onAddProject(n); onClose(); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line last:border-b-0 hover:bg-row-hover"
+                        >
+                          <span className="shrink-0 text-[13px]"
+                            style={{ color: "var(--c-cat-egg)" }}>◆</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[14px] text-fg truncate">
+                              {n.title}
+                            </div>
+                            {n.projectTitle && (
+                              <div className="text-[12px] text-faint truncate">
+                                {n.projectTitle}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </>
               )}
             </div>

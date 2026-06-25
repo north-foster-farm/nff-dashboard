@@ -32,6 +32,7 @@ import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
 import { DayRailSpine, WeekList } from "../components/ScheduleSidebars.jsx";
 import { weekFullness } from "../lib/schedule/weekView.js";
+import { isActiveProject } from "../lib/projects.js";
 import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PageHeader from "../components/PageHeader.jsx";
@@ -196,6 +197,7 @@ function AdHocRow({
 }) {
   const done = commitment.state === "done";
   const queued = commitment._pending;
+  const isProject = commitment.source_type === "project_node";
   const [showHist, setShowHist] = useState(false);
   return (
     <li
@@ -238,10 +240,10 @@ function AdHocRow({
           (done ? "text-muted line-through" : "text-fg font-medium")
         }>
           <span className="truncate">
-            {commitment.source_ref?.title ?? "(task)"}
+            {commitment.source_ref?.title ?? (isProject ? "(project)" : "(task)")}
           </span>
           <span className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1">
-            task
+            {isProject ? "project" : "task"}
           </span>
           {edit?.clockTime && (
             <span className="shrink-0 text-[11px] font-medium text-accent [font-variant-numeric:tabular-nums]">
@@ -262,6 +264,11 @@ function AdHocRow({
               aria-label="Saved on this device — not synced yet" />
           )}
         </div>
+        {isProject && commitment.source_ref?.project_title && (
+          <div className="text-[12px] text-faint italic mt-0.5 truncate">
+            {commitment.source_ref.project_title}
+          </div>
+        )}
       </div>
       {onEdit && (
         <button
@@ -376,7 +383,7 @@ export default function Schedule({ data }) {
       today.getFullYear(), today.getMonth(), today.getDate())),
     [today]);
   const {
-    deltas, addTask, addChore, removeDelta, setDone,
+    deltas, addTask, addChore, addProject, removeDelta, setDone,
     upsertOverride, updateDelta, addReservation,
   } = useScheduleDeltas(dateISO);
 
@@ -395,6 +402,23 @@ export default function Schedule({ data }) {
     if (!c) return;
     addChore(c.id, placeId, c.blockId ?? null);
   };
+
+  // Incomplete steps of active projects — the schedulable project "nodes"
+  // the search offers (S33 Project category). One row per step.
+  const projectNodes = useMemo(() => {
+    const out = [];
+    for (const p of (data.projects ?? [])) {
+      if (!isActiveProject(p, dateISO)) continue;
+      for (const s of (p.steps ?? [])) {
+        if (s.completedAt) continue;
+        out.push({
+          projectId: p.id, projectTitle: p.title,
+          stepId: s.id, title: s.title,
+        });
+      }
+    }
+    return out;
+  }, [data, dateISO]);
 
   // Re-pick the "now" block once a minute as block windows pass.
   const [nowMin, setNowMin] = useState(() => minutesNow());
@@ -465,6 +489,8 @@ export default function Schedule({ data }) {
             deltaId: ex.id, delta: ex,
             assignee: resolveAssignee(chore, today, ruleOpts),
           });
+        } else if (ex.source_type === "project_node") {
+          rows.push({ kind: "project", key: "p|" + ex.id, commitment: ex });
         } else {
           rows.push({ kind: "adhoc", key: "a|" + ex.id, commitment: ex });
         }
@@ -674,8 +700,9 @@ export default function Schedule({ data }) {
         source_ref: { chore_id: row.chore.id, place_id: row.placeId ?? null },
       })
       : ({
-        source_type: "ad_hoc",
-        label: row.commitment.source_ref?.title ?? "task",
+        source_type: row.kind === "project" ? "project_node" : "ad_hoc",
+        label: row.commitment.source_ref?.title
+          ?? (row.kind === "project" ? "project" : "task"),
         block_id: b.block ? b.bucket : null,
         clock_time: null,
         assignee: row.commitment.assignee ?? null,
@@ -762,7 +789,7 @@ export default function Schedule({ data }) {
     fromBlockName: b.block?.name ?? "Anytime",
     isFirstInBlock: idx === 0,
     currentClockTime: row.edit?.clockTime ?? row.commitment?.clock_time ?? null,
-    canMoveDay: row.kind === "adhoc" || !!row.deltaId,
+    canMoveDay: row.kind === "adhoc" || row.kind === "project" || !!row.deltaId,
     label: row.kind === "chore"
       ? row.chore.title : (row.commitment.source_ref?.title ?? "task"),
   });
@@ -1156,7 +1183,9 @@ export default function Schedule({ data }) {
         <AddToScheduleSearch
           chores={choreDefs}
           choreCtx={choreCtx}
+          projectNodes={projectNodes}
           onAddChore={addChoreAt}
+          onAddProject={(node) => addProject(node, null)}
           onAddTask={(title) => addTask(title, null)}
           onClose={() => setPicking(false)}
         />
