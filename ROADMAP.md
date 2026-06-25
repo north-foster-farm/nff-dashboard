@@ -3482,10 +3482,26 @@ versioned capture).
   persists on reload). Includes migration `0031` — a hotfix stripping the
   `$schema`/`$id` metadata from the confirmed_day schema that pg_jsonschema
   (XX000) couldn't validate; semantics unchanged.
-- **41.6+ →** search-to-add / non-work-time / man-down / desktop week
-  + load-silhouette / reminders / drift (S6–S11). Deferred: the desktop
-  day-rail, per-person start-time line, the seal worked-window stamp, the
-  should→must box (S8); and the DB cleanup (drop the dead `timeline_items`
+- **41.6 — S6 (1/3): commitment-delta foundation + ad-hoc add. ✅ SHIPPED
+  `v0.10.47-alpha` (2026-06-24).** The first batch that WRITES commitment
+  deltas (the S3 `foldDeltas` seam goes live). `commitment_insert/_set_
+  state/_delete` outbox ops; `useScheduleDeltas` (reads a day's ad-hoc/note
+  deltas with an outbox overlay — instant + offline-safe add/remove/toggle);
+  `foldDeltas` implemented (attaches deltas to block rollups as `extras`,
+  orphan-tolerant); Schedule renders a "+ Add a one-off task" input per
+  open block, ad-hoc tasks as their own checkable rows (done-state on the
+  commitment, not chore_completions), counted + folded into confirm + the
+  change-ribbon. Pure code, no migration. Delta data path verified against
+  prod (insert/read/state/delete); UI awaits James's live review.
+- **41.7 — S6 (2/3): search-to-add chores & project nodes** — a chore/
+  project search source + a reusable selector (CommandPalette is nav-only),
+  chore dedup + place narrowing (S33a–c); 'chore'/'project_node' deltas
+  render as real chore rows (completion via chore_completions). **41.8 —
+  S6 (3/3): protection + instance overrides + modification history.**
+- **41.9+ →** non-work-time (S7) / man-down + buffers (S8) / desktop week
+  + load-silhouette (S9) / reminders (S10) / drift (S11). Deferred: the
+  desktop day-rail, per-person start-time line, the seal worked-window
+  stamp, the should→must box (S8); and the DB cleanup (drop the dead `timeline_items`
   view + orphaned `chore_runs`).
 
 ---

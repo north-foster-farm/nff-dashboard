@@ -483,6 +483,42 @@ function fireRunDoneNotification(runId) {
   }
 }
 
+// Schedule placement deltas (S6) — ad-hoc / note commitments the day
+// assembler folds in. Offline-safe via the outbox; idempotent on the
+// client-generated id.
+async function execCommitmentInsert(p) {
+  const { error } = await supabase.from("commitments").insert({
+    id: p.id,
+    source_type: p.sourceType,
+    source_ref: p.sourceRef ?? null,
+    block_id: p.blockId ?? null,
+    run_date: p.runDate,
+    clock_time: p.clockTime ?? null,
+    assignee: p.assignee ?? null,
+    reason: p.reason ?? null,
+    state: "scheduled",
+  });
+  // A replay re-inserts our own client id -> unique violation = success.
+  if (error && error.code !== UNIQUE_VIOLATION) throw asError(error);
+  return { id: p.id };
+}
+
+async function execCommitmentSetState(p) {
+  const { error } = await supabase.from("commitments")
+    .update({ state: p.state })
+    .eq("id", p.id);
+  if (error) throw asError(error);
+  return { id: p.id };
+}
+
+async function execCommitmentDelete(p) {
+  const { error } = await supabase.from("commitments")
+    .delete()
+    .eq("id", p.id);
+  if (error) throw asError(error);
+  return { id: p.id };
+}
+
 const EXECUTORS = {
   completion_insert: execCompletionInsert,
   completion_insert_many: execCompletionInsertMany,
@@ -497,6 +533,9 @@ const EXECUTORS = {
   run_cancel: execRunCancel,
   run_delete: execRunDelete,
   capture_insert: execCaptureInsert,
+  commitment_insert: execCommitmentInsert,
+  commitment_set_state: execCommitmentSetState,
+  commitment_delete: execCommitmentDelete,
 };
 
 // ── Queue state + subscriptions ─────────────────────────────────────

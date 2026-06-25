@@ -1,10 +1,13 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import { ChevronRight, ArrowDownToLine, ListChecks, Check } from "lucide-react";
+import {
+  ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
+} from "lucide-react";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
-import { rollupChoresForDay } from "../lib/schedule/deriveDay.js";
+import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
+import { deriveDay } from "../lib/schedule/deriveDay.js";
 import { obligationPlaceIds } from "../lib/chores.js";
 import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
 import BlockBadge from "../components/BlockBadge.jsx";
@@ -15,17 +18,13 @@ import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { recordCapture, readCaptures } from "../lib/capture/capture.js";
 import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
-// The Schedule — S4 of the Schedule feature. The phone-first, single-open
-// accordion of the day's chore BLOCKS: exactly one block expanded (the one
-// "now" is in), every other block a quiet one-line summary, so a 40-item
-// day reads as a few lines + the block in your hand. Draft-only for now —
-// the one-tap Confirm + the source-change ribbon arrive in S5.
-//
-// Married to Rounds + the one completion truth: a chore row IS the shared
-// `ChoreCheckRow` (tick -> chore_completions via the outbox, offline-safe,
-// CloudOff while queued); tapping a block's "Open rounds" deep-links into
-// the Rounds takeover for that block. The day's data comes from the S3
-// `deriveDay` engine (regenerable, computed client-side).
+// The Schedule — the phone-first, single-open accordion of the day's chore
+// BLOCKS: exactly one block expanded (the one "now" is in), every other
+// block a quiet one-line summary. Married to Rounds + the one completion
+// truth (a chore row IS the shared ChoreCheckRow). The day's data comes
+// from the S3 `deriveDay` engine; the one-tap Confirm (S5) writes a
+// versioned schedule.confirmed_day capture. S6: ad-hoc one-off tasks added
+// to a block are commitment deltas the engine folds in (useScheduleDeltas).
 
 const REDUCED_MOTION =
   typeof window !== "undefined" &&
@@ -36,7 +35,7 @@ function minutesNow() {
   return d.getHours() * 60 + d.getMinutes();
 }
 
-// Local YYYY-MM-DD (not UTC) — the capture's business day.
+// Local YYYY-MM-DD (not UTC) — the capture's / delta's business day.
 function ymdLocal(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -60,6 +59,90 @@ function pickNowBucket(orderedBlocks, nowMin) {
   return now ?? orderedBlocks[0]?.bucket ?? null;
 }
 
+// An ad-hoc one-off task row (S6) — a commitment delta, not a chore, so its
+// done-state lives on the commitment (not chore_completions). Same look as
+// ChoreCheckRow, plus a remove control.
+function AdHocRow({ commitment, onToggle, onRemove }) {
+  const done = commitment.state === "done";
+  const queued = commitment._pending;
+  return (
+    <li className={
+      "flex items-center gap-3 px-4 py-3 border-b border-line last:border-b-0 " +
+      (done ? "bg-row-active-dim" : "")
+    }>
+      <button
+        type="button"
+        onClick={() => onToggle(commitment.id, !done)}
+        className={
+          "shrink-0 w-7 h-7 border-2 inline-flex items-center justify-center " +
+          "cursor-pointer transition-colors duration-100 " +
+          (done
+            ? "bg-resolved border-resolved text-on-accent"
+            : "bg-bg border-line text-transparent hover:border-fg")
+        }
+        aria-pressed={done}
+        aria-label={done ? "Mark not done" : "Mark done"}
+      >
+        <Check size={16} strokeWidth={3} />
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className={
+          "text-[14px] flex items-center gap-2 " +
+          (done ? "text-muted line-through" : "text-fg font-medium")
+        }>
+          <span className="truncate">
+            {commitment.source_ref?.title ?? "(task)"}
+          </span>
+          <span className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1">
+            task
+          </span>
+          {queued && (
+            <CloudOff size={12} className="shrink-0 text-warn"
+              aria-label="Saved on this device — not synced yet" />
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onRemove(commitment.id)}
+        className="shrink-0 text-faint hover:text-warn"
+        aria-label="Remove task"
+      >
+        <X size={16} />
+      </button>
+    </li>
+  );
+}
+
+// The inline "add a one-off task" input at the foot of a block.
+function AddTaskRow({ onAdd }) {
+  const [text, setText] = useState("");
+  const submit = () => {
+    const t = text.trim();
+    if (!t) return;
+    onAdd(t);
+    setText("");
+  };
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 border-t border-line">
+      <Plus size={15} className="shrink-0 text-faint" />
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+        placeholder="Add a one-off task…"
+        className="flex-1 bg-transparent text-[14px] text-fg placeholder:text-faint outline-none py-1"
+      />
+      {text.trim() && (
+        <button type="button" onClick={submit}
+          className="shrink-0 text-[12px] font-medium text-accent">
+          Add
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function Schedule({ data }) {
   const today = useMemo(() => new Date(), []);
   const { blocks, loading: blocksLoading } = useChoreBlocks();
@@ -70,6 +153,12 @@ export default function Schedule({ data }) {
     [rulesByChoreId, rulesByBlockId, blocks],
   );
   const completions = useChoreCompletions(today);
+  const dateISO = useMemo(() => ymdLocal(today), [today]);
+  const dayUTC = useMemo(
+    () => new Date(Date.UTC(
+      today.getFullYear(), today.getMonth(), today.getDate())),
+    [today]);
+  const { deltas, addTask, removeDelta, setDone } = useScheduleDeltas(dateISO);
 
   // Re-pick the "now" block once a minute as block windows pass.
   const [nowMin, setNowMin] = useState(() => minutesNow());
@@ -78,14 +167,17 @@ export default function Schedule({ data }) {
     return () => clearInterval(id);
   }, []);
 
-  // The day's blocks (rollups carry .items = chore instances), ordered.
+  // The day's blocks (rollups carry .items = chores, .extras = ad-hoc
+  // deltas), ordered. deriveDay folds the deltas in.
   const orderedBlocks = useMemo(() => {
-    const rollups = rollupChoresForDay(data, today, ruleOpts);
-    return [...rollups].sort((a, b) => startKey(a) - startKey(b));
-  }, [data, today, ruleOpts]);
+    const { choreRollups } = deriveDay({
+      data, dayDate: today, dayUTC, dayISO: dateISO, ruleOpts, deltas,
+    });
+    return [...choreRollups].sort((a, b) => startKey(a) - startKey(b));
+  }, [data, today, dayUTC, dateISO, ruleOpts, deltas]);
 
-  // Expand each block's chores into (chore, place) rows — the completion
-  // grain. A chore fans out to every place it's anchored to today.
+  // Expand each block into typed rows: chores fan out to (chore, place)
+  // rows (the completion grain); ad-hoc deltas are their own rows.
   const blockRows = useMemo(() => orderedBlocks.map((r) => {
     const rows = [];
     for (const inst of r.items) {
@@ -93,20 +185,27 @@ export default function Schedule({ data }) {
       const multi = placeIds.length > 1;
       for (const pid of placeIds) {
         rows.push({
+          kind: "chore",
+          key: "c|" + inst.chore.id + "|" + (pid ?? ""),
           chore: inst.chore,
           placeId: pid,
           placeLabel: multi ? choreCtx?.placesById?.get(pid)?.name ?? null : null,
         });
       }
     }
+    for (const ex of (r.extras ?? [])) {
+      rows.push({ kind: "adhoc", key: "a|" + ex.id, commitment: ex });
+    }
     return { bucket: r.bucket, block: r.block, rows };
   }), [orderedBlocks, choreCtx]);
 
-  // done / total per block, from the live completions.
+  // done / total per block, across chores (completions) + ad-hoc (state).
   const counts = useMemo(() => blockRows.map((b) => {
     let done = 0;
     for (const row of b.rows) {
-      if (completions.isDone(row.chore.id, row.placeId)) done++;
+      if (row.kind === "chore"
+        ? completions.isDone(row.chore.id, row.placeId)
+        : row.commitment.state === "done") done++;
     }
     return { done, total: b.rows.length };
   }), [blockRows, completions]);
@@ -152,11 +251,8 @@ export default function Schedule({ data }) {
   // ── Confirm (S5) — the day's commitment, written as a versioned
   // schedule.confirmed_day capture (the S2 substrate). ───────────────
   const email = useCurrentUserEmail();
-  const dateISO = useMemo(() => ymdLocal(today), [today]);
 
-  // The confirmed snapshot for today, if any. null = a draft. A
-  // just-confirmed day sets this optimistically; cross-device truth
-  // arrives from the captures read on load.
+  // The confirmed snapshot for today, if any. null = a draft.
   const [confirmedDoc, setConfirmedDoc] = useState(null);
   const [confirming, setConfirming] = useState(false);
   useEffect(() => {
@@ -169,7 +265,7 @@ export default function Schedule({ data }) {
     return () => { cancelled = true; };
   }, [dateISO]);
 
-  const totalChores = useMemo(
+  const totalRows = useMemo(
     () => counts.reduce((s, c) => s + c.total, 0), [counts]);
 
   // The frozen planned shape (schedule.confirmed_day v1). Reference +
@@ -184,14 +280,23 @@ export default function Schedule({ data }) {
       planned_start: b.startMin != null ? formatMinutesOfDay(b.startMin) : null,
       planned_end: null,
     })),
-    entries: blockRows.flatMap((b) => b.rows.map((row) => ({
-      source_type: "chore",
-      label: row.chore.title,
-      block_id: b.block ? b.bucket : null,
-      clock_time: null,
-      assignee: null,
-      source_ref: { chore_id: row.chore.id, place_id: row.placeId ?? null },
-    }))),
+    entries: blockRows.flatMap((b) => b.rows.map((row) => row.kind === "chore"
+      ? ({
+        source_type: "chore",
+        label: row.chore.title,
+        block_id: b.block ? b.bucket : null,
+        clock_time: null,
+        assignee: null,
+        source_ref: { chore_id: row.chore.id, place_id: row.placeId ?? null },
+      })
+      : ({
+        source_type: "ad_hoc",
+        label: row.commitment.source_ref?.title ?? "task",
+        block_id: b.block ? b.bucket : null,
+        clock_time: null,
+        assignee: row.commitment.assignee ?? null,
+        source_ref: { commitment_id: row.commitment.id },
+      }))),
   });
 
   const confirmDay = async () => {
@@ -212,31 +317,36 @@ export default function Schedule({ data }) {
     }
   };
 
-  // Source-changed-after-confirm: today's chores vs the confirmed
-  // snapshot. Surfaced, never auto-applied.
+  // Source-changed-after-confirm: today's items vs the confirmed snapshot.
+  // Surfaced, never auto-applied.
   const changes = useMemo(() => {
     if (!confirmedDoc) return null;
-    const keyOf = (sr) => `${sr?.chore_id ?? ""}|${sr?.place_id ?? ""}`;
-    const confirmedKeys = new Set(
-      (confirmedDoc.entries ?? []).map((e) => keyOf(e.source_ref)));
+    const entryKey = (e) => e.source_ref?.commitment_id
+      ? `a|${e.source_ref.commitment_id}`
+      : `c|${e.source_ref?.chore_id ?? ""}|${e.source_ref?.place_id ?? ""}`;
+    const rowKey = (row) => row.kind === "chore"
+      ? `c|${row.chore.id}|${row.placeId ?? ""}`
+      : `a|${row.commitment.id}`;
+    const rowLabel = (row) => row.kind === "chore"
+      ? row.chore.title : (row.commitment.source_ref?.title ?? "task");
+    const confirmedKeys = new Set((confirmedDoc.entries ?? []).map(entryKey));
     const currentKeys = new Set();
     const added = [];
     for (const b of blockRows) {
       for (const row of b.rows) {
-        const k = `${row.chore.id}|${row.placeId ?? ""}`;
+        const k = rowKey(row);
         currentKeys.add(k);
-        if (!confirmedKeys.has(k)) added.push(row.chore.title);
+        if (!confirmedKeys.has(k)) added.push(rowLabel(row));
       }
     }
     const removed = (confirmedDoc.entries ?? [])
-      .filter((e) => !currentKeys.has(keyOf(e.source_ref)))
+      .filter((e) => !currentKeys.has(entryKey(e)))
       .map((e) => e.label);
     const total = added.length + removed.length;
     return total ? { total, added, removed } : null;
   }, [confirmedDoc, blockRows]);
 
-  const loading =
-    blocksLoading || sitesLoading || completions.loading;
+  const loading = blocksLoading || sitesLoading || completions.loading;
 
   const dateLabel = today.toLocaleDateString("en-US", {
     weekday: "long", month: "short", day: "numeric",
@@ -274,9 +384,9 @@ export default function Schedule({ data }) {
             className="text-[12px] font-medium px-3 py-1 bg-accent text-on-accent disabled:opacity-50"
           >
             Confirm today
-            {totalChores > 0 && (
+            {totalRows > 0 && (
               <span className="opacity-80">
-                {" "}· {orderedBlocks.filter((b) => b.block).length} blocks · {totalChores} chores
+                {" "}· {orderedBlocks.filter((b) => b.block).length} blocks · {totalRows} items
               </span>
             )}
           </button>
@@ -287,8 +397,11 @@ export default function Schedule({ data }) {
       {loading ? (
         <div className="px-4 py-10 text-center text-dim text-sm">Loading the day…</div>
       ) : blockRows.length === 0 ? (
-        <div className="px-4 py-10 text-center text-dim text-sm border border-dashed border-line">
-          Nothing on the schedule today.
+        <div className="border border-dashed border-line">
+          <div className="px-4 py-8 text-center text-dim text-sm">
+            Nothing on the schedule today.
+          </div>
+          <AddTaskRow onAdd={(title) => addTask(title, null)} />
         </div>
       ) : (
         <ol className="border border-line divide-y divide-line">
@@ -330,26 +443,31 @@ export default function Schedule({ data }) {
                   />
                 </button>
 
-                {/* The one open block: its checklist + the Rounds entry. */}
+                {/* The one open block: its checklist + add + the Rounds entry. */}
                 {isOpen && (
                   <div className="bg-surface">
                     <ul>
-                      {b.rows.map((row) => (
+                      {b.rows.map((row) => row.kind === "chore" ? (
                         <ChoreCheckRow
-                          key={row.chore.id + "|" + (row.placeId ?? "")}
+                          key={row.key}
                           chore={row.chore}
                           placeId={row.placeId}
                           placeLabel={row.placeLabel}
                           blocks={blocks}
                           completions={completions}
                         />
+                      ) : (
+                        <AdHocRow
+                          key={row.key}
+                          commitment={row.commitment}
+                          onToggle={setDone}
+                          onRemove={removeDelta}
+                        />
                       ))}
-                      {b.rows.length === 0 && (
-                        <li className="px-4 py-3 text-[13px] text-dim">
-                          No chores in this block today.
-                        </li>
-                      )}
                     </ul>
+                    <AddTaskRow
+                      onAdd={(title) => addTask(title, b.block ? b.bucket : null)}
+                    />
                     {b.block && (
                       <button
                         type="button"

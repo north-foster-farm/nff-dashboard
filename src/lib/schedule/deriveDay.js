@@ -79,13 +79,50 @@ export function deriveDay({ data, dayDate, dayUTC, dayISO, ruleOpts, deltas = []
   const events = getEventOccurrences(data.events, dayUTC, dayUTC, null);
   const choreRollups = rollupChoresForDay(data, dayDate, ruleOpts);
   const projects = (data.projects ?? []).filter((p) => isActiveProject(p, dayISO));
-  return foldDeltas({ dayISO, events, choreRollups, projects }, deltas);
+  return foldDeltas(
+    { dayISO, events, choreRollups, projects },
+    deltas,
+    ruleOpts?.blocks ?? [],
+  );
 }
 
-// S6 extension point. Identity + orphan guard for now.
-function foldDeltas(day, deltas) {
-  if (!deltas || deltas.length === 0) return day;
-  // S6: apply placement/override/reassignment deltas here, skipping any
-  // whose source is absent from `day` (orphan-tolerant).
-  return day;
+// Fold schedule-local commitment deltas (S6) — ad-hoc tasks / notes added
+// to the day — onto the derived day. Every block rollup gains an `extras`
+// array of the deltas placed in it; a delta whose block has no chores
+// today still gets a rollup so the block shows. Orphan-tolerant: a delta
+// whose block_id is no longer a real block falls into "anytime" rather
+// than throwing.
+function foldDeltas(day, deltas, blocks) {
+  const withExtras = (extrasOf) =>
+    day.choreRollups.map((r) => ({ ...r, extras: extrasOf(r.bucket) }));
+
+  if (!deltas || deltas.length === 0) {
+    return { ...day, choreRollups: withExtras(() => []) };
+  }
+
+  const byBucket = new Map();
+  for (const d of deltas) {
+    // Deltas keep block_id null (the chore_block run path); their placement
+    // block lives in source_ref.block_id.
+    let bucket = d.block_id ?? d.source_ref?.block_id ?? "anytime";
+    if (bucket !== "anytime" && !blocks.some((b) => b.id === bucket)) {
+      bucket = "anytime";
+    }
+    if (!byBucket.has(bucket)) byBucket.set(bucket, []);
+    byBucket.get(bucket).push(d);
+  }
+
+  const rollups = withExtras((bucket) => byBucket.get(bucket) ?? []);
+  const have = new Set(rollups.map((r) => r.bucket));
+  for (const [bucket, ds] of byBucket) {
+    if (have.has(bucket)) continue;
+    const block = bucket === "anytime"
+      ? null
+      : (blocks.find((b) => b.id === bucket) ?? null);
+    rollups.push({
+      bucket, block, items: [], extras: ds,
+      startMin: block?.startMinutes ?? null,
+    });
+  }
+  return { ...day, choreRollups: rollups };
 }
