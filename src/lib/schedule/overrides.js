@@ -40,30 +40,40 @@ export function applyOverrides(blockRows, overrides, isRealBlock) {
       let order = i; // derived position keeps unedited rows in place
       let edit = null;
 
+      let assignee = row.assignee ?? null;
+
       if (row.kind === "chore" && !row.deltaId) {
-        // A derived chore instance — relocate/retime/reorder per its override.
+        // A derived chore instance — relocate/retime/reorder/reassign per
+        // its override.
         const o = byTarget.get(targetKey(row.chore.id, row.placeId ?? null));
         if (o) {
           const dest = o.source_ref?.block_id ?? bucket;
           bucket = isRealBlock(dest) ? dest : "anytime";
+          if (o.assignee != null) assignee = o.assignee;
           edit = {
             overrideId: o.id,
             clockTime: o.clock_time ?? null,
             history: o.history ?? [],
+            cover: o.overrides?.cover ?? null,
           };
           if (o.overrides?.order != null) order = o.overrides.order;
           else if (bucket !== b.bucket) order = i + RELOCATED_BIAS;
         }
       } else {
-        // A commitment-backed row — order + history ride on the commitment.
+        // A commitment-backed row — order/history/assignee/cover ride on the
+        // commitment.
         const c = row.commitment ?? row.delta ?? null;
         if (c?.overrides?.order != null) order = c.overrides.order;
-        if (c && (c.history?.length || c.clock_time)) {
-          edit = { clockTime: c.clock_time ?? null, history: c.history ?? [] };
+        if (c?.assignee != null) assignee = c.assignee;
+        if (c && (c.history?.length || c.clock_time || c.overrides?.cover)) {
+          edit = {
+            clockTime: c.clock_time ?? null, history: c.history ?? [],
+            cover: c.overrides?.cover ?? null,
+          };
         }
       }
 
-      out.push({ bucket, row: edit ? { ...row, edit } : row, order });
+      out.push({ bucket, row: { ...row, assignee, ...(edit ? { edit } : {}) }, order });
     });
   }
   return out;

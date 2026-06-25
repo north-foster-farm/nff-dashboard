@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
-  GripVertical, MoreHorizontal,
+  GripVertical, MoreHorizontal, AlertTriangle, Ban,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -18,11 +18,17 @@ import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
 import { deriveDay } from "../lib/schedule/deriveDay.js";
 import { applyOverrides } from "../lib/schedule/overrides.js";
 import {
+  computeManDown, reservationWindows, pickCoverPerson,
+} from "../lib/schedule/manDown.js";
+import {
   obligationPlaceIds, getAllChoreDefinitions, describeChoreAnchor,
+  resolveAssignee,
 } from "../lib/chores.js";
 import SearchSelector from "../components/SearchSelector.jsx";
 import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
 import ScheduleEditSheet from "../components/ScheduleEditSheet.jsx";
+import ReservationSheet from "../components/ReservationSheet.jsx";
+import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
 import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
@@ -262,7 +268,7 @@ export default function Schedule({ data }) {
     [today]);
   const {
     deltas, addTask, addChore, removeDelta, setDone,
-    upsertOverride, updateDelta,
+    upsertOverride, updateDelta, addReservation,
   } = useScheduleDeltas(dateISO);
 
   // Chore search-to-add: the chore set as searchable items + a resolver.
@@ -322,6 +328,7 @@ export default function Schedule({ data }) {
       for (const inst of r.items) {
         const placeIds = obligationPlaceIds(inst.chore, choreCtx ?? {});
         const multi = placeIds.length > 1;
+        const assignee = resolveAssignee(inst.chore, today, ruleOpts);
         for (const pid of placeIds) {
           seen.add(inst.chore.id + "|" + (pid ?? ""));
           rows.push({
@@ -330,6 +337,7 @@ export default function Schedule({ data }) {
             chore: inst.chore,
             placeId: pid,
             placeLabel: multi ? choreCtx?.placesById?.get(pid)?.name ?? null : null,
+            assignee,
           });
         }
       }
@@ -345,6 +353,7 @@ export default function Schedule({ data }) {
             kind: "chore", key: "cd|" + ex.id, chore, placeId: pid,
             placeLabel: choreCtx?.placesById?.get(pid)?.name ?? null,
             deltaId: ex.id, delta: ex,
+            assignee: resolveAssignee(chore, today, ruleOpts),
           });
         } else {
           rows.push({ kind: "adhoc", key: "a|" + ex.id, commitment: ex });
@@ -378,6 +387,33 @@ export default function Schedule({ data }) {
     }
     return out.sort((a, b) => startKey(a) - startKey(b));
   }, [rawBlockRows, overrideDeltas, blocksById, startMinByBucket]);
+
+  // Non-work time (S7) + man-down (S8). Reservations are person/time windows;
+  // an assigned row whose block overlaps its assignee's window needs cover.
+  const reservations = useMemo(
+    () => deltas.filter((d) => d.source_type === "reservation"), [deltas]);
+  const windows = useMemo(() => reservationWindows(reservations), [reservations]);
+
+  // Block window [start, start+duration) for overlap tests.
+  const blockWindow = (bucket) => {
+    const start = bucket === "anytime" ? null : (startMinByBucket.get(bucket) ?? null);
+    if (start == null) return { start: null, end: null };
+    return { start, end: start + (blocksById.get(bucket)?.durationMinutes ?? 0) };
+  };
+
+  const manDown = useMemo(() => {
+    const flat = [];
+    for (const b of blockRows) {
+      const w = blockWindow(b.bucket);
+      for (const row of b.rows) {
+        flat.push({
+          key: row.key, assignee: row.assignee ?? null,
+          blockStart: w.start, blockEnd: w.end,
+        });
+      }
+    }
+    return computeManDown(flat, windows);
+  }, [blockRows, windows, startMinByBucket, blocksById]);
 
   // done / total per block, across chores (completions) + ad-hoc (state).
   const counts = useMemo(() => blockRows.map((b) => {
@@ -607,6 +643,67 @@ export default function Schedule({ data }) {
     writeRow(b.rows[from], b.bucket, { order }, entry);
   };
 
+  // ── Non-work time (S7) + man-down cover (S8) ───────────────────────
+  const [addingTimeOff, setAddingTimeOff] = useState(false);
+  const [covering, setCovering] = useState(null);
+
+  const rowLabel = (row) => row.kind === "chore"
+    ? row.chore.title : (row.commitment.source_ref?.title ?? "task");
+
+  // The one-line leak text for a conflicted row: "<chore> needs cover —
+  // <person> off-site till <time>".
+  const leakLine = (row) => {
+    const res = manDown.get(row.key);
+    if (!res) return null;
+    const until = res.kind === "day_off"
+      ? "today" : formatMinutesOfDay(res.endMin);
+    const word = res.kind === "break" ? "on break till"
+      : res.kind === "appointment" ? "out till"
+      : res.kind === "day_off" ? "off" : "off-site till";
+    return `${rowLabel(row)} needs cover — ${row.assignee} ${word} ${until}`;
+  };
+
+  const openCover = (row, b) => {
+    const w = blockWindow(b.bucket);
+    const res = manDown.get(row.key);
+    const until = res?.kind === "day_off" ? null : formatMinutesOfDay(res?.endMin);
+    const reason = res?.kind === "day_off"
+      ? `${row.assignee} is off for the day.`
+      : `${row.assignee} is ${res?.kind === "break" ? "on a break"
+          : res?.kind === "appointment" ? "out" : "off-site"} until ${until}.`;
+    setCovering({
+      row, bucket: b.bucket,
+      label: rowLabel(row),
+      placeLabel: row.placeLabel ?? null,
+      blockName: b.block?.name ?? "Anytime",
+      timeLabel: w.start != null ? formatMinutesOfDay(w.start) : null,
+      assignee: row.assignee,
+      reason,
+      cover: pickCoverPerson(row.assignee, windows, w.start, w.end),
+    });
+  };
+
+  const doCover = () => {
+    const who = covering?.cover?.person;
+    if (!who) return;
+    const entry = {
+      at: new Date().toISOString(), by: email ?? null,
+      summary: `Covered by ${who}`,
+    };
+    writeRow(covering.row, covering.bucket,
+      { assignee: who, cover: { by: who, ack: false } }, entry);
+    setCovering(null);
+  };
+
+  const acknowledgeCover = (row, bucket) => {
+    const by = row.edit?.cover?.by;
+    const entry = {
+      at: new Date().toISOString(), by: email ?? null,
+      summary: `${by} acknowledged cover`,
+    };
+    writeRow(row, bucket, { cover: { by, ack: true } }, entry);
+  };
+
   const loading = blocksLoading || sitesLoading || completions.loading;
 
   const dateLabel = today.toLocaleDateString("en-US", {
@@ -653,14 +750,46 @@ export default function Schedule({ data }) {
           </button>
         )}
         <OutboxIndicator />
-        <button
-          type="button"
-          onClick={() => setPicking(true)}
-          className="ml-auto text-[12px] font-medium text-accent inline-flex items-center gap-1"
-        >
-          <Plus size={14} /> Add chore
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setAddingTimeOff(true)}
+            className="text-[12px] font-medium text-dim hover:text-fg inline-flex items-center gap-1"
+          >
+            <Ban size={14} /> Time off
+          </button>
+          <button
+            type="button"
+            onClick={() => setPicking(true)}
+            className="text-[12px] font-medium text-accent inline-flex items-center gap-1"
+          >
+            <Plus size={14} /> Add chore
+          </button>
+        </div>
       </div>
+
+      {/* Non-work time (S7) — the day's reservations as a compact strip. */}
+      {reservations.length > 0 && (
+        <ul className="px-1 mb-3 flex flex-wrap gap-2">
+          {windows.map((w) => (
+            <li key={w.id}
+              className="inline-flex items-center gap-1.5 text-[11px] text-dim border border-line px-2 py-0.5">
+              <Ban size={11} className="shrink-0 text-faint" />
+              <span className="font-medium text-fg">{w.assignee}</span>
+              <span>
+                {w.label
+                  ? w.label
+                  : (w.kind === "day_off" ? "off all day"
+                    : `${formatMinutesOfDay(w.startMin)}–${formatMinutesOfDay(w.endMin)}`)}
+              </span>
+              <button type="button" onClick={() => removeDelta(w.id)}
+                className="shrink-0 text-faint hover:text-warn" aria-label="Remove time off">
+                <X size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {loading ? (
         <div className="px-4 py-10 text-center text-dim text-sm">Loading the day…</div>
@@ -710,6 +839,45 @@ export default function Schedule({ data }) {
                     }
                   />
                 </button>
+
+                {/* Man-down leak (S8) — one warn line per conflicted row,
+                    visible even while the block is collapsed. */}
+                {b.rows.filter((r) => manDown.has(r.key)).map((r) => (
+                  <button
+                    key={"leak|" + r.key}
+                    type="button"
+                    onClick={() => openCover(r, b)}
+                    className="w-full flex items-center gap-2 pl-[18px] pr-4 pb-3 -mt-1 text-left"
+                  >
+                    <AlertTriangle size={14} className="shrink-0 text-warn" />
+                    <span className="flex-1 text-[12.5px] text-warn">
+                      {leakLine(r)}
+                    </span>
+                    <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-warn border border-warn px-1.5 py-0.5">
+                      Cover
+                    </span>
+                  </button>
+                ))}
+                {/* Awaiting-acknowledgment (S60a) after a cover. */}
+                {b.rows.filter((r) => r.edit?.cover && !r.edit.cover.ack
+                  && !manDown.has(r.key)).map((r) => (
+                  <div
+                    key={"ack|" + r.key}
+                    className="flex items-center gap-2 pl-[18px] pr-4 pb-3 -mt-1"
+                  >
+                    <Check size={13} className="shrink-0 text-resolved" />
+                    <span className="flex-1 text-[12px] text-dim">
+                      {rowLabel(r)} covered by {r.edit.cover.by} · awaiting ack
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => acknowledgeCover(r, b.bucket)}
+                      className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-accent border border-line px-1.5 py-0.5 hover:border-accent"
+                    >
+                      Acknowledge
+                    </button>
+                  </div>
+                ))}
 
                 {/* The one open block: its checklist + add + the Rounds entry. */}
                 {isOpen && (
@@ -780,6 +948,27 @@ export default function Schedule({ data }) {
           blocks={blocks}
           onApply={applyEdit}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {addingTimeOff && (
+        <ReservationSheet
+          onAdd={(r) => { addReservation(r); setAddingTimeOff(false); }}
+          onClose={() => setAddingTimeOff(false)}
+        />
+      )}
+
+      {covering && (
+        <CoverSheet
+          label={covering.label}
+          placeLabel={covering.placeLabel}
+          blockName={covering.blockName}
+          timeLabel={covering.timeLabel}
+          assignee={covering.assignee}
+          reason={covering.reason}
+          cover={covering.cover}
+          onCover={doCover}
+          onClose={() => setCovering(null)}
         />
       )}
 

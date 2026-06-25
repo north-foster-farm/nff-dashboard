@@ -3523,11 +3523,24 @@ versioned capture).
   to the `source_type` enum + the `history` column (additive). Deferred:
   cross-day move of *derived recurring* chores (suppression tombstones),
   S69 mark-not-protected, S72 split-a-block.
-- **41.9+ →** non-work-time (S7) / man-down + buffers (S8) / desktop week
-  + load-silhouette (S9) / reminders (S10) / drift (S11). Deferred: the
-  desktop day-rail, per-person start-time line, the seal worked-window
-  stamp, the should→must box (S8); and the DB cleanup (drop the dead `timeline_items`
-  view + orphaned `chore_runs`).
+- **41.9 — S7 non-work-time + S8 man-down. AUTHORED `v0.10.50-alpha`
+  (2026-06-25); no migration (reuses the `reservation` enum value + jsonb).**
+  Non-work time is a `reservation` commitment (person + off-site / break /
+  appointment / day-off window), added via `ReservationSheet` and shown as
+  a compact strip; `removeDelta` clears it. Man-down (`src/lib/schedule/
+  manDown.js`): an assigned row whose block window overlaps its assignee's
+  reservation surfaces a one-line "needs cover" **leak** on the block
+  (visible while collapsed), per the mockup. **Cover** (`CoverSheet`)
+  reassigns the chore to the free admin (an `assignee` override / delta
+  update) and records a cover with `ack:false`; an "awaiting ack" line lets
+  the covering person **acknowledge** (S60a). Assignee now resolves per row
+  (`resolveAssignee`) and an override/delta can carry `assignee` + a `cover`
+  record. Deferred: buffers (S8.5 — BD23 open), event-derived off-site,
+  push-notify on cover.
+- **41.10+ →** desktop spine + week load-silhouette + Calendar absorption
+  (S9) / reminders (S10) / drift (S11). Deferred: per-person start-time
+  line, the seal worked-window stamp, the should→must box; and the DB
+  cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
 
 ---
 
