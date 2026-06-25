@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Search, X, ChevronRight, Plus, Check } from "lucide-react";
+import {
+  Search, X, ChevronRight, Plus, Check, StickyNote,
+} from "lucide-react";
 import { obligationPlaceIds, describeChoreAnchor } from "../lib/chores.js";
 
 // The Schedule's add-to-day search (S33) — the mockup's Hero 4. One field,
@@ -12,6 +14,7 @@ import { obligationPlaceIds, describeChoreAnchor } from "../lib/chores.js";
 // path as Rounds. Project nodes share this list in a later slice.
 export default function AddToScheduleSearch({
   chores, choreCtx, projectNodes = [], onAddChore, onAddProject, onAddTask,
+  onAddNote,
   onClose,
 }) {
   const [q, setQ] = useState("");
@@ -231,6 +234,18 @@ export default function AddToScheduleSearch({
                       Add “{q.trim()}” as a task
                     </span>
                   </button>
+                  {onAddNote && (
+                    <button
+                      type="button"
+                      onClick={() => { onAddNote(q.trim()); onClose(); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line hover:bg-row-hover"
+                    >
+                      <StickyNote size={16} className="shrink-0 text-faint" />
+                      <span className="flex-1 text-[14px] text-fg truncate">
+                        Add “{q.trim()}” as a note
+                      </span>
+                    </button>
+                  )}
                 </>
               )}
 

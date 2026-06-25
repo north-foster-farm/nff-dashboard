@@ -3698,7 +3698,17 @@ versioned capture).
   Deferred: "tomorrow looks heavy" (S114 — the server can't derive the day's
   load without the client engine) and the man-down push (S111 — client-
   triggered). **S10 + S11 both complete.**
-- **41.20+ →** the coverage tail (S36 note · S34 multi-day · S45/S46 recurring
+- **41.20 — coverage: free-text notes (S36) + future-day confirm label
+  (S82). AUTHORED `v0.10.61-alpha` (2026-06-25); pure frontend, NO migration.**
+  S36: the `note` commitment type (already whitelisted by the source_type
+  CHECK) gets a UI at last — "Add … as a note" in the add-to-schedule search;
+  notes render as a quiet, non-checkable marker row (sticky-note glyph + italic
+  text + remove) via a new `NoteRow`. Notes are excluded from a block's work
+  counts/seal logic and from the confirmed-day capture's entries (markers, not
+  work) — fixing a latent "block never seals" trap. `addNote` in
+  `useScheduleDeltas`. S82: the Confirm button now reads "Confirm <date>" when
+  viewing a non-today day, so confirming a future day is visibly distinct.
+- **41.21+ →** the rest of the coverage tail (S34 multi-day · S45/S46 recurring
   reservations · S56a-c conflict list · S58 double-book · S67 events this/all-
   future · S72 split-block · S80 week reservations · buffers + BD23). Deferred:
   DB cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).

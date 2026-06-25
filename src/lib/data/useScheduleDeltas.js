@@ -113,6 +113,17 @@ export function useScheduleDeltas(dateISO) {
     });
     return id;
   };
+  // Add a free-text note/marker to the day (S36) — a 'note' delta. Not a
+  // task: it has no done-state, it just rides the day as a reminder.
+  const addNote = (text, blockId = null) => {
+    const id = crypto.randomUUID();
+    enqueueOp("commitment_insert", {
+      id, sourceType: "note",
+      sourceRef: { text, block_id: blockId ?? null },
+      runDate: dateISO,
+    });
+    return id;
+  };
   // Pull an existing chore onto the day at a specific place (a 'chore'
   // delta — renders as a real chore row, completion via chore_completions).
   const addChore = (choreId, placeId, blockId = null) => {
@@ -232,7 +243,7 @@ export function useScheduleDeltas(dateISO) {
 
   return {
     deltas, loading: serverRows === null,
-    addTask, addChore, addProject, removeDelta, setDone,
+    addTask, addNote, addChore, addProject, removeDelta, setDone,
     upsertOverride, updateDelta, addReservation,
   };
 }

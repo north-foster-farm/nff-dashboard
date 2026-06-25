@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
   GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
-  Repeat,
+  Repeat, StickyNote,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -300,6 +300,47 @@ function AdHocRow({
   );
 }
 
+// A free-text note/marker on the day (S36) — a 'note' commitment delta. Not a
+// task: no checkbox, no done-state — just a quiet line ("vet called — ask
+// about X") with a remove control.
+function NoteRow({
+  commitment, onRemove, sortableRef, sortableStyle, dragHandleProps, isDragging,
+}) {
+  return (
+    <li
+      ref={sortableRef}
+      style={sortableStyle}
+      className={
+        "flex items-center gap-3 px-4 py-3 border-b border-line last:border-b-0 "
+        + (isDragging ? "opacity-60 relative z-10" : "")
+      }
+    >
+      {dragHandleProps && (
+        <button
+          type="button"
+          {...dragHandleProps}
+          className="shrink-0 text-faint hover:text-fg cursor-grab touch-none -mr-1"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical size={16} />
+        </button>
+      )}
+      <StickyNote size={16} className="shrink-0 text-faint" />
+      <div className="flex-1 min-w-0 text-[13px] text-dim italic">
+        {commitment.source_ref?.text ?? "(note)"}
+      </div>
+      <button
+        type="button"
+        onClick={() => onRemove(commitment.id)}
+        className="shrink-0 text-faint hover:text-warn cursor-pointer"
+        aria-label="Remove note"
+      >
+        <X size={16} />
+      </button>
+    </li>
+  );
+}
+
 // One sortable Schedule row — wires @dnd-kit's per-item drag state into the
 // shared ChoreCheckRow / AdHocRow (S6 3/3 reorder). `onEdit` opens the edit
 // sheet; `row.edit` carries the instance's clock time + history.
@@ -327,6 +368,15 @@ function DraggableRow({
         onEdit={onEdit}
         edit={row.edit}
         showPriority
+        {...sortable}
+      />
+    );
+  }
+  if (row.kind === "note") {
+    return (
+      <NoteRow
+        commitment={row.commitment}
+        onRemove={removeDelta}
         {...sortable}
       />
     );
@@ -392,7 +442,7 @@ export default function Schedule({ data }) {
       today.getFullYear(), today.getMonth(), today.getDate())),
     [today]);
   const {
-    deltas, addTask, addChore, addProject, removeDelta, setDone,
+    deltas, addTask, addNote, addChore, addProject, removeDelta, setDone,
     upsertOverride, updateDelta, addReservation,
   } = useScheduleDeltas(dateISO);
 
@@ -522,6 +572,8 @@ export default function Schedule({ data }) {
           });
         } else if (ex.source_type === "project_node") {
           rows.push({ kind: "project", key: "p|" + ex.id, commitment: ex });
+        } else if (ex.source_type === "note") {
+          rows.push({ kind: "note", key: "n|" + ex.id, commitment: ex });
         } else {
           rows.push({ kind: "adhoc", key: "a|" + ex.id, commitment: ex });
         }
@@ -598,12 +650,15 @@ export default function Schedule({ data }) {
   // done / total per block, across chores (completions) + ad-hoc (state).
   const counts = useMemo(() => blockRows.map((b) => {
     let done = 0;
+    let total = 0;
     for (const row of b.rows) {
+      if (row.kind === "note") continue; // markers aren't work — don't count
+      total++;
       if (row.kind === "chore"
         ? completions.isDone(row.chore.id, row.placeId)
         : row.commitment.state === "done") done++;
     }
-    return { done, total: b.rows.length };
+    return { done, total };
   }), [blockRows, completions]);
 
   // done/total keyed by bucket (the render iterates the merged timeline, so
@@ -636,7 +691,7 @@ export default function Schedule({ data }) {
     name: b.block?.name ?? "Anytime",
     block: b.block,
     startMin: b.startMin,
-    count: b.rows.length,
+    count: counts[i].total,
     done: counts[i].done,
     allDone: counts[i].total > 0 && counts[i].done === counts[i].total,
     hasManDown: b.rows.some((r) => manDown.has(r.key)),
@@ -803,7 +858,9 @@ export default function Schedule({ data }) {
       planned_start: b.startMin != null ? formatMinutesOfDay(b.startMin) : null,
       planned_end: null,
     })),
-    entries: blockRows.flatMap((b) => b.rows.map((row) => row.kind === "chore"
+    entries: blockRows.flatMap((b) => b.rows
+      .filter((row) => row.kind !== "note") // notes are markers, not entries
+      .map((row) => row.kind === "chore"
       ? ({
         source_type: "chore",
         label: row.chore.title,
@@ -1187,7 +1244,7 @@ export default function Schedule({ data }) {
             disabled={confirming || loading || timeline.length === 0}
             className="text-[12px] font-medium px-3 py-1.5 bg-accent text-on-accent disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed text-left leading-tight"
           >
-            Confirm today
+            {viewingToday ? "Confirm today" : `Confirm ${dateLabel}`}
             {(totalRows > 0 || eventEntries.length > 0) && (
               <span className="block text-[11px] font-normal opacity-80">
                 {blockRows.filter((b) => b.block).length} blocks · {totalRows} items
@@ -1422,6 +1479,7 @@ export default function Schedule({ data }) {
           onAddChore={addChoreAt}
           onAddProject={(node) => addProject(node, null)}
           onAddTask={(title) => addTask(title, null)}
+          onAddNote={(text) => addNote(text, null)}
           onClose={() => setPicking(false)}
         />
       )}
