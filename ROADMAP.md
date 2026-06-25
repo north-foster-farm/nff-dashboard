@@ -3550,9 +3550,26 @@ versioned capture).
   every screen demonstrated in the minimalist mockup.** Deferred: the
   Week/Month center views, Calendar (events) absorption, per-person
   start-time line, the seal worked-window stamp, the should→must box.
-- **41.11+ →** Calendar absorption (S9 tail) / reminders (S10) / drift
-  (S11). Deferred: the DB cleanup (drop the dead `timeline_items` view +
-  orphaned `chore_runs`).
+- **41.11 — S9: events absorbed into the Today timeline. AUTHORED
+  `v0.10.52-alpha` (2026-06-25); pure frontend, no migration.** `deriveDay`
+  already folded in event occurrences + active projects, but the Schedule
+  rendered only chore rollups. Now the accordion merges chore blocks with
+  **event entries** in one time-ordered timeline (`EventEntry`): each event
+  is an openable line (kind-coloured dot + start time) whose panel shows the
+  time window, `kindLabel`, location, subtitle, a recurring marker, and an
+  "Open in Calendar" jump. Events fold into the **confirm** doc as
+  `source_type:"event"` entries (the schema's `source_type` is a freeform
+  string — no migration), the confirm-button count gains a `· N events`
+  segment, and the source-changed ribbon now tracks added/removed events.
+  The empty-state + confirm-enabled checks key off the merged timeline, so
+  an events-only day is valid. "now"/seal/spine stay on chore blocks.
+  Deferred: project-work rows (need a placement delta + enum migration),
+  the event buffer/equipment checklist (no generic data), per-person
+  start-time line, the seal worked-window stamp.
+- **41.12+ →** search-to-add overhaul (S33: categorised results + chore
+  dedup-by-title + two-step place-narrow) / reminders (S10) / drift (S11).
+  Deferred: the DB cleanup (drop the dead `timeline_items` view + orphaned
+  `chore_runs`).
 
 ---
 

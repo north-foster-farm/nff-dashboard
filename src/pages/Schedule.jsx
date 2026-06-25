@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
-  GripVertical, MoreHorizontal, AlertTriangle, Ban,
+  GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
+  Repeat,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -39,6 +40,7 @@ import { navigate } from "../lib/router.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { recordCapture, readCaptures } from "../lib/capture/capture.js";
 import { formatMinutesOfDay, resolveBlockMinutes } from "../lib/sunTimes.js";
+import { T } from "../theme.js";
 
 // The Schedule — the phone-first, single-open accordion of the day's chore
 // BLOCKS: exactly one block expanded (the one "now" is in), every other
@@ -69,6 +71,97 @@ function ymdLocal(d) {
 // bucket last.
 function startKey(r) {
   return r.startMin == null ? Number.MAX_SAFE_INTEGER : r.startMin;
+}
+
+// "HH:MM" (24h) -> minutes of day, or null.
+function hmToMin(hm) {
+  if (!hm || typeof hm !== "string") return null;
+  const [h, m] = hm.split(":").map(Number);
+  if (Number.isNaN(h)) return null;
+  return h * 60 + (Number.isNaN(m) ? 0 : m);
+}
+
+// An EVENT entry in the day timeline (S9) — the derived day folds in event
+// occurrences alongside chore blocks; the Schedule renders them as their own
+// time-ordered, openable lines (NOT chore checklists). Marries the old
+// events surface (now Calendar) into the one agreed day. Tap to peek the
+// time/place; the body is informational, not a tick list.
+function EventEntry({ occ, isOpen, onToggle }) {
+  const color = T.cat[occ.kindId] || T.cat.default;
+  const startMin = hmToMin(occ.startTime);
+  const endMin = hmToMin(occ.endTime);
+  const timeLabel = startMin == null
+    ? "All day"
+    : formatMinutesOfDay(startMin)
+      + (endMin != null ? "–" + formatMinutesOfDay(endMin) : "");
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={
+          "w-full flex items-center gap-3 px-4 py-3 text-left " +
+          (isOpen ? "bg-row-active" : "hover:bg-row-hover")
+        }
+        aria-expanded={isOpen}
+      >
+        <span
+          className="shrink-0 w-2.5 h-2.5 rounded-full"
+          style={{ background: color }}
+        />
+        <span className={
+          "flex-1 min-w-0 truncate text-[14px] " +
+          (isOpen ? "font-semibold text-fg" : "text-fg")
+        }>
+          {occ.instanceLabel}
+        </span>
+        <span className="shrink-0 text-[12px] text-dim [font-variant-numeric:tabular-nums]">
+          {startMin == null ? "all day" : formatMinutesOfDay(startMin)}
+        </span>
+        <ChevronRight
+          size={16}
+          className={
+            "shrink-0 text-faint transition-transform " +
+            (isOpen ? "rotate-90" : "")
+          }
+        />
+      </button>
+      {isOpen && (
+        <div className="bg-surface px-4 py-3 border-t border-line space-y-2">
+          <div className="flex items-center gap-2 text-[13px] text-dim">
+            <CalendarClock size={14} className="shrink-0 text-faint" />
+            <span>{timeLabel}</span>
+            <span
+              className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 border"
+              style={{ color, borderColor: color }}
+            >
+              {occ.kindLabel}
+            </span>
+            {occ.recurring && (
+              <Repeat size={12} className="shrink-0 text-faint"
+                aria-label="Recurring" />
+            )}
+          </div>
+          {occ.location && (
+            <div className="flex items-center gap-2 text-[13px] text-dim">
+              <MapPin size={14} className="shrink-0 text-faint" />
+              <span>{occ.location}</span>
+            </div>
+          )}
+          {occ.subtitle && (
+            <div className="text-[13px] text-dim">{occ.subtitle}</div>
+          )}
+          <button
+            type="button"
+            onClick={() => navigate("/calendar")}
+            className="text-[12px] font-medium text-accent inline-flex items-center gap-1"
+          >
+            Open in Calendar <ChevronRight size={13} />
+          </button>
+        </div>
+      )}
+    </li>
+  );
 }
 
 // The block "now" is in: the latest real block whose start has passed;
@@ -318,13 +411,20 @@ export default function Schedule({ data }) {
   }, [blocks, today]);
   const isRealBlock = (bucket) => bucket !== "anytime" && blocksById.has(bucket);
 
+  // The one derived day (S3): chore rollups + event occurrences + active
+  // projects, folded with this day's deltas. Both the accordion (chores)
+  // and the event timeline read from it.
+  const derived = useMemo(
+    () => deriveDay({
+      data, dayDate: today, dayUTC, dayISO: dateISO, ruleOpts, deltas,
+    }),
+    [data, today, dayUTC, dateISO, ruleOpts, deltas]);
+
   // Derive the day (rollups carry .items = chores, .extras = ad-hoc/chore
   // deltas; 'override' deltas are excluded here — applied below at the row
   // level). Then expand each rollup into typed rows.
   const rawBlockRows = useMemo(() => {
-    const { choreRollups } = deriveDay({
-      data, dayDate: today, dayUTC, dayISO: dateISO, ruleOpts, deltas,
-    });
+    const { choreRollups } = derived;
     return choreRollups.map((r) => {
       const rows = [];
       const seen = new Set();
@@ -364,7 +464,20 @@ export default function Schedule({ data }) {
       }
       return { bucket: r.bucket, block: r.block, rows };
     });
-  }, [data, today, dayUTC, dateISO, ruleOpts, deltas, choreCtx, choreById]);
+  }, [derived, today, ruleOpts, choreCtx, choreById]);
+
+  // Event occurrences as timeline entries (S9) — time-ordered alongside
+  // chore blocks, openable to a panel. Cancelled occurrences are dropped.
+  const eventEntries = useMemo(
+    () => (derived.events ?? [])
+      .filter((o) => o.status !== "cancelled")
+      .map((o) => ({
+        kind: "event",
+        bucket: "ev|" + o.instanceId + "|" + o.date + "|" + (o.startTime ?? ""),
+        startMin: hmToMin(o.startTime),
+        occ: o,
+      })),
+    [derived]);
 
   const overrideDeltas = useMemo(
     () => deltas.filter((d) => d.source_type === "override"), [deltas]);
@@ -428,6 +541,23 @@ export default function Schedule({ data }) {
     }
     return { done, total: b.rows.length };
   }), [blockRows, completions]);
+
+  // done/total keyed by bucket (the render iterates the merged timeline, so
+  // index-into-blockRows no longer lines up).
+  const countByBucket = useMemo(() => {
+    const m = new Map();
+    blockRows.forEach((b, i) => m.set(b.bucket, counts[i]));
+    return m;
+  }, [blockRows, counts]);
+
+  // The merged day timeline: chore blocks + event entries, in time order.
+  // "now"/seal/spine stay on chore blocks; events are informational lines.
+  const timeline = useMemo(
+    () => [
+      ...blockRows.map((b) => ({ kind: "block", ...b })),
+      ...eventEntries,
+    ].sort((a, b) => startKey(a) - startKey(b)),
+    [blockRows, eventEntries]);
 
   const nowBucket = useMemo(
     () => pickNowBucket(blockRows, nowMin),
@@ -528,6 +658,17 @@ export default function Schedule({ data }) {
         clock_time: null,
         assignee: row.commitment.assignee ?? null,
         source_ref: { commitment_id: row.commitment.id },
+      }))).concat(eventEntries.map((e) => ({
+        source_type: "event",
+        label: e.occ.instanceLabel,
+        block_id: null,
+        clock_time: e.occ.startTime ?? null,
+        assignee: null,
+        source_ref: {
+          instance_id: e.occ.instanceId,
+          occurrence_id: e.occ.occurrenceId ?? null,
+          date: e.occ.date,
+        },
       }))),
   });
 
@@ -553,9 +694,11 @@ export default function Schedule({ data }) {
   // Surfaced, never auto-applied.
   const changes = useMemo(() => {
     if (!confirmedDoc) return null;
-    const entryKey = (e) => e.source_ref?.commitment_id
-      ? `a|${e.source_ref.commitment_id}`
-      : `c|${e.source_ref?.chore_id ?? ""}|${e.source_ref?.place_id ?? ""}`;
+    const entryKey = (e) => e.source_type === "event"
+      ? `e|${e.source_ref?.instance_id ?? ""}|${e.source_ref?.date ?? ""}`
+      : e.source_ref?.commitment_id
+        ? `a|${e.source_ref.commitment_id}`
+        : `c|${e.source_ref?.chore_id ?? ""}|${e.source_ref?.place_id ?? ""}`;
     const rowKey = (row) => row.kind === "chore"
       ? `c|${row.chore.id}|${row.placeId ?? ""}`
       : `a|${row.commitment.id}`;
@@ -571,12 +714,17 @@ export default function Schedule({ data }) {
         if (!confirmedKeys.has(k)) added.push(rowLabel(row));
       }
     }
+    for (const e of eventEntries) {
+      const k = `e|${e.occ.instanceId}|${e.occ.date}`;
+      currentKeys.add(k);
+      if (!confirmedKeys.has(k)) added.push(e.occ.instanceLabel);
+    }
     const removed = (confirmedDoc.entries ?? [])
       .filter((e) => !currentKeys.has(entryKey(e)))
       .map((e) => e.label);
     const total = added.length + removed.length;
     return total ? { total, added, removed } : null;
-  }, [confirmedDoc, blockRows]);
+  }, [confirmedDoc, blockRows, eventEntries]);
 
   // ── Instance overrides + reorder + cross-day move (S6 3/3) ──────────
   // A small drag threshold so a tap on a row never starts a drag.
@@ -769,13 +917,15 @@ export default function Schedule({ data }) {
           <button
             type="button"
             onClick={confirmDay}
-            disabled={confirming || loading || blockRows.length === 0}
+            disabled={confirming || loading || timeline.length === 0}
             className="text-[12px] font-medium px-3 py-1 bg-accent text-on-accent disabled:opacity-50"
           >
             Confirm today
-            {totalRows > 0 && (
+            {(totalRows > 0 || eventEntries.length > 0) && (
               <span className="opacity-80">
                 {" "}· {blockRows.filter((b) => b.block).length} blocks · {totalRows} items
+                {eventEntries.length > 0
+                  && ` · ${eventEntries.length} event${eventEntries.length === 1 ? "" : "s"}`}
               </span>
             )}
           </button>
@@ -824,7 +974,7 @@ export default function Schedule({ data }) {
 
       {loading ? (
         <div className="px-4 py-10 text-center text-dim text-sm">Loading the day…</div>
-      ) : blockRows.length === 0 ? (
+      ) : timeline.length === 0 ? (
         <div className="border border-dashed border-line">
           <div className="px-4 py-8 text-center text-dim text-sm">
             Nothing on the schedule today.
@@ -833,9 +983,20 @@ export default function Schedule({ data }) {
         </div>
       ) : (
         <ol className="border border-line divide-y divide-line">
-          {blockRows.map((b, i) => {
+          {timeline.map((entry) => {
+            if (entry.kind === "event") {
+              return (
+                <EventEntry
+                  key={entry.bucket}
+                  occ={entry.occ}
+                  isOpen={entry.bucket === open}
+                  onToggle={() => setOpenBucket(entry.bucket)}
+                />
+              );
+            }
+            const b = entry;
             const isOpen = b.bucket === open;
-            const { done, total } = counts[i];
+            const { done, total } = countByBucket.get(b.bucket) ?? { done: 0, total: 0 };
             const allDone = total > 0 && done === total;
             // Forward focus: a collapsed, fully-done block recedes.
             const dimmed = !isOpen && allDone;
