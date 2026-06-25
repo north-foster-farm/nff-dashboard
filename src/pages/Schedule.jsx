@@ -72,6 +72,20 @@ function startKey(r) {
   return r.startMin == null ? Number.MAX_SAFE_INTEGER : r.startMin;
 }
 
+// An ISO timestamp -> a compact clock stamp like "6:08a" (the mockup's
+// confirmed-at format). null on a bad value.
+function fmtStamp(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const ap = h < 12 ? "a" : "p";
+  h %= 12;
+  if (h === 0) h = 12;
+  return `${h}:${String(m).padStart(2, "0")}${ap}`;
+}
+
 // "HH:MM" (24h) -> minutes of day, or null.
 function hmToMin(hm) {
   if (!hm || typeof hm !== "string") return null;
@@ -576,6 +590,21 @@ export default function Schedule({ data }) {
   const open = openBucket ?? nowBucket;
   const openRef = useRef(null);
 
+  // Jump-to-now appears only once the open block scrolls out of view (the
+  // mockup's behaviour) — until then there's nothing to jump back to.
+  const [showJump, setShowJump] = useState(false);
+  useEffect(() => {
+    const el = openRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setShowJump(false);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([e]) => setShowJump(!e.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [open, timeline.length]);
+
   // tick -> seal: when the open block flips to fully done, advance to the
   // next not-yet-done block (forward focus). Fires only on the transition,
   // so manually reopening a finished block doesn't bounce away.
@@ -905,6 +934,11 @@ export default function Schedule({ data }) {
         {confirmedDoc ? (
           <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-resolved border border-resolved px-2 py-0.5 inline-flex items-center gap-1">
             <Check size={12} strokeWidth={3} /> Confirmed
+            {fmtStamp(confirmedDoc.confirmed_at) && (
+              <span className="normal-case tracking-normal font-medium opacity-80">
+                {fmtStamp(confirmedDoc.confirmed_at)}
+              </span>
+            )}
           </span>
         ) : (
           <button
@@ -1167,7 +1201,13 @@ export default function Schedule({ data }) {
       <button
         type="button"
         onClick={jumpToNow}
-        className="fixed bottom-5 right-5 z-10 flex items-center gap-1.5 px-3 py-2 bg-accent text-on-accent text-[12px] font-medium shadow-lg"
+        className={
+          "fixed bottom-5 right-5 z-10 flex items-center gap-1.5 px-3 py-2 " +
+          "bg-accent text-on-accent text-[12px] font-medium shadow-lg " +
+          "transition-opacity duration-200 " +
+          (showJump ? "opacity-100" : "opacity-0 pointer-events-none")
+        }
+        aria-hidden={!showJump}
       >
         <ArrowDownToLine size={14} />
         Now

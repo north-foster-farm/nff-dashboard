@@ -3581,7 +3581,16 @@ versioned capture).
   category (needs a project-node placement delta + `source_type` enum
   migration), and dedup across the (rare) same-title-different-definition
   case beyond title grouping.
-- **41.13+ →** project-work rows (placement delta + migration) / reminders
+- **41.13 — mockup polish. AUTHORED `v0.10.54-alpha` (2026-06-25); pure
+  frontend.** Two fidelity fixes against the minimalist mockup: the
+  Confirmed pill now shows the **confirmed-at clock stamp** ("Confirmed
+  6:08a", from the capture's `confirmed_at`), and **jump-to-now** is now
+  conditional — the "Now" FAB fades in only once the open block scrolls out
+  of view (IntersectionObserver on the open block), as the mockup does,
+  instead of being permanently visible. (The mockup's round "+" add FAB was
+  intentionally not added — the toolbar's "Add chore" / "Time off" already
+  cover it without duplicating the affordance.)
+- **41.14+ →** project-work rows (placement delta + migration) / reminders
   (S10) / drift (S11). Deferred: the DB cleanup (drop the dead
   `timeline_items` view + orphaned `chore_runs`).
 

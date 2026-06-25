@@ -1,7 +1,7 @@
 {
   "name": "nff-dashboard",
   "private": true,
-  "version": "0.10.53-alpha",
+  "version": "0.10.54-alpha",
   "type": "module",
   "scripts": {
     "dev": "vite",
