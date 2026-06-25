@@ -397,6 +397,13 @@ export default function Schedule({ data }) {
     return m;
   }, [data]);
   const choreDefs = useMemo(() => getAllChoreDefinitions(data), [data]);
+  // Chore definition order = the route's chore order (Rounds renders chores in
+  // definitions order). Index map so a block's rows can match the route.
+  const choreOrder = useMemo(() => {
+    const m = new Map();
+    choreDefs.forEach((c, i) => m.set(c.id, i));
+    return m;
+  }, [choreDefs]);
   const [picking, setPicking] = useState(false);
   // Add one (chore, place) onto the day (S33 search-to-add). The search
   // component handles dedup-by-title + place-narrow and calls this per place.
@@ -459,25 +466,40 @@ export default function Schedule({ data }) {
   // level). Then expand each rollup into typed rows.
   const rawBlockRows = useMemo(() => {
     const { choreRollups } = derived;
+    const placesById = choreCtx?.placesById;
     return choreRollups.map((r) => {
       const rows = [];
       const seen = new Set();
+      // Route convention (match Rounds' per-place view): PLACE-major — you
+      // walk to a place and do all its chores there before moving on. So
+      // order by place sortOrder, then name, then chore definition order
+      // within the place (not chore-major across places).
+      const choreRows = [];
       for (const inst of r.items) {
         const placeIds = obligationPlaceIds(inst.chore, choreCtx ?? {});
         const multi = placeIds.length > 1;
         const assignee = resolveAssignee(inst.chore, today, ruleOpts);
         for (const pid of placeIds) {
           seen.add(inst.chore.id + "|" + (pid ?? ""));
-          rows.push({
-            kind: "chore",
-            key: "c|" + inst.chore.id + "|" + (pid ?? ""),
-            chore: inst.chore,
-            placeId: pid,
-            placeLabel: multi ? choreCtx?.placesById?.get(pid)?.name ?? null : null,
-            assignee,
+          const p = pid ? placesById?.get(pid) : null;
+          choreRows.push({
+            row: {
+              kind: "chore",
+              key: "c|" + inst.chore.id + "|" + (pid ?? ""),
+              chore: inst.chore,
+              placeId: pid,
+              placeLabel: multi ? p?.name ?? null : null,
+              assignee,
+            },
+            ps: p?.sortOrder ?? 0,
+            pn: p?.name ?? "",
+            co: choreOrder.get(inst.chore.id) ?? 1e9,
           });
         }
       }
+      choreRows.sort((a, b) =>
+        a.ps - b.ps || a.pn.localeCompare(b.pn) || a.co - b.co);
+      for (const cr of choreRows) rows.push(cr.row);
       for (const ex of (r.extras ?? [])) {
         if (ex.source_type === "chore") {
           const chore = choreById.get(ex.source_ref?.chore_id);
@@ -500,7 +522,7 @@ export default function Schedule({ data }) {
       }
       return { bucket: r.bucket, block: r.block, rows };
     });
-  }, [derived, today, ruleOpts, choreCtx, choreById]);
+  }, [derived, today, ruleOpts, choreCtx, choreById, choreOrder]);
 
   // Event occurrences as timeline entries (S9) — time-ordered alongside
   // chore blocks, openable to a panel. Cancelled occurrences are dropped.
@@ -1020,7 +1042,7 @@ export default function Schedule({ data }) {
         </div>
       )}
 
-      <div className="px-1 mb-3 flex items-center gap-2">
+      <div className="px-1 mb-3 flex flex-wrap items-start gap-x-3 gap-y-2">
         {confirmedDoc ? (
           <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-resolved border border-resolved px-2 py-0.5 inline-flex items-center gap-1">
             <Check size={12} strokeWidth={3} /> Confirmed
@@ -1035,12 +1057,12 @@ export default function Schedule({ data }) {
             type="button"
             onClick={confirmDay}
             disabled={confirming || loading || timeline.length === 0}
-            className="text-[12px] font-medium px-3 py-1 bg-accent text-on-accent disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+            className="text-[12px] font-medium px-3 py-1.5 bg-accent text-on-accent disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed text-left leading-tight"
           >
             Confirm today
             {(totalRows > 0 || eventEntries.length > 0) && (
-              <span className="opacity-80">
-                {" "}· {blockRows.filter((b) => b.block).length} blocks · {totalRows} items
+              <span className="block text-[11px] font-normal opacity-80">
+                {blockRows.filter((b) => b.block).length} blocks · {totalRows} items
                 {eventEntries.length > 0
                   && ` · ${eventEntries.length} event${eventEntries.length === 1 ? "" : "s"}`}
               </span>

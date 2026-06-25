@@ -41,12 +41,9 @@ export function DayRailSpine({
   const max = blocks.reduce((m, b) => Math.max(m, b.count), 1);
   const overview = focus == null;
   return (
-    <div className="hidden lg:flex flex-col w-[180px] shrink-0 border-r border-line bg-surface relative">
+    <div className="hidden lg:flex flex-col w-[180px] shrink-0 border-r border-line bg-surface relative pt-2">
       <div className="absolute inset-0 pointer-events-none z-0"
         style={{ background: WASH_V }} />
-      <div className="relative z-[1] eyebrow text-[9px] text-faint px-3 pt-4 pb-2">
-        Blocks
-      </div>
       {/* Whole-day overview affordance — the explicit way back to the agenda. */}
       <button
         type="button"
@@ -110,7 +107,7 @@ export function DayRailSpine({
             <Icon
               size={15}
               className={"shrink-0 "
-                + (isFocus ? "text-accent" : isNow ? "text-warn" : "text-faint")}
+                + (isNow ? "text-resolved" : isFocus ? "text-accent" : "text-faint")}
             />
             <span className="flex-1 min-w-0">
               <span className={
@@ -119,8 +116,9 @@ export function DayRailSpine({
               }>
                 {b.name}
               </span>
-              <span className="block text-[10px] text-faint [font-variant-numeric:tabular-nums]">
-                {compactTime(b.startMin)}{isNow ? " · now" : ""}
+              <span className="block text-[10px] [font-variant-numeric:tabular-nums]">
+                <span className="text-faint">{compactTime(b.startMin)}</span>
+                {isNow && <span className="text-resolved font-semibold"> · now</span>}
               </span>
             </span>
             {b.hasManDown && (
