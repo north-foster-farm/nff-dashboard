@@ -30,6 +30,8 @@ import ScheduleEditSheet from "../components/ScheduleEditSheet.jsx";
 import ReservationSheet from "../components/ReservationSheet.jsx";
 import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
+import { DayRailSpine, WeekList } from "../components/ScheduleSidebars.jsx";
+import { weekFullness } from "../lib/schedule/weekView.js";
 import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PageHeader from "../components/PageHeader.jsx";
@@ -252,7 +254,8 @@ function AddTaskRow({ onAdd }) {
 }
 
 export default function Schedule({ data }) {
-  const today = useMemo(() => new Date(), []);
+  // The day being viewed (defaults to today; tapping a week day opens it).
+  const [today, setToday] = useState(() => new Date());
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const { choreCtx, loading: sitesLoading } = useSites();
   const { rulesByChoreId, rulesByBlockId } = useChoreAssignmentRules();
@@ -430,6 +433,19 @@ export default function Schedule({ data }) {
     () => pickNowBucket(blockRows, nowMin),
     [blockRows, nowMin],
   );
+
+  // Desktop day-rail spine (S9) — one entry per block of the viewed day.
+  const spineBlocks = useMemo(() => blockRows.map((b, i) => ({
+    bucket: b.bucket,
+    name: b.block?.name ?? "Anytime",
+    count: b.rows.length,
+    allDone: counts[i].total > 0 && counts[i].done === counts[i].total,
+    hasManDown: b.rows.some((r) => manDown.has(r.key)),
+  })), [blockRows, counts, manDown]);
+
+  // Desktop week list (S9) — seven days of fullness silhouettes by count.
+  const week = useMemo(
+    () => weekFullness(data, today, ruleOpts), [data, today, ruleOpts]);
 
   // Single-open accordion. `openBucket` is the user's explicit pick;
   // until they tap, the open block follows "now".
@@ -711,8 +727,23 @@ export default function Schedule({ data }) {
   });
 
   return (
-    <div className="max-w-2xl mx-auto pb-24">
-      <PageHeader title="Schedule" subtitle={dateLabel} />
+    <div className="max-w-2xl lg:max-w-[1120px] mx-auto">
+     <div className="lg:flex lg:items-start">
+      {/* Desktop day-rail spine — the whole day's shape, always in view. */}
+      <DayRailSpine blocks={spineBlocks} nowBucket={nowBucket} />
+
+      <div className="flex-1 min-w-0 pb-24 lg:px-8">
+      <div className="flex items-start justify-between">
+        <PageHeader title="Schedule" subtitle={dateLabel} />
+        {/* Day/Week/Month — desktop only (Week & Month are a later slice). */}
+        <div className="hidden lg:flex items-center gap-1 font-ui text-[12px] mt-1">
+          <span className="px-3 py-1 bg-surface-alt border border-line">Day</span>
+          <span className="px-3 py-1 border border-transparent text-faint cursor-not-allowed"
+            title="Coming soon">Week</span>
+          <span className="px-3 py-1 border border-transparent text-faint cursor-not-allowed"
+            title="Coming soon">Month</span>
+        </div>
+      </div>
 
       {/* Source-changed-after-confirm ribbon — informs, never auto-applies. */}
       {changes && (
@@ -927,6 +958,11 @@ export default function Schedule({ data }) {
           })}
         </ol>
       )}
+      </div>{/* /center column */}
+
+      {/* Desktop week list — fullness silhouettes; tap a day to open it. */}
+      <WeekList week={week} todayISO={dateISO} ymd={ymdLocal} onPickDay={setToday} />
+     </div>{/* /lg workbench flex */}
 
       {picking && (
         <SearchSelector

@@ -3537,10 +3537,22 @@ versioned capture).
   (`resolveAssignee`) and an override/delta can carry `assignee` + a `cover`
   record. Deferred: buffers (S8.5 — BD23 open), event-derived off-site,
   push-notify on cover.
-- **41.10+ →** desktop spine + week load-silhouette + Calendar absorption
-  (S9) / reminders (S10) / drift (S11). Deferred: per-person start-time
-  line, the seal worked-window stamp, the should→must box; and the DB
-  cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
+- **41.10 — S9 (partial): desktop spine + week load-silhouette. AUTHORED
+  `v0.10.51-alpha` (2026-06-25); pure frontend, no migration.** At lg+ the
+  Schedule becomes a 3-column workbench: a thin **day-rail spine**
+  (`DayRailSpine`) pinning the day's shape (bar height = block item count;
+  warn-tinted on man-down, accent for the "now" block), the unchanged
+  accordion in the centre, and a **week day-list of fullness silhouettes**
+  (`WeekList`, `src/lib/schedule/weekView.js` — bars sized by item COUNT,
+  not duration, so no data dependency), tapping a day opens it (the viewed
+  day is now state). A desktop Day/Week/Month toggle is shown with Day
+  active. Phone is unchanged (sidebars are `hidden lg:*`). **This completes
+  every screen demonstrated in the minimalist mockup.** Deferred: the
+  Week/Month center views, Calendar (events) absorption, per-person
+  start-time line, the seal worked-window stamp, the should→must box.
+- **41.11+ →** Calendar absorption (S9 tail) / reminders (S10) / drift
+  (S11). Deferred: the DB cleanup (drop the dead `timeline_items` view +
+  orphaned `chore_runs`).
 
 ---
 
