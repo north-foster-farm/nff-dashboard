@@ -6,6 +6,7 @@ import EditedHistory from "./EditedHistory.jsx";
 import { useChoreModifiers } from "../lib/data/useChoreModifiers.js";
 import { resolveModifiers, applyModifier } from "../lib/modifiers.js";
 import { formatISODate, todayUTC } from "../lib/dates.js";
+import { choreDaysRemaining } from "../lib/chores.js";
 
 // One checkable chore row, keyed by (chore, place) — the single completion
 // truth. Extracted from Rounds (Schedule S4) so the Rounds takeover and the
@@ -21,8 +22,29 @@ import { formatISODate, todayUTC } from "../lib/dates.js";
 export default function ChoreCheckRow({
   chore, placeId, placeLabel, blocks, completions, onRemove,
   onEdit, edit, sortableRef, sortableStyle, dragHandleProps, isDragging,
+  showPriority,
 }) {
   const done = completions.isDone(chore.id, placeId);
+
+  // must vs should (S13–S15). Only the Schedule passes `showPriority` (Rounds
+  // is execution, not planning). "should" = a genuine window chore — one
+  // deferrable across multiple days, deadline-anchored — derived from the
+  // existing model, no schema flag. `daysRemaining` returns `days` (future
+  // deadline → optional today), or `today`/`overran` (escalated to a must:
+  // the should→must box from the Design, the-design.md §4).
+  const f = chore.frequency?.type;
+  const isWindowish = showPriority && (
+    f === "weekly_window" || f === "monthly_last_week_window"
+    || chore.deadline?.kind === "block_on_weekday"
+  );
+  const rem = isWindowish ? choreDaysRemaining(chore, new Date(), blocks) : null;
+  const isShould = rem?.kind === "days";       // future deadline → optional now
+  const escalating = rem?.kind === "today" || rem?.kind === "overran";
+  const escalateClass = !done && escalating
+    ? (rem.kind === "overran"
+      ? " border-l-2 border-warn bg-warn/5"
+      : " border-l-2 border-accent-deep bg-accent-deep/[0.06]")
+    : "";
   // True while this row's tick is sitting in the device-local outbox
   // waiting for connectivity.
   const queued = completions.isQueued?.(chore.id, placeId) ?? false;
@@ -52,6 +74,7 @@ export default function ChoreCheckRow({
       className={
         "flex flex-wrap items-center gap-3 px-4 py-3 border-b border-line last:border-b-0 " +
         (done ? "bg-row-active-dim" : "bg-transparent") +
+        escalateClass +
         (effects.skipped ? " opacity-60" : "") +
         (isDragging ? " opacity-60 relative z-10" : "")
       }
@@ -93,6 +116,11 @@ export default function ChoreCheckRow({
             {effects.replaceText ?? chore.title}
           </span>
           <ChoreRemainingPill chore={chore} blocks={blocks} />
+          {isShould && !done && (
+            <span className="shrink-0 text-[11px] italic text-faint">
+              optional today
+            </span>
+          )}
           <ModifierBadges resolved={resolved} compact />
           {edit?.clockTime && (
             <span className="shrink-0 text-[11px] font-medium text-accent [font-variant-numeric:tabular-nums]">

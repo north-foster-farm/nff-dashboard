@@ -3651,7 +3651,27 @@ versioned capture).
   The month memo is keyed on year-month so it recomputes per-month, not
   per-day. Phone is untouched (the toggle is desktop-only). Deferred: man-down
   warnings in the zoom grids (would add per-day delta reads).
-- **41.17+ →** reminders (S10) · looking-back + drift (S11). Deferred: the DB
+- **41.17 — must/should escalation in the Schedule (S13–S15). AUTHORED
+  `v0.10.58-alpha` (2026-06-25); pure frontend, NO migration.** A full
+  story-coverage audit (`.ignored/schedule-feature/coverage-audit.md`) found
+  the must/should distinction reported "missing" was actually derivable from
+  the existing chore model — window frequencies (`weekly_window` /
+  `monthly_last_week_window` / `block_on_weekday` deadline) ARE the "shoulds"
+  (deferrable across a window), fixed daily/specific-day chores are the
+  "musts", and `choreDaysRemaining()` already supplies the escalation signal
+  (already painted by `ChoreRemainingPill`). So no field was added to the live
+  `chore_definitions`. `ChoreCheckRow` gains a `showPriority` prop (Schedule
+  passes it; Rounds doesn't, so execution is unchanged): shoulds with a future
+  deadline render an "optional today" tag; when a should hits its deadline
+  (`due today` / `overran`) the row gets the **should→must escalation box** from
+  the Design (`the-design.md` §4) — a left accent-deep border + faint wash
+  (warn-tinted if overran) — auto-promoting it to a must. Deferred: the "note
+  why today" input (derived shoulds auto-appear rather than being hand-pulled;
+  the commitment `pact.reason` field is ready when a trigger exists).
+- **41.18+ →** the rest of the coverage tail (S36 note · S34 multi-day add ·
+  S45/S46 recurring reservations · S56a-c conflict list · S58 double-book · S67
+  events this/all-future · S72 split-block · S80 week reservations · buffers +
+  BD23) · then reminders (S10) · looking-back + drift (S11). Deferred: the DB
   cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
 
 ---

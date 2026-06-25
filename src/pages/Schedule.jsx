@@ -323,6 +323,7 @@ function DraggableRow({
         onRemove={row.deltaId ? () => removeDelta(row.deltaId) : undefined}
         onEdit={onEdit}
         edit={row.edit}
+        showPriority
         {...sortable}
       />
     );
