@@ -3681,12 +3681,27 @@ versioned capture).
   both, framed "for learning the routine, not grading" (S120). Deferred:
   should-slippage (S118) + recurring-conflict spotting (S121) — both need the
   capture's `shoulds` array, which `buildConfirmedDoc` doesn't populate yet.
-- **41.19+ →** reminders (S10 / Epic K): the daily build/confirm push nudge +
-  per-user on/off + frequency in Settings. Then the coverage tail (S36 note ·
-  S34 multi-day · S45/S46 recurring reservations · S56a-c conflict list · S58
-  double-book · S67 events this/all-future · S72 split-block · S80 week
-  reservations · buffers + BD23). Deferred: DB cleanup (drop the dead
-  `timeline_items` view + orphaned `chore_runs`).
+- **41.19 — reminders: the daily build/confirm nudge (S10 / Epic K).
+  AUTHORED `v0.10.60-alpha` (2026-06-25); migration `0035` (additive).** A
+  scheduled Netlify function (`schedule-reminder.mjs`, the `heartbeat.mjs`
+  cron pattern, `0 11 * * *` ≈ 6–7am ET) reads whether today's
+  `schedule.confirmed_day` capture exists; if not, it pushes ONE shared nudge
+  ("Review and confirm today's plan", deep-linking `/schedule`) to recipients
+  — only those who've opted in (S110/S113/S115). **Per-user control** lives in
+  Settings → Notifications as one 3-way picker (Every day / Weekdays / Off),
+  backed by migration `0035` (additive `schedule_reminder_enabled` +
+  `schedule_reminder_frequency` on `user_preferences`; `useUserPreferences`
+  carries them). The function joins subscriptions→prefs (default enabled/daily)
+  and respects weekday-only. `public/sw.js` now honours a per-push `url` +
+  `tag` so the nudge deep-links. Migration `0035` applied to prod + verified
+  (both users default enabled/daily; backup `.backups/2026-06-25T22-37-09Z`).
+  Deferred: "tomorrow looks heavy" (S114 — the server can't derive the day's
+  load without the client engine) and the man-down push (S111 — client-
+  triggered). **S10 + S11 both complete.**
+- **41.20+ →** the coverage tail (S36 note · S34 multi-day · S45/S46 recurring
+  reservations · S56a-c conflict list · S58 double-book · S67 events this/all-
+  future · S72 split-block · S80 week reservations · buffers + BD23). Deferred:
+  DB cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

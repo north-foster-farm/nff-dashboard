@@ -32,7 +32,7 @@ self.addEventListener("push", (event) => {
     // platform (Android Chrome in particular).
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
-    tag: payload.runId ? `run:${payload.runId}` : "run",
+    tag: payload.tag || (payload.runId ? `run:${payload.runId}` : "nff"),
     renotify: false,
     data: payload,
   };
@@ -42,13 +42,15 @@ self.addEventListener("push", (event) => {
 // Click handler: focus an open tab, otherwise open the dashboard.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = "/chores";
+  // Deep-link target: the push may carry its own url (e.g. the schedule
+  // build/confirm nudge → /schedule); chore-run pushes default to /chores.
+  const url = event.notification.data?.url || "/chores";
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({
       type: "window", includeUncontrolled: true,
     });
     for (const client of all) {
-      if (client.url.includes("/chores") && "focus" in client) {
+      if (client.url.includes(url) && "focus" in client) {
         return client.focus();
       }
     }

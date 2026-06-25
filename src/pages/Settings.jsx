@@ -2,7 +2,7 @@ import { useUserPreferences } from "../lib/data/useUserPreferences.js";
 import { usePushNotifications } from "../lib/data/usePushNotifications.js";
 import { supabase } from "../lib/supabase.js";
 import {
-  Sun, Moon, ALargeSmall, Bell, BellOff, LogOut,
+  Sun, Moon, ALargeSmall, Bell, BellOff, LogOut, CalendarClock,
 } from "lucide-react";
 
 // User settings page. Stays focused — three settings, each with a tight
@@ -103,10 +103,23 @@ function NotificationsSection() {
     needsInstall, missingVapid,
     enable, disable,
   } = usePushNotifications();
+  const {
+    scheduleReminderEnabled, scheduleReminderFrequency,
+    setScheduleReminderEnabled, setScheduleReminderFrequency,
+  } = useUserPreferences();
 
   const status = describeStatus({
     support, permission, subscribed, needsInstall, missingVapid,
   });
+
+  // One 3-way control over the two prefs: Every day / Weekdays / Off.
+  const reminderValue = scheduleReminderEnabled
+    ? scheduleReminderFrequency : "off";
+  const onReminderChange = (v) => {
+    if (v === "off") { setScheduleReminderEnabled(false); return; }
+    setScheduleReminderEnabled(true);
+    setScheduleReminderFrequency(v);
+  };
 
   return (
     <Section title="Notifications" subtitle={pending ? "Working…" : null}>
@@ -142,6 +155,27 @@ function NotificationsSection() {
             {error.message ?? String(error)}
           </div>
         )}
+      </Field>
+
+      <Field
+        label={<span className="inline-flex items-center gap-2">
+          <CalendarClock size={14} /> Daily schedule reminder
+        </span>}
+        description="Each morning, if the day's schedule isn't confirmed yet, we'll push one reminder to review and confirm it. This is per person — set your own."
+      >
+        <SegmentedControl
+          value={reminderValue}
+          onChange={onReminderChange}
+          options={[
+            { value: "daily", label: "Every day" },
+            { value: "weekdays", label: "Weekdays" },
+            { value: "off", label: "Off" },
+          ]}
+        />
+        <div className="text-[11px] text-faint mt-2">
+          Only fires on days you haven't confirmed. Needs push enabled on at
+          least one device.
+        </div>
       </Field>
     </Section>
   );

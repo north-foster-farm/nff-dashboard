@@ -20,16 +20,23 @@ import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 const DEFAULT_PREFS = {
   theme: "dark",
   density: "compact",
+  // Schedule build/confirm reminder (S10 / Epic K). DB-backed, per user; the
+  // scheduled push function reads these. Not boot-synced (no FOUC concern), so
+  // they live in the DB + React state only, not localStorage.
+  scheduleReminderEnabled: true,
+  scheduleReminderFrequency: "daily",
 };
 
 const VALID_THEMES = new Set(["dark", "light"]);
 const VALID_DENSITIES = new Set(["compact", "comfortable", "spacious"]);
+const VALID_FREQ = new Set(["daily", "weekdays"]);
 
 function readLocalPrefs() {
   if (typeof localStorage === "undefined") return DEFAULT_PREFS;
   const theme = localStorage.getItem("nff-theme");
   const density = localStorage.getItem("nff-density");
   return {
+    ...DEFAULT_PREFS,
     theme: VALID_THEMES.has(theme) ? theme : DEFAULT_PREFS.theme,
     density: VALID_DENSITIES.has(density) ? density : DEFAULT_PREFS.density,
   };
@@ -52,6 +59,10 @@ function rowToPrefs(row) {
   return {
     theme: VALID_THEMES.has(row.theme) ? row.theme : DEFAULT_PREFS.theme,
     density: VALID_DENSITIES.has(row.density) ? row.density : DEFAULT_PREFS.density,
+    scheduleReminderEnabled: row.schedule_reminder_enabled ?? true,
+    scheduleReminderFrequency: VALID_FREQ.has(row.schedule_reminder_frequency)
+      ? row.schedule_reminder_frequency
+      : DEFAULT_PREFS.scheduleReminderFrequency,
   };
 }
 
@@ -60,6 +71,8 @@ function prefsToRow(email, prefs) {
     user_email: email,
     theme: prefs.theme,
     density: prefs.density,
+    schedule_reminder_enabled: prefs.scheduleReminderEnabled,
+    schedule_reminder_frequency: prefs.scheduleReminderFrequency,
   };
 }
 
@@ -92,7 +105,10 @@ export function useUserPreferences() {
     (async () => {
       const { data, error: selectErr } = await supabase
         .from("user_preferences")
-        .select("theme, density")
+        .select(
+          "theme, density, schedule_reminder_enabled, " +
+          "schedule_reminder_frequency",
+        )
         .eq("user_email", email)
         .maybeSingle();
       if (cancelled) return;
@@ -170,11 +186,18 @@ export function useUserPreferences() {
 
   const setTheme = useCallback((theme) => update({ theme }), [update]);
   const setDensity = useCallback((density) => update({ density }), [update]);
+  const setScheduleReminderEnabled = useCallback(
+    (scheduleReminderEnabled) => update({ scheduleReminderEnabled }), [update]);
+  const setScheduleReminderFrequency = useCallback(
+    (scheduleReminderFrequency) => update({ scheduleReminderFrequency }),
+    [update]);
 
   return {
     ...prefs,
     setTheme,
     setDensity,
+    setScheduleReminderEnabled,
+    setScheduleReminderFrequency,
     loading,
     error,
   };
