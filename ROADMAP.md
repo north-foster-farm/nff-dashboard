@@ -3630,9 +3630,29 @@ versioned capture).
   enabled buttons (Tailwind v4 dropped it) — fixes the row ellipses + every
   icon button. Deferred: per-person split load lanes (single-lane first),
   wiring the Week/Month tabs (next), event markers on the axis.
-- **41.16+ →** Week/Month center views + tab wiring · reminders (S10) ·
-  looking-back + drift (S11). Deferred: the DB cleanup (drop the dead
-  `timeline_items` view + orphaned `chore_runs`).
+- **41.16 — Week/Month tab wiring (the three zooms). AUTHORED
+  `v0.10.57-alpha` (2026-06-25); pure frontend.** The desktop Day/Week/Month
+  toggle was inert "coming soon" spans; it now drives a `viewMode` state that
+  swaps the centre for two wider navigators ("one timeline, three zooms").
+  **Week** = seven day-columns, each listing its blocks (icon + name + count)
+  with a per-day total; tap a day → opens the Day zoom on its overview, tap a
+  block → opens the Day zoom focused on that block. **Month** = a Sunday-first
+  calendar grid; each cell shows the date + an accent load-bar scaled to the
+  day's item count + the total; tap a cell → opens that day. Both reuse the
+  cheap chore fan-out (`rollupChoresForDay`, counts only — no duration data),
+  carry the feature's **today = ring / viewed = fill** markers, and stamp a
+  **Confirmed ✓** on agreed days pulled in one `readCaptures` range query over
+  the visible window. New `src/lib/schedule/monthView.js` (`monthFullness`
+  calendar-grid engine) + `src/components/ScheduleZoom.jsx` (`WeekView` /
+  `MonthView`); `blockFullness` now carries the `block` object for icons. In
+  the wider zooms the day chrome (spine, week silhouette, confirm bar,
+  reservations, day-strip, jump-to-now) hides so the centre grid is the
+  navigator; the header subtitle tracks the zoom (day → week range → month).
+  The month memo is keyed on year-month so it recomputes per-month, not
+  per-day. Phone is untouched (the toggle is desktop-only). Deferred: man-down
+  warnings in the zoom grids (would add per-day delta reads).
+- **41.17+ →** reminders (S10) · looking-back + drift (S11). Deferred: the DB
+  cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

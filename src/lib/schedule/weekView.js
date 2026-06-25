@@ -27,6 +27,7 @@ export function blockFullness(data, date, ruleOpts) {
     .map((r) => ({
       bucket: r.bucket,
       name: r.block?.name ?? "Anytime",
+      block: r.block ?? null,
       count: r.items.length,
       startMin: r.startMin,
     }))

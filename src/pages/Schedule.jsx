@@ -31,7 +31,9 @@ import ReservationSheet from "../components/ReservationSheet.jsx";
 import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
 import { DayRailSpine, DayStrip, WeekList } from "../components/ScheduleSidebars.jsx";
-import { weekFullness } from "../lib/schedule/weekView.js";
+import { WeekView, MonthView } from "../components/ScheduleZoom.jsx";
+import { weekFullness, weekDays } from "../lib/schedule/weekView.js";
+import { monthFullness } from "../lib/schedule/monthView.js";
 import { isActiveProject } from "../lib/projects.js";
 import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
@@ -640,6 +642,36 @@ export default function Schedule({ data }) {
   const week = useMemo(
     () => weekFullness(data, today, ruleOpts), [data, today, ruleOpts]);
 
+  // The three zooms (S9 tail). "day" = the master-detail surface; "week" /
+  // "month" replace the centre with a wider navigator. Desktop only — phone
+  // stays the day surface. The month grid is keyed on its year-month so it
+  // recomputes only when the viewed month changes, not every day.
+  const [viewMode, setViewMode] = useState("day");
+  const monthKey = `${today.getFullYear()}-${today.getMonth()}`;
+  const month = useMemo(
+    () => monthFullness(data, today, ruleOpts),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, monthKey, ruleOpts]);
+
+  // Confirmed-day stamps for the visible week/month range — one range query,
+  // collected into a Set of YYYY-MM-DD so the zoom grids can flag agreed days.
+  const [confirmedDays, setConfirmedDays] = useState(() => new Set());
+  useEffect(() => {
+    if (viewMode === "day") return;
+    let cancelled = false;
+    const dates = viewMode === "week"
+      ? weekDays(today)
+      : month.weeks.flat().map((c) => c.date);
+    const isos = dates.map(ymdLocal);
+    readCaptures("schedule.confirmed_day", {
+      subjectType: "schedule_day",
+      fromDate: isos[0], toDate: isos[isos.length - 1],
+    }).then((rows) => {
+      if (!cancelled) setConfirmedDays(new Set(rows.map((r) => r.subject_id)));
+    }).catch(() => { /* offline / unauth — no stamps */ });
+    return () => { cancelled = true; };
+  }, [viewMode, today, month]);
+
   // Master-detail focus (Design Bracket 2). The day is navigated by its shape
   // (the spine / phone strip); the center renders exactly ONE block, or the
   // whole-day overview agenda. `focusSel`: null = follow "now", "overview" =
@@ -658,6 +690,19 @@ export default function Schedule({ data }) {
     return resolved === bucket ? "overview" : bucket;
   });
   const showOverview = () => setFocusSel("overview");
+
+  // Zoom navigation: tapping a day (or a day's block) in Week/Month snaps the
+  // surface back to the Day zoom on that target.
+  const openDay = (date) => {
+    setToday(date);
+    setFocusSel("overview");
+    setViewMode("day");
+  };
+  const openDayBlock = (date, bucket) => {
+    setToday(date);
+    setFocusSel(bucket);
+    setViewMode("day");
+  };
 
   // The "Now" affordance is offered whenever you're not already looking at
   // the now block on the actual current day (a different day, the overview, or
@@ -959,6 +1004,20 @@ export default function Schedule({ data }) {
     weekday: "long", month: "short", day: "numeric",
   });
 
+  // The header subtitle tracks the zoom: a day, the week's range, or the month.
+  const subtitle = viewMode === "day" ? dateLabel
+    : viewMode === "month"
+      ? today.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+      : (() => {
+        const ds = weekDays(today);
+        const a = ds[0], b = ds[6];
+        const sameMonth = a.getMonth() === b.getMonth();
+        const opt = { month: "short", day: "numeric" };
+        return a.toLocaleDateString("en-US", opt) + " – "
+          + b.toLocaleDateString("en-US",
+            sameMonth ? { day: "numeric" } : opt);
+      })();
+
   // The focused timeline entry (a block or an event), or null = overview.
   const focusEntry = focus == null
     ? null : (timeline.find((e) => e.bucket === focus) ?? null);
@@ -1004,29 +1063,62 @@ export default function Schedule({ data }) {
   return (
     <div className="max-w-2xl lg:max-w-[1120px] mx-auto">
      <div className="lg:flex lg:items-start">
-      {/* Desktop load-spine — the day's shape AND the navigator. */}
-      <DayRailSpine
-        blocks={spineBlocks}
-        focus={focus}
-        nowBucket={nowBucket}
-        onPick={pickBlock}
-        onWholeDay={showOverview}
-        totalItems={totalRows}
-      />
+      {/* Desktop load-spine — the day's shape AND the navigator (Day zoom). */}
+      {viewMode === "day" && (
+        <DayRailSpine
+          blocks={spineBlocks}
+          focus={focus}
+          nowBucket={nowBucket}
+          onPick={pickBlock}
+          onWholeDay={showOverview}
+          totalItems={totalRows}
+        />
+      )}
 
       <div className="flex-1 min-w-0 pb-24 lg:px-8">
       <div className="flex items-start justify-between">
-        <PageHeader title="Schedule" subtitle={dateLabel} />
-        {/* Day/Week/Month — desktop only (Week & Month are a later slice). */}
+        <PageHeader title="Schedule" subtitle={subtitle} />
+        {/* Day/Week/Month — desktop only; the three zooms of one timeline. */}
         <div className="hidden lg:flex items-center gap-1 font-ui text-[12px] mt-1">
-          <span className="px-3 py-1 bg-surface-alt border border-line">Day</span>
-          <span className="px-3 py-1 border border-transparent text-faint cursor-not-allowed"
-            title="Coming soon">Week</span>
-          <span className="px-3 py-1 border border-transparent text-faint cursor-not-allowed"
-            title="Coming soon">Month</span>
+          {["day", "week", "month"].map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setViewMode(m)}
+              className={
+                "px-3 py-1 border capitalize cursor-pointer transition-colors "
+                + (viewMode === m
+                  ? "bg-surface-alt border-line text-fg font-medium"
+                  : "border-transparent text-faint hover:text-dim")
+              }
+            >
+              {m}
+            </button>
+          ))}
         </div>
       </div>
 
+      {viewMode === "week" ? (
+        <WeekView
+          week={week}
+          todayISO={realTodayISO}
+          selectedISO={dateISO}
+          confirmedDays={confirmedDays}
+          ymd={ymdLocal}
+          onPickDay={openDay}
+          onPickBlock={openDayBlock}
+        />
+      ) : viewMode === "month" ? (
+        <MonthView
+          month={month}
+          todayISO={realTodayISO}
+          selectedISO={dateISO}
+          confirmedDays={confirmedDays}
+          ymd={ymdLocal}
+          onPickDay={openDay}
+        />
+      ) : (
+       <>
       {/* Source-changed-after-confirm ribbon — informs, never auto-applies. */}
       {changes && (
         <div className="px-3 py-2 mb-3 border border-warn text-[12px] text-warn">
@@ -1274,11 +1366,16 @@ export default function Schedule({ data }) {
           </button>
         </div>
       )}
+       </>
+      )}
       </div>{/* /center column */}
 
-      {/* Desktop week list — today = ring, viewed day = fill; tap to open. */}
-      <WeekList week={week} todayISO={realTodayISO} selectedISO={dateISO}
-        ymd={ymdLocal} onPickDay={setToday} />
+      {/* Desktop week list — today = ring, viewed day = fill; tap to open.
+          Hidden in the wider zooms (the centre is the navigator there). */}
+      {viewMode === "day" && (
+        <WeekList week={week} todayISO={realTodayISO} selectedISO={dateISO}
+          ymd={ymdLocal} onPickDay={setToday} />
+      )}
      </div>{/* /lg workbench flex */}
 
       {picking && (
@@ -1336,9 +1433,10 @@ export default function Schedule({ data }) {
           "fixed bottom-5 right-5 z-10 flex items-center gap-1.5 px-3 py-2 " +
           "bg-accent text-on-accent text-[12px] font-medium shadow-lg " +
           "transition-opacity duration-200 " +
-          (showJump ? "opacity-100" : "opacity-0 pointer-events-none")
+          (showJump && viewMode === "day"
+            ? "opacity-100" : "opacity-0 pointer-events-none")
         }
-        aria-hidden={!showJump}
+        aria-hidden={!(showJump && viewMode === "day")}
       >
         <ArrowDownToLine size={14} />
         Now
