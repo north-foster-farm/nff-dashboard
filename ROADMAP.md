@@ -3566,10 +3566,24 @@ versioned capture).
   Deferred: project-work rows (need a placement delta + enum migration),
   the event buffer/equipment checklist (no generic data), per-person
   start-time line, the seal worked-window stamp.
-- **41.12+ →** search-to-add overhaul (S33: categorised results + chore
-  dedup-by-title + two-step place-narrow) / reminders (S10) / drift (S11).
-  Deferred: the DB cleanup (drop the dead `timeline_items` view + orphaned
-  `chore_runs`).
+- **41.12 — S33: search-to-add overhaul. AUTHORED `v0.10.53-alpha`
+  (2026-06-25); pure frontend, no migration.** Replaces the flat one-tap
+  `SearchSelector` (which added a chore at every place at once) with the
+  mockup's Hero 4 flow in a new `AddToScheduleSearch` component:
+  categorised results (a **Chores** section + a **One-off task** action),
+  chores **deduped by title** so a chore that fans out to several places
+  shows once as "N places · pick one", and a **two-step place-narrow** —
+  tapping a multi-place chore opens a place list (with an "All N places"
+  shortcut) and picking one adds just that (chore, place) via the same
+  `chore_completion` write as Rounds; single-place chores still add in one
+  tap. The query also offers "Add '…' as a task" (an ad-hoc commitment).
+  Dead `SearchSelector.jsx` deleted (no-legacy). Deferred: the Project
+  category (needs a project-node placement delta + `source_type` enum
+  migration), and dedup across the (rare) same-title-different-definition
+  case beyond title grouping.
+- **41.13+ →** project-work rows (placement delta + migration) / reminders
+  (S10) / drift (S11). Deferred: the DB cleanup (drop the dead
+  `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

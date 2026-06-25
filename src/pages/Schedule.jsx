@@ -22,10 +22,9 @@ import {
   computeManDown, reservationWindows, pickCoverPerson,
 } from "../lib/schedule/manDown.js";
 import {
-  obligationPlaceIds, getAllChoreDefinitions, describeChoreAnchor,
-  resolveAssignee,
+  obligationPlaceIds, getAllChoreDefinitions, resolveAssignee,
 } from "../lib/chores.js";
-import SearchSelector from "../components/SearchSelector.jsx";
+import AddToScheduleSearch from "../components/AddToScheduleSearch.jsx";
 import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
 import ScheduleEditSheet from "../components/ScheduleEditSheet.jsx";
 import ReservationSheet from "../components/ReservationSheet.jsx";
@@ -373,20 +372,14 @@ export default function Schedule({ data }) {
     for (const c of getAllChoreDefinitions(data)) m.set(c.id, c);
     return m;
   }, [data]);
-  const choreItems = useMemo(() => getAllChoreDefinitions(data).map((c) => ({
-    id: c.id, label: c.title,
-    sublabel: describeChoreAnchor(c, choreCtx ?? {}) || null,
-  })), [data, choreCtx]);
+  const choreDefs = useMemo(() => getAllChoreDefinitions(data), [data]);
   const [picking, setPicking] = useState(false);
-  // Pull the picked chore onto the day at every place it's anchored to.
-  const addChoreToDay = (choreId) => {
+  // Add one (chore, place) onto the day (S33 search-to-add). The search
+  // component handles dedup-by-title + place-narrow and calls this per place.
+  const addChoreAt = (choreId, placeId) => {
     const c = choreById.get(choreId);
     if (!c) return;
-    const places = obligationPlaceIds(c, choreCtx ?? {});
-    for (const pid of (places.length ? places : [null])) {
-      addChore(c.id, pid, c.blockId ?? null);
-    }
-    setPicking(false);
+    addChore(c.id, placeId, c.blockId ?? null);
   };
 
   // Re-pick the "now" block once a minute as block windows pass.
@@ -1126,10 +1119,11 @@ export default function Schedule({ data }) {
      </div>{/* /lg workbench flex */}
 
       {picking && (
-        <SearchSelector
-          items={choreItems}
-          placeholder="Search chores to add…"
-          onSelect={(it) => addChoreToDay(it.id)}
+        <AddToScheduleSearch
+          chores={choreDefs}
+          choreCtx={choreCtx}
+          onAddChore={addChoreAt}
+          onAddTask={(title) => addTask(title, null)}
           onClose={() => setPicking(false)}
         />
       )}
