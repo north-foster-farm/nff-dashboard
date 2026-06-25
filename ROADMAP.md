@@ -3668,11 +3668,25 @@ versioned capture).
   (warn-tinted if overran) — auto-promoting it to a must. Deferred: the "note
   why today" input (derived shoulds auto-appear rather than being hand-pulled;
   the commitment `pact.reason` field is ready when a trigger exists).
-- **41.18+ →** the rest of the coverage tail (S36 note · S34 multi-day add ·
-  S45/S46 recurring reservations · S56a-c conflict list · S58 double-book · S67
-  events this/all-future · S72 split-block · S80 week reservations · buffers +
-  BD23) · then reminders (S10) · looking-back + drift (S11). Deferred: the DB
-  cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
+- **41.18 — looking-back / routine drift: the Review zoom (S11 / Epic L).
+  AUTHORED `v0.10.59-alpha` (2026-06-25); pure frontend, NO migration.** A
+  fourth tab — **Review** — on the desktop Day/Week/Month toggle, reading two
+  durable sources with no new storage: ACTUALS from the commitments exec
+  history (`useRunHistory`) and PLANNED from `schedule.confirmed_day` captures.
+  New `src/lib/schedule/lookBack.js` derives **(a) routine drift** — per chore
+  block, mean actual start over the last 14 days vs before, flagged "Nm later"
+  (warn) / "Nm earlier" (resolved) / "steady" (S117/S86) — and **(b) per-day
+  plan-vs-actual** — per confirmed day, planned blocks/items vs blocks that
+  actually ran (S116/S91/S119). New `src/components/ScheduleReview.jsx` renders
+  both, framed "for learning the routine, not grading" (S120). Deferred:
+  should-slippage (S118) + recurring-conflict spotting (S121) — both need the
+  capture's `shoulds` array, which `buildConfirmedDoc` doesn't populate yet.
+- **41.19+ →** reminders (S10 / Epic K): the daily build/confirm push nudge +
+  per-user on/off + frequency in Settings. Then the coverage tail (S36 note ·
+  S34 multi-day · S45/S46 recurring reservations · S56a-c conflict list · S58
+  double-book · S67 events this/all-future · S72 split-block · S80 week
+  reservations · buffers + BD23). Deferred: DB cleanup (drop the dead
+  `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

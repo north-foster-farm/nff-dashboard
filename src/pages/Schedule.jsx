@@ -32,8 +32,11 @@ import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
 import { DayRailSpine, DayStrip, WeekList } from "../components/ScheduleSidebars.jsx";
 import { WeekView, MonthView } from "../components/ScheduleZoom.jsx";
+import { ScheduleReview } from "../components/ScheduleReview.jsx";
 import { weekFullness, weekDays } from "../lib/schedule/weekView.js";
 import { monthFullness } from "../lib/schedule/monthView.js";
+import { blockStartDrift, dayReviews } from "../lib/schedule/lookBack.js";
+import { useRunHistory } from "../lib/data/useRunHistory.js";
 import { isActiveProject } from "../lib/projects.js";
 import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
@@ -658,7 +661,7 @@ export default function Schedule({ data }) {
   // collected into a Set of YYYY-MM-DD so the zoom grids can flag agreed days.
   const [confirmedDays, setConfirmedDays] = useState(() => new Set());
   useEffect(() => {
-    if (viewMode === "day") return;
+    if (viewMode !== "week" && viewMode !== "month") return;
     let cancelled = false;
     const dates = viewMode === "week"
       ? weekDays(today)
@@ -672,6 +675,34 @@ export default function Schedule({ data }) {
     }).catch(() => { /* offline / unauth — no stamps */ });
     return () => { cancelled = true; };
   }, [viewMode, today, month]);
+
+  // ── Looking back / routine drift (S11 / Epic L) ────────────────────
+  // The "Review" zoom reads ACTUALS (commitments exec history) + PLANNED
+  // (confirmed-day captures) over a trailing window, and derives block
+  // start-time drift + per-day plan-vs-actual (see lookBack.js).
+  const REVIEW_DAYS = 30;
+  const DRIFT_SPLIT = 14;
+  const { runs: historyRuns } = useRunHistory({ days: REVIEW_DAYS });
+  const [reviewCaptures, setReviewCaptures] = useState([]);
+  useEffect(() => {
+    if (viewMode !== "review") return;
+    let cancelled = false;
+    const from = new Date();
+    from.setDate(from.getDate() - REVIEW_DAYS);
+    readCaptures("schedule.confirmed_day", {
+      subjectType: "schedule_day",
+      fromDate: ymdLocal(from), toDate: ymdLocal(new Date()),
+    }).then((rows) => {
+      if (!cancelled) setReviewCaptures(rows);
+    }).catch(() => { /* offline / unauth — empty */ });
+    return () => { cancelled = true; };
+  }, [viewMode]);
+  const drift = useMemo(
+    () => blockStartDrift(historyRuns, blocks, DRIFT_SPLIT),
+    [historyRuns, blocks]);
+  const reviews = useMemo(
+    () => dayReviews(reviewCaptures, historyRuns),
+    [reviewCaptures, historyRuns]);
 
   // Master-detail focus (Design Bracket 2). The day is navigated by its shape
   // (the spine / phone strip); the center renders exactly ONE block, or the
@@ -1007,6 +1038,7 @@ export default function Schedule({ data }) {
 
   // The header subtitle tracks the zoom: a day, the week's range, or the month.
   const subtitle = viewMode === "day" ? dateLabel
+    : viewMode === "review" ? "Looking back"
     : viewMode === "month"
       ? today.toLocaleDateString("en-US", { month: "long", year: "numeric" })
       : (() => {
@@ -1079,21 +1111,22 @@ export default function Schedule({ data }) {
       <div className="flex-1 min-w-0 pb-24 lg:px-8">
       <div className="flex items-start justify-between">
         <PageHeader title="Schedule" subtitle={subtitle} />
-        {/* Day/Week/Month — desktop only; the three zooms of one timeline. */}
+        {/* Day/Week/Month/Review — desktop only; the zooms of one timeline. */}
         <div className="hidden lg:flex items-center gap-1 font-ui text-[12px] mt-1">
-          {["day", "week", "month"].map((m) => (
+          {[["day", "Day"], ["week", "Week"], ["month", "Month"],
+            ["review", "Review"]].map(([m, label]) => (
             <button
               key={m}
               type="button"
               onClick={() => setViewMode(m)}
               className={
-                "px-3 py-1 border capitalize cursor-pointer transition-colors "
+                "px-3 py-1 border cursor-pointer transition-colors "
                 + (viewMode === m
                   ? "bg-surface-alt border-line text-fg font-medium"
                   : "border-transparent text-faint hover:text-dim")
               }
             >
-              {m}
+              {label}
             </button>
           ))}
         </div>
@@ -1118,6 +1151,8 @@ export default function Schedule({ data }) {
           ymd={ymdLocal}
           onPickDay={openDay}
         />
+      ) : viewMode === "review" ? (
+        <ScheduleReview drift={drift} reviews={reviews} splitDays={DRIFT_SPLIT} />
       ) : (
        <>
       {/* Source-changed-after-confirm ribbon — informs, never auto-applies. */}
