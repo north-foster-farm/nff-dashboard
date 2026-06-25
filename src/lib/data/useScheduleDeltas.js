@@ -10,10 +10,10 @@ import {
 // later batches.) Read for one day, with the outbox overlaid so an add /
 // remove / done-toggle shows instantly and survives offline, reconciled by
 // realtime when the op syncs.
-const DELTA_TYPES = ["ad_hoc", "note", "chore"];
+const DELTA_TYPES = ["ad_hoc", "note", "chore", "override"];
 const COLS =
   "id, source_type, source_ref, block_id, run_date, clock_time, " +
-  "assignee, reason, state";
+  "assignee, reason, overrides, history, state";
 
 export function useScheduleDeltas(dateISO) {
   const instanceId = useId();
@@ -73,14 +73,27 @@ export function useScheduleDeltas(dateISO) {
           byId.set(p.id, {
             id: p.id, source_type: p.sourceType, source_ref: p.sourceRef,
             block_id: p.blockId ?? null, run_date: p.runDate,
-            clock_time: null, assignee: p.assignee ?? null,
-            reason: p.reason ?? null, state: "scheduled", _pending: true,
+            clock_time: p.clockTime ?? null, assignee: p.assignee ?? null,
+            reason: p.reason ?? null, overrides: p.overrides ?? null,
+            history: p.history ?? [], state: "scheduled", _pending: true,
           });
         }
       } else if (op.opKind === "commitment_delete" && byId.has(p.id)) {
         byId.delete(p.id);
       } else if (op.opKind === "commitment_set_state" && byId.has(p.id)) {
         byId.set(p.id, { ...byId.get(p.id), state: p.state });
+      } else if (op.opKind === "commitment_update" && byId.has(p.id)) {
+        const f = p.fields ?? {};
+        const merged = { ...byId.get(p.id) };
+        if ("runDate" in f) merged.run_date = f.runDate;
+        if ("clockTime" in f) merged.clock_time = f.clockTime;
+        if ("assignee" in f) merged.assignee = f.assignee;
+        if ("sourceRef" in f) merged.source_ref = f.sourceRef;
+        if ("overrides" in f) merged.overrides = f.overrides;
+        if ("history" in f) merged.history = f.history;
+        // A cross-day move (run_date changed off today) leaves this day.
+        if (merged.run_date !== dateISO) byId.delete(p.id);
+        else byId.set(p.id, merged);
       }
     }
     return [...byId.values()];
@@ -115,8 +128,67 @@ export function useScheduleDeltas(dateISO) {
   const setDone = (id, done) =>
     enqueueOp("commitment_set_state", { id, state: done ? "done" : "scheduled" });
 
+  // The existing 'override' commitment for a derived instance (a chore that
+  // fans out onto the day with no row of its own), keyed by source target.
+  const overrideFor = (target) => deltas.find((d) =>
+    d.source_type === "override"
+    && d.source_ref?.target?.chore_id === target.chore_id
+    && (d.source_ref?.target?.place_id ?? null) === (target.place_id ?? null));
+
+  // Edit a DERIVED chore instance for today only (S63/S71): upsert an
+  // 'override' commitment that the assembler renders in the original's
+  // place. `patch` = { blockId, clockTime, order } — blockId is always the
+  // resolved target bucket (current or new). `entry` is the history record.
+  const upsertOverride = (target, patch, entry) => {
+    const existing = overrideFor(target);
+    if (existing) {
+      const sourceRef = { ...existing.source_ref };
+      if ("blockId" in patch) sourceRef.block_id = patch.blockId;
+      const overrides = { ...(existing.overrides ?? {}) };
+      if ("order" in patch) overrides.order = patch.order;
+      const fields = {
+        sourceRef, overrides,
+        history: [...(existing.history ?? []), entry],
+      };
+      if ("clockTime" in patch) fields.clockTime = patch.clockTime;
+      enqueueOp("commitment_update", { id: existing.id, fields });
+      return existing.id;
+    }
+    const id = crypto.randomUUID();
+    enqueueOp("commitment_insert", {
+      id, sourceType: "override",
+      sourceRef: {
+        target: { chore_id: target.chore_id, place_id: target.place_id ?? null },
+        block_id: patch.blockId ?? null,
+      },
+      runDate: dateISO,
+      clockTime: patch.clockTime ?? null,
+      overrides: "order" in patch ? { order: patch.order } : null,
+      history: [entry],
+    });
+    return id;
+  };
+
+  // Edit a commitment-backed row (ad_hoc / chore / note delta) in place
+  // (S63/S71/S73). `patch` may set blockId (rides in source_ref.block_id),
+  // clockTime, runDate (cross-day move), order, assignee. `entry` is logged.
+  const updateDelta = (id, patch, entry) => {
+    const existing = deltas.find((d) => d.id === id);
+    const fields = { history: [...(existing?.history ?? []), entry] };
+    if ("blockId" in patch) {
+      fields.sourceRef = { ...(existing?.source_ref ?? {}), block_id: patch.blockId };
+    }
+    if ("clockTime" in patch) fields.clockTime = patch.clockTime;
+    if ("runDate" in patch) fields.runDate = patch.runDate;
+    if ("assignee" in patch) fields.assignee = patch.assignee;
+    if ("order" in patch) {
+      fields.overrides = { ...(existing?.overrides ?? {}), order: patch.order };
+    }
+    enqueueOp("commitment_update", { id, fields });
+  };
+
   return {
     deltas, loading: serverRows === null,
-    addTask, addChore, removeDelta, setDone,
+    addTask, addChore, removeDelta, setDone, upsertOverride, updateDelta,
   };
 }

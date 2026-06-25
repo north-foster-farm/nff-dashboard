@@ -3502,8 +3502,27 @@ versioned capture).
   with a remove control; dedupe against chores already due (S37). Migration
   `0032` adds `'chore'` to the `commitments.source_type` enum (applied to
   prod; data path verified). Deferred to a later slice: the dedup-by-title
-  + place-narrowing two-step (S33a–c) and project-node add. **41.8 — S6
-  (3/3): protection + instance overrides + modification history.**
+  + place-narrowing two-step (S33a–c) and project-node add.
+- **41.8 — S6 (3/3): instance overrides + protection + modification
+  history. AUTHORED `v0.10.49-alpha` (2026-06-25); migration `0034` NOT
+  yet pushed.** Editing the derived day, schedule-local: a per-row edit
+  sheet (`ScheduleEditSheet`) moves a row to another block / sets a clock
+  time (S63/S64), and drag-reorders within a block (S71, via the existing
+  `@dnd-kit`). Because the day is derived, an edit to a chore writes an
+  `override` commitment that targets the instance (`source_ref.target =
+  {chore_id, place_id}`) and carries the new placement; `applyOverrides`
+  (new `src/lib/schedule/overrides.js`) relocates/retimes/reorders the
+  derived row in place. Commitment-backed rows (ad-hoc / pulled chore /
+  note) are edited directly, including **cross-day move** (run_date change)
+  per the chosen v1 cut — recurring derived chores get within-day moves
+  only (S73, scoped). Risky edits — a different block or another day —
+  pass a **protection double-confirm** that explains *why* (`assessEdit`
+  heuristic; there's no must/critical flag on chores), per S65/S66/S70.
+  Every edit appends to an instance `history` jsonb, surfaced as a viewable
+  per-row log (`EditedHistory`), per S74. Migration `0034` adds `'override'`
+  to the `source_type` enum + the `history` column (additive). Deferred:
+  cross-day move of *derived recurring* chores (suppression tombstones),
+  S69 mark-not-protected, S72 split-a-block.
 - **41.9+ →** non-work-time (S7) / man-down + buffers (S8) / desktop week
   + load-silhouette (S9) / reminders (S10) / drift (S11). Deferred: the
   desktop day-rail, per-person start-time line, the seal worked-window

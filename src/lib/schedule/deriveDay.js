@@ -102,6 +102,9 @@ function foldDeltas(day, deltas, blocks) {
 
   const byBucket = new Map();
   for (const d of deltas) {
+    // 'override' deltas edit a DERIVED instance; they're applied at the
+    // place-expanded row level (applyOverrides), not as block extras here.
+    if (d.source_type === "override") continue;
     // Deltas keep block_id null (the chore_block run path); their placement
     // block lives in source_ref.block_id.
     let bucket = d.block_id ?? d.source_ref?.block_id ?? "anytime";

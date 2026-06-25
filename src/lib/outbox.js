@@ -496,10 +496,33 @@ async function execCommitmentInsert(p) {
     clock_time: p.clockTime ?? null,
     assignee: p.assignee ?? null,
     reason: p.reason ?? null,
+    overrides: p.overrides ?? null,
+    history: p.history ?? [],
     state: "scheduled",
   });
   // A replay re-inserts our own client id -> unique violation = success.
   if (error && error.code !== UNIQUE_VIOLATION) throw asError(error);
+  return { id: p.id };
+}
+
+// Schedule instance edits (S6 3/3) — move/retime/reorder a commitment-backed
+// row, or update an override. Only the keys present in `p.fields` are
+// written; `history` (when present) carries the full append-only log
+// (read-modify-write from the client overlay, so it's offline-safe).
+async function execCommitmentUpdate(p) {
+  const patch = {};
+  const f = p.fields ?? {};
+  if ("runDate" in f) patch.run_date = f.runDate;
+  if ("clockTime" in f) patch.clock_time = f.clockTime;
+  if ("assignee" in f) patch.assignee = f.assignee;
+  if ("sourceRef" in f) patch.source_ref = f.sourceRef;
+  if ("overrides" in f) patch.overrides = f.overrides;
+  if ("history" in f) patch.history = f.history;
+  if (Object.keys(patch).length === 0) return { id: p.id };
+  const { error } = await supabase.from("commitments")
+    .update(patch)
+    .eq("id", p.id);
+  if (error) throw asError(error);
   return { id: p.id };
 }
 
@@ -534,6 +557,7 @@ const EXECUTORS = {
   run_delete: execRunDelete,
   capture_insert: execCaptureInsert,
   commitment_insert: execCommitmentInsert,
+  commitment_update: execCommitmentUpdate,
   commitment_set_state: execCommitmentSetState,
   commitment_delete: execCommitmentDelete,
 };

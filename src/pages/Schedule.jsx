@@ -1,25 +1,36 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
+  GripVertical, MoreHorizontal,
 } from "lucide-react";
+import {
+  DndContext, PointerSensor, closestCenter, useSensor, useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
 import { deriveDay } from "../lib/schedule/deriveDay.js";
+import { applyOverrides } from "../lib/schedule/overrides.js";
 import {
   obligationPlaceIds, getAllChoreDefinitions, describeChoreAnchor,
 } from "../lib/chores.js";
 import SearchSelector from "../components/SearchSelector.jsx";
 import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
+import ScheduleEditSheet from "../components/ScheduleEditSheet.jsx";
+import EditedHistory from "../components/EditedHistory.jsx";
 import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { navigate } from "../lib/router.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { recordCapture, readCaptures } from "../lib/capture/capture.js";
-import { formatMinutesOfDay } from "../lib/sunTimes.js";
+import { formatMinutesOfDay, resolveBlockMinutes } from "../lib/sunTimes.js";
 
 // The Schedule — the phone-first, single-open accordion of the day's chore
 // BLOCKS: exactly one block expanded (the one "now" is in), every other
@@ -65,14 +76,33 @@ function pickNowBucket(orderedBlocks, nowMin) {
 // An ad-hoc one-off task row (S6) — a commitment delta, not a chore, so its
 // done-state lives on the commitment (not chore_completions). Same look as
 // ChoreCheckRow, plus a remove control.
-function AdHocRow({ commitment, onToggle, onRemove }) {
+function AdHocRow({
+  commitment, onToggle, onRemove, onEdit, edit,
+  sortableRef, sortableStyle, dragHandleProps, isDragging,
+}) {
   const done = commitment.state === "done";
   const queued = commitment._pending;
+  const [showHist, setShowHist] = useState(false);
   return (
-    <li className={
-      "flex items-center gap-3 px-4 py-3 border-b border-line last:border-b-0 " +
-      (done ? "bg-row-active-dim" : "")
-    }>
+    <li
+      ref={sortableRef}
+      style={sortableStyle}
+      className={
+        "flex flex-wrap items-center gap-3 px-4 py-3 border-b border-line last:border-b-0 " +
+        (done ? "bg-row-active-dim " : "") +
+        (isDragging ? "opacity-60 relative z-10" : "")
+      }
+    >
+      {dragHandleProps && (
+        <button
+          type="button"
+          {...dragHandleProps}
+          className="shrink-0 text-faint hover:text-fg cursor-grab touch-none -mr-1"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical size={16} />
+        </button>
+      )}
       <button
         type="button"
         onClick={() => onToggle(commitment.id, !done)}
@@ -99,12 +129,36 @@ function AdHocRow({ commitment, onToggle, onRemove }) {
           <span className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1">
             task
           </span>
+          {edit?.clockTime && (
+            <span className="shrink-0 text-[11px] font-medium text-accent [font-variant-numeric:tabular-nums]">
+              {edit.clockTime}
+            </span>
+          )}
+          {edit?.history?.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowHist((s) => !s)}
+              className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1 hover:text-fg"
+            >
+              edited
+            </button>
+          )}
           {queued && (
             <CloudOff size={12} className="shrink-0 text-warn"
               aria-label="Saved on this device — not synced yet" />
           )}
         </div>
       </div>
+      {onEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="shrink-0 text-faint hover:text-fg"
+          aria-label="Edit this task"
+        >
+          <MoreHorizontal size={16} />
+        </button>
+      )}
       <button
         type="button"
         onClick={() => onRemove(commitment.id)}
@@ -113,7 +167,52 @@ function AdHocRow({ commitment, onToggle, onRemove }) {
       >
         <X size={16} />
       </button>
+      {showHist && edit?.history?.length > 0 && (
+        <EditedHistory history={edit.history} />
+      )}
     </li>
+  );
+}
+
+// One sortable Schedule row — wires @dnd-kit's per-item drag state into the
+// shared ChoreCheckRow / AdHocRow (S6 3/3 reorder). `onEdit` opens the edit
+// sheet; `row.edit` carries the instance's clock time + history.
+function DraggableRow({
+  row, onEdit, completions, blocks, removeDelta, setDone,
+}) {
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: row.key });
+  const sortable = {
+    sortableRef: setNodeRef,
+    sortableStyle: { transform: CSS.Transform.toString(transform), transition },
+    isDragging,
+    dragHandleProps: { ...attributes, ...listeners },
+  };
+  if (row.kind === "chore") {
+    return (
+      <ChoreCheckRow
+        chore={row.chore}
+        placeId={row.placeId}
+        placeLabel={row.placeLabel}
+        blocks={blocks}
+        completions={completions}
+        onRemove={row.deltaId ? () => removeDelta(row.deltaId) : undefined}
+        onEdit={onEdit}
+        edit={row.edit}
+        {...sortable}
+      />
+    );
+  }
+  return (
+    <AdHocRow
+      commitment={row.commitment}
+      onToggle={setDone}
+      onRemove={removeDelta}
+      onEdit={onEdit}
+      edit={row.edit}
+      {...sortable}
+    />
   );
 }
 
@@ -161,8 +260,10 @@ export default function Schedule({ data }) {
     () => new Date(Date.UTC(
       today.getFullYear(), today.getMonth(), today.getDate())),
     [today]);
-  const { deltas, addTask, addChore, removeDelta, setDone } =
-    useScheduleDeltas(dateISO);
+  const {
+    deltas, addTask, addChore, removeDelta, setDone,
+    upsertOverride, updateDelta,
+  } = useScheduleDeltas(dateISO);
 
   // Chore search-to-add: the chore set as searchable items + a resolver.
   const choreById = useMemo(() => {
@@ -193,53 +294,90 @@ export default function Schedule({ data }) {
     return () => clearInterval(id);
   }, []);
 
-  // The day's blocks (rollups carry .items = chores, .extras = ad-hoc
-  // deltas), ordered. deriveDay folds the deltas in.
-  const orderedBlocks = useMemo(() => {
+  // Resolved start minutes + objects for ALL blocks (not just those with
+  // chores today) — an override can move a row into an otherwise-empty
+  // block, which must then appear in time order.
+  const blocksById = useMemo(
+    () => new Map(blocks.map((b) => [b.id, b])), [blocks]);
+  const startMinByBucket = useMemo(() => {
+    const m = new Map();
+    for (const b of blocks) {
+      m.set(b.id, resolveBlockMinutes(today, b.startKind, b.startMinutes)
+        ?? b.startMinutes ?? null);
+    }
+    return m;
+  }, [blocks, today]);
+  const isRealBlock = (bucket) => bucket !== "anytime" && blocksById.has(bucket);
+
+  // Derive the day (rollups carry .items = chores, .extras = ad-hoc/chore
+  // deltas; 'override' deltas are excluded here — applied below at the row
+  // level). Then expand each rollup into typed rows.
+  const rawBlockRows = useMemo(() => {
     const { choreRollups } = deriveDay({
       data, dayDate: today, dayUTC, dayISO: dateISO, ruleOpts, deltas,
     });
-    return [...choreRollups].sort((a, b) => startKey(a) - startKey(b));
-  }, [data, today, dayUTC, dateISO, ruleOpts, deltas]);
+    return choreRollups.map((r) => {
+      const rows = [];
+      const seen = new Set();
+      for (const inst of r.items) {
+        const placeIds = obligationPlaceIds(inst.chore, choreCtx ?? {});
+        const multi = placeIds.length > 1;
+        for (const pid of placeIds) {
+          seen.add(inst.chore.id + "|" + (pid ?? ""));
+          rows.push({
+            kind: "chore",
+            key: "c|" + inst.chore.id + "|" + (pid ?? ""),
+            chore: inst.chore,
+            placeId: pid,
+            placeLabel: multi ? choreCtx?.placesById?.get(pid)?.name ?? null : null,
+          });
+        }
+      }
+      for (const ex of (r.extras ?? [])) {
+        if (ex.source_type === "chore") {
+          const chore = choreById.get(ex.source_ref?.chore_id);
+          if (!chore) continue; // orphan: chore no longer exists
+          const pid = ex.source_ref?.place_id ?? null;
+          const k = chore.id + "|" + (pid ?? "");
+          if (seen.has(k)) continue; // already due today (dedupe, S37)
+          seen.add(k);
+          rows.push({
+            kind: "chore", key: "cd|" + ex.id, chore, placeId: pid,
+            placeLabel: choreCtx?.placesById?.get(pid)?.name ?? null,
+            deltaId: ex.id, delta: ex,
+          });
+        } else {
+          rows.push({ kind: "adhoc", key: "a|" + ex.id, commitment: ex });
+        }
+      }
+      return { bucket: r.bucket, block: r.block, rows };
+    });
+  }, [data, today, dayUTC, dateISO, ruleOpts, deltas, choreCtx, choreById]);
 
-  // Expand each block into typed rows: chores fan out to (chore, place)
-  // rows (the completion grain); ad-hoc deltas are their own rows.
-  const blockRows = useMemo(() => orderedBlocks.map((r) => {
-    const rows = [];
-    const seen = new Set();
-    for (const inst of r.items) {
-      const placeIds = obligationPlaceIds(inst.chore, choreCtx ?? {});
-      const multi = placeIds.length > 1;
-      for (const pid of placeIds) {
-        seen.add(inst.chore.id + "|" + (pid ?? ""));
-        rows.push({
-          kind: "chore",
-          key: "c|" + inst.chore.id + "|" + (pid ?? ""),
-          chore: inst.chore,
-          placeId: pid,
-          placeLabel: multi ? choreCtx?.placesById?.get(pid)?.name ?? null : null,
-        });
-      }
+  const overrideDeltas = useMemo(
+    () => deltas.filter((d) => d.source_type === "override"), [deltas]);
+
+  // Apply 'override' commitments (relocate/retime/reorder derived rows),
+  // then regroup by bucket and sort: blocks by start time, rows by order.
+  const blockRows = useMemo(() => {
+    const placed = applyOverrides(rawBlockRows, overrideDeltas, isRealBlock);
+    const byBucket = new Map();
+    for (const e of placed) {
+      if (!byBucket.has(e.bucket)) byBucket.set(e.bucket, []);
+      byBucket.get(e.bucket).push(e);
     }
-    for (const ex of (r.extras ?? [])) {
-      if (ex.source_type === "chore") {
-        const chore = choreById.get(ex.source_ref?.chore_id);
-        if (!chore) continue; // orphan: chore no longer exists
-        const pid = ex.source_ref?.place_id ?? null;
-        const k = chore.id + "|" + (pid ?? "");
-        if (seen.has(k)) continue; // already due today (dedupe, S37)
-        seen.add(k);
-        rows.push({
-          kind: "chore", key: "cd|" + ex.id, chore, placeId: pid,
-          placeLabel: choreCtx?.placesById?.get(pid)?.name ?? null,
-          deltaId: ex.id,
-        });
-      } else {
-        rows.push({ kind: "adhoc", key: "a|" + ex.id, commitment: ex });
-      }
+    const out = [];
+    for (const [bucket, entries] of byBucket) {
+      entries.sort((a, b) => a.order - b.order);
+      out.push({
+        bucket,
+        block: bucket === "anytime" ? null : (blocksById.get(bucket) ?? null),
+        startMin: bucket === "anytime" ? null : (startMinByBucket.get(bucket) ?? null),
+        rows: entries.map((e) => ({ ...e.row, _order: e.order })),
+      });
     }
-    return { bucket: r.bucket, block: r.block, rows };
-  }), [orderedBlocks, choreCtx, choreById]);
+    return out.sort((a, b) => startKey(a) - startKey(b));
+  }, [rawBlockRows, overrideDeltas, blocksById, startMinByBucket]);
 
   // done / total per block, across chores (completions) + ad-hoc (state).
   const counts = useMemo(() => blockRows.map((b) => {
@@ -253,8 +391,8 @@ export default function Schedule({ data }) {
   }), [blockRows, completions]);
 
   const nowBucket = useMemo(
-    () => pickNowBucket(orderedBlocks, nowMin),
-    [orderedBlocks, nowMin],
+    () => pickNowBucket(blockRows, nowMin),
+    [blockRows, nowMin],
   );
 
   // Single-open accordion. `openBucket` is the user's explicit pick;
@@ -316,7 +454,7 @@ export default function Schedule({ data }) {
     date: dateISO,
     confirmed_by: email ?? "unknown",
     confirmed_at: new Date().toISOString(),
-    blocks: orderedBlocks.filter((b) => b.block).map((b) => ({
+    blocks: blockRows.filter((b) => b.block).map((b) => ({
       block_id: b.bucket,
       label: b.block.name,
       planned_start: b.startMin != null ? formatMinutesOfDay(b.startMin) : null,
@@ -388,6 +526,87 @@ export default function Schedule({ data }) {
     return total ? { total, added, removed } : null;
   }, [confirmedDoc, blockRows]);
 
+  // ── Instance overrides + reorder + cross-day move (S6 3/3) ──────────
+  // A small drag threshold so a tap on a row never starts a drag.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  // The row currently open in the edit sheet, with the context the sheet +
+  // the protection heuristic need. null = closed.
+  const [editing, setEditing] = useState(null);
+  const openEdit = (row, b, idx) => setEditing({
+    row,
+    bucket: b.bucket,
+    fromBlockName: b.block?.name ?? "Anytime",
+    isFirstInBlock: idx === 0,
+    currentClockTime: row.edit?.clockTime ?? row.commitment?.clock_time ?? null,
+    canMoveDay: row.kind === "adhoc" || !!row.deltaId,
+    label: row.kind === "chore"
+      ? row.chore.title : (row.commitment.source_ref?.title ?? "task"),
+  });
+
+  const bucketName = (id) =>
+    id === "anytime" ? "Anytime" : (blocksById.get(id)?.name ?? "a block");
+
+  // Write a change to a row: a DERIVED chore becomes/updates an 'override'
+  // commitment (kept in its block unless moved); a commitment-backed row is
+  // updated in place. `change` carries only the keys that changed.
+  const writeRow = (row, currentBucket, change, entry) => {
+    if (row.kind === "chore" && !row.deltaId) {
+      const patch = {
+        blockId: "toBlockId" in change ? change.toBlockId : currentBucket,
+      };
+      if ("clockTime" in change) patch.clockTime = change.clockTime;
+      if ("order" in change) patch.order = change.order;
+      upsertOverride(
+        { chore_id: row.chore.id, place_id: row.placeId ?? null }, patch, entry);
+    } else {
+      const patch = {};
+      if ("toBlockId" in change) patch.blockId = change.toBlockId;
+      if ("clockTime" in change) patch.clockTime = change.clockTime;
+      if ("toDate" in change) patch.runDate = change.toDate;
+      if ("order" in change) patch.order = change.order;
+      updateDelta(row.deltaId ?? row.commitment.id, patch, entry);
+    }
+  };
+
+  const applyEdit = (change) => {
+    if (!editing) return;
+    const parts = [];
+    if ("toBlockId" in change) parts.push(`Moved to ${bucketName(change.toBlockId)}`);
+    if ("clockTime" in change) {
+      parts.push(change.clockTime ? `Time set ${change.clockTime}` : "Time cleared");
+    }
+    if ("toDate" in change) parts.push(`Moved to ${change.toDate}`);
+    const entry = {
+      at: new Date().toISOString(), by: email ?? null,
+      summary: parts.join(" · ") || "Edited",
+    };
+    writeRow(editing.row, editing.bucket, change, entry);
+    setEditing(null);
+  };
+
+  // Drag-reorder within a block (silent — no protection): rank the moved row
+  // between its new neighbours so only one row is written.
+  const onReorder = (b) => ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const from = b.rows.findIndex((r) => r.key === active.id);
+    const to = b.rows.findIndex((r) => r.key === over.id);
+    if (from < 0 || to < 0) return;
+    const next = arrayMove(b.rows, from, to);
+    const a = next[to - 1]?._order;
+    const c = next[to + 1]?._order;
+    let order;
+    if (a != null && c != null) order = (a + c) / 2;
+    else if (a != null) order = a + 1;
+    else if (c != null) order = c - 1;
+    else order = 0;
+    const entry = {
+      at: new Date().toISOString(), by: email ?? null, summary: "Reordered",
+    };
+    writeRow(b.rows[from], b.bucket, { order }, entry);
+  };
+
   const loading = blocksLoading || sitesLoading || completions.loading;
 
   const dateLabel = today.toLocaleDateString("en-US", {
@@ -428,7 +647,7 @@ export default function Schedule({ data }) {
             Confirm today
             {totalRows > 0 && (
               <span className="opacity-80">
-                {" "}· {orderedBlocks.filter((b) => b.block).length} blocks · {totalRows} items
+                {" "}· {blockRows.filter((b) => b.block).length} blocks · {totalRows} items
               </span>
             )}
           </button>
@@ -495,27 +714,30 @@ export default function Schedule({ data }) {
                 {/* The one open block: its checklist + add + the Rounds entry. */}
                 {isOpen && (
                   <div className="bg-surface">
-                    <ul>
-                      {b.rows.map((row) => row.kind === "chore" ? (
-                        <ChoreCheckRow
-                          key={row.key}
-                          chore={row.chore}
-                          placeId={row.placeId}
-                          placeLabel={row.placeLabel}
-                          blocks={blocks}
-                          completions={completions}
-                          onRemove={row.deltaId
-                            ? () => removeDelta(row.deltaId) : undefined}
-                        />
-                      ) : (
-                        <AdHocRow
-                          key={row.key}
-                          commitment={row.commitment}
-                          onToggle={setDone}
-                          onRemove={removeDelta}
-                        />
-                      ))}
-                    </ul>
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={onReorder(b)}
+                    >
+                      <SortableContext
+                        items={b.rows.map((r) => r.key)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <ul>
+                          {b.rows.map((row, ri) => (
+                            <DraggableRow
+                              key={row.key}
+                              row={row}
+                              completions={completions}
+                              blocks={blocks}
+                              removeDelta={removeDelta}
+                              setDone={setDone}
+                              onEdit={() => openEdit(row, b, ri)}
+                            />
+                          ))}
+                        </ul>
+                      </SortableContext>
+                    </DndContext>
                     <AddTaskRow
                       onAdd={(title) => addTask(title, b.block ? b.bucket : null)}
                     />
@@ -544,6 +766,20 @@ export default function Schedule({ data }) {
           placeholder="Search chores to add…"
           onSelect={(it) => addChoreToDay(it.id)}
           onClose={() => setPicking(false)}
+        />
+      )}
+
+      {editing && (
+        <ScheduleEditSheet
+          label={editing.label}
+          fromBucket={editing.bucket}
+          fromBlockName={editing.fromBlockName}
+          isFirstInBlock={editing.isFirstInBlock}
+          currentClockTime={editing.currentClockTime}
+          canMoveDay={editing.canMoveDay}
+          blocks={blocks}
+          onApply={applyEdit}
+          onClose={() => setEditing(null)}
         />
       )}
 
