@@ -378,6 +378,9 @@ export default function Schedule({ data }) {
   );
   const completions = useChoreCompletions(today);
   const dateISO = useMemo(() => ymdLocal(today), [today]);
+  // The real calendar today (the week pane's "today" ring + the jump-to-now
+  // target), distinct from `dateISO`, the day being viewed.
+  const realTodayISO = useMemo(() => ymdLocal(new Date()), []);
   const dayUTC = useMemo(
     () => new Date(Date.UTC(
       today.getFullYear(), today.getMonth(), today.getDate())),
@@ -634,10 +637,13 @@ export default function Schedule({ data }) {
   });
   const showOverview = () => setFocusSel("overview");
 
-  // The "Now" affordance is offered only when you're not already on the now
-  // block (in the overview, or browsing a later block).
-  const showJump = focus !== nowBucket;
+  // The "Now" affordance is offered whenever you're not already looking at
+  // the now block on the actual current day (a different day, the overview, or
+  // a later block). Jumping snaps the viewed day back to today AND follows now.
+  const viewingToday = dateISO === realTodayISO;
+  const showJump = !viewingToday || focus !== nowBucket;
   const jumpToNow = () => {
+    if (!viewingToday) setToday(new Date());
     setFocusSel(null);
     focusRef.current?.scrollIntoView?.({
       behavior: REDUCED_MOTION ? "auto" : "smooth", block: "center",
@@ -672,10 +678,13 @@ export default function Schedule({ data }) {
   const [confirming, setConfirming] = useState(false);
   useEffect(() => {
     let cancelled = false;
+    // Clear the previous day's stamp immediately so an unconfirmed day never
+    // shows a stale "Confirmed" while (or after) we read its captures.
+    setConfirmedDoc(null);
     readCaptures("schedule.confirmed_day", {
       subjectType: "schedule_day", subjectId: dateISO,
     }).then((rows) => {
-      if (!cancelled && rows.length) setConfirmedDoc(rows[0].doc);
+      if (!cancelled) setConfirmedDoc(rows.length ? rows[0].doc : null);
     }).catch(() => { /* offline / unauth — stays a draft */ });
     return () => { cancelled = true; };
   }, [dateISO]);
@@ -927,10 +936,6 @@ export default function Schedule({ data }) {
   const dateLabel = today.toLocaleDateString("en-US", {
     weekday: "long", month: "short", day: "numeric",
   });
-
-  // The real calendar today (the week pane's "today" ring) — distinct from
-  // `dateISO`, the day being viewed (its "selected" fill).
-  const realTodayISO = useMemo(() => ymdLocal(new Date()), []);
 
   // The focused timeline entry (a block or an event), or null = overview.
   const focusEntry = focus == null

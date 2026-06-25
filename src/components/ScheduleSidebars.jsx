@@ -45,7 +45,7 @@ export function DayRailSpine({
       <div className="absolute inset-0 pointer-events-none z-0"
         style={{ background: WASH_V }} />
       <div className="relative z-[1] eyebrow text-[9px] text-faint px-3 pt-4 pb-2">
-        Day · sunrise → night
+        Blocks
       </div>
       {/* Whole-day overview affordance — the explicit way back to the agenda. */}
       <button
@@ -77,6 +77,7 @@ export function DayRailSpine({
         const Icon = blockIcon(b.block);
         const h = barSize(b.count, max, 16, 34);
         const fillH = b.count ? Math.round(h * (b.done / b.count)) : 0;
+        const remH = b.count ? h - fillH : 0;
         return (
           <button
             key={b.bucket}
@@ -85,13 +86,14 @@ export function DayRailSpine({
             title={`${b.name} · ${b.done}/${b.count}`}
             className={
               "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 text-left "
-              + "min-h-[52px] border-b border-[color:var(--surface-alt)] cursor-pointer "
+              + "min-h-[52px] border-b border-line cursor-pointer "
               + "transition-colors "
               + (isFocus ? "bg-row-active" : "hover:bg-row-hover")
               + (b.allDone ? " opacity-55" : "")
             }
           >
-            {/* the gauge: height = load, fill rises with done; ring = now */}
+            {/* the gauge: height = load; done (resolved) rises from the bottom
+                over the committed load (accent-deep); ring = now. */}
             <span
               className="relative shrink-0 w-[16px] flex flex-col-reverse"
               style={{
@@ -99,10 +101,11 @@ export function DayRailSpine({
                 background: "var(--surface-alt)",
                 boxShadow: isNow
                   ? "0 0 0 2px var(--resolved)"
-                  : "inset 0 0 0 1px #2a322a",
+                  : "inset 0 0 0 1px var(--line)",
               }}
             >
               <span style={{ height: fillH + "px", background: "var(--resolved)" }} />
+              <span style={{ height: remH + "px", background: "var(--accent-deep)", opacity: 0.85 }} />
             </span>
             <Icon
               size={15}
@@ -167,6 +170,7 @@ export function DayStrip({
             const Icon = blockIcon(b.block);
             const h = barSize(b.count, max, 14, 40);
             const fillH = b.count ? Math.round(h * (b.done / b.count)) : 0;
+            const remH = b.count ? h - fillH : 0;
             return (
               <button
                 key={b.bucket}
@@ -192,10 +196,11 @@ export function DayStrip({
                         ? "0 0 0 2px var(--resolved)"
                         : isFocus
                           ? "inset 0 0 0 1px var(--accent)"
-                          : "inset 0 0 0 1px #2a322a",
+                          : "inset 0 0 0 1px var(--line)",
                     }}
                   >
                     <span style={{ height: fillH + "px", background: "var(--resolved)" }} />
+                    <span style={{ height: remH + "px", background: "var(--accent-deep)", opacity: 0.85 }} />
                   </span>
                 </span>
                 <Icon size={14}
