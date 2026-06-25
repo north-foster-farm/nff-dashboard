@@ -2862,7 +2862,7 @@ follow-up `--apply` insert.
 
 **Deferred:** the 6 manual-landmark post-return chores (no engine
 support yet); the F69 `batch-clean-brooders` trigger reconciliation;
-the F85 `process_steps.kind='task'` rename; migration 0032 (the
+the F85 `process_steps.kind='task'` rename; migration 0033 (the
 rename-proof `chore_blocks.slug` + a `chore_checklist_items` table)
 is authored but not pushed — unneeded for the cutover. Phase D hard-
 delete of the retired defs + disposable history waits on James's
@@ -3493,11 +3493,17 @@ versioned capture).
   commitment, not chore_completions), counted + folded into confirm + the
   change-ribbon. Pure code, no migration. Delta data path verified against
   prod (insert/read/state/delete); UI awaits James's live review.
-- **41.7 — S6 (2/3): search-to-add chores & project nodes** — a chore/
-  project search source + a reusable selector (CommandPalette is nav-only),
-  chore dedup + place narrowing (S33a–c); 'chore'/'project_node' deltas
-  render as real chore rows (completion via chore_completions). **41.8 —
-  S6 (3/3): protection + instance overrides + modification history.**
+- **41.7 — S6 (2/3): search-to-add chores. ✅ SHIPPED `v0.10.48-alpha`
+  (2026-06-25).** A reusable `SearchSelector` overlay (CommandPalette is
+  nav-only) over the chore set (`describeChoreAnchor` sublabel for
+  disambiguation); picking a chore pulls it onto the day at every place
+  it's anchored to (`obligationPlaceIds`) as `chore` commitment deltas,
+  which render as real `ChoreCheckRow`s (completion via chore_completions)
+  with a remove control; dedupe against chores already due (S37). Migration
+  `0032` adds `'chore'` to the `commitments.source_type` enum (applied to
+  prod; data path verified). Deferred to a later slice: the dedup-by-title
+  + place-narrowing two-step (S33a–c) and project-node add. **41.8 — S6
+  (3/3): protection + instance overrides + modification history.**
 - **41.9+ →** non-work-time (S7) / man-down + buffers (S8) / desktop week
   + load-silhouette (S9) / reminders (S10) / drift (S11). Deferred: the
   desktop day-rail, per-person start-time line, the seal worked-window

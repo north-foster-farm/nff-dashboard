@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, CloudOff } from "lucide-react";
+import { Check, CloudOff, X } from "lucide-react";
 import ChoreRemainingPill from "./ChoreRemainingPill.jsx";
 import ModifierBadges from "./ModifierBadge.jsx";
 import { useChoreModifiers } from "../lib/data/useChoreModifiers.js";
@@ -12,7 +12,7 @@ import { formatISODate, todayUTC } from "../lib/dates.js";
 // `completions.toggle` -> outbox path. Pulls its own date-bound modifiers
 // (the should->must "prepend"/deadline effects), so it's self-contained.
 export default function ChoreCheckRow({
-  chore, placeId, placeLabel, blocks, completions,
+  chore, placeId, placeLabel, blocks, completions, onRemove,
 }) {
   const done = completions.isDone(chore.id, placeId);
   // True while this row's tick is sitting in the device-local outbox
@@ -94,6 +94,16 @@ export default function ChoreCheckRow({
           <div className="text-[11px] text-faint mt-0.5">{placeLabel}</div>
         )}
       </div>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="shrink-0 text-faint hover:text-warn"
+          aria-label="Remove from today"
+        >
+          <X size={16} />
+        </button>
+      )}
     </li>
   );
 }

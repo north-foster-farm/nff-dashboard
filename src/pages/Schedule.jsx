@@ -8,7 +8,10 @@ import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js"
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
 import { deriveDay } from "../lib/schedule/deriveDay.js";
-import { obligationPlaceIds } from "../lib/chores.js";
+import {
+  obligationPlaceIds, getAllChoreDefinitions, describeChoreAnchor,
+} from "../lib/chores.js";
+import SearchSelector from "../components/SearchSelector.jsx";
 import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
 import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
@@ -158,7 +161,30 @@ export default function Schedule({ data }) {
     () => new Date(Date.UTC(
       today.getFullYear(), today.getMonth(), today.getDate())),
     [today]);
-  const { deltas, addTask, removeDelta, setDone } = useScheduleDeltas(dateISO);
+  const { deltas, addTask, addChore, removeDelta, setDone } =
+    useScheduleDeltas(dateISO);
+
+  // Chore search-to-add: the chore set as searchable items + a resolver.
+  const choreById = useMemo(() => {
+    const m = new Map();
+    for (const c of getAllChoreDefinitions(data)) m.set(c.id, c);
+    return m;
+  }, [data]);
+  const choreItems = useMemo(() => getAllChoreDefinitions(data).map((c) => ({
+    id: c.id, label: c.title,
+    sublabel: describeChoreAnchor(c, choreCtx ?? {}) || null,
+  })), [data, choreCtx]);
+  const [picking, setPicking] = useState(false);
+  // Pull the picked chore onto the day at every place it's anchored to.
+  const addChoreToDay = (choreId) => {
+    const c = choreById.get(choreId);
+    if (!c) return;
+    const places = obligationPlaceIds(c, choreCtx ?? {});
+    for (const pid of (places.length ? places : [null])) {
+      addChore(c.id, pid, c.blockId ?? null);
+    }
+    setPicking(false);
+  };
 
   // Re-pick the "now" block once a minute as block windows pass.
   const [nowMin, setNowMin] = useState(() => minutesNow());
@@ -180,10 +206,12 @@ export default function Schedule({ data }) {
   // rows (the completion grain); ad-hoc deltas are their own rows.
   const blockRows = useMemo(() => orderedBlocks.map((r) => {
     const rows = [];
+    const seen = new Set();
     for (const inst of r.items) {
       const placeIds = obligationPlaceIds(inst.chore, choreCtx ?? {});
       const multi = placeIds.length > 1;
       for (const pid of placeIds) {
+        seen.add(inst.chore.id + "|" + (pid ?? ""));
         rows.push({
           kind: "chore",
           key: "c|" + inst.chore.id + "|" + (pid ?? ""),
@@ -194,10 +222,24 @@ export default function Schedule({ data }) {
       }
     }
     for (const ex of (r.extras ?? [])) {
-      rows.push({ kind: "adhoc", key: "a|" + ex.id, commitment: ex });
+      if (ex.source_type === "chore") {
+        const chore = choreById.get(ex.source_ref?.chore_id);
+        if (!chore) continue; // orphan: chore no longer exists
+        const pid = ex.source_ref?.place_id ?? null;
+        const k = chore.id + "|" + (pid ?? "");
+        if (seen.has(k)) continue; // already due today (dedupe, S37)
+        seen.add(k);
+        rows.push({
+          kind: "chore", key: "cd|" + ex.id, chore, placeId: pid,
+          placeLabel: choreCtx?.placesById?.get(pid)?.name ?? null,
+          deltaId: ex.id,
+        });
+      } else {
+        rows.push({ kind: "adhoc", key: "a|" + ex.id, commitment: ex });
+      }
     }
     return { bucket: r.bucket, block: r.block, rows };
-  }), [orderedBlocks, choreCtx]);
+  }), [orderedBlocks, choreCtx, choreById]);
 
   // done / total per block, across chores (completions) + ad-hoc (state).
   const counts = useMemo(() => blockRows.map((b) => {
@@ -392,6 +434,13 @@ export default function Schedule({ data }) {
           </button>
         )}
         <OutboxIndicator />
+        <button
+          type="button"
+          onClick={() => setPicking(true)}
+          className="ml-auto text-[12px] font-medium text-accent inline-flex items-center gap-1"
+        >
+          <Plus size={14} /> Add chore
+        </button>
       </div>
 
       {loading ? (
@@ -455,6 +504,8 @@ export default function Schedule({ data }) {
                           placeLabel={row.placeLabel}
                           blocks={blocks}
                           completions={completions}
+                          onRemove={row.deltaId
+                            ? () => removeDelta(row.deltaId) : undefined}
                         />
                       ) : (
                         <AdHocRow
@@ -485,6 +536,15 @@ export default function Schedule({ data }) {
             );
           })}
         </ol>
+      )}
+
+      {picking && (
+        <SearchSelector
+          items={choreItems}
+          placeholder="Search chores to add…"
+          onSelect={(it) => addChoreToDay(it.id)}
+          onClose={() => setPicking(false)}
+        />
       )}
 
       {/* Jump-to-now: re-open the current block and scroll it into view. */}

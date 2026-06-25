@@ -15,7 +15,7 @@
 //     clock-hour offsets.
 //   * Recurrence gains the generalized `every_n` variant (months, etc.).
 //   * Checklists ride on the chore (mkt-load-vehicle) — Phase C splits
-//     them into chore_checklist_items (migration 0032).
+//     them into chore_checklist_items (migration 0033).
 //   * Event/process- and batch-triggered chores (§5, §6) live in their
 //     own exports with `trigger` metadata; the recurring engine treats
 //     them as inert (`frequency.type === "event"`).

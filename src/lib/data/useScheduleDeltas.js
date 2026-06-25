@@ -10,7 +10,7 @@ import {
 // later batches.) Read for one day, with the outbox overlaid so an add /
 // remove / done-toggle shows instantly and survives offline, reconciled by
 // realtime when the op syncs.
-const DELTA_TYPES = ["ad_hoc", "note"];
+const DELTA_TYPES = ["ad_hoc", "note", "chore"];
 const COLS =
   "id, source_type, source_ref, block_id, run_date, clock_time, " +
   "assignee, reason, state";
@@ -98,9 +98,25 @@ export function useScheduleDeltas(dateISO) {
     });
     return id;
   };
+  // Pull an existing chore onto the day at a specific place (a 'chore'
+  // delta — renders as a real chore row, completion via chore_completions).
+  const addChore = (choreId, placeId, blockId = null) => {
+    const id = crypto.randomUUID();
+    enqueueOp("commitment_insert", {
+      id, sourceType: "chore",
+      sourceRef: {
+        chore_id: choreId, place_id: placeId ?? null, block_id: blockId ?? null,
+      },
+      runDate: dateISO,
+    });
+    return id;
+  };
   const removeDelta = (id) => enqueueOp("commitment_delete", { id });
   const setDone = (id, done) =>
     enqueueOp("commitment_set_state", { id, state: done ? "done" : "scheduled" });
 
-  return { deltas, loading: serverRows === null, addTask, removeDelta, setDone };
+  return {
+    deltas, loading: serverRows === null,
+    addTask, addChore, removeDelta, setDone,
+  };
 }
