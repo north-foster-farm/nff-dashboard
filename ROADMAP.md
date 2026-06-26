@@ -3796,9 +3796,17 @@ versioned capture).
   rows show their new time in the block, reading as a second sitting. The
   global block durations are untouched (instance-local, like every schedule
   edit). Reuses `writeRow`; no new write plumbing.
-- **41.28 → DB cleanup** (drop the dead `timeline_items` view + orphaned
-  `chore_runs`) — the last item in the Schedule coverage tail. This one needs a
-  migration (backup → row-count check → user-authorized push).
+- **41.28 — DB cleanup: drop the dead `timeline_items` view + orphaned
+  `chore_runs`. `v0.10.69-alpha` (2026-06-25); migration AUTHORED, NOT yet
+  applied to prod.** Migration `0036_drop_dead_timeline_items_and_chore_runs`
+  drops the dead view (replaced by `deriveDay.js` in S3) + the orphaned
+  `chore_runs` table (generalised into `commitments` in 0029; every live query
+  reads `commitments`, both inbound FKs were repointed, only comments still
+  name it) + the now-orphaned `touch_chore_runs_updated_at()` trigger function.
+  DESTRUCTIVE — departs from additive-only on purpose; uses RESTRICT so an
+  unforeseen dependent fails the push loudly. **Pending the push protocol:**
+  backup → confirm commitments(chore_block) parity → James runs
+  `supabase db push --linked`. This closes the Schedule coverage tail.
 
 ---
 
