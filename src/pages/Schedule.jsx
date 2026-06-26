@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
   GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
-  Repeat, StickyNote, Timer,
+  Repeat, StickyNote, Timer, Scissors,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -38,6 +38,7 @@ import ScheduleEditSheet from "../components/ScheduleEditSheet.jsx";
 import ReservationSheet from "../components/ReservationSheet.jsx";
 import BufferSheet from "../components/BufferSheet.jsx";
 import EventTimeSheet from "../components/EventTimeSheet.jsx";
+import SplitBlockSheet from "../components/SplitBlockSheet.jsx";
 import EventScopePrompt from "../components/EventScopePrompt.jsx";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import CoverSheet from "../components/CoverSheet.jsx";
@@ -1186,6 +1187,24 @@ export default function Schedule({ data }) {
     setEditing(null);
   };
 
+  // Split a block for one day (S72): bulk-apply a second-sitting clock time to
+  // the chosen rows, reusing the per-row write (derived chores → override,
+  // commitment rows → updateDelta). The global block is untouched.
+  const [splitting, setSplitting] = useState(null);
+  const doSplit = (keys, time) => {
+    const b = splitting;
+    if (!b) return;
+    const set = new Set(keys);
+    const entry = {
+      at: new Date().toISOString(), by: email ?? null,
+      summary: `Split — moved to ${time}`,
+    };
+    for (const row of b.rows) {
+      if (set.has(row.key)) writeRow(row, b.bucket, { clockTime: time }, entry);
+    }
+    setSplitting(null);
+  };
+
   // Drag-reorder within a block (silent — no protection): rank the moved row
   // between its new neighbours so only one row is written.
   const onReorder = (b) => ({ active, over }) => {
@@ -1836,6 +1855,16 @@ export default function Schedule({ data }) {
                 <AddTaskRow
                   onAdd={(title) => addTask(title, b.block ? b.bucket : null)}
                 />
+                {b.block && b.rows.length >= 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setSplitting(b)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-dim hover:bg-row-hover hover:text-fg border-t border-line cursor-pointer"
+                  >
+                    <Scissors size={15} />
+                    Split block
+                  </button>
+                )}
                 {b.block && (
                   <button
                     type="button"
@@ -1932,6 +1961,17 @@ export default function Schedule({ data }) {
           occ={editingEvent}
           onSave={onEventTimeSave}
           onClose={() => setEditingEvent(null)}
+        />
+      )}
+
+      {splitting && (
+        <SplitBlockSheet
+          blockName={splitting.block?.name ?? "this block"}
+          items={splitting.rows.map((row) => ({
+            key: row.key, label: rowLabel(row),
+          }))}
+          onApply={doSplit}
+          onClose={() => setSplitting(null)}
         />
       )}
 

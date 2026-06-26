@@ -3787,8 +3787,18 @@ versioned capture).
   `isMustChore` (the same must/should rule ChoreCheckRow uses) against
   yesterday's completions (its own per-date `useChoreCompletions`), via
   `doneCountForChore`; dismissible.
-- **41.27+ →** S72 split-a-block (its own focused batch). Deferred: DB cleanup
-  (drop the dead `timeline_items` view + orphaned `chore_runs`).
+- **41.27 — split a chore block for one day (S72). `v0.10.68-alpha`
+  (2026-06-25); pure frontend, NO migration.** A focused block with ≥2 rows
+  gains a "Split block" action → a `SplitBlockSheet` to pick a second-sitting
+  time + which rows move to it. Apply bulk-writes a clock-time override to each
+  chosen row through the SAME per-row path edits already use (derived chores →
+  `override` commitment, commitment-backed rows → `updateDelta`), so the moved
+  rows show their new time in the block, reading as a second sitting. The
+  global block durations are untouched (instance-local, like every schedule
+  edit). Reuses `writeRow`; no new write plumbing.
+- **41.28 → DB cleanup** (drop the dead `timeline_items` view + orphaned
+  `chore_runs`) — the last item in the Schedule coverage tail. This one needs a
+  migration (backup → row-count check → user-authorized push).
 
 ---
 
