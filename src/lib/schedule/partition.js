@@ -79,6 +79,44 @@ export function whoFree(segment, resWindows) {
   return { freeCount: who.length, who };
 }
 
+// ── Overnight (the trailing wrap-around) ─────────────────────────────────
+//
+// The Overnight block owns the gap from the LAST chore block tonight to the
+// FIRST chore block tomorrow — the one window the Project partitioner leaves
+// out (P-B1). It belongs to two calendar days: it's the last segment on the
+// day it starts and the first segment on the day it ends, with the same
+// contents. Bucket ids are stable so both day pages address the one shift.
+export const OVERNIGHT_LEAD = "overnight:lead";   // continued from last night
+export const OVERNIGHT_TRAIL = "overnight:trail"; // continues into tomorrow
+
+// The overnight window for the night that STARTS on `date` and ends on
+// `nextDate`: `[lastChoreEnd(date), firstStart(nextDate))`. `startMin` is
+// minutes-of-day on the start date (< 1440, the evening edge); `endMin` is
+// minutes-of-day on the end date (the pre-dawn edge). Occurrence-based (O-B2):
+// anchored to block DEFINITIONS that occur each day, not to which blocks have
+// work. Returns null when either side has no occurring frame — a true down day
+// has no anchor, so no Overnight (O-B1).
+export function overnightWindow(date, nextDate, blocks) {
+  const today = occurringBlockWindows(date, blocks);
+  const tom = occurringBlockWindows(nextDate, blocks);
+  if (today.length === 0 || tom.length === 0) return null;
+  const startMin = today[today.length - 1].end;
+  const endMin = tom[0].start;
+  if (!Number.isFinite(startMin) || !Number.isFinite(endMin)) return null;
+  return { startMin, endMin };
+}
+
+// Does a minutes-of-day time fall inside an overnight window, on the given
+// side of midnight? `side` "evening" = the start date (time at/after the last
+// chore block); "dawn" = the end date (time before the first chore block,
+// half-open so an item exactly at the first block's start belongs to that
+// block, not Overnight — O-B3). The two sides are disjoint (evening minutes
+// are late, dawn minutes early), so a timed item is caught by at most one.
+export function inOvernight(win, minutes, side) {
+  if (win == null || minutes == null || !Number.isFinite(minutes)) return false;
+  return side === "evening" ? minutes >= win.startMin : minutes < win.endMin;
+}
+
 // Derive the Project segments for a day. Returns ordered segments:
 //   { kind:'project', startMin, endMin, durationMin, who:{freeCount,who} }
 // Excludes the after-last-block window (that is Overnight, added later).

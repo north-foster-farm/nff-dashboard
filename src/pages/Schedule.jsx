@@ -3,6 +3,7 @@ import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
   GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
   Repeat, StickyNote, Timer, Scissors, CalendarX, FolderKanban,
+  ClockArrowRight, ClockArrowLeft,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -53,6 +54,10 @@ import { blockStartDrift, dayReviews } from "../lib/schedule/lookBack.js";
 import { useRunHistory } from "../lib/data/useRunHistory.js";
 import { isActiveProject, nextProjectStep } from "../lib/projects.js";
 import { segmentForStart, buildDaySegments } from "../lib/schedule/placement.js";
+import {
+  overnightWindow, inOvernight, OVERNIGHT_LEAD, OVERNIGHT_TRAIL,
+} from "../lib/schedule/partition.js";
+import { useNeighborDeltas } from "../lib/data/useNeighborDeltas.js";
 import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PageHeader from "../components/PageHeader.jsx";
@@ -89,8 +94,15 @@ function ymdLocal(d) {
 }
 
 // Sort key: real blocks by resolved start time, the block-less "anytime"
-// bucket last.
+// bucket last. The LEADING overnight (this morning's pre-dawn continuation of
+// last night) pins FIRST — its window's start-minute is last night's evening,
+// but on this day's page it precedes the morning chore blocks (the scope's
+// required ordering fix). The TRAILING overnight sorts by its evening start, so
+// it lands after the last chore block.
 function startKey(r) {
+  if (r.kind === "overnightblock") {
+    return r.side === "lead" ? Number.MIN_SAFE_INTEGER : r.startMin;
+  }
   return r.startMin == null ? Number.MAX_SAFE_INTEGER : r.startMin;
 }
 
@@ -599,6 +611,19 @@ export default function Schedule({ data }) {
     d.setDate(d.getDate() - 1);
     return d;
   }, [today]);
+  const tomorrow = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }, [today]);
+  const prevISO = useMemo(() => ymdLocal(yesterday), [yesterday]);
+  const nextISO = useMemo(() => ymdLocal(tomorrow), [tomorrow]);
+  // Neighbor-day timed deltas — the Overnight block's two edges (yesterday
+  // evening + tomorrow pre-dawn) live on the adjacent calendar dates.
+  const {
+    prevDeltas: prevDayDeltas, nextDeltas: nextDayDeltas,
+    loading: neighborLoading,
+  } = useNeighborDeltas(prevISO, nextISO);
   const yCompletions = useChoreCompletions(yesterday);
   const dayUTC = useMemo(
     () => new Date(Date.UTC(
@@ -748,6 +773,38 @@ export default function Schedule({ data }) {
       });
   };
 
+  // Overnight windows (batch 3): the night that ENDS this morning (leading,
+  // anchored yesterday→today) and the one that STARTS tonight (trailing,
+  // today→tomorrow). Pure derivation from occurring block definitions.
+  const overnightLeadWin = useMemo(
+    () => overnightWindow(yesterday, today, blocks),
+    [yesterday, today, blocks]);
+  const overnightTrailWin = useMemo(
+    () => overnightWindow(today, tomorrow, blocks),
+    [today, tomorrow, blocks]);
+
+  // Which of TODAY's deltas the Overnight blocks catch by time — the trailing
+  // block's evening edge (time ≥ tonight's last chore end) and the leading
+  // block's dawn edge (time < this morning's first chore start). Project gaps
+  // win any overlap in the morning band (a project-placed id is skipped here),
+  // so these ids are the ones to pull out of the chore-block fold below.
+  const overnightCaughtIds = useMemo(() => {
+    const ids = new Set();
+    for (const d of deltas) {
+      if (d.source_type !== "project_node" && d.source_type !== "ad_hoc") {
+        continue;
+      }
+      if (projectPlacements.ids.has(d.id)) continue; // project gap wins overlap
+      const t = hmToMin(d.clock_time);
+      if (t == null) continue;
+      if (inOvernight(overnightTrailWin, t, "evening")
+        || inOvernight(overnightLeadWin, t, "dawn")) {
+        ids.add(d.id);
+      }
+    }
+    return ids;
+  }, [deltas, projectPlacements, overnightTrailWin, overnightLeadWin]);
+
   // Derive the day (rollups carry .items = chores, .extras = ad-hoc/chore
   // deltas; 'override' deltas are excluded here — applied below at the row
   // level). Then expand each rollup into typed rows.
@@ -788,8 +845,9 @@ export default function Schedule({ data }) {
         a.ps - b.ps || a.pn.localeCompare(b.pn) || a.co - b.co);
       for (const cr of choreRows) rows.push(cr.row);
       for (const ex of (r.extras ?? [])) {
-        // Placed into a Project gap by time — rendered there, not here.
+        // Placed into a Project gap or caught by Overnight — rendered there.
         if (projectPlacements.ids.has(ex.id)) continue;
+        if (overnightCaughtIds.has(ex.id)) continue;
         if (ex.source_type === "chore") {
           const chore = choreById.get(ex.source_ref?.chore_id);
           if (!chore) continue; // orphan: chore no longer exists
@@ -814,7 +872,7 @@ export default function Schedule({ data }) {
       return { bucket: r.bucket, block: r.block, rows };
     });
   }, [derived, today, ruleOpts, choreCtx, choreById, choreOrder,
-    projectPlacements]);
+    projectPlacements, overnightCaughtIds]);
 
   // Event occurrences as timeline entries (S9) — time-ordered alongside
   // chore blocks, openable to a panel. Cancelled occurrences are dropped.
@@ -857,6 +915,64 @@ export default function Schedule({ data }) {
       };
     }),
     [derived, projectPlacements, data, dateISO]);
+
+  // Overnight blocks as timeline + navigator entries (batch 3). Two per page:
+  // the LEADING shift (last night → this morning, the first segment, continued)
+  // and the TRAILING shift (tonight → tomorrow, the last segment). Each
+  // assembles its items from two calendar dates — the evening rows of the start
+  // date + the pre-dawn rows of the end date — so the one stored row surfaces
+  // on both day pages. Hidden when empty (O10), but shown as "syncing…" while
+  // the neighbor day is still loading (never a false-empty).
+  const overnightEntries = useMemo(() => {
+    const isTimed = (d) =>
+      d.source_type === "ad_hoc" || d.source_type === "project_node";
+    // Sort a night's items chronologically across midnight: evening minutes
+    // first, then pre-dawn (offset a day so 4 a.m. follows 11 p.m.).
+    const nightMin = (win, d) => {
+      const t = hmToMin(d.clock_time) ?? 0;
+      return t >= win.startMin ? t : t + 1440;
+    };
+    const assemble = (win, eveningSrc, dawnSrc) => {
+      const pick = (src, side) => (src ?? []).filter((d) =>
+        isTimed(d) && !projectPlacements.ids.has(d.id)
+        && inOvernight(win, hmToMin(d.clock_time), side));
+      return [...pick(eveningSrc, "evening"), ...pick(dawnSrc, "dawn")]
+        .sort((a, b) => nightMin(win, a) - nightMin(win, b));
+    };
+    const mk = (side, win, items, bucket) => ({
+      kind: "overnightblock",
+      isOvernight: true,
+      side, bucket,
+      winStart: win.startMin,
+      winEnd: win.endMin,
+      rangeLabel: formatMinutesOfDay(win.startMin) + "–"
+        + formatMinutesOfDay(win.endMin),
+      startMin: win.startMin,
+      items,
+      count: items.length,
+      done: items.filter((d) => d.state === "done").length,
+      allDone: items.length > 0 && items.every((d) => d.state === "done"),
+      loading: neighborLoading,
+      countsTonight: side === "trail", // start-day-only count (O-B4 struck)
+    });
+    const out = [];
+    // Leading: yesterday evening (neighbor) + today pre-dawn (own deltas).
+    if (overnightLeadWin) {
+      const items = assemble(overnightLeadWin, prevDayDeltas, deltas);
+      if (items.length > 0 || neighborLoading) {
+        out.push(mk("lead", overnightLeadWin, items, OVERNIGHT_LEAD));
+      }
+    }
+    // Trailing: today evening (own deltas) + tomorrow pre-dawn (neighbor).
+    if (overnightTrailWin) {
+      const items = assemble(overnightTrailWin, deltas, nextDayDeltas);
+      if (items.length > 0 || neighborLoading) {
+        out.push(mk("trail", overnightTrailWin, items, OVERNIGHT_TRAIL));
+      }
+    }
+    return out;
+  }, [overnightLeadWin, overnightTrailWin, deltas, prevDayDeltas,
+    nextDayDeltas, projectPlacements, neighborLoading]);
 
   const overrideDeltas = useMemo(
     () => deltas.filter((d) => d.source_type === "override"), [deltas]);
@@ -957,20 +1073,30 @@ export default function Schedule({ data }) {
     return m;
   }, [blockRows, counts]);
 
-  // The merged day timeline: chore blocks + event entries, in time order.
-  // "now"/seal/spine stay on chore blocks; events are informational lines.
+  // The merged day timeline: chore blocks + event entries + project gaps +
+  // overnight, in time order (the leading overnight pins first, the trailing
+  // last — via startKey). "now"/seal stay on chore blocks; events are lines.
   const timeline = useMemo(
     () => [
       ...blockRows.map((b) => ({ kind: "block", ...b })),
       ...eventEntries,
       ...projectEntries,
+      ...overnightEntries,
     ].sort((a, b) => startKey(a) - startKey(b)),
-    [blockRows, eventEntries, projectEntries]);
+    [blockRows, eventEntries, projectEntries, overnightEntries]);
 
-  const nowBucket = useMemo(
-    () => pickNowBucket(blockRows, nowMin),
-    [blockRows, nowMin],
-  );
+  // "now" bucket — normally the chore block the clock sits in, but the
+  // overnight wrap takes it at the edges of the day: before this morning's
+  // first chore block, the LEADING overnight is "now" (the pre-dawn hinge);
+  // after tonight's last chore block, the TRAILING one is. Only when that
+  // overnight segment actually renders (has items / is syncing).
+  const nowBucket = useMemo(() => {
+    const lead = overnightEntries.find((e) => e.side === "lead");
+    const trail = overnightEntries.find((e) => e.side === "trail");
+    if (lead && nowMin < lead.winEnd) return OVERNIGHT_LEAD;
+    if (trail && nowMin >= trail.winStart) return OVERNIGHT_TRAIL;
+    return pickNowBucket(blockRows, nowMin);
+  }, [blockRows, nowMin, overnightEntries]);
 
   // The day-spine / phone-strip segments — one per chore block of the viewed
   // day, carrying the load (count), done, time, and the man-down flag so the
@@ -986,14 +1112,13 @@ export default function Schedule({ data }) {
     hasManDown: b.rows.some((r) => manDown.has(r.key)),
   })), [blockRows, counts, manDown]);
 
-  // The navigator segments = chore blocks + the derived Project gaps, in time
-  // order, so the spine/strip read as one tiled time axis. Project segments
-  // carry their span + who's-free; they render distinctly and are display-only
-  // (non-pickable) this batch.
+  // The navigator segments = chore blocks + Project gaps + the Overnight wrap,
+  // in time order, so the spine/strip read as one tiled time axis (the leading
+  // overnight pins first, the trailing last — via startKey).
   const navSegments = useMemo(
-    () => [...spineBlocks, ...projectEntries]
+    () => [...spineBlocks, ...projectEntries, ...overnightEntries]
       .sort((a, b) => startKey(a) - startKey(b)),
-    [spineBlocks, projectEntries]);
+    [spineBlocks, projectEntries, overnightEntries]);
 
   // Desktop week list (S9) — seven days of fullness silhouettes by count.
   const week = useMemo(
@@ -2021,6 +2146,56 @@ export default function Schedule({ data }) {
                 </li>
               );
             }
+            if (entry.kind === "overnightblock") {
+              const Icon = entry.side === "lead"
+                ? ClockArrowLeft : ClockArrowRight;
+              const sub = entry.loading && entry.count === 0
+                ? "syncing…"
+                : entry.count > 0
+                  ? (entry.items[0].source_ref?.title ?? "1 item")
+                    + (entry.count > 1 ? ` +${entry.count - 1} more` : "")
+                  : null;
+              return (
+                <li key={entry.bucket}>
+                  <button
+                    type="button"
+                    onClick={() => pickBlock(entry.bucket)}
+                    className={
+                      "w-full flex items-center gap-3 px-4 py-3 text-left "
+                      + "hover:bg-row-hover cursor-pointer "
+                      + (entry.allDone ? "opacity-60" : "")
+                    }
+                  >
+                    <Icon size={16} className="shrink-0 text-accent-deep" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[14px] text-fg truncate">
+                        Overnight · {entry.rangeLabel}
+                      </span>
+                      {sub ? (
+                        <span className={
+                          "block text-[12px] truncate "
+                          + (sub === "syncing…"
+                            ? "text-faint italic" : "text-faint")
+                        }>
+                          {sub}
+                        </span>
+                      ) : null}
+                    </span>
+                    {entry.countsTonight && entry.count > 0 && (
+                      <span className="shrink-0 text-[11px] text-faint">
+                        counts tonight
+                      </span>
+                    )}
+                    {entry.count > 0 && (
+                      <span className="shrink-0 text-[12px] text-dim [font-variant-numeric:tabular-nums]">
+                        {entry.allDone ? "done" : `${entry.done}/${entry.count}`}
+                      </span>
+                    )}
+                    <ChevronRight size={16} className="shrink-0 text-faint" />
+                  </button>
+                </li>
+              );
+            }
             const b = entry;
             const { done, total } = countByBucket.get(b.bucket) ?? { done: 0, total: 0 };
             const allDone = total > 0 && done === total;
@@ -2071,6 +2246,70 @@ export default function Schedule({ data }) {
             onEditTime={setEditingEvent}
             squeezedIds={squeezedBufferIds} />
         </ol>
+      ) : focusEntry?.kind === "overnightblock" ? (
+        /* ── The Overnight block's detail — items only, no rounds / seal,
+              exempt from conflict chrome; ticking toggles the one shared row
+              that shows on both day pages (O11). Not pickable for adds (O7). */
+        <div ref={focusRef} className="border border-line mt-3 lg:mt-0">
+          {(() => {
+            const b = focusEntry;
+            const Icon = b.side === "lead" ? ClockArrowLeft : ClockArrowRight;
+            // project_node items write through to their step; ad_hoc toggle
+            // their own commitment state (each by its kind).
+            const toggleItem = (id, done) => {
+              setDone(id, done);
+              const it = b.items.find((d) => d.id === id);
+              const stepId = it?.source_ref?.step_id;
+              if (it?.source_type === "project_node" && stepId) {
+                completeProjectStep(stepId, done);
+              }
+            };
+            return (
+              <>
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
+                  <Icon size={18} className="shrink-0 text-accent-deep" />
+                  <span className="flex-1 min-w-0 truncate text-[15px] font-semibold text-fg">
+                    Overnight · {b.rangeLabel}
+                  </span>
+                  {b.countsTonight && b.count > 0 && (
+                    <span className="shrink-0 text-[11px] text-faint">
+                      counts tonight
+                    </span>
+                  )}
+                  {b.count > 0 && (
+                    <span className="shrink-0 text-[12px] [font-variant-numeric:tabular-nums] text-dim">
+                      {b.allDone ? "done" : `${b.done}/${b.count}`}
+                    </span>
+                  )}
+                </div>
+                {b.count > 0 ? (
+                  <ul>
+                    {b.items.map((d) => (
+                      <AdHocRow
+                        key={d.id}
+                        commitment={d}
+                        onToggle={toggleItem}
+                        onRemove={removeDelta}
+                        edit={{ history: d.history }}
+                      />
+                    ))}
+                  </ul>
+                ) : b.loading ? (
+                  <div className="px-4 py-3 border-b border-line text-[13px] text-faint italic">
+                    syncing…
+                  </div>
+                ) : (
+                  <div className="px-4 py-3 border-b border-line text-[13px] text-faint italic">
+                    nothing overnight
+                  </div>
+                )}
+                <div className="px-4 py-2 text-[11px] text-faint">
+                  Shows on both nights · ticking syncs the one item.
+                </div>
+              </>
+            );
+          })()}
+        </div>
       ) : focusEntry?.kind === "projectblock" ? (
         /* ── One Project block's detail (no rounds / seal — items only) ── */
         <div ref={focusRef} className="border border-line mt-3 lg:mt-0">

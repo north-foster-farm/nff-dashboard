@@ -1,4 +1,7 @@
-import { LayoutList, AlertTriangle, FolderKanban } from "lucide-react";
+import {
+  LayoutList, AlertTriangle, FolderKanban,
+  ClockArrowRight, ClockArrowLeft,
+} from "lucide-react";
 import { blockIcon } from "./BlockBadge.jsx";
 import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
@@ -134,6 +137,49 @@ export function DayRailSpine({
             </button>
           );
         }
+        if (b.isOvernight) {
+          const isFocus = b.bucket === focus;
+          const isNow = b.bucket === nowBucket;
+          const Icon = b.side === "lead" ? ClockArrowLeft : ClockArrowRight;
+          return (
+            <button
+              key={b.bucket}
+              type="button"
+              onClick={() => onPick(b.bucket)}
+              title={`Overnight · ${b.rangeLabel}`}
+              className={
+                "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 "
+                + "text-left min-h-[52px] border-b border-line cursor-pointer "
+                + "transition-colors "
+                + (isFocus ? "bg-row-active" : "hover:bg-row-hover")
+                + (b.allDone ? " opacity-55" : "")
+              }
+            >
+              <span
+                className="shrink-0 w-[16px] h-[20px]"
+                style={{
+                  background: "var(--accent-deep)", opacity: 0.55,
+                  boxShadow: isNow ? "0 0 0 2px var(--resolved)" : "none",
+                }}
+              />
+              <Icon size={15}
+                className={"shrink-0 "
+                  + (isNow ? "text-resolved" : "text-accent-deep")} />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[12px] truncate font-medium text-fg">
+                  Overnight{b.count > 0 ? ` · ${b.done}/${b.count}` : ""}
+                </span>
+                <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint truncate">
+                  {b.rangeLabel}
+                  {isNow && <span className="text-resolved font-semibold"> · now</span>}
+                </span>
+              </span>
+              {isFocus && (
+                <span className="absolute right-0 top-0 bottom-0 w-[2px] bg-accent-deep" />
+              )}
+            </button>
+          );
+        }
         const isNow = b.bucket === nowBucket;
         const isFocus = b.bucket === focus;
         const Icon = blockIcon(b.block);
@@ -259,6 +305,45 @@ export function DayStrip({
                     + (isFocus ? "border-project font-bold" : "border-transparent")
                   }>
                     {compactTime(b.startMin)}
+                  </span>
+                </button>
+              );
+            }
+            if (b.isOvernight) {
+              const isFocus = b.bucket === focus;
+              const isNow = b.bucket === nowBucket;
+              const Icon = b.side === "lead" ? ClockArrowLeft : ClockArrowRight;
+              return (
+                <button
+                  key={b.bucket}
+                  type="button"
+                  onClick={() => onPick(b.bucket)}
+                  title={`Overnight · ${b.rangeLabel}`}
+                  className={
+                    "flex-1 min-w-0 flex flex-col items-center cursor-pointer "
+                    + (b.allDone ? "opacity-60" : "")
+                  }
+                >
+                  <span className="relative w-full h-[56px] flex items-end justify-center">
+                    <span
+                      className="w-full h-[20px]"
+                      style={{
+                        background: "var(--accent-deep)", opacity: 0.55,
+                        boxShadow: isNow ? "0 0 0 2px var(--resolved)"
+                          : isFocus ? "inset 0 0 0 1px var(--accent-deep)" : "none",
+                      }}
+                    />
+                  </span>
+                  <Icon size={14}
+                    className={"mt-1.5 " + (isNow ? "text-resolved" : "text-accent-deep")} />
+                  <span className={
+                    "mt-0.5 pb-0.5 text-[10.5px] [font-variant-numeric:tabular-nums] "
+                    + "border-b-2 truncate max-w-full "
+                    + (isFocus ? "text-accent-deep font-bold border-accent-deep"
+                      : isNow ? "text-resolved font-bold border-transparent"
+                        : "text-faint border-transparent")
+                  }>
+                    o/n
                   </span>
                 </button>
               );

@@ -3899,6 +3899,37 @@ color; clock-arrow overnight icons). Build refs in
   `clockTime`. Stories P11–P14, P-B5, P-B6 (first block; per-block refine
   deferred), P-B7, P-B8. Multi-block auto-pull + per-day boundary override
   still deferred.
+- **41.34 — Overnight block: derive + two-day render. `v0.10.75-alpha`
+  (2026-06-26); pure frontend, NO migration.** The trailing wrap-around the
+  Project partitioner leaves out (P-B1) becomes a real block. New pure engine
+  (`src/lib/schedule/partition.js`): `overnightWindow(date, nextDate, blocks)`
+  derives `[lastChoreEnd(date), firstStart(nextDate))` from occurring block
+  definitions (occurrence-based — a true down day has no anchor, so no
+  Overnight: O-B1/O-B2), and `inOvernight(win, min, side)` is the half-open
+  catch (an item exactly at the next first block's start belongs to that
+  block, not Overnight: O-B3). Each day page shows **two** overnight
+  references — a **leading** shift (last night -> this morning, pinned first)
+  and a **trailing** shift (tonight -> tomorrow, last) — and each assembles its
+  items from **two calendar dates** (the start date's evening rows + the end
+  date's pre-dawn rows) so the one stored row surfaces on both day pages from
+  its literal `(run_date, clock_time)`, no duplicate (O3/O4). A new read-only
+  `useNeighborDeltas(prevISO, nextISO)` hook fetches the adjacent days' timed
+  deltas so both edges populate offline; until it resolves the block renders
+  **"syncing..." never a false-empty** (Dad's rule). `Schedule.jsx` derives the
+  overnight entries (parallel path, like Project blocks), excludes the caught
+  ids from the chore-block fold (Project gaps win any morning-band overlap),
+  and renders them in the agenda + spine/strip (`ScheduleSidebars.jsx`) with
+  the **`ClockArrowLeft`/`ClockArrowRight`** two-day glyphs, a stable range
+  label ("Overnight - 9:40p-5:10a"), and a "counts tonight" note on the start
+  day. Two shipped code fixes: `startKey` pins the **leading** overnight first
+  (its window start is last night's evening, but it precedes the morning
+  blocks), and the now-ring lands on the overnight wrap before sunrise / after
+  the last chore (`nowBucket` wrap). Overnight detail = tickable items (each by
+  its kind; project steps write through), **no rounds, no seal**, not pickable
+  for adds (O7/O9/O11). Stories O1-O11, O-B1/O-B2/O-B3. Scoped to **timed
+  deltas** (tasks + project steps) this batch; event/chore overnight-catch +
+  the conflict exemption, start-day-only counting, and confirm/week/month fold
+  are **batch 41.35** (integration).
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
