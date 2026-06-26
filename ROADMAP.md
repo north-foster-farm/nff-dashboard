@@ -3763,9 +3763,21 @@ versioned capture).
   `rollupChoresForDay` + `resolveAssignee` and checks reservations read once
   when the panel opens). New `ConflictsPanel.jsx`. Note: the horizon scan is
   man-down only (the reservation-driven case); horizon double-book is deferred.
-- **41.25+ →** the rest of the coverage tail (S67 events this/all-future · S72
-  split-block · S80 week reservations · S12 yesterday's musts). Deferred: DB
-  cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
+- **41.25 — edit an event's time from the schedule, this/following/all (S67).
+  `v0.10.66-alpha` (2026-06-25); pure frontend, NO migration.** A focused event
+  in the timeline was read-only (only "Open in Calendar"). It now offers
+  "Edit time" → a small `EventTimeSheet` (start/end). A recurring occurrence
+  then pops the shared `EventScopePrompt` (this / this-and-following / all);
+  a one-off writes straight to its occurrence. Scopes apply via the same
+  mutators the Calendar's `EventEditor` uses — `this` = an occurrence override
+  upsert, `all` = `updateSeries` (rebuilt dtstart time + duration; one-offs
+  also mirror the occurrence), `following` = `splitSeries` at the date with the
+  new time. `data.events` is kept live by refdata's realtime channel, so the
+  day re-derives after the write with no local thread. Time-only by design:
+  date moves + full recurrence/title edits stay in the Calendar editor.
+- **41.26+ →** the rest of the coverage tail (S72 split-block · S80 week
+  reservations · S12 yesterday's musts). Deferred: DB cleanup (drop the dead
+  `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

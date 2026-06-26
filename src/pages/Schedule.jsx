@@ -36,6 +36,9 @@ import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
 import ScheduleEditSheet from "../components/ScheduleEditSheet.jsx";
 import ReservationSheet from "../components/ReservationSheet.jsx";
 import BufferSheet from "../components/BufferSheet.jsx";
+import EventTimeSheet from "../components/EventTimeSheet.jsx";
+import EventScopePrompt from "../components/EventScopePrompt.jsx";
+import { useEventSeries } from "../lib/data/useEventSeries.js";
 import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
 import { DayRailSpine, DayStrip, WeekList } from "../components/ScheduleSidebars.jsx";
@@ -176,7 +179,7 @@ function BufferSection({
 
 function EventEntry({
   occ, isOpen, onToggle,
-  buffers, onToggleBufferItem, onRemoveBuffer, onAddBuffer,
+  buffers, onToggleBufferItem, onRemoveBuffer, onAddBuffer, onEditTime,
 }) {
   const color = T.cat[occ.kindId] || T.cat.default;
   const startMin = hmToMin(occ.startTime);
@@ -256,13 +259,24 @@ function EventEntry({
               onAddBuffer={onAddBuffer}
             />
           )}
-          <button
-            type="button"
-            onClick={() => navigate("/calendar")}
-            className="text-[12px] font-medium text-accent inline-flex items-center gap-1"
-          >
-            Open in Calendar <ChevronRight size={13} />
-          </button>
+          <div className="flex items-center gap-4">
+            {onEditTime && (
+              <button
+                type="button"
+                onClick={() => onEditTime(occ)}
+                className="text-[12px] font-medium text-accent inline-flex items-center gap-1 cursor-pointer"
+              >
+                <CalendarClock size={13} /> Edit time
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate("/calendar")}
+              className="text-[12px] font-medium text-dim inline-flex items-center gap-1"
+            >
+              Open in Calendar <ChevronRight size={13} />
+            </button>
+          </div>
         </div>
       )}
     </li>
@@ -1124,6 +1138,61 @@ export default function Schedule({ data }) {
   const [bufferFor, setBufferFor] = useState(null);
   const [covering, setCovering] = useState(null);
 
+  // ── Edit an event's time from the schedule (S67) ───────────────────
+  // The series mutators encode the this/following/all writes; `data.events`
+  // is kept live by refdata's realtime channel, so the day re-derives after a
+  // write with no local state to thread. `editingEvent` = the occ in the time
+  // sheet; `eventScope` = a recurring occ + its patch awaiting a scope pick.
+  const { seriesById, updateSeries, splitSeries } = useEventSeries();
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [eventScope, setEventScope] = useState(null);
+
+  const durationMins = (s, e) => {
+    const a = hmToMin(s);
+    const b = hmToMin(e);
+    return (a == null || b == null || b <= a) ? null : b - a;
+  };
+
+  const applyEventTime = async (occ, patch, scope) => {
+    const seriesId = occ.instanceId;
+    const date = occ.date;
+    const s = seriesById.get(seriesId) ?? null;
+    const dur = durationMins(patch.startTime, patch.endTime);
+    const occRow = {
+      series_id: seriesId, occurs_on: date,
+      start_time: patch.startTime || null, end_time: patch.endTime || null,
+      status: "scheduled",
+    };
+    try {
+      if (scope === "this") {
+        await supabase.from("event_occurrences")
+          .upsert(occRow, { onConflict: "series_id,occurs_on" });
+      } else if (scope === "all") {
+        const baseDate = (s?.dtstart ?? `${date}T00:00:00Z`).slice(0, 10);
+        const sp = { dtstart: `${baseDate}T${patch.startTime}:00.000Z` };
+        if (dur != null) sp.durationMinutes = dur;
+        await updateSeries(seriesId, sp);
+        if (!s?.rrule) {
+          await supabase.from("event_occurrences")
+            .upsert(occRow, { onConflict: "series_id,occurs_on" });
+        }
+      } else if (scope === "following") {
+        const sp = { rrule: s?.rrule, dtstart: `${date}T${patch.startTime}:00.000Z` };
+        if (dur != null) sp.durationMinutes = dur;
+        await splitSeries(seriesId, date, sp);
+      }
+    } catch (e) { /* surfaced by the offline indicator; refdata re-syncs */ }
+  };
+
+  // Save from the time sheet: a recurring occurrence asks for scope first; a
+  // one-off (or already-materialised instance) writes its occurrence directly.
+  const onEventTimeSave = (patch) => {
+    const occ = editingEvent;
+    setEditingEvent(null);
+    if (occ.recurring) setEventScope({ occ, patch });
+    else applyEventTime(occ, patch, "this");
+  };
+
   const rowLabel = (row) => row.kind === "chore"
     ? row.chore.title : (row.commitment.source_ref?.title ?? "task");
 
@@ -1595,7 +1664,8 @@ export default function Schedule({ data }) {
             buffers={buffersForTarget(buffers, "event", focusEntry.occ.instanceId)}
             onToggleBufferItem={toggleBufferItem}
             onRemoveBuffer={removeDelta}
-            onAddBuffer={setBufferFor} />
+            onAddBuffer={setBufferFor}
+            onEditTime={setEditingEvent} />
         </ol>
       ) : focusEntry ? (
         /* ── One block's detail (master-detail; never scroll past others) ── */
@@ -1754,6 +1824,25 @@ export default function Schedule({ data }) {
           conflicts={conflicts}
           onJump={jumpToConflict}
           onClose={() => setShowConflicts(false)}
+        />
+      )}
+
+      {editingEvent && (
+        <EventTimeSheet
+          occ={editingEvent}
+          onSave={onEventTimeSave}
+          onClose={() => setEditingEvent(null)}
+        />
+      )}
+
+      {eventScope && (
+        <EventScopePrompt
+          verb="Save"
+          onPick={(scope) => {
+            applyEventTime(eventScope.occ, eventScope.patch, scope);
+            setEventScope(null);
+          }}
+          onCancel={() => setEventScope(null)}
         />
       )}
 
