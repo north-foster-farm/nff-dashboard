@@ -3749,10 +3749,23 @@ versioned capture).
   strip). `addReservation` routes through the shared `insertEach` fan-out.
   Note: each materialised day is removed individually (off *this* Sunday);
   bulk "remove the whole series" is deferred.
-- **41.24+ →** the rest of the coverage tail (S56a-c conflict list · S58
-  double-book · S67 events this/all-future · S72 split-block · S80 week
-  reservations · S12 yesterday's musts). Deferred: DB cleanup (drop the dead
-  `timeline_items` view + orphaned `chore_runs`).
+- **41.24 — conflicts: the one list (S56a/b/c) + double-booking (S58).
+  `v0.10.65-alpha` (2026-06-25); pure frontend, NO migration.** A "Conflicts"
+  control in the day header (warn-coloured with a count when the viewed day has
+  any) opens a `ConflictsPanel` listing every conflict in one place: the viewed
+  day's man-downs + double-bookings, and a 14-day horizon scan for man-downs
+  ahead (recurring days-off from 41.23 surface here). From the list you jump
+  straight to a conflict in context (S56b — focus its block, or open the day it
+  falls on) and step next/previous with ↑/↓ (S56c). New
+  `src/lib/schedule/conflicts.js`: `doubleBookConflicts` (same person, two
+  overlapping different-block assignments — S58, distinct from a man-down where
+  someone's away) + `scanHorizonManDown` (derives each upcoming day via
+  `rollupChoresForDay` + `resolveAssignee` and checks reservations read once
+  when the panel opens). New `ConflictsPanel.jsx`. Note: the horizon scan is
+  man-down only (the reservation-driven case); horizon double-book is deferred.
+- **41.25+ →** the rest of the coverage tail (S67 events this/all-future · S72
+  split-block · S80 week reservations · S12 yesterday's musts). Deferred: DB
+  cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

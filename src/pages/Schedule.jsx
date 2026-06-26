@@ -25,6 +25,10 @@ import {
   buffersForTarget, storedBufferWindow, describeBuffer,
 } from "../lib/schedule/buffers.js";
 import {
+  doubleBookConflicts, scanHorizonManDown,
+} from "../lib/schedule/conflicts.js";
+import ConflictsPanel from "../components/ConflictsPanel.jsx";
+import {
   obligationPlaceIds, getAllChoreDefinitions, resolveAssignee,
 } from "../lib/chores.js";
 import AddToScheduleSearch from "../components/AddToScheduleSearch.jsx";
@@ -48,6 +52,7 @@ import PageHeader from "../components/PageHeader.jsx";
 import { navigate } from "../lib/router.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { recordCapture, readCaptures } from "../lib/capture/capture.js";
+import { supabase } from "../lib/supabase.js";
 import { formatMinutesOfDay, resolveBlockMinutes } from "../lib/sunTimes.js";
 import { T } from "../theme.js";
 
@@ -1176,6 +1181,92 @@ export default function Schedule({ data }) {
     writeRow(row, bucket, { cover: { by, ack: true } }, entry);
   };
 
+  // ── Conflicts: the one list (S56a/b/c) + double-booking (S58) ───────
+  const [showConflicts, setShowConflicts] = useState(false);
+  // Viewed-day conflicts from the real (post-override) block rows: man-down
+  // leaks + same-person overlapping assignments. Each carries a jump target.
+  const todayConflicts = useMemo(() => {
+    const out = [];
+    const flat = [];
+    for (const b of blockRows) {
+      const w = blockWindow(b.bucket);
+      for (const row of b.rows) {
+        flat.push({
+          key: row.key, label: rowLabel(row), assignee: row.assignee ?? null,
+          blockStart: w.start, blockEnd: w.end, bucket: b.bucket,
+        });
+        const hit = manDown.get(row.key);
+        if (hit) {
+          out.push({
+            type: "manDown", scope: "today", bucket: b.bucket,
+            iso: dateISO, assignee: row.assignee,
+            label: `${rowLabel(row)} needs cover`,
+            detail: hit.label
+              ? `${row.assignee} — ${hit.label}` : `${row.assignee} unavailable`,
+          });
+        }
+      }
+    }
+    for (const c of doubleBookConflicts(flat)) {
+      out.push({
+        type: "double", scope: "today", bucket: c.buckets[0],
+        iso: dateISO, assignee: c.assignee,
+        label: `${c.assignee} double-booked`,
+        detail: c.labels.join(" · "),
+      });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockRows, manDown, dateISO]);
+
+  // Horizon scan (next 14 days) for man-down conflicts — driven by reservations
+  // read once when the panel opens. Recurring days-off (S46) land here.
+  const HORIZON_DAYS = 14;
+  const [horizonRes, setHorizonRes] = useState(null);
+  useEffect(() => {
+    if (!showConflicts) return;
+    let cancelled = false;
+    const to = new Date(today);
+    to.setDate(to.getDate() + HORIZON_DAYS);
+    supabase.from("commitments")
+      .select("id, source_type, source_ref, run_date, clock_time, assignee")
+      .eq("source_type", "reservation")
+      .gt("run_date", dateISO).lte("run_date", ymdLocal(to))
+      .then((res) => {
+        if (cancelled) return;
+        const m = new Map();
+        for (const r of res.data ?? []) {
+          if (!m.has(r.run_date)) m.set(r.run_date, []);
+          m.get(r.run_date).push(r);
+        }
+        setHorizonRes(m);
+      });
+    return () => { cancelled = true; };
+  }, [showConflicts, dateISO, today]);
+
+  const upcomingConflicts = useMemo(() => {
+    if (!horizonRes) return [];
+    return scanHorizonManDown({
+      data, fromDate: today, days: HORIZON_DAYS, ruleOpts,
+      reservationsByISO: horizonRes, ymd: ymdLocal,
+    }).map((c) => ({ ...c, scope: "upcoming", label: c.label }));
+  }, [horizonRes, data, today, ruleOpts]);
+
+  const conflicts = useMemo(
+    () => [...todayConflicts, ...upcomingConflicts],
+    [todayConflicts, upcomingConflicts]);
+
+  // Jump to a conflict (S56b): focus its block on the viewed day, or open the
+  // day it falls on first.
+  const jumpToConflict = (c) => {
+    if (c.scope === "upcoming" && c.date) {
+      setToday(new Date(c.date));
+    } else if (c.bucket) {
+      setFocusSel(c.bucket);
+    }
+    setShowConflicts(false);
+  };
+
   const loading = blocksLoading || sitesLoading || completions.loading;
 
   const dateLabel = today.toLocaleDateString("en-US", {
@@ -1345,6 +1436,16 @@ export default function Schedule({ data }) {
         )}
         <OutboxIndicator />
         <div className="ml-auto flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowConflicts(true)}
+            className={"text-[12px] font-medium inline-flex items-center gap-1 cursor-pointer "
+              + (todayConflicts.length > 0
+                ? "text-warn hover:brightness-110" : "text-dim hover:text-fg")}
+          >
+            <AlertTriangle size={14} />
+            {todayConflicts.length > 0 ? `${todayConflicts.length} conflict${todayConflicts.length === 1 ? "" : "s"}` : "Conflicts"}
+          </button>
           <button
             type="button"
             onClick={() => setAddingTimeOff(true)}
@@ -1645,6 +1746,14 @@ export default function Schedule({ data }) {
           activity={bufferFor}
           onAdd={(b) => { addBuffer(b); setBufferFor(null); }}
           onClose={() => setBufferFor(null)}
+        />
+      )}
+
+      {showConflicts && (
+        <ConflictsPanel
+          conflicts={conflicts}
+          onJump={jumpToConflict}
+          onClose={() => setShowConflicts(false)}
         />
       )}
 
