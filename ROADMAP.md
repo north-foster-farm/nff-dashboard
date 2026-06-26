@@ -3775,9 +3775,20 @@ versioned capture).
   new time. `data.events` is kept live by refdata's realtime channel, so the
   day re-derives after the write with no local thread. Time-only by design:
   date moves + full recurrence/title edits stay in the Calendar editor.
-- **41.26+ →** the rest of the coverage tail (S72 split-block · S80 week
-  reservations · S12 yesterday's musts). Deferred: DB cleanup (drop the dead
-  `timeline_items` view + orphaned `chore_runs`).
+- **41.26 — week reservations (S80) + yesterday's unfinished musts (S12).
+  `v0.10.67-alpha` (2026-06-25); pure frontend, NO migration.** S80: the Week
+  zoom now shows each person's reserved non-work time per day — a one-range read
+  of the week's `reservation` commitments, collected per day and rendered as
+  small "James off / Jim 1–4p" chips under each column (`WeekView` gains a
+  `reservations` prop + `reservationChip`). S12: when building today, a
+  warn-bordered banner surfaces the must-do chores that fell due *yesterday* and
+  weren't completed (shoulds — deferrable window chores — are excluded; they
+  roll forward by design). Computed from yesterday's `rollupChoresForDay` ×
+  `isMustChore` (the same must/should rule ChoreCheckRow uses) against
+  yesterday's completions (its own per-date `useChoreCompletions`), via
+  `doneCountForChore`; dismissible.
+- **41.27+ →** S72 split-a-block (its own focused batch). Deferred: DB cleanup
+  (drop the dead `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

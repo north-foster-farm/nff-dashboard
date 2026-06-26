@@ -16,10 +16,10 @@ import { useSites } from "../lib/data/useSites.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
-import { deriveDay } from "../lib/schedule/deriveDay.js";
+import { deriveDay, rollupChoresForDay } from "../lib/schedule/deriveDay.js";
 import { applyOverrides } from "../lib/schedule/overrides.js";
 import {
-  computeManDown, reservationWindows, pickCoverPerson,
+  computeManDown, reservationWindows, reservationWindow, pickCoverPerson,
 } from "../lib/schedule/manDown.js";
 import {
   buffersForTarget, storedBufferWindow, describeBuffer,
@@ -30,6 +30,7 @@ import {
 import ConflictsPanel from "../components/ConflictsPanel.jsx";
 import {
   obligationPlaceIds, getAllChoreDefinitions, resolveAssignee,
+  choreDaysRemaining,
 } from "../lib/chores.js";
 import AddToScheduleSearch from "../components/AddToScheduleSearch.jsx";
 import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
@@ -281,6 +282,20 @@ function EventEntry({
       )}
     </li>
   );
+}
+
+// must vs should (S13–S15, reused for S12). A "should" is a deferrable window
+// chore that still has days of runway on `date`; everything else — fixed
+// daily/specific/weekly work, or a window chore whose deadline has arrived —
+// is a "must". No schema flag: derived from frequency + choreDaysRemaining,
+// the same rule ChoreCheckRow renders.
+function isMustChore(chore, date, blocks) {
+  const f = chore.frequency?.type;
+  const windowish = f === "weekly_window" || f === "monthly_last_week_window"
+    || chore.deadline?.kind === "block_on_weekday";
+  if (!windowish) return true;
+  const rem = choreDaysRemaining(chore, date, blocks);
+  return rem?.kind !== "days";
 }
 
 // The block "now" is in: the latest real block whose start has passed;
@@ -537,6 +552,18 @@ export default function Schedule({ data }) {
   // The real calendar today (the week pane's "today" ring + the jump-to-now
   // target), distinct from `dateISO`, the day being viewed.
   const realTodayISO = useMemo(() => ymdLocal(new Date()), []);
+
+  // Yesterday's unfinished musts (S12) — when building today, surface the
+  // must-do chores that fell due yesterday and weren't completed, so a missed
+  // obligation isn't silently lost. Shoulds (deferrable window chores) are
+  // excluded — they roll forward by design. Reads yesterday's completions in
+  // its own per-date hook.
+  const yesterday = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - 1);
+    return d;
+  }, [today]);
+  const yCompletions = useChoreCompletions(yesterday);
   const dayUTC = useMemo(
     () => new Date(Date.UTC(
       today.getFullYear(), today.getMonth(), today.getDate())),
@@ -838,6 +865,31 @@ export default function Schedule({ data }) {
     return () => { cancelled = true; };
   }, [viewMode, today, month]);
 
+  // Week reservations (S80) — each person's reserved non-work time across the
+  // viewed week, one range read collected per day into a Map iso -> windows.
+  const [weekReservations, setWeekReservations] = useState(() => new Map());
+  useEffect(() => {
+    if (viewMode !== "week") return;
+    let cancelled = false;
+    const ds = weekDays(today).map(ymdLocal);
+    supabase.from("commitments")
+      .select("id, source_type, source_ref, run_date, clock_time, assignee")
+      .eq("source_type", "reservation")
+      .gte("run_date", ds[0]).lte("run_date", ds[ds.length - 1])
+      .then((res) => {
+        if (cancelled) return;
+        const m = new Map();
+        for (const r of res.data ?? []) {
+          const w = reservationWindow(r);
+          if (!w || !w.assignee) continue;
+          if (!m.has(r.run_date)) m.set(r.run_date, []);
+          m.get(r.run_date).push({ ...w, id: r.id });
+        }
+        setWeekReservations(m);
+      });
+    return () => { cancelled = true; };
+  }, [viewMode, today]);
+
   // ── Looking back / routine drift (S11 / Epic L) ────────────────────
   // The "Review" zoom reads ACTUALS (commitments exec history) + PLANNED
   // (confirmed-day captures) over a trailing window, and derives block
@@ -902,6 +954,28 @@ export default function Schedule({ data }) {
   // the now block on the actual current day (a different day, the overview, or
   // a later block). Jumping snaps the viewed day back to today AND follows now.
   const viewingToday = dateISO === realTodayISO;
+
+  // Yesterday's unfinished musts (S12), computed only when building today.
+  const yesterdayMusts = useMemo(() => {
+    if (!viewingToday) return { count: 0, titles: [] };
+    const titles = [];
+    let count = 0;
+    const seen = new Set();
+    for (const r of rollupChoresForDay(data, yesterday, ruleOpts)) {
+      for (const inst of r.items) {
+        const c = inst.chore;
+        if (!c || seen.has(c.id)) continue;
+        seen.add(c.id);
+        if (!isMustChore(c, yesterday, blocks)) continue;
+        const pids = obligationPlaceIds(c, choreCtx ?? {});
+        const { done, total } =
+          yCompletions.doneCountForChore(c.id, pids.length ? pids : [null]);
+        if (done < total) { count += total - done; titles.push(c.title); }
+      }
+    }
+    return { count, titles };
+  }, [viewingToday, data, yesterday, ruleOpts, blocks, choreCtx, yCompletions]);
+
   const showJump = !viewingToday || focus !== nowBucket;
   const jumpToNow = () => {
     if (!viewingToday) setToday(new Date());
@@ -1250,6 +1324,8 @@ export default function Schedule({ data }) {
     writeRow(row, bucket, { cover: { by, ack: true } }, entry);
   };
 
+  const [dismissedYesterday, setDismissedYesterday] = useState(false);
+
   // ── Conflicts: the one list (S56a/b/c) + double-booking (S58) ───────
   const [showConflicts, setShowConflicts] = useState(false);
   // Viewed-day conflicts from the real (post-override) block rows: man-down
@@ -1444,6 +1520,7 @@ export default function Schedule({ data }) {
           todayISO={realTodayISO}
           selectedISO={dateISO}
           confirmedDays={confirmedDays}
+          reservations={weekReservations}
           ymd={ymdLocal}
           onPickDay={openDay}
           onPickBlock={openDayBlock}
@@ -1531,6 +1608,29 @@ export default function Schedule({ data }) {
           </button>
         </div>
       </div>
+
+      {/* Yesterday's unfinished musts (S12) — only when building today. */}
+      {viewMode === "day" && !dismissedYesterday && yesterdayMusts.count > 0 && (
+        <div className="px-3 py-2 mb-3 border-l-2 border-warn bg-warn/5 flex items-start gap-2">
+          <AlertTriangle size={14} className="shrink-0 text-warn mt-0.5" />
+          <div className="flex-1 min-w-0 text-[12px] text-dim">
+            <span className="font-medium text-fg">
+              Yesterday — {yesterdayMusts.count} must-do
+              {yesterdayMusts.count === 1 ? "" : "s"} unfinished.
+            </span>{" "}
+            <span className="text-faint">
+              {yesterdayMusts.titles.slice(0, 4).join(", ")}
+              {yesterdayMusts.titles.length > 4
+                ? ` +${yesterdayMusts.titles.length - 4} more` : ""}
+            </span>
+          </div>
+          <button type="button" onClick={() => setDismissedYesterday(true)}
+            className="shrink-0 text-faint hover:text-fg cursor-pointer"
+            aria-label="Dismiss">
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Non-work time (S7) + buffers (S53) — the day's reserved time as a
           compact strip. Buffers carry a Timer glyph; tapping one opens its

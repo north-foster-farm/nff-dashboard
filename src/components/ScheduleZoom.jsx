@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Ban } from "lucide-react";
 import { blockIcon } from "./BlockBadge.jsx";
 import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
@@ -21,8 +21,16 @@ function dayChrome(isToday, isSel) {
 }
 
 // ── Week zoom: seven day columns, each listing its blocks ───────────────
+// A person's reserved non-work time, compactly: "James off" / "Jim 1–4p".
+function reservationChip(w) {
+  if (w.kind === "day_off") return `${w.assignee} off`;
+  const range = `${compactTime(w.startMin)}–${compactTime(w.endMin)}`;
+  return `${w.assignee} ${range}`;
+}
+
 export function WeekView({
-  week, todayISO, selectedISO, confirmedDays, ymd, onPickDay, onPickBlock,
+  week, todayISO, selectedISO, confirmedDays, reservations, ymd,
+  onPickDay, onPickBlock,
 }) {
   return (
     <div className="mt-3 lg:mt-0 grid grid-cols-7 gap-px bg-line border border-line">
@@ -31,6 +39,7 @@ export function WeekView({
         const isToday = iso === todayISO;
         const isSel = iso === selectedISO;
         const confirmed = confirmedDays.has(iso);
+        const dayRes = reservations?.get(iso) ?? [];
         return (
           <div key={iso} className="flex flex-col bg-surface min-h-[160px]">
             <button
@@ -82,6 +91,18 @@ export function WeekView({
                 );
               })}
             </div>
+
+            {dayRes.length > 0 && (
+              <ul className="px-2 py-1 border-t border-line/60 flex flex-col gap-0.5">
+                {dayRes.map((w) => (
+                  <li key={w.id}
+                    className="flex items-center gap-1 text-[10px] text-faint">
+                    <Ban size={9} className="shrink-0" />
+                    <span className="truncate">{reservationChip(w)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
 
             {day.total > 0 && (
               <div className="px-2 py-1 text-right text-[10px] text-faint [font-variant-numeric:tabular-nums] border-t border-line">
