@@ -1313,8 +1313,39 @@ export default function Schedule({ data }) {
     return () => { cancelled = true; };
   }, [dateISO]);
 
+  // Placed commitment items that live OUTSIDE the chore blocks — the
+  // project-gap items + the TRAILING (start-day) overnight items — folded into
+  // the day total + the confirm snapshot + its reconcile so confirming a day
+  // agrees the project + tonight's overnight work, not just the chore blocks
+  // (O-B4/O-B5). The LEADING overnight is last night's shift; its items count
+  // on yesterday (start-day-only), so it's excluded here.
+  const placedCommitmentItems = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    const add = (d) => { if (!seen.has(d.id)) { seen.add(d.id); out.push(d); } };
+    for (const e of projectEntries) for (const d of e.items) add(d);
+    for (const e of overnightEntries) {
+      if (e.side !== "trail") continue;
+      for (const d of e.items) add(d);
+    }
+    return out;
+  }, [projectEntries, overnightEntries]);
+
   const totalRows = useMemo(
-    () => counts.reduce((s, c) => s + c.total, 0), [counts]);
+    () => counts.reduce((s, c) => s + c.total, 0) + placedCommitmentItems.length,
+    [counts, placedCommitmentItems]);
+
+  // One placed commitment -> a confirm-doc entry (reference + label, never a
+  // copy of content). Keyed by commitment id, like the in-block ad-hoc rows.
+  const commitmentConfirmEntry = (d) => ({
+    source_type: d.source_type === "project_node" ? "project_node" : "ad_hoc",
+    label: d.source_ref?.title
+      ?? (d.source_type === "project_node" ? "project" : "task"),
+    block_id: null,
+    clock_time: d.clock_time ?? null,
+    assignee: d.assignee ?? null,
+    source_ref: { commitment_id: d.id },
+  });
 
   // The frozen planned shape (schedule.confirmed_day v1). Reference +
   // labels only — never a copy of source content.
@@ -1358,7 +1389,7 @@ export default function Schedule({ data }) {
           occurrence_id: e.occ.occurrenceId ?? null,
           date: e.occ.date,
         },
-      }))),
+      }))).concat(placedCommitmentItems.map(commitmentConfirmEntry)),
   });
 
   const confirmDay = async () => {
@@ -1408,12 +1439,23 @@ export default function Schedule({ data }) {
       currentKeys.add(k);
       if (!confirmedKeys.has(k)) added.push(e.occ.instanceLabel);
     }
+    // Project-gap + trailing-overnight items reconcile by commitment id, the
+    // same key shape as in-block ad-hoc rows (so a confirmed project/overnight
+    // item isn't reported as spuriously removed).
+    for (const d of placedCommitmentItems) {
+      const k = `a|${d.id}`;
+      currentKeys.add(k);
+      if (!confirmedKeys.has(k)) {
+        added.push(d.source_ref?.title
+          ?? (d.source_type === "project_node" ? "project" : "task"));
+      }
+    }
     const removed = (confirmedDoc.entries ?? [])
       .filter((e) => !currentKeys.has(entryKey(e)))
       .map((e) => e.label);
     const total = added.length + removed.length;
     return total ? { total, added, removed } : null;
-  }, [confirmedDoc, blockRows, eventEntries]);
+  }, [confirmedDoc, blockRows, eventEntries, placedCommitmentItems]);
 
   // ── Instance overrides + reorder + cross-day move (S6 3/3) ──────────
   // A small drag threshold so a tap on a row never starts a drag.
@@ -1675,6 +1717,10 @@ export default function Schedule({ data }) {
 
   // Viewed-day conflicts from the real (post-override) block rows: man-down
   // leaks, same-person overlaps, and buffer squeezes. Each carries a jump.
+  // Overnight + Project items are EXEMPT (O-B6) by construction: `flat` is
+  // built only from `blockRows`, and those items live outside it (project-gap
+  // items are pulled from the chore fold; overnight items are their own
+  // entries). They never reach man-down / double-book / squeeze.
   const todayConflicts = useMemo(() => {
     const out = [];
     const flat = [];

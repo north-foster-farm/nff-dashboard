@@ -3930,6 +3930,37 @@ color; clock-arrow overnight icons). Build refs in
   deltas** (tasks + project steps) this batch; event/chore overnight-catch +
   the conflict exemption, start-day-only counting, and confirm/week/month fold
   are **batch 41.35** (integration).
+- **41.35 — Overnight + Project: confirm / counts / conflict integration.
+  `v0.10.76-alpha` (2026-06-26); pure frontend, NO migration.** The
+  counts-and-confirm half of the integration pass. `buildConfirmedDoc` +
+  its post-confirm reconcile (`changes`) now fold the placed items that live
+  OUTSIDE the chore blocks — every Project-gap item + the **trailing**
+  (start-day) Overnight items — keyed by commitment id like the in-block
+  ad-hoc rows, so confirming a day agrees the project + tonight's overnight
+  work, not just the chore blocks (O-B4/O-B5). Overnight counts on the
+  **start day only**: the trailing night (starting tonight) is folded on this
+  page; the same item shows as the *leading* block on tomorrow's page and is
+  excluded there, so it never double-counts (O-B4). The day total
+  (`totalRows`, the spine "N items" + agenda subtitle) folds the same placed
+  items. Overnight + Project are confirmed **exempt** from man-down /
+  double-book / buffer-squeeze (O-B6) **by construction** — the conflict
+  scans build their rows only from `blockRows`, and those items live outside
+  it (documented as an invariant). P-B8 (auto-route by time) already
+  satisfied since 41.33/41.34. **Deferred to 41.36 (with rationale):**
+  week/month day-count fold of overnight/project (O-B7) — the week/month
+  zooms are deliberately delta-free chore silhouettes; folding delta-based
+  counts needs per-day commitment reads across the grid, an architecture
+  change (and regular ad-hoc/project deltas are uncounted there too);
+  event/chore overnight-catch (O6 fuller) — events need neighbor-day
+  derivation + a distinct overnight render (they complete unlike the shared
+  commitment tick), chores can't fall in the between-frames gap; and the
+  internal placement-unification refactor (collapse the parallel
+  projectPlacements + overnightCaughtIds paths into one segmentForStart pass)
+  — the two-date overnight assembly inherently needs side-based catch beyond
+  a same-day lookup, so the parallel paths stay. **41.36 = integration tail
+  (the three deferrals above) + the original batch-5 hardening**
+  (retime-across-midnight run_date flip, sub-30-min gap re-home, DST/sun-drift
+  clamp, partition property test, full O#/P# story sweep).
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
