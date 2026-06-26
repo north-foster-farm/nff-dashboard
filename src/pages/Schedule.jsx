@@ -545,10 +545,10 @@ export default function Schedule({ data }) {
   const [picking, setPicking] = useState(false);
   // Add one (chore, place) onto the day (S33 search-to-add). The search
   // component handles dedup-by-title + place-narrow and calls this per place.
-  const addChoreAt = (choreId, placeId) => {
+  const addChoreAt = (choreId, placeId, dates = null) => {
     const c = choreById.get(choreId);
     if (!c) return;
-    addChore(c.id, placeId, c.blockId ?? null);
+    addChore(c.id, placeId, c.blockId ?? null, dates);
   };
 
   // Incomplete steps of active projects — the schedulable project "nodes"
@@ -1602,10 +1602,13 @@ export default function Schedule({ data }) {
           chores={choreDefs}
           choreCtx={choreCtx}
           projectNodes={projectNodes}
+          anchorDate={today}
+          todayISO={realTodayISO}
+          ymd={ymdLocal}
           onAddChore={addChoreAt}
-          onAddProject={(node) => addProject(node, null)}
-          onAddTask={(title) => addTask(title, null)}
-          onAddNote={(text) => addNote(text, null)}
+          onAddProject={(node, dates) => addProject(node, null, dates)}
+          onAddTask={(title, dates) => addTask(title, null, dates)}
+          onAddNote={(text, dates) => addNote(text, null, dates)}
           onClose={() => setPicking(false)}
         />
       )}

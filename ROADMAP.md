@@ -3728,11 +3728,19 @@ versioned capture).
   `DELTA_TYPES`. Matches the minimalist mockup's market event panel (8–9 buffer
   + "Load market equipment" list). Deferred: S54 buffer-all-occurrences (needs a
   recurring rule) + S53 auto-reserve; S61 live squeeze-detection.
-- **41.22+ →** the rest of the coverage tail (S34 multi-day · S45/S46 recurring
-  reservations · S56a-c conflict list · S58 double-book · S67 events this/all-
-  future · S72 split-block · S80 week reservations · S12 yesterday's musts).
-  Deferred: DB cleanup (drop the dead `timeline_items` view + orphaned
-  `chore_runs`).
+- **41.22 — multi-day add (S34). `v0.10.63-alpha` (2026-06-25); pure frontend,
+  NO migration.** The add-to-schedule search gains a "Days" chip row (the viewed
+  day + the next six; the viewed day reads "Today" when it's actually today).
+  Ticking extra days fans the add out — one commitment per date — for chores,
+  tasks, notes, and project steps alike. `useScheduleDeltas` add functions
+  (`addTask`/`addNote`/`addChore`/`addProject`) take an optional trailing
+  `dates` array via a shared `insertEach` fan-out (default = the viewed day, so
+  every existing single-day call site is unchanged). The footer reflects the
+  count ("Adds to 3 days").
+- **41.23+ →** the rest of the coverage tail (S45/S46 recurring reservations ·
+  S56a-c conflict list · S58 double-book · S67 events this/all-future · S72
+  split-block · S80 week reservations · S12 yesterday's musts). Deferred: DB
+  cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

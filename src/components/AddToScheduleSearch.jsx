@@ -15,11 +15,44 @@ import { obligationPlaceIds, describeChoreAnchor } from "../lib/chores.js";
 export default function AddToScheduleSearch({
   chores, choreCtx, projectNodes = [], onAddChore, onAddProject, onAddTask,
   onAddNote,
+  anchorDate, todayISO, ymd,
   onClose,
 }) {
   const [q, setQ] = useState("");
   // The chore being place-narrowed (step 2), or null (step 1).
   const [narrow, setNarrow] = useState(null);
+  // Which day(s) the add targets (S34) — the viewed day plus any of the next
+  // six the user also ticks. Always ≥1 day selected.
+  const anchorISO = anchorDate && ymd ? ymd(anchorDate) : null;
+  const [dates, setDates] = useState(() =>
+    new Set(anchorISO ? [anchorISO] : []));
+  const days = useMemo(() => {
+    if (!anchorDate || !ymd) return [];
+    const base = new Date(anchorDate);
+    base.setHours(0, 0, 0, 0);
+    const out = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      const iso = ymd(d);
+      out.push({
+        iso,
+        wd: d.toLocaleDateString(undefined, { weekday: "short" }),
+        num: d.getDate(),
+        isToday: iso === todayISO,
+      });
+    }
+    return out;
+  }, [anchorDate, ymd, todayISO]);
+  const toggleDate = (iso) => setDates((s) => {
+    const n = new Set(s);
+    if (n.has(iso)) { if (n.size > 1) n.delete(iso); } else n.add(iso);
+    return n;
+  });
+  // The target-date array passed to every add handler (null → handler keeps
+  // its own default of the viewed day, e.g. when no picker is wired).
+  const dateArr = () => (anchorISO ? [...dates] : null);
+  const multiDay = dates.size > 1;
   const inputRef = useRef(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => {
@@ -77,7 +110,7 @@ export default function AddToScheduleSearch({
   const pickGroup = (g) => {
     if (g.places.length <= 1) {
       const p = g.places[0];
-      onAddChore(p.choreId, p.placeId);
+      onAddChore(p.choreId, p.placeId, dateArr());
       onClose();
     } else {
       setNarrow(g);
@@ -124,7 +157,8 @@ export default function AddToScheduleSearch({
                 <button
                   type="button"
                   onClick={() => {
-                    for (const p of narrow.places) onAddChore(p.choreId, p.placeId);
+                    for (const p of narrow.places)
+                      onAddChore(p.choreId, p.placeId, dateArr());
                     onClose();
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line hover:bg-row-hover"
@@ -139,7 +173,7 @@ export default function AddToScheduleSearch({
                 <li key={p.choreId + "|" + (p.placeId ?? "") + "|" + i}>
                   <button
                     type="button"
-                    onClick={() => { onAddChore(p.choreId, p.placeId); onClose(); }}
+                    onClick={() => { onAddChore(p.choreId, p.placeId, dateArr()); onClose(); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line last:border-b-0 hover:bg-row-hover"
                   >
                     <span className="text-[14px] text-fg flex-1">
@@ -153,7 +187,9 @@ export default function AddToScheduleSearch({
               ))}
             </ul>
             <div className="px-4 py-3 border-t border-line text-[12px] text-dim">
-              Adds to today — the same write as Rounds.
+              {multiDay
+                ? `Adds to ${dates.size} days — the same write as Rounds.`
+                : "Adds to the viewed day — the same write as Rounds."}
             </div>
           </>
         ) : (
@@ -173,6 +209,33 @@ export default function AddToScheduleSearch({
                 <X size={16} />
               </button>
             </div>
+            {days.length > 0 && (
+              <div className="px-3 py-2 border-b border-line flex items-center gap-1.5 overflow-x-auto">
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-faint mr-1">
+                  Days
+                </span>
+                {days.map((d) => {
+                  const on = dates.has(d.iso);
+                  return (
+                    <button
+                      key={d.iso}
+                      type="button"
+                      onClick={() => toggleDate(d.iso)}
+                      aria-pressed={on}
+                      className={"shrink-0 px-2 py-1 border text-center leading-tight " + (on
+                        ? "border-accent text-accent" : "border-line text-dim")}
+                    >
+                      <div className="text-[10px] uppercase tracking-wide">
+                        {d.isToday ? "Today" : d.wd}
+                      </div>
+                      <div className="text-[13px] [font-variant-numeric:tabular-nums]">
+                        {d.num}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div className="max-h-[55vh] overflow-y-auto">
               <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-faint">
                 Chores
@@ -226,7 +289,7 @@ export default function AddToScheduleSearch({
                   </div>
                   <button
                     type="button"
-                    onClick={() => { onAddTask(q.trim()); onClose(); }}
+                    onClick={() => { onAddTask(q.trim(), dateArr()); onClose(); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line hover:bg-row-hover"
                   >
                     <Plus size={16} className="shrink-0 text-faint" />
@@ -237,7 +300,7 @@ export default function AddToScheduleSearch({
                   {onAddNote && (
                     <button
                       type="button"
-                      onClick={() => { onAddNote(q.trim()); onClose(); }}
+                      onClick={() => { onAddNote(q.trim(), dateArr()); onClose(); }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line hover:bg-row-hover"
                     >
                       <StickyNote size={16} className="shrink-0 text-faint" />
@@ -259,7 +322,7 @@ export default function AddToScheduleSearch({
                       <li key={n.stepId}>
                         <button
                           type="button"
-                          onClick={() => { onAddProject(n); onClose(); }}
+                          onClick={() => { onAddProject(n, dateArr()); onClose(); }}
                           className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line last:border-b-0 hover:bg-row-hover"
                         >
                           <span className="shrink-0 text-[13px]"

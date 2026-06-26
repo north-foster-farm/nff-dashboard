@@ -102,59 +102,57 @@ export function useScheduleDeltas(dateISO) {
     return [...byId.values()];
   }, [serverRows, outboxTick, dateISO]);
 
+  // The day(s) an add targets. Defaults to the viewed day; a non-empty
+  // `dates` array (S34 — add the same item to several days at once) fans the
+  // insert out, one commitment per date. Returns the first id created.
+  const targetDates = (dates) =>
+    Array.isArray(dates) && dates.length ? dates : [dateISO];
+  const insertEach = (dates, build) => {
+    let first = null;
+    for (const d of targetDates(dates)) {
+      const id = crypto.randomUUID();
+      enqueueOp("commitment_insert", { id, runDate: d, ...build(d) });
+      if (!first) first = id;
+    }
+    return first;
+  };
+
   // Block placement rides in source_ref.block_id — the real block_id column
   // is reserved for the chore_block run path (the unique (block_id, run_date)
   // constraint), so deltas keep it null and never collide with a run.
-  const addTask = (title, blockId = null, assignee = null) => {
-    const id = crypto.randomUUID();
-    enqueueOp("commitment_insert", {
-      id, sourceType: "ad_hoc",
-      sourceRef: { title, block_id: blockId ?? null },
-      runDate: dateISO, assignee,
-    });
-    return id;
-  };
+  const addTask = (title, blockId = null, assignee = null, dates = null) =>
+    insertEach(dates, () => ({
+      sourceType: "ad_hoc",
+      sourceRef: { title, block_id: blockId ?? null }, assignee,
+    }));
   // Add a free-text note/marker to the day (S36) — a 'note' delta. Not a
   // task: it has no done-state, it just rides the day as a reminder.
-  const addNote = (text, blockId = null) => {
-    const id = crypto.randomUUID();
-    enqueueOp("commitment_insert", {
-      id, sourceType: "note",
-      sourceRef: { text, block_id: blockId ?? null },
-      runDate: dateISO,
-    });
-    return id;
-  };
+  const addNote = (text, blockId = null, dates = null) =>
+    insertEach(dates, () => ({
+      sourceType: "note", sourceRef: { text, block_id: blockId ?? null },
+    }));
   // Pull an existing chore onto the day at a specific place (a 'chore'
   // delta — renders as a real chore row, completion via chore_completions).
-  const addChore = (choreId, placeId, blockId = null) => {
-    const id = crypto.randomUUID();
-    enqueueOp("commitment_insert", {
-      id, sourceType: "chore",
+  const addChore = (choreId, placeId, blockId = null, dates = null) =>
+    insertEach(dates, () => ({
+      sourceType: "chore",
       sourceRef: {
         chore_id: choreId, place_id: placeId ?? null, block_id: blockId ?? null,
       },
-      runDate: dateISO,
-    });
-    return id;
-  };
+    }));
   // Pull a project STEP onto the day (S6 — project-node add). Renders as a
   // checkable row whose done-state lives on the commitment; the source_ref
   // carries the step title + its project's title for the sub-line. The
   // 'project_node' source_type was already whitelisted by migration 0034.
-  const addProject = (node, blockId = null) => {
-    const id = crypto.randomUUID();
-    enqueueOp("commitment_insert", {
-      id, sourceType: "project_node",
+  const addProject = (node, blockId = null, dates = null) =>
+    insertEach(dates, () => ({
+      sourceType: "project_node",
       sourceRef: {
         project_id: node.projectId, step_id: node.stepId ?? null,
         title: node.title, project_title: node.projectTitle ?? null,
         block_id: blockId ?? null,
       },
-      runDate: dateISO,
-    });
-    return id;
-  };
+    }));
   const removeDelta = (id) => enqueueOp("commitment_delete", { id });
   const setDone = (id, done) =>
     enqueueOp("commitment_set_state", { id, state: done ? "done" : "scheduled" });
