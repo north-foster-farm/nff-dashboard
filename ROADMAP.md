@@ -3737,10 +3737,22 @@ versioned capture).
   `dates` array via a shared `insertEach` fan-out (default = the viewed day, so
   every existing single-day call site is unchanged). The footer reflects the
   count ("Adds to 3 days").
-- **41.23+ →** the rest of the coverage tail (S45/S46 recurring reservations ·
-  S56a-c conflict list · S58 double-book · S67 events this/all-future · S72
-  split-block · S80 week reservations · S12 yesterday's musts). Deferred: DB
-  cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
+- **41.23 — multi-day + recurring reservations (S45/S46). `v0.10.64-alpha`
+  (2026-06-25); pure frontend, NO migration.** `ReservationSheet` gains a
+  "Repeat across days" mode: weekday chips (preselecting the viewed day's
+  weekday) + a horizon (1/4/8/12 weeks). It materialises one `reservation`
+  commitment per matching date from the viewed day forward — so "every Sunday
+  off for 8 weeks" (S46) and "Mon–Fri this week" (S45) are both one action,
+  while each stays a plain per-day commitment the existing per-day read +
+  man-down logic already handles. Materialised reservations carry a `series`
+  id in `source_ref` (surfaced as a Repeat glyph in the day's reserved-time
+  strip). `addReservation` routes through the shared `insertEach` fan-out.
+  Note: each materialised day is removed individually (off *this* Sunday);
+  bulk "remove the whole series" is deferred.
+- **41.24+ →** the rest of the coverage tail (S56a-c conflict list · S58
+  double-book · S67 events this/all-future · S72 split-block · S80 week
+  reservations · S12 yesterday's musts). Deferred: DB cleanup (drop the dead
+  `timeline_items` view + orphaned `chore_runs`).
 
 ---
 

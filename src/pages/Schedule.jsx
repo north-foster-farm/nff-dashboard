@@ -1378,6 +1378,10 @@ export default function Schedule({ data }) {
                   : (w.kind === "day_off" ? "off all day"
                     : `${formatMinutesOfDay(w.startMin)}–${formatMinutesOfDay(w.endMin)}`)}
               </span>
+              {w.series && (
+                <Repeat size={10} className="shrink-0 text-faint"
+                  aria-label="Recurring" />
+              )}
               <button type="button" onClick={() => removeDelta(w.id)}
                 className="shrink-0 text-faint hover:text-warn" aria-label="Remove time off">
                 <X size={12} />
@@ -1629,6 +1633,8 @@ export default function Schedule({ data }) {
 
       {addingTimeOff && (
         <ReservationSheet
+          anchorDate={today}
+          ymd={ymdLocal}
           onAdd={(r) => { addReservation(r); setAddingTimeOff(false); }}
           onClose={() => setAddingTimeOff(false)}
         />

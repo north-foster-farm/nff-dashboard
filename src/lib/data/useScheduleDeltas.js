@@ -159,16 +159,20 @@ export function useScheduleDeltas(dateISO) {
 
   // Non-work time (S7) — an off-site / break / appointment / day-off window
   // for a person, stored as a 'reservation' commitment. `start`/`end` are
-  // "HH:MM" (end omitted for a day-off, which spans the whole day).
-  const addReservation = ({ assignee, kind, start, end, label }) => {
-    const id = crypto.randomUUID();
-    enqueueOp("commitment_insert", {
-      id, sourceType: "reservation", assignee,
-      sourceRef: { kind, end: end ?? null, label: label ?? null },
-      runDate: dateISO, clockTime: start ?? null,
-    });
-    return id;
-  };
+  // "HH:MM" (end omitted for a day-off, which spans the whole day). An
+  // optional `dates` array (S45 multi-day / S46 recurring) materialises one
+  // reservation per date; `series` tags them as one group for context.
+  const addReservation = ({
+    assignee, kind, start, end, label, dates = null, series = null,
+  }) =>
+    insertEach(dates, () => ({
+      sourceType: "reservation", assignee,
+      sourceRef: {
+        kind, end: end ?? null, label: label ?? null,
+        series: series ?? null,
+      },
+      clockTime: start ?? null,
+    }));
 
   // A buffer (S53/S55/S57) — reserved adjacent time bound to an activity,
   // stored as a `buffer` commitment. `clockTime`/`sourceRef` come prebuilt

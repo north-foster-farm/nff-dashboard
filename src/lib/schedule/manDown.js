@@ -24,10 +24,11 @@ export function parseHHMM(s) {
 // A day-off covers the whole day; a window with no end defaults to 30 min.
 export function reservationWindow(res) {
   const kind = res.source_ref?.kind ?? "off_site";
+  const series = res.source_ref?.series ?? null;
   if (kind === "day_off") {
     return {
       assignee: res.assignee, kind, label: res.source_ref?.label ?? "Day off",
-      startMin: 0, endMin: 1440,
+      startMin: 0, endMin: 1440, series,
     };
   }
   const startMin = parseHHMM(res.clock_time);
@@ -35,7 +36,7 @@ export function reservationWindow(res) {
   const endMin = parseHHMM(res.source_ref?.end) ?? startMin + 30;
   return {
     assignee: res.assignee, kind, label: res.source_ref?.label ?? null,
-    startMin, endMin,
+    startMin, endMin, series,
   };
 }
 
