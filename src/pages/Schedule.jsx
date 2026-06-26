@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
   GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
-  Repeat, StickyNote, Timer, Scissors,
+  Repeat, StickyNote, Timer, Scissors, CalendarX,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -585,9 +585,16 @@ export default function Schedule({ data }) {
     [today]);
   const {
     deltas, addTask, addNote, addChore, addProject, removeDelta, setDone,
-    upsertOverride, updateDelta, addReservation,
+    upsertOverride, updateDelta, addReservation, removeSeries,
     addBuffer, toggleBufferItem,
   } = useScheduleDeltas(dateISO);
+
+  // Remove a whole recurring reservation series, with a confirm (S46 follow-up).
+  const removeReservationSeries = async (seriesId) => {
+    if (typeof window !== "undefined"
+      && !window.confirm("Remove this day off on every repeated day?")) return;
+    await removeSeries(seriesId);
+  };
 
   // Chore search-to-add: the chore set as searchable items + a resolver.
   const choreById = useMemo(() => {
@@ -1755,9 +1762,17 @@ export default function Schedule({ data }) {
                   aria-label="Recurring" />
               )}
               <button type="button" onClick={() => removeDelta(w.id)}
-                className="shrink-0 text-faint hover:text-warn" aria-label="Remove time off">
+                className="shrink-0 text-faint hover:text-warn" aria-label="Remove this day">
                 <X size={12} />
               </button>
+              {w.series && (
+                <button type="button"
+                  onClick={() => removeReservationSeries(w.series)}
+                  className="shrink-0 text-faint hover:text-warn"
+                  aria-label="Remove the whole series">
+                  <CalendarX size={12} />
+                </button>
+              )}
             </li>
           ))}
           {buffers.map((buf) => (

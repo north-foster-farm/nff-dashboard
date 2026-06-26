@@ -154,6 +154,21 @@ export function useScheduleDeltas(dateISO) {
       },
     }));
   const removeDelta = (id) => enqueueOp("commitment_delete", { id });
+
+  // Remove a whole recurring reservation series (S46 follow-up) — every
+  // materialised day that shares the `series` id, across the horizon. Looks up
+  // the member ids server-side, then deletes each through the outbox so it's
+  // offline-safe and consistent with single-day removal. Returns the count.
+  const removeSeries = async (seriesId) => {
+    if (!seriesId) return 0;
+    const { data } = await supabase.from("commitments")
+      .select("id")
+      .eq("source_type", "reservation")
+      .eq("source_ref->>series", seriesId);
+    const ids = (data ?? []).map((r) => r.id);
+    for (const id of ids) enqueueOp("commitment_delete", { id });
+    return ids.length;
+  };
   const setDone = (id, done) =>
     enqueueOp("commitment_set_state", { id, state: done ? "done" : "scheduled" });
 
@@ -273,7 +288,7 @@ export function useScheduleDeltas(dateISO) {
   return {
     deltas, loading: serverRows === null,
     addTask, addNote, addChore, addProject, removeDelta, setDone,
-    upsertOverride, updateDelta, addReservation,
+    upsertOverride, updateDelta, addReservation, removeSeries,
     addBuffer, toggleBufferItem,
   };
 }

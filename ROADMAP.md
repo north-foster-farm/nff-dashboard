@@ -3829,7 +3829,15 @@ versioned capture).
   (Timer glyph) AND as an inline warn in the buffer's panel. Horizon scan
   (`scanHorizonManDown` → `scanHorizonConflicts`) now also detects double-
   bookings on upcoming days, not just man-downs.
-- **41.31 →** the last deferred item: bulk recurring-reservation remove.
+- **41.31 — bulk recurring-reservation remove. `v0.10.72-alpha` (2026-06-25);
+  pure frontend, NO migration.** A recurring reservation's strip chip now has
+  two removes: the `X` drops just that day ("off *this* Sunday after all"), and
+  a `CalendarX` drops the whole series. `removeSeries(seriesId)` looks up every
+  member by `source_ref->>series` server-side and deletes each through the
+  outbox (offline-safe, same path as single-day removal); a confirm guards it.
+  This closes the entire Schedule deferred-items list — the feature now fully
+  implements the story set + mockups (the only remaining gate is applying
+  migration 0036 to prod via the push protocol).
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
