@@ -27,6 +27,38 @@ export function isActiveProject(p, todayISO) {
     && (!p.targetDate || p.targetDate >= todayISO);
 }
 
+// ── Schedule auto-pull (Project blocks) ───────────────────────────────
+//
+// The default occupant of a day's Project block: the next incomplete step of
+// the highest-priority active project. "Highest priority" = the smallest
+// `sortOrder` among active projects (the Projects page's own ordering);
+// "next" = the smallest-`sortOrder` step that isn't complete. Returned as a
+// schedulable node `{ projectId, projectTitle, stepId, title }` (the same
+// shape the search-to-add offers), or null when no active project has an
+// incomplete step. PURE + display-only — derived live, never written on open
+// (honors no-silent-mutation): completing the step elsewhere simply re-derives
+// the next one. Requires each project to carry its `steps` (id, title,
+// sortOrder, completedAt) — the loader must hydrate them.
+export function nextProjectStep(projects, todayISO) {
+  const active = (projects ?? [])
+    .filter((p) => isActiveProject(p, todayISO))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  for (const p of active) {
+    const next = (p.steps ?? [])
+      .filter((s) => !s.completedAt)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+    if (next) {
+      return {
+        projectId: p.id,
+        projectTitle: p.title,
+        stepId: next.id,
+        title: next.title,
+      };
+    }
+  }
+  return null;
+}
+
 // ── Completion predicates ─────────────────────────────────────────────
 
 export function stepDone(step) {

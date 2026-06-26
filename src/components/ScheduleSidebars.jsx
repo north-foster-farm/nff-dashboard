@@ -93,11 +93,20 @@ export function DayRailSpine({
         if (b.isProject) {
           const free = freeShort(b.who);
           const h = projSize(b.durationMin, 16, 34);
+          const isFocus = b.bucket === focus;
           return (
-            <div
+            <button
               key={b.bucket}
+              type="button"
+              onClick={() => onPick(b.bucket)}
               title={`Project${free ? " · " + free + " free" : ""}`}
-              className="relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 text-left min-h-[52px] border-b border-line"
+              className={
+                "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 "
+                + "text-left min-h-[52px] border-b border-line cursor-pointer "
+                + "transition-colors "
+                + (isFocus ? "bg-row-active" : "hover:bg-row-hover")
+                + (b.allDone ? " opacity-55" : "")
+              }
             >
               {/* soft slate-blue gap gauge — coarse-duration sized, de-hatched */}
               <span
@@ -106,8 +115,11 @@ export function DayRailSpine({
               />
               <FolderKanban size={15} className="shrink-0 text-project" />
               <span className="flex-1 min-w-0">
-                <span className="block text-[12px] truncate font-medium text-project">
-                  Project
+                <span className={
+                  "block text-[12px] truncate font-medium text-project "
+                  + (isFocus ? "font-semibold" : "")
+                }>
+                  Project{b.count > 0 ? ` · ${b.done}/${b.count}` : ""}
                 </span>
                 <span className="block text-[10px] [font-variant-numeric:tabular-nums]">
                   <span className="text-faint">{compactTime(b.startMin)}</span>
@@ -116,7 +128,10 @@ export function DayRailSpine({
                   )}
                 </span>
               </span>
-            </div>
+              {isFocus && (
+                <span className="absolute right-0 top-0 bottom-0 w-[2px] bg-project" />
+              )}
+            </button>
           );
         }
         const isNow = b.bucket === nowBucket;
@@ -216,23 +231,36 @@ export function DayStrip({
             if (b.isProject) {
               const free = freeShort(b.who);
               const h = projSize(b.durationMin, 14, 40);
+              const isFocus = b.bucket === focus;
               return (
-                <div
+                <button
                   key={b.bucket}
+                  type="button"
+                  onClick={() => onPick(b.bucket)}
                   title={`Project${free ? " · " + free + " free" : ""}`}
-                  className="flex-1 min-w-0 flex flex-col items-center"
+                  className={
+                    "flex-1 min-w-0 flex flex-col items-center cursor-pointer "
+                    + (b.allDone ? "opacity-60" : "")
+                  }
                 >
                   <span className="relative w-full h-[56px] flex items-end justify-center">
                     <span
-                      className="w-full bg-project/25 ring-1 ring-inset ring-project/40"
+                      className={
+                        "w-full bg-project/25 ring-1 ring-inset "
+                        + (isFocus ? "ring-project" : "ring-project/40")
+                      }
                       style={{ height: h + "px" }}
                     />
                   </span>
                   <FolderKanban size={14} className="mt-1.5 text-project" />
-                  <span className="mt-0.5 pb-0.5 text-[10.5px] [font-variant-numeric:tabular-nums] border-b-2 border-transparent text-project font-medium">
+                  <span className={
+                    "mt-0.5 pb-0.5 text-[10.5px] [font-variant-numeric:tabular-nums] "
+                    + "border-b-2 text-project font-medium "
+                    + (isFocus ? "border-project font-bold" : "border-transparent")
+                  }>
                     {compactTime(b.startMin)}
                   </span>
-                </div>
+                </button>
               );
             }
             const isNow = b.bucket === nowBucket;

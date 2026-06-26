@@ -51,7 +51,8 @@ import { weekFullness, weekDays } from "../lib/schedule/weekView.js";
 import { monthFullness } from "../lib/schedule/monthView.js";
 import { blockStartDrift, dayReviews } from "../lib/schedule/lookBack.js";
 import { useRunHistory } from "../lib/data/useRunHistory.js";
-import { isActiveProject } from "../lib/projects.js";
+import { isActiveProject, nextProjectStep } from "../lib/projects.js";
+import { segmentForStart, buildDaySegments } from "../lib/schedule/placement.js";
 import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PageHeader from "../components/PageHeader.jsx";
@@ -124,6 +125,15 @@ function hmToMin(hm) {
   const [h, m] = hm.split(":").map(Number);
   if (Number.isNaN(h)) return null;
   return h * 60 + (Number.isNaN(m) ? 0 : m);
+}
+
+// minutes of day -> "HH:MM" (24h), or null — the inverse, for the clock_time
+// a timed delta carries so it routes back to the right segment.
+function minToHM(min) {
+  if (min == null || !Number.isFinite(min)) return null;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
 }
 
 // An EVENT entry in the day timeline (S9) — the derived day folds in event
@@ -622,6 +632,10 @@ export default function Schedule({ data }) {
     return m;
   }, [choreDefs]);
   const [picking, setPicking] = useState(false);
+  // The Project segment a "+ add" / "swap" affordance is targeting — opens the
+  // add-to-day search with its handlers bound to the segment's start time, so
+  // whatever's added routes into this block (P12/P13). null = closed.
+  const [projectAddFor, setProjectAddFor] = useState(null);
   // Add one (chore, place) onto the day (S33 search-to-add). The search
   // component handles dedup-by-title + place-narrow and calls this per place.
   const addChoreAt = (choreId, placeId, dates = null) => {
@@ -678,6 +692,62 @@ export default function Schedule({ data }) {
     }),
     [data, today, dayUTC, dateISO, ruleOpts, deltas]);
 
+  // The day's tiled segments for time-routing (Project blocks): every real
+  // chore-block window + the derived Project gaps. `segmentForStart` walks
+  // these to decide which bucket a timed delta lands in (P-B8 catch rule).
+  const choreWindows = useMemo(() => {
+    const out = [];
+    for (const b of blocks) {
+      const start = startMinByBucket.get(b.id);
+      if (start == null) continue;
+      out.push({
+        bucket: b.id, start, end: start + (b.durationMinutes ?? 0),
+      });
+    }
+    return out;
+  }, [blocks, startMinByBucket]);
+  const daySegments = useMemo(
+    () => buildDaySegments(choreWindows, derived.projectSegments ?? []),
+    [choreWindows, derived]);
+
+  // Project-block contents (the parallel placement path, batch 2): the
+  // project_node / ad_hoc deltas whose `clock_time` routes — via the shared
+  // segmentForStart — into a Project gap rather than a chore block. Grouped by
+  // the "project:<startMin>" bucket; `ids` lets the chore-block fold below drop
+  // them so they render once, in the project segment. Untimed project-step adds
+  // (the legacy 41.14 path) have no clock_time and stay in "anytime".
+  const projectPlacements = useMemo(() => {
+    const byBucket = new Map();
+    const ids = new Set();
+    for (const d of deltas) {
+      if (d.source_type !== "project_node" && d.source_type !== "ad_hoc") {
+        continue;
+      }
+      const t = hmToMin(d.clock_time);
+      if (t == null) continue;
+      const bucket = segmentForStart(t, daySegments);
+      if (!bucket.startsWith("project:")) continue;
+      if (!byBucket.has(bucket)) byBucket.set(bucket, []);
+      byBucket.get(bucket).push(d);
+      ids.add(d.id);
+    }
+    return { byBucket, ids };
+  }, [deltas, daySegments]);
+
+  // Write a project step's completion straight through to project_steps (P14 —
+  // one source of truth). The reference-data realtime channel on project_steps
+  // refreshes data.projects, so the occupant re-derives. Online-only for v1
+  // (offline outbox for steps is deferred).
+  const completeProjectStep = (stepId, done) => {
+    if (!stepId) return;
+    supabase.from("project_steps")
+      .update({ completed_at: done ? new Date().toISOString() : null })
+      .eq("id", stepId)
+      .then(({ error }) => {
+        if (error) console.error("completeProjectStep:", error);
+      });
+  };
+
   // Derive the day (rollups carry .items = chores, .extras = ad-hoc/chore
   // deltas; 'override' deltas are excluded here — applied below at the row
   // level). Then expand each rollup into typed rows.
@@ -718,6 +788,8 @@ export default function Schedule({ data }) {
         a.ps - b.ps || a.pn.localeCompare(b.pn) || a.co - b.co);
       for (const cr of choreRows) rows.push(cr.row);
       for (const ex of (r.extras ?? [])) {
+        // Placed into a Project gap by time — rendered there, not here.
+        if (projectPlacements.ids.has(ex.id)) continue;
         if (ex.source_type === "chore") {
           const chore = choreById.get(ex.source_ref?.chore_id);
           if (!chore) continue; // orphan: chore no longer exists
@@ -741,7 +813,8 @@ export default function Schedule({ data }) {
       }
       return { bucket: r.bucket, block: r.block, rows };
     });
-  }, [derived, today, ruleOpts, choreCtx, choreById, choreOrder]);
+  }, [derived, today, ruleOpts, choreCtx, choreById, choreOrder,
+    projectPlacements]);
 
   // Event occurrences as timeline entries (S9) — time-ordered alongside
   // chore blocks, openable to a panel. Cancelled occurrences are dropped.
@@ -756,22 +829,34 @@ export default function Schedule({ data }) {
       })),
     [derived]);
 
-  // Project blocks (the derived gaps) as timeline + navigator entries. They
-  // are display-only in this batch (no contents/detail yet — that's the next
-  // batch); they read as "Project · <range>" with a who's-free badge and the
-  // passive empty note. `startMin` lets them sort into the agenda/spine among
-  // the chore blocks.
+  // Project blocks (the derived gaps) as timeline + navigator entries (batch
+  // 2 — now with contents). Each carries its placed `items` (project_node /
+  // ad_hoc deltas routed here by time) and, for the FIRST gap only when it has
+  // no items, the auto-pulled `occupant` (the top project's next step —
+  // display-only, swappable). `startMin` sorts them into the agenda/spine.
   const projectEntries = useMemo(
-    () => (derived.projectSegments ?? []).map((seg) => ({
-      kind: "projectblock",
-      isProject: true,
-      bucket: "project:" + seg.startMin,
-      startMin: seg.startMin,
-      endMin: seg.endMin,
-      durationMin: seg.durationMin,
-      who: seg.who,
-    })),
-    [derived]);
+    () => (derived.projectSegments ?? []).map((seg, idx) => {
+      const bucket = "project:" + seg.startMin;
+      const items = projectPlacements.byBucket.get(bucket) ?? [];
+      const occupant = (idx === 0 && items.length === 0)
+        ? nextProjectStep(data.projects, dateISO) : null;
+      const doneCount = items.filter((d) => d.state === "done").length;
+      return {
+        kind: "projectblock",
+        isProject: true,
+        bucket,
+        startMin: seg.startMin,
+        endMin: seg.endMin,
+        durationMin: seg.durationMin,
+        who: seg.who,
+        items,
+        occupant,
+        count: items.length,
+        done: doneCount,
+        allDone: items.length > 0 && doneCount === items.length,
+      };
+    }),
+    [derived, projectPlacements, data, dateISO]);
 
   const overrideDeltas = useMemo(
     () => deltas.filter((d) => d.source_type === "override"), [deltas]);
@@ -1880,18 +1965,46 @@ export default function Schedule({ data }) {
               const free = whoFreeLabel(entry.who);
               const range = formatMinutesOfDay(entry.startMin)
                 + "–" + formatMinutesOfDay(entry.endMin);
+              // The sub-line names what's planned: placed items (with a done
+              // tally), else the auto-pulled occupant, else the passive note.
+              const sub = entry.items.length
+                ? (entry.items[0].source_ref?.title ?? "1 item")
+                  + (entry.items.length > 1
+                    ? ` +${entry.items.length - 1} more` : "")
+                : entry.occupant
+                  ? entry.occupant.title
+                  : null;
               return (
                 <li key={entry.bucket}>
-                  <div className="w-full flex items-center gap-3 px-4 py-3 text-left">
+                  <button
+                    type="button"
+                    onClick={() => pickBlock(entry.bucket)}
+                    className={
+                      "w-full flex items-center gap-3 px-4 py-3 text-left "
+                      + "hover:bg-row-hover cursor-pointer "
+                      + (entry.allDone ? "opacity-60" : "")
+                    }
+                  >
                     <FolderKanban size={16} className="shrink-0 text-project" />
                     <span className="flex-1 min-w-0">
                       <span className="block text-[14px] text-fg truncate">
                         Project · {range}
                       </span>
-                      <span className="block text-[12px] text-faint italic">
-                        free — nothing planned
-                      </span>
+                      {sub ? (
+                        <span className="block text-[12px] text-faint truncate">
+                          {sub}
+                        </span>
+                      ) : (
+                        <span className="block text-[12px] text-faint italic">
+                          free — nothing planned
+                        </span>
+                      )}
                     </span>
+                    {entry.count > 0 && (
+                      <span className="shrink-0 text-[12px] text-dim [font-variant-numeric:tabular-nums]">
+                        {entry.allDone ? "done" : `${entry.done}/${entry.count}`}
+                      </span>
+                    )}
                     {free.text && (
                       <span className={
                         "shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full "
@@ -1903,7 +2016,8 @@ export default function Schedule({ data }) {
                         {free.text}
                       </span>
                     )}
-                  </div>
+                    <ChevronRight size={16} className="shrink-0 text-faint" />
+                  </button>
                 </li>
               );
             }
@@ -1957,6 +2071,115 @@ export default function Schedule({ data }) {
             onEditTime={setEditingEvent}
             squeezedIds={squeezedBufferIds} />
         </ol>
+      ) : focusEntry?.kind === "projectblock" ? (
+        /* ── One Project block's detail (no rounds / seal — items only) ── */
+        <div ref={focusRef} className="border border-line mt-3 lg:mt-0">
+          {(() => {
+            const b = focusEntry;
+            const free = whoFreeLabel(b.who);
+            const range = formatMinutesOfDay(b.startMin)
+              + "–" + formatMinutesOfDay(b.endMin);
+            // Complete a placed item — ad_hoc toggles its commitment state;
+            // project_node also writes through to the underlying step (P14).
+            const toggleItem = (id, done) => {
+              setDone(id, done);
+              const it = b.items.find((d) => d.id === id);
+              const stepId = it?.source_ref?.step_id;
+              if (it?.source_type === "project_node" && stepId) {
+                completeProjectStep(stepId, done);
+              }
+            };
+            return (
+              <>
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
+                  <FolderKanban size={18} className="shrink-0 text-project" />
+                  <span className="flex-1 min-w-0 truncate text-[15px] font-semibold text-fg">
+                    Project · {range}
+                  </span>
+                  {b.count > 0 && (
+                    <span className="shrink-0 text-[12px] [font-variant-numeric:tabular-nums] text-dim">
+                      {b.allDone ? "done" : `${b.done}/${b.count}`}
+                    </span>
+                  )}
+                  {free.text && (
+                    <span className={
+                      "shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full "
+                      + "[font-variant-numeric:tabular-nums] "
+                      + (free.loud
+                        ? "bg-project/20 text-project font-semibold ring-1 ring-project/40"
+                        : "border border-project/50 text-project")
+                    }>
+                      {free.text}
+                    </span>
+                  )}
+                </div>
+                {b.items.length > 0 ? (
+                  <ul>
+                    {b.items.map((d) => (
+                      <AdHocRow
+                        key={d.id}
+                        commitment={d}
+                        onToggle={toggleItem}
+                        onRemove={removeDelta}
+                        edit={{ history: d.history }}
+                      />
+                    ))}
+                  </ul>
+                ) : b.occupant ? (
+                  /* The auto-pulled occupant (display-only; not yet a row).
+                     Checking it completes the step; "Swap" places a different
+                     one, which then overrides this default. */
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
+                    <button
+                      type="button"
+                      onClick={() => completeProjectStep(b.occupant.stepId, true)}
+                      className="shrink-0 w-7 h-7 border-2 bg-bg border-line text-transparent hover:border-fg inline-flex items-center justify-center cursor-pointer"
+                      aria-label="Mark done"
+                    >
+                      <Check size={16} strokeWidth={3} />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[14px] font-medium text-fg flex items-center gap-2">
+                        <span className="truncate">{b.occupant.title}</span>
+                        <span className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1">
+                          auto
+                        </span>
+                      </div>
+                      {b.occupant.projectTitle && (
+                        <div className="text-[12px] text-faint italic mt-0.5 truncate">
+                          {b.occupant.projectTitle}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setProjectAddFor(b)}
+                      className="shrink-0 text-[12px] font-medium text-accent hover:underline cursor-pointer"
+                    >
+                      Swap
+                    </button>
+                  </div>
+                ) : (
+                  <div className="px-4 py-3 border-b border-line text-[13px] text-faint italic">
+                    free — nothing planned
+                  </div>
+                )}
+                <AddTaskRow
+                  onAdd={(title) =>
+                    addTask(title, null, null, null, minToHM(b.startMin))}
+                />
+                <button
+                  type="button"
+                  onClick={() => setProjectAddFor(b)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-accent hover:bg-row-hover border-t border-line cursor-pointer"
+                >
+                  <Plus size={15} />
+                  Add a project step
+                </button>
+              </>
+            );
+          })()}
+        </div>
       ) : focusEntry ? (
         /* ── One block's detail (master-detail; never scroll past others) ── */
         <div ref={focusRef} className="border border-line mt-3 lg:mt-0">
@@ -2088,6 +2311,27 @@ export default function Schedule({ data }) {
           onAddTask={(title, dates) => addTask(title, null, dates)}
           onAddNote={(text, dates) => addNote(text, null, dates)}
           onClose={() => setPicking(false)}
+        />
+      )}
+
+      {projectAddFor && (
+        /* Add into a Project block — same search, but every add carries the
+           segment's start time so segmentForStart routes it back here. A
+           placed step overrides the auto-pulled occupant (the "swap"). */
+        <AddToScheduleSearch
+          chores={choreDefs}
+          choreCtx={choreCtx}
+          projectNodes={projectNodes}
+          anchorDate={today}
+          todayISO={realTodayISO}
+          ymd={ymdLocal}
+          onAddChore={addChoreAt}
+          onAddProject={(node, dates) =>
+            addProject(node, null, dates, minToHM(projectAddFor.startMin))}
+          onAddTask={(title, dates) =>
+            addTask(title, null, null, dates, minToHM(projectAddFor.startMin))}
+          onAddNote={(text, dates) => addNote(text, null, dates)}
+          onClose={() => setProjectAddFor(null)}
         />
       )}
 

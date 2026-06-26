@@ -120,10 +120,15 @@ export function useScheduleDeltas(dateISO) {
   // Block placement rides in source_ref.block_id — the real block_id column
   // is reserved for the chore_block run path (the unique (block_id, run_date)
   // constraint), so deltas keep it null and never collide with a run.
-  const addTask = (title, blockId = null, assignee = null, dates = null) =>
+  // `clockTime` ("HH:MM") lets the add carry a time so it routes to the
+  // segment whose window contains it (Project blocks — segmentForStart).
+  const addTask = (
+    title, blockId = null, assignee = null, dates = null, clockTime = null,
+  ) =>
     insertEach(dates, () => ({
       sourceType: "ad_hoc",
       sourceRef: { title, block_id: blockId ?? null }, assignee,
+      clockTime: clockTime ?? null,
     }));
   // Add a free-text note/marker to the day (S36) — a 'note' delta. Not a
   // task: it has no done-state, it just rides the day as a reminder.
@@ -144,7 +149,9 @@ export function useScheduleDeltas(dateISO) {
   // checkable row whose done-state lives on the commitment; the source_ref
   // carries the step title + its project's title for the sub-line. The
   // 'project_node' source_type was already whitelisted by migration 0034.
-  const addProject = (node, blockId = null, dates = null) =>
+  // `clockTime` ("HH:MM") routes the placed step to a Project segment by time
+  // (segmentForStart) rather than a chore block.
+  const addProject = (node, blockId = null, dates = null, clockTime = null) =>
     insertEach(dates, () => ({
       sourceType: "project_node",
       sourceRef: {
@@ -152,6 +159,7 @@ export function useScheduleDeltas(dateISO) {
         title: node.title, project_title: node.projectTitle ?? null,
         block_id: blockId ?? null,
       },
+      clockTime: clockTime ?? null,
     }));
   const removeDelta = (id) => enqueueOp("commitment_delete", { id });
 

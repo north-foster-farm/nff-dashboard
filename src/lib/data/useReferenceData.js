@@ -679,31 +679,46 @@ async function loadProjects() {
       .select("id, project_id, completed_at"),
     supabase
       .from("project_steps")
-      .select("id, project_id, phase_id, completed_at")
+      .select("id, project_id, phase_id, title, sort_order, completed_at")
   ]);
   if (projRes.error) { console.error("loadProjects:", projRes.error); return null; }
   const phases = phaseRes.error ? [] : (phaseRes.data ?? []);
   const steps = stepRes.error ? [] : (stepRes.data ?? []);
-  return projRes.data.map(p => ({
-    id: p.id,
-    title: p.title,
-    description: p.description,
-    status: p.status,
-    ownerEmail: p.owner_email,
-    startedAt: p.started_at,
-    targetDate: p.target_date,
-    completedAt: p.completed_at,
-    notes: p.notes,
-    createdAt: p.created_at,
-    sortOrder: p.sort_order ?? 0,
-    progress: progressOf(
-      phases
-        .filter(ph => ph.project_id === p.id)
-        .map(ph => ({ id: ph.id, completedAt: ph.completed_at })),
-      steps
-        .filter(st => st.project_id === p.id)
-        .map(st => ({ id: st.id, phaseId: st.phase_id, completedAt: st.completed_at }))
-    )
-  }));
+  return projRes.data.map(p => {
+    // Steps hydrated with title + sortOrder so the Schedule can offer them as
+    // schedulable nodes and auto-pull the next one (nextProjectStep). The
+    // realtime channel above already watches project_steps, so these stay live.
+    const mySteps = steps
+      .filter(st => st.project_id === p.id)
+      .map(st => ({
+        id: st.id,
+        phaseId: st.phase_id,
+        title: st.title,
+        sortOrder: st.sort_order ?? 0,
+        completedAt: st.completed_at,
+      }));
+    return {
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      status: p.status,
+      ownerEmail: p.owner_email,
+      startedAt: p.started_at,
+      targetDate: p.target_date,
+      completedAt: p.completed_at,
+      notes: p.notes,
+      createdAt: p.created_at,
+      sortOrder: p.sort_order ?? 0,
+      steps: mySteps,
+      progress: progressOf(
+        phases
+          .filter(ph => ph.project_id === p.id)
+          .map(ph => ({ id: ph.id, completedAt: ph.completed_at })),
+        mySteps.map(st => ({
+          id: st.id, phaseId: st.phaseId, completedAt: st.completedAt,
+        }))
+      )
+    };
+  });
 }
 

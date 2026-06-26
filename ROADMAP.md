@@ -3870,6 +3870,35 @@ color; clock-arrow overnight icons). Build refs in
   boundary editing deferred), P-B1/2/3/4/10. Known limitation: all-occurrences
   buffer *templates* don't yet trim gaps (per-day buffer deltas do) — a later
   buffer-integration follow-up.
+- **41.33 — Project blocks: contents (auto-pull + detail). `v0.10.74-alpha`
+  (2026-06-26); pure frontend, NO migration.** Project blocks become
+  openable and fillable. A shared placement helper
+  (`src/lib/schedule/placement.js`, `segmentForStart` + `buildDaySegments`)
+  tiles the day's chore-block windows with the derived Project gaps and routes
+  any *timed* delta to the segment whose half-open `[start, end)` window holds
+  it (the P-B8 catch rule; a boundary minute falls to the chore block that
+  starts there). A new `nextProjectStep(projects, todayISO)` in
+  `src/lib/projects.js` auto-pulls the top active project's (lowest
+  `sort_order`) next incomplete step as the **first** Project block's default
+  **occupant** — display-only, zero writes on open (P11/P-B5/P-B6 first-block
+  scope). `Schedule.jsx` computes each segment's `items` (project_node / ad_hoc
+  deltas whose `clock_time` routes there, excluded from the "anytime" fold so
+  they render once) and renders a dedicated Project-block **detail**: the
+  occupant (checkable → write-through, with a **Swap**) or its placed items
+  (checkable + removable), an inline "+ one-off task" and "+ project step"
+  (both carry the segment's start time so the add routes back in — the add-to-
+  day search bound to the block), a who's-free badge, and the passive empty
+  note — **no rounds, no seal** (P-B7). Completing an item writes straight
+  through to `project_steps.completed_at` (P14, one source of truth; the
+  reference-data realtime channel refreshes `data.projects`). The Project
+  segments in the agenda + day spine/strip (`ScheduleSidebars.jsx`) are now
+  focusable buttons carrying a done tally. Loader fix:
+  `useReferenceData.loadProjects` now hydrates each project's `steps`
+  (id/title/sortOrder/completedAt) so the auto-pull + node list see live step
+  titles. `useScheduleDeltas.addTask` / `addProject` gained an optional
+  `clockTime`. Stories P11–P14, P-B5, P-B6 (first block; per-block refine
+  deferred), P-B7, P-B8. Multi-block auto-pull + per-day boundary override
+  still deferred.
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
