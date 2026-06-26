@@ -3961,6 +3961,36 @@ color; clock-arrow overnight icons). Build refs in
   (the three deferrals above) + the original batch-5 hardening**
   (retime-across-midnight run_date flip, sub-30-min gap re-home, DST/sun-drift
   clamp, partition property test, full O#/P# story sweep).
+- **41.36 — Overnight + Project: hardening + partitioner fix. `v0.10.77-alpha`
+  (2026-06-26); pure frontend, NO migration.** Closes the planned five-batch
+  arc with a property test that immediately earned its keep. New committed
+  property test (`scripts/test-schedule-partition.mjs`, run via
+  `npm run test:partition` — node-based, matching the repo's script
+  convention, no new framework) asserts the partitioner's invariants over
+  4,000 randomized block/reservation/buffer configs: project segments are
+  ordered, non-overlapping, non-negative, >= 30 min, clamped inside the
+  farm-wide band, each with someone free; a buffer-swallowed gap drops and its
+  items re-home to "anytime" (no silent orphan — the sub-30 safety); inverted
+  (DST/sun-drift) gaps never survive; `overnightWindow` is null on a down day
+  and `inOvernight` is half-open at the dawn edge with disjoint evening/dawn
+  sides; project gaps never overlap a chore-block window. **The test caught a
+  real latent bug:** `projectGaps` walked gaps between consecutive-by-*start*
+  blocks, so when two blocks overlap and an earlier-starting one ends later, a
+  "gap" could run straight through it. Fixed by merging block windows to their
+  union first (`mergeWindows`), used by both `projectGaps` and `overnightWindow`
+  (which now anchors on the true last-block end). Real chore blocks don't
+  overlap, so this never surfaced in the field — but a sun-resolved block and a
+  fixed one can coincide on some days, so the fix matters. Story sweep: P1-P14
+  + P-B1-B10 satisfied (per-day boundary override + multi-block auto-pull
+  deferred by scope decision); O1-O5/O7/O9-O11 + O-B1-B6 satisfied.
+  **Remaining backlog (post-arc polish, not core):** O6 event/chore
+  overnight-catch (events need neighbor-day derivation + a distinct overnight
+  render; chores can't fall in the between-frames gap), O-B7 week/month
+  day-count fold (the silhouette zooms are deliberately delta-free — folding
+  needs per-day commitment reads across the grid), the retime-across-midnight
+  run_date flip (not triggerable today — overnight items aren't edit-exposed),
+  and the optional placement-unification refactor. The Overnight + Project
+  feature is functionally complete for its main flows.
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.

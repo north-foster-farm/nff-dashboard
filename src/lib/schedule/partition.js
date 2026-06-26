@@ -62,6 +62,22 @@ export function occurringBlockWindows(date, blocks) {
     .sort((a, b) => a.start - b.start);
 }
 
+// Merge overlapping / touching windows into disjoint ones (sorted by start).
+// Chore blocks normally don't overlap, but a sun-resolved block and a fixed one
+// CAN on some days — and a naive between-consecutive gap walk would then carve
+// a "gap" straight through an earlier block that ends late (its end exceeds a
+// later block's start). Merging to the union first makes the gaps true negative
+// space and gives the overnight anchor the real last-block end.
+export function mergeWindows(wins) {
+  const out = [];
+  for (const w of (wins ?? [])) {
+    const last = out[out.length - 1];
+    if (last && w.start <= last.end) last.end = Math.max(last.end, w.end);
+    else out.push({ start: w.start, end: w.end });
+  }
+  return out;
+}
+
 // who's-free for a [s,e) segment: each admin is "free" if they have any
 // uncovered minute in the segment (after subtracting THEIR reservations).
 // Returns structured { freeCount, who:[names] } so a consumer can branch on
@@ -97,9 +113,12 @@ export const OVERNIGHT_TRAIL = "overnight:trail"; // continues into tomorrow
 // work. Returns null when either side has no occurring frame — a true down day
 // has no anchor, so no Overnight (O-B1).
 export function overnightWindow(date, nextDate, blocks) {
-  const today = occurringBlockWindows(date, blocks);
-  const tom = occurringBlockWindows(nextDate, blocks);
+  const today = mergeWindows(occurringBlockWindows(date, blocks));
+  const tom = mergeWindows(occurringBlockWindows(nextDate, blocks));
   if (today.length === 0 || tom.length === 0) return null;
+  // Last block END today = the latest end across merged windows (the last
+  // merged window, since they're sorted + disjoint); first block START
+  // tomorrow = the earliest start (the first merged window).
   const startMin = today[today.length - 1].end;
   const endMin = tom[0].start;
   if (!Number.isFinite(startMin) || !Number.isFinite(endMin)) return null;
@@ -128,7 +147,9 @@ export function projectGaps({
   defaultStart = PROJECT_DEFAULT_START,
   defaultEnd = PROJECT_DEFAULT_END,
 }) {
-  const wins = occurringBlockWindows(date, blocks);
+  // Merge to the union first so overlapping blocks can't leave a "gap" that
+  // runs through a block ending late (see mergeWindows).
+  const wins = mergeWindows(occurringBlockWindows(date, blocks));
   if (wins.length === 0) return []; // no chore frame → no project time
 
   // Candidate gaps: before the first block, then between consecutive blocks.
