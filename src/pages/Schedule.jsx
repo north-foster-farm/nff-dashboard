@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
   GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
-  Repeat, StickyNote,
+  Repeat, StickyNote, Timer,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -22,12 +22,16 @@ import {
   computeManDown, reservationWindows, pickCoverPerson,
 } from "../lib/schedule/manDown.js";
 import {
+  buffersForTarget, storedBufferWindow, describeBuffer,
+} from "../lib/schedule/buffers.js";
+import {
   obligationPlaceIds, getAllChoreDefinitions, resolveAssignee,
 } from "../lib/chores.js";
 import AddToScheduleSearch from "../components/AddToScheduleSearch.jsx";
 import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
 import ScheduleEditSheet from "../components/ScheduleEditSheet.jsx";
 import ReservationSheet from "../components/ReservationSheet.jsx";
+import BufferSheet from "../components/BufferSheet.jsx";
 import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
 import { DayRailSpine, DayStrip, WeekList } from "../components/ScheduleSidebars.jsx";
@@ -105,7 +109,70 @@ function hmToMin(hm) {
 // time-ordered, openable lines (NOT chore checklists). Marries the old
 // events surface (now Calendar) into the one agreed day. Tap to peek the
 // time/place; the body is informational, not a tick list.
-function EventEntry({ occ, isOpen, onToggle }) {
+// The reserved time + setup/cleanup checklist a buffer carries (S53/S57), plus
+// the "Add buffer" affordance (the bufferable interface — BD23). Rendered
+// inside an activity's detail panel (an event, or a focused chore block).
+// `activity` = { target, label, startMin, endMin } — the anchor a new buffer
+// resolves its window from.
+function BufferSection({
+  buffers, activity, onToggleItem, onRemove, onAddBuffer,
+}) {
+  return (
+    <div className="space-y-2">
+      {buffers.map((buf) => {
+        const win = storedBufferWindow(buf);
+        const list = buf.source_ref?.checklist ?? [];
+        return (
+          <div key={buf.id} className="border border-line bg-surface-alt">
+            <div className="flex items-center gap-2 px-3 py-2 text-[12px] text-dim">
+              <Timer size={14} className="shrink-0 text-faint" />
+              <span className="flex-1 min-w-0">
+                Buffer reserved{" "}
+                {win
+                  ? `${formatMinutesOfDay(win.startMin)}–${formatMinutesOfDay(win.endMin)}`
+                  : ""}
+                {buf.source_ref?.label ? ` — ${buf.source_ref.label}` : ""}
+                {buf.assignee ? ` · ${buf.assignee}` : ""}
+              </span>
+              <button type="button" onClick={() => onRemove(buf.id)}
+                className="shrink-0 text-faint hover:text-warn cursor-pointer"
+                aria-label="Remove buffer">
+                <X size={13} />
+              </button>
+            </div>
+            {list.length > 0 && (
+              <ul className="px-3 pb-2.5 space-y-1.5">
+                {list.map((it) => (
+                  <li key={it.id}>
+                    <button type="button"
+                      onClick={() => onToggleItem(buf.id, it.id, !it.done)}
+                      className="flex items-center gap-2 text-[13px] text-left cursor-pointer w-full">
+                      {it.done
+                        ? <Check size={14} className="shrink-0 text-resolved" strokeWidth={3} />
+                        : <span className="w-3.5 h-3.5 border border-line inline-block shrink-0" />}
+                      <span className={it.done ? "text-faint line-through" : "text-dim"}>
+                        {it.text}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+      <button type="button" onClick={() => onAddBuffer(activity)}
+        className="inline-flex items-center gap-1.5 text-[12px] font-medium text-accent cursor-pointer">
+        <Timer size={13} /> Add buffer
+      </button>
+    </div>
+  );
+}
+
+function EventEntry({
+  occ, isOpen, onToggle,
+  buffers, onToggleBufferItem, onRemoveBuffer, onAddBuffer,
+}) {
   const color = T.cat[occ.kindId] || T.cat.default;
   const startMin = hmToMin(occ.startTime);
   const endMin = hmToMin(occ.endTime);
@@ -169,6 +236,20 @@ function EventEntry({ occ, isOpen, onToggle }) {
           )}
           {occ.subtitle && (
             <div className="text-[13px] text-dim">{occ.subtitle}</div>
+          )}
+          {onAddBuffer && (
+            <BufferSection
+              buffers={buffers ?? []}
+              activity={{
+                target: { kind: "event", id: occ.instanceId, label: occ.instanceLabel },
+                label: occ.instanceLabel,
+                startMin: hmToMin(occ.startTime),
+                endMin: hmToMin(occ.endTime),
+              }}
+              onToggleItem={onToggleBufferItem}
+              onRemove={onRemoveBuffer}
+              onAddBuffer={onAddBuffer}
+            />
           )}
           <button
             type="button"
@@ -444,6 +525,7 @@ export default function Schedule({ data }) {
   const {
     deltas, addTask, addNote, addChore, addProject, removeDelta, setDone,
     upsertOverride, updateDelta, addReservation,
+    addBuffer, toggleBufferItem,
   } = useScheduleDeltas(dateISO);
 
   // Chore search-to-add: the chore set as searchable items + a resolver.
@@ -625,6 +707,12 @@ export default function Schedule({ data }) {
   const reservations = useMemo(
     () => deltas.filter((d) => d.source_type === "reservation"), [deltas]);
   const windows = useMemo(() => reservationWindows(reservations), [reservations]);
+
+  // Buffers (S53/S55/S57) — reserved adjacent time bound to an activity. Read
+  // for the day; each is rendered in the buffered activity's detail panel
+  // (event panel / focused block) via BufferSection.
+  const buffers = useMemo(
+    () => deltas.filter((d) => d.source_type === "buffer"), [deltas]);
 
   // Block window [start, start+duration) for overlap tests.
   const blockWindow = (bucket) => {
@@ -1028,6 +1116,7 @@ export default function Schedule({ data }) {
 
   // ── Non-work time (S7) + man-down cover (S8) ───────────────────────
   const [addingTimeOff, setAddingTimeOff] = useState(false);
+  const [bufferFor, setBufferFor] = useState(null);
   const [covering, setCovering] = useState(null);
 
   const rowLabel = (row) => row.kind === "chore"
@@ -1273,8 +1362,10 @@ export default function Schedule({ data }) {
         </div>
       </div>
 
-      {/* Non-work time (S7) — the day's reservations as a compact strip. */}
-      {reservations.length > 0 && (
+      {/* Non-work time (S7) + buffers (S53) — the day's reserved time as a
+          compact strip. Buffers carry a Timer glyph; tapping one opens its
+          activity so its checklist is reachable. */}
+      {(reservations.length > 0 || buffers.length > 0) && (
         <ul className="px-1 mb-3 flex flex-wrap gap-2">
           {windows.map((w) => (
             <li key={w.id}
@@ -1289,6 +1380,19 @@ export default function Schedule({ data }) {
               </span>
               <button type="button" onClick={() => removeDelta(w.id)}
                 className="shrink-0 text-faint hover:text-warn" aria-label="Remove time off">
+                <X size={12} />
+              </button>
+            </li>
+          ))}
+          {buffers.map((buf) => (
+            <li key={buf.id}
+              className="inline-flex items-center gap-1.5 text-[11px] text-dim border border-line border-dashed px-2 py-0.5">
+              <Timer size={11} className="shrink-0 text-faint" />
+              <span className="truncate max-w-[160px]">
+                {describeBuffer(buf, formatMinutesOfDay)}
+              </span>
+              <button type="button" onClick={() => removeDelta(buf.id)}
+                className="shrink-0 text-faint hover:text-warn" aria-label="Remove buffer">
                 <X size={12} />
               </button>
             </li>
@@ -1382,7 +1486,11 @@ export default function Schedule({ data }) {
       ) : focusEntry?.kind === "event" ? (
         /* ── One event's detail ── */
         <ol className="border border-line mt-3 lg:mt-0">
-          <EventEntry occ={focusEntry.occ} isOpen onToggle={showOverview} />
+          <EventEntry occ={focusEntry.occ} isOpen onToggle={showOverview}
+            buffers={buffersForTarget(buffers, "event", focusEntry.occ.instanceId)}
+            onToggleBufferItem={toggleBufferItem}
+            onRemoveBuffer={removeDelta}
+            onAddBuffer={setBufferFor} />
         </ol>
       ) : focusEntry ? (
         /* ── One block's detail (master-detail; never scroll past others) ── */
@@ -1408,6 +1516,24 @@ export default function Schedule({ data }) {
                   </span>
                 </div>
                 {blockAlerts(b, "pl-4")}
+                {b.block && b.startMin != null && (() => {
+                  const w = blockWindow(b.bucket);
+                  return (
+                    <div className="px-4 py-2 border-b border-line">
+                      <BufferSection
+                        buffers={buffersForTarget(buffers, "block", b.bucket)}
+                        activity={{
+                          target: { kind: "block", id: b.bucket, label: b.block.name },
+                          label: b.block.name,
+                          startMin: w.start, endMin: w.end,
+                        }}
+                        onToggleItem={toggleBufferItem}
+                        onRemove={removeDelta}
+                        onAddBuffer={setBufferFor}
+                      />
+                    </div>
+                  );
+                })()}
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -1502,6 +1628,14 @@ export default function Schedule({ data }) {
         <ReservationSheet
           onAdd={(r) => { addReservation(r); setAddingTimeOff(false); }}
           onClose={() => setAddingTimeOff(false)}
+        />
+      )}
+
+      {bufferFor && (
+        <BufferSheet
+          activity={bufferFor}
+          onAdd={(b) => { addBuffer(b); setBufferFor(null); }}
+          onClose={() => setBufferFor(null)}
         />
       )}
 

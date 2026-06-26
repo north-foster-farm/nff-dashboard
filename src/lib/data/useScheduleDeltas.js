@@ -12,6 +12,7 @@ import {
 // realtime when the op syncs.
 const DELTA_TYPES = [
   "ad_hoc", "note", "chore", "project_node", "override", "reservation",
+  "buffer",
 ];
 const COLS =
   "id, source_type, source_ref, block_id, run_date, clock_time, " +
@@ -171,6 +172,32 @@ export function useScheduleDeltas(dateISO) {
     return id;
   };
 
+  // A buffer (S53/S55/S57) — reserved adjacent time bound to an activity,
+  // stored as a `buffer` commitment. `clockTime`/`sourceRef` come prebuilt
+  // from buildBuffer (window resolved from the activity's time anchor).
+  const addBuffer = ({ clockTime, sourceRef, assignee = null }) => {
+    const id = crypto.randomUUID();
+    enqueueOp("commitment_insert", {
+      id, sourceType: "buffer", assignee,
+      sourceRef, runDate: dateISO, clockTime,
+    });
+    return id;
+  };
+
+  // Tick / untick one of a buffer's checklist items (the market-equipment
+  // list). Done-state lives in source_ref.checklist; rewritten through the
+  // outbox so it's offline-safe.
+  const toggleBufferItem = (bufferId, itemId, done) => {
+    const buf = deltas.find((d) => d.id === bufferId);
+    if (!buf) return;
+    const checklist = (buf.source_ref?.checklist ?? []).map((c) =>
+      c.id === itemId ? { ...c, done } : c);
+    enqueueOp("commitment_update", {
+      id: bufferId,
+      fields: { sourceRef: { ...buf.source_ref, checklist } },
+    });
+  };
+
   // The existing 'override' commitment for a derived instance (a chore that
   // fans out onto the day with no row of its own), keyed by source target.
   const overrideFor = (target) => deltas.find((d) =>
@@ -245,5 +272,6 @@ export function useScheduleDeltas(dateISO) {
     deltas, loading: serverRows === null,
     addTask, addNote, addChore, addProject, removeDelta, setDone,
     upsertOverride, updateDelta, addReservation,
+    addBuffer, toggleBufferItem,
   };
 }

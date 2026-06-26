@@ -3708,10 +3708,31 @@ versioned capture).
   work) — fixing a latent "block never seals" trap. `addNote` in
   `useScheduleDeltas`. S82: the Confirm button now reads "Confirm <date>" when
   viewing a non-today day, so confirming a future day is visibly distinct.
-- **41.21+ →** the rest of the coverage tail (S34 multi-day · S45/S46 recurring
+- **41.21 — buffers: settle BD23 + the market buffer & equipment checklist
+  (S53/S55/S57/S61, BD22/BD23). `v0.10.62-alpha` (2026-06-25); pure frontend,
+  NO migration** (the `buffer` source_type was whitelisted back in 0034).
+  **BD23 settled:** a buffer is its own `buffer` commitment — *a reservation
+  bound to an activity* (BD22), not a field on chores/events (keeps chores lean,
+  BD3). The **bufferable interface**: any activity with a time anchor (an event,
+  or a focused chore block with a start + duration) exposes an "Add buffer"
+  affordance in its detail panel. New `src/lib/schedule/buffers.js`
+  (`bufferWindow`/`buildBuffer`/`buffersForTarget`/`describeBuffer` — resolves
+  the reserved window from the activity's anchor + side) + `BufferSheet.jsx`
+  (side before/after/both · length · optional label · setup/cleanup checklist ·
+  optional reserve-for person). A buffer renders in its activity's panel as a
+  "Buffer reserved START–END" line + a tickable checklist (done-state in
+  `source_ref.checklist`, written through the outbox = offline-safe); it also
+  shows as a dashed Timer chip in the day's reserved-time strip. It reserves
+  adjacent time and never moves the thing it buffers (S61). `addBuffer` /
+  `toggleBufferItem` in `useScheduleDeltas`; `'buffer'` added to its
+  `DELTA_TYPES`. Matches the minimalist mockup's market event panel (8–9 buffer
+  + "Load market equipment" list). Deferred: S54 buffer-all-occurrences (needs a
+  recurring rule) + S53 auto-reserve; S61 live squeeze-detection.
+- **41.22+ →** the rest of the coverage tail (S34 multi-day · S45/S46 recurring
   reservations · S56a-c conflict list · S58 double-book · S67 events this/all-
-  future · S72 split-block · S80 week reservations · buffers + BD23). Deferred:
-  DB cleanup (drop the dead `timeline_items` view + orphaned `chore_runs`).
+  future · S72 split-block · S80 week reservations · S12 yesterday's musts).
+  Deferred: DB cleanup (drop the dead `timeline_items` view + orphaned
+  `chore_runs`).
 
 ---
 
