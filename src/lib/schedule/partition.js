@@ -1,0 +1,133 @@
+// The ribbon partitioner — Project blocks (and, later, Overnight).
+//
+// Derives the day's NEGATIVE space — the time between chore blocks — into
+// Project segments. A Project block is the available time in a gap BETWEEN
+// chore blocks, or BEFORE the first one (the window AFTER the last chore
+// block is Overnight, added in a later batch — not here).
+//
+// Pure + tolerant: bad input yields fewer segments, never throws. Computed
+// client-side from chore-block DEFINITIONS (occurrence-based) + sun-times, so
+// it works offline. Project time is bounded by a farm-wide default band
+// (earliest start / latest end); a per-day override is deferred (scope). Gaps
+// are trimmed by buffer windows (whole-farm reserved time) and annotated with
+// who's free (per-person availability after their own reservations). A gap
+// shorter than MIN_PROJECT_GAP, or with nobody free, yields no segment.
+//
+// This decouples from the React data hooks on purpose — it imports only the
+// pure sun-time / reservation / buffer helpers, so it stays unit-testable.
+
+import { resolveBlockMinutes } from "../sunTimes.js";
+import { reservationWindows } from "./manDown.js";
+import { storedBufferWindow } from "./buffers.js";
+
+// Farm-wide defaults (v1 — the per-day override editor is deferred).
+export const PROJECT_DEFAULT_START = 8 * 60; // 8:00a earliest project start
+export const PROJECT_DEFAULT_END = 18 * 60; // 6:00p latest project end
+export const MIN_PROJECT_GAP = 30; // skip gaps shorter than this
+export const PARTITION_ADMINS = ["James", "Jim"];
+
+// Subtract an array of [s,e) "hole" intervals from a base [s,e) interval.
+// Returns 0+ disjoint intervals (ascending). Holes may overlap / be unsorted.
+export function subtractIntervals(base, holes) {
+  let segs = [{ s: base.s, e: base.e }];
+  for (const h of holes ?? []) {
+    if (!(h.e > h.s)) continue;
+    const next = [];
+    for (const seg of segs) {
+      if (h.e <= seg.s || h.s >= seg.e) {
+        next.push(seg);
+        continue;
+      }
+      if (h.s > seg.s) next.push({ s: seg.s, e: Math.min(h.s, seg.e) });
+      if (h.e < seg.e) next.push({ s: Math.max(h.e, seg.s), e: seg.e });
+    }
+    segs = next.filter((x) => x.e > x.s);
+  }
+  return segs;
+}
+
+// All ACTIVE block windows that occur on `date`, resolved to minutes-of-day
+// and sorted by start. "Occurs" = the block definition is active (a daily
+// time window); whether it has chores that day is irrelevant to the partition
+// (occurrence-based — so project time is well-defined even on a quiet day).
+export function occurringBlockWindows(date, blocks) {
+  return (blocks ?? [])
+    .filter((b) => b.isActive)
+    .map((b) => {
+      const start = resolveBlockMinutes(date, b.startKind, b.startMinutes);
+      if (start == null || !Number.isFinite(start)) return null;
+      return { start, end: start + (b.durationMinutes ?? 0) };
+    })
+    .filter((w) => w && Number.isFinite(w.end))
+    .sort((a, b) => a.start - b.start);
+}
+
+// who's-free for a [s,e) segment: each admin is "free" if they have any
+// uncovered minute in the segment (after subtracting THEIR reservations).
+// Returns structured { freeCount, who:[names] } so a consumer can branch on
+// "both free" vs "one free" without re-deriving (kept structured per scope).
+export function whoFree(segment, resWindows) {
+  const who = [];
+  for (const name of PARTITION_ADMINS) {
+    const holes = (resWindows ?? [])
+      .filter((w) => w.assignee === name)
+      .map((w) => ({ s: w.startMin, e: w.endMin }));
+    if (subtractIntervals({ s: segment.s, e: segment.e }, holes).length > 0) {
+      who.push(name);
+    }
+  }
+  return { freeCount: who.length, who };
+}
+
+// Derive the Project segments for a day. Returns ordered segments:
+//   { kind:'project', startMin, endMin, durationMin, who:{freeCount,who} }
+// Excludes the after-last-block window (that is Overnight, added later).
+export function projectGaps({
+  date,
+  blocks,
+  reservations = [],
+  buffers = [],
+  defaultStart = PROJECT_DEFAULT_START,
+  defaultEnd = PROJECT_DEFAULT_END,
+}) {
+  const wins = occurringBlockWindows(date, blocks);
+  if (wins.length === 0) return []; // no chore frame → no project time
+
+  // Candidate gaps: before the first block, then between consecutive blocks.
+  // (After the last block belongs to Overnight, never a Project block.)
+  const candidates = [{ s: defaultStart, e: wins[0].start }];
+  for (let i = 0; i < wins.length - 1; i++) {
+    candidates.push({ s: wins[i].end, e: wins[i + 1].start });
+  }
+
+  const resWins = reservationWindows(reservations);
+  const bufHoles = (buffers ?? [])
+    .map((b) => storedBufferWindow(b))
+    .filter(Boolean)
+    .map((w) => ({ s: w.startMin, e: w.endMin }));
+
+  const out = [];
+  for (const c of candidates) {
+    // Clamp to the farm-wide band; drop inverted/empty gaps (the DST /
+    // sun-drift safety clamp — a winter sunset block can invert a summer gap).
+    const s = Math.max(c.s, defaultStart);
+    const e = Math.min(c.e, defaultEnd);
+    if (e - s < MIN_PROJECT_GAP) continue;
+    // Subtract whole-farm buffer windows → 1+ sub-gaps (a buffer mid-gap
+    // splits project time rather than shrinking one edge).
+    for (const sub of subtractIntervals({ s, e }, bufHoles)) {
+      const durationMin = sub.e - sub.s;
+      if (durationMin < MIN_PROJECT_GAP) continue;
+      const who = whoFree(sub, resWins);
+      if (who.freeCount === 0) continue; // nobody home → no segment (absent)
+      out.push({
+        kind: "project",
+        startMin: sub.s,
+        endMin: sub.e,
+        durationMin,
+        who,
+      });
+    }
+  }
+  return out;
+}

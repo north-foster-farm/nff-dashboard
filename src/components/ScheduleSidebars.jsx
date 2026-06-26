@@ -1,4 +1,4 @@
-import { LayoutList, AlertTriangle } from "lucide-react";
+import { LayoutList, AlertTriangle, FolderKanban } from "lucide-react";
 import { blockIcon } from "./BlockBadge.jsx";
 import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
@@ -28,6 +28,27 @@ function barSize(count, max, min, span) {
   return Math.round(min + (count / Math.max(1, max)) * span);
 }
 
+// Coarse-duration sizing for Project gaps — three steps (short / mid / long),
+// not pixel-accurate (the duration-to-height navigator rewrite is deferred).
+function projSize(durationMin, min, span) {
+  const t = durationMin == null ? 0.25
+    : durationMin >= 150 ? 1 : durationMin >= 60 ? 0.55 : 0.25;
+  return Math.round(min + t * span);
+}
+
+// Short who's-free tag for a Project gap's structured availability.
+function freeShort(who) {
+  const n = who?.freeCount ?? 0;
+  if (n >= 2) return "both";
+  if (n === 1) return who?.who?.[0] ?? "";
+  return "";
+}
+
+// The heaviest chore-block load on the day (Project gaps carry no count).
+function maxLoad(blocks) {
+  return blocks.reduce((m, b) => Math.max(m, b.count ?? 0), 1);
+}
+
 // Compact clock label ("6a", "8:30a", "1p") — the time axis.
 function compactTime(min) {
   if (min == null) return "";
@@ -38,7 +59,7 @@ function compactTime(min) {
 export function DayRailSpine({
   blocks, focus, nowBucket, onPick, onWholeDay, totalItems,
 }) {
-  const max = blocks.reduce((m, b) => Math.max(m, b.count), 1);
+  const max = maxLoad(blocks);
   const overview = focus == null;
   return (
     <div className="hidden lg:flex flex-col w-[180px] shrink-0 border-r border-line bg-surface relative pt-2">
@@ -69,6 +90,35 @@ export function DayRailSpine({
       </button>
 
       {blocks.map((b) => {
+        if (b.isProject) {
+          const free = freeShort(b.who);
+          const h = projSize(b.durationMin, 16, 34);
+          return (
+            <div
+              key={b.bucket}
+              title={`Project${free ? " · " + free + " free" : ""}`}
+              className="relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 text-left min-h-[52px] border-b border-line"
+            >
+              {/* soft slate-blue gap gauge — coarse-duration sized, de-hatched */}
+              <span
+                className="shrink-0 w-[16px] bg-project/25 ring-1 ring-inset ring-project/40"
+                style={{ height: h + "px" }}
+              />
+              <FolderKanban size={15} className="shrink-0 text-project" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[12px] truncate font-medium text-project">
+                  Project
+                </span>
+                <span className="block text-[10px] [font-variant-numeric:tabular-nums]">
+                  <span className="text-faint">{compactTime(b.startMin)}</span>
+                  {free && (
+                    <span className="text-project font-semibold"> · {free} free</span>
+                  )}
+                </span>
+              </span>
+            </div>
+          );
+        }
         const isNow = b.bucket === nowBucket;
         const isFocus = b.bucket === focus;
         const Icon = blockIcon(b.block);
@@ -138,7 +188,7 @@ export function DayRailSpine({
 export function DayStrip({
   blocks, focus, nowBucket, onPick, onWholeDay,
 }) {
-  const max = blocks.reduce((m, b) => Math.max(m, b.count), 1);
+  const max = maxLoad(blocks);
   const overview = focus == null;
   return (
     <div className="lg:hidden border-b border-line bg-surface">
@@ -163,6 +213,28 @@ export function DayStrip({
           style={{ background: WASH_H }} />
         <div className="relative z-[1] flex items-end gap-1.5 border-b border-line">
           {blocks.map((b) => {
+            if (b.isProject) {
+              const free = freeShort(b.who);
+              const h = projSize(b.durationMin, 14, 40);
+              return (
+                <div
+                  key={b.bucket}
+                  title={`Project${free ? " · " + free + " free" : ""}`}
+                  className="flex-1 min-w-0 flex flex-col items-center"
+                >
+                  <span className="relative w-full h-[56px] flex items-end justify-center">
+                    <span
+                      className="w-full bg-project/25 ring-1 ring-inset ring-project/40"
+                      style={{ height: h + "px" }}
+                    />
+                  </span>
+                  <FolderKanban size={14} className="mt-1.5 text-project" />
+                  <span className="mt-0.5 pb-0.5 text-[10.5px] [font-variant-numeric:tabular-nums] border-b-2 border-transparent text-project font-medium">
+                    {compactTime(b.startMin)}
+                  </span>
+                </div>
+              );
+            }
             const isNow = b.bucket === nowBucket;
             const isFocus = b.bucket === focus;
             const Icon = blockIcon(b.block);

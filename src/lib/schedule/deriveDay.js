@@ -22,6 +22,7 @@ import {
 import { resolveBlockMinutes } from "../sunTimes.js";
 import { getEventOccurrences } from "../recurrence.js";
 import { isActiveProject } from "../projects.js";
+import { projectGaps } from "./partition.js";
 
 // One rollup per BLOCK for a day, each carrying its member chore instances
 // (.items). Chores with no block fall into an "anytime" bucket. Ordered
@@ -67,7 +68,14 @@ export function getRollupAssignee(rollup, dayDate, ruleOpts) {
 
 // Compose the integrated day. Returns the structured shape consumers
 // render from:
-//   { dayISO, events, choreRollups, projects }
+//   { dayISO, events, choreRollups, projects, projectSegments }
+//
+// `projectSegments` is the day's NEGATIVE space (the gaps between / before
+// chore blocks) derived by the ribbon partitioner — ordered, non-overlapping
+// Project blocks, each carrying structured who's-free availability. It is a
+// separate field (not folded into `choreRollups`) so the load-bearing chore
+// assembly stays untouched; the trailing after-last gap is Overnight, added
+// in a later batch and not emitted here.
 //
 // `deltas` is the seam for schedule-local commitment overrides
 // (placements, reassignments, pulled should-chores). None exist yet — they
@@ -79,8 +87,19 @@ export function deriveDay({ data, dayDate, dayUTC, dayISO, ruleOpts, deltas = []
   const events = getEventOccurrences(data.events, dayUTC, dayUTC, null);
   const choreRollups = rollupChoresForDay(data, dayDate, ruleOpts);
   const projects = (data.projects ?? []).filter((p) => isActiveProject(p, dayISO));
+  // Project blocks (the gaps) trim against the same availability the rest of
+  // the day reads: time-off reservations + per-day buffer windows (the
+  // all-occurrences buffer templates ride a separate hook and are folded in
+  // a later batch — per-day buffers cover the explicit case for v1).
+  const projectSegments = projectGaps({
+    date: dayDate,
+    blocks: ruleOpts?.blocks ?? [],
+    reservations: deltas.filter((d) => d.source_type === "reservation"),
+    buffers: deltas.filter((d) =>
+      d.source_type === "buffer" && d.source_ref?.scope !== "all"),
+  });
   return foldDeltas(
-    { dayISO, events, choreRollups, projects },
+    { dayISO, events, choreRollups, projects, projectSegments },
     deltas,
     ruleOpts?.blocks ?? [],
   );

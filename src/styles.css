@@ -44,6 +44,7 @@
   --color-accent-deep:  var(--c-accent-deep);
   --color-warn:         var(--c-warn);
   --color-resolved:     var(--c-resolved);
+  --color-project:      var(--c-project);
   --color-on-accent:    var(--c-on-accent);
   --color-on-cat:       var(--c-on-cat);
   --color-row-active:     var(--c-row-active);
@@ -196,6 +197,34 @@
   --color-grapefruit-pink-800: #66000a;
   --color-grapefruit-pink-900: #330005;
   --color-grapefruit-pink-950: #240004;
+
+  /* Slate-blue — the Schedule "project time" hue (calm, distinct from the
+     green chores). 400 = dark `--c-project`, 600 = light `--c-project`. */
+  --color-slate-blue-50:  #f1f5fa;
+  --color-slate-blue-100: #e3eaf4;
+  --color-slate-blue-200: #c6d3e7;
+  --color-slate-blue-300: #a2b9d9;
+  --color-slate-blue-400: #7d9ec9;
+  --color-slate-blue-500: #5c83b8;
+  --color-slate-blue-600: #3f6da3;
+  --color-slate-blue-700: #345a86;
+  --color-slate-blue-800: #284465;
+  --color-slate-blue-900: #1a2c41;
+  --color-slate-blue-950: #12202f;
+
+  /* Periwinkle — added to the palette ahead of a use (no semantic mapping
+     yet; the app's first violet ramp). */
+  --color-periwinkle-50:  #f3f2fc;
+  --color-periwinkle-100: #e8e6f9;
+  --color-periwinkle-200: #d0ccf2;
+  --color-periwinkle-300: #b6afe9;
+  --color-periwinkle-400: #9a93e0;
+  --color-periwinkle-500: #7a71cf;
+  --color-periwinkle-600: #5b54a8;
+  --color-periwinkle-700: #494388;
+  --color-periwinkle-800: #363263;
+  --color-periwinkle-900: #221f3f;
+  --color-periwinkle-950: #17152c;
 }
 
 /* Apply the body font globally; Tailwind will pick up `font-body`,

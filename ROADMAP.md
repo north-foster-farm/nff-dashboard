@@ -3839,6 +3839,38 @@ versioned capture).
   implements the story set + mockups (the only remaining gate is applying
   migration 0036 to prod via the push protocol).
 
+**Overnight + Project blocks (41.32+).** Tiles the Schedule day's negative
+space: the gaps between (and before the first) chore blocks become legible
+**Project blocks**, and the wrap-around from the last chore block tonight to
+the first tomorrow becomes the **Overnight block**. Both are **pure
+derivation** — zero stored block rows, **v1 = zero migration** (the per-day
+boundary override + its storage are deferred, additive). Design settled via a
+Scope Workshop → Design Bracket (Convention, de-hatched; slate-blue project
+color; clock-arrow overnight icons). Build refs in
+`.ignored/schedule-feature/` (`overnight-project-blocks-the-design.md` +
+`…-scope.md` + `…-build-plan.md`).
+
+- **41.32 — Project blocks: derive + render the gaps. `v0.10.73-alpha`
+  (2026-06-26); pure frontend, NO migration.** A new client-side ribbon
+  partitioner (`src/lib/schedule/partition.js`, `projectGaps`) resolves every
+  active chore-block definition that *occurs* on the day (occurrence-based, so
+  project time is well-defined even on a quiet day), walks the gaps before the
+  first / between blocks (the after-last window is reserved for Overnight),
+  trims each by per-day buffer windows, clamps to a farm-wide default band
+  (8 AM–6 PM; DST/sun-drift safe — inverted gaps dropped), drops gaps < 30 min
+  or with nobody free, and attaches structured `{freeCount, who}` availability.
+  `deriveDay` surfaces these as a `projectSegments` field; `Schedule.jsx`
+  renders them in the overview agenda ("Project · <range>" + a quiet who's-free
+  badge, both-free emphasized + the passive "free — nothing planned" note) and
+  the day spine/strip (`ScheduleSidebars.jsx`) as soft slate-blue,
+  coarse-duration-sized, de-hatched gap gauges. Display-only this sub-batch
+  (auto-pull/contents/detail = 42.2). Folds in the design-phase prep (lucide
+  0.462→1.21 for the overnight clock-arrow icons; the `--c-project` slate-blue
+  token + slate-blue/periwinkle palette ramps). Stories P1–P10 (P9 per-day
+  boundary editing deferred), P-B1/2/3/4/10. Known limitation: all-occurrences
+  buffer *templates* don't yet trim gaps (per-day buffer deltas do) — a later
+  buffer-integration follow-up.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

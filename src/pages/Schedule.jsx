@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
   GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
-  Repeat, StickyNote, Timer, Scissors, CalendarX,
+  Repeat, StickyNote, Timer, Scissors, CalendarX, FolderKanban,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -105,6 +105,17 @@ function fmtStamp(iso) {
   h %= 12;
   if (h === 0) h = 12;
   return `${h}:${String(m).padStart(2, "0")}${ap}`;
+}
+
+// Render text + emphasis for a Project gap's structured availability
+// ({freeCount, who}). Both-free is the LOUD signal (the scarce two-hand-job
+// window); one-free is a quiet annotation. The engine never emits a
+// nobody-free segment, so freeCount is always >= 1 here.
+function whoFreeLabel(who) {
+  const n = who?.freeCount ?? 0;
+  if (n >= 2) return { text: "both free", loud: true };
+  if (n === 1) return { text: (who?.who?.[0] ?? "one") + " free", loud: false };
+  return { text: "", loud: false };
 }
 
 // "HH:MM" (24h) -> minutes of day, or null.
@@ -745,6 +756,23 @@ export default function Schedule({ data }) {
       })),
     [derived]);
 
+  // Project blocks (the derived gaps) as timeline + navigator entries. They
+  // are display-only in this batch (no contents/detail yet — that's the next
+  // batch); they read as "Project · <range>" with a who's-free badge and the
+  // passive empty note. `startMin` lets them sort into the agenda/spine among
+  // the chore blocks.
+  const projectEntries = useMemo(
+    () => (derived.projectSegments ?? []).map((seg) => ({
+      kind: "projectblock",
+      isProject: true,
+      bucket: "project:" + seg.startMin,
+      startMin: seg.startMin,
+      endMin: seg.endMin,
+      durationMin: seg.durationMin,
+      who: seg.who,
+    })),
+    [derived]);
+
   const overrideDeltas = useMemo(
     () => deltas.filter((d) => d.source_type === "override"), [deltas]);
 
@@ -850,8 +878,9 @@ export default function Schedule({ data }) {
     () => [
       ...blockRows.map((b) => ({ kind: "block", ...b })),
       ...eventEntries,
+      ...projectEntries,
     ].sort((a, b) => startKey(a) - startKey(b)),
-    [blockRows, eventEntries]);
+    [blockRows, eventEntries, projectEntries]);
 
   const nowBucket = useMemo(
     () => pickNowBucket(blockRows, nowMin),
@@ -871,6 +900,15 @@ export default function Schedule({ data }) {
     allDone: counts[i].total > 0 && counts[i].done === counts[i].total,
     hasManDown: b.rows.some((r) => manDown.has(r.key)),
   })), [blockRows, counts, manDown]);
+
+  // The navigator segments = chore blocks + the derived Project gaps, in time
+  // order, so the spine/strip read as one tiled time axis. Project segments
+  // carry their span + who's-free; they render distinctly and are display-only
+  // (non-pickable) this batch.
+  const navSegments = useMemo(
+    () => [...spineBlocks, ...projectEntries]
+      .sort((a, b) => startKey(a) - startKey(b)),
+    [spineBlocks, projectEntries]);
 
   // Desktop week list (S9) — seven days of fullness silhouettes by count.
   const week = useMemo(
@@ -1590,7 +1628,7 @@ export default function Schedule({ data }) {
       {/* Desktop load-spine — the day's shape AND the navigator (Day zoom). */}
       {viewMode === "day" && (
         <DayRailSpine
-          blocks={spineBlocks}
+          blocks={navSegments}
           focus={focus}
           nowBucket={nowBucket}
           onPick={pickBlock}
@@ -1794,7 +1832,7 @@ export default function Schedule({ data }) {
       {/* Phone day-strip — the navigable time axis (lg:hidden). */}
       {!loading && timeline.length > 0 && (
         <DayStrip
-          blocks={spineBlocks}
+          blocks={navSegments}
           focus={focus}
           nowBucket={nowBucket}
           onPick={pickBlock}
@@ -1835,6 +1873,37 @@ export default function Schedule({ data }) {
                     </span>
                     <ChevronRight size={16} className="shrink-0 text-faint" />
                   </button>
+                </li>
+              );
+            }
+            if (entry.kind === "projectblock") {
+              const free = whoFreeLabel(entry.who);
+              const range = formatMinutesOfDay(entry.startMin)
+                + "–" + formatMinutesOfDay(entry.endMin);
+              return (
+                <li key={entry.bucket}>
+                  <div className="w-full flex items-center gap-3 px-4 py-3 text-left">
+                    <FolderKanban size={16} className="shrink-0 text-project" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[14px] text-fg truncate">
+                        Project · {range}
+                      </span>
+                      <span className="block text-[12px] text-faint italic">
+                        free — nothing planned
+                      </span>
+                    </span>
+                    {free.text && (
+                      <span className={
+                        "shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full "
+                        + "[font-variant-numeric:tabular-nums] "
+                        + (free.loud
+                          ? "bg-project/20 text-project font-semibold ring-1 ring-project/40"
+                          : "border border-project/50 text-project")
+                      }>
+                        {free.text}
+                      </span>
+                    )}
+                  </div>
                 </li>
               );
             }
