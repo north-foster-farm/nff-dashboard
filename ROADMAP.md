@@ -3819,8 +3819,17 @@ versioned capture).
   activity panel with an "every time" badge; per-day buffers exclude scope-'all'
   rows so there's no double-render. So: set the market's 1-hour setup buffer +
   equipment list ONCE and it appears on every market day.
-- **41.30+ →** remaining deferred polish: S61 live squeeze-detection + horizon
-  double-book; bulk recurring-reservation remove.
+- **41.30 — conflict completeness: buffer squeeze (S61) + horizon double-book.
+  `v0.10.71-alpha` (2026-06-25); pure frontend, NO migration.** S61: a buffer
+  reserves adjacent time and never moves the thing it buffers — it now SURFACES
+  THE SQUEEZE when other work lands in the reserved window. `bufferSqueezes`
+  checks every active buffer's window (per-day + templates synthesized onto
+  today's events/blocks, via `activeBufferWindows`) against the day's assigned
+  rows (a buffer's own block is exempt); squeezes show in the conflicts list
+  (Timer glyph) AND as an inline warn in the buffer's panel. Horizon scan
+  (`scanHorizonManDown` → `scanHorizonConflicts`) now also detects double-
+  bookings on upcoming days, not just man-downs.
+- **41.31 →** the last deferred item: bulk recurring-reservation remove.
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.

@@ -26,7 +26,7 @@ import {
 } from "../lib/schedule/buffers.js";
 import { useBufferTemplates } from "../lib/data/useBufferTemplates.js";
 import {
-  doubleBookConflicts, scanHorizonManDown,
+  doubleBookConflicts, scanHorizonConflicts, bufferSqueezes,
 } from "../lib/schedule/conflicts.js";
 import ConflictsPanel from "../components/ConflictsPanel.jsx";
 import {
@@ -126,7 +126,7 @@ function hmToMin(hm) {
 // `activity` = { target, label, startMin, endMin } — the anchor a new buffer
 // resolves its window from.
 function BufferSection({
-  buffers, activity, onToggleItem, onRemove, onAddBuffer,
+  buffers, activity, onToggleItem, onRemove, onAddBuffer, squeezedIds,
 }) {
   return (
     <div className="space-y-2">
@@ -174,6 +174,12 @@ function BufferSection({
                 ))}
               </ul>
             )}
+            {squeezedIds?.has(buf.id) && (
+              <div className="flex items-center gap-1.5 px-3 pb-2 text-[12px] text-warn">
+                <AlertTriangle size={12} className="shrink-0" />
+                Other work lands in this reserved window.
+              </div>
+            )}
           </div>
         );
       })}
@@ -188,6 +194,7 @@ function BufferSection({
 function EventEntry({
   occ, isOpen, onToggle,
   buffers, onToggleBufferItem, onRemoveBuffer, onAddBuffer, onEditTime,
+  squeezedIds,
 }) {
   const color = T.cat[occ.kindId] || T.cat.default;
   const startMin = hmToMin(occ.startTime);
@@ -265,6 +272,7 @@ function EventEntry({
               onToggleItem={onToggleBufferItem}
               onRemove={onRemoveBuffer}
               onAddBuffer={onAddBuffer}
+              squeezedIds={squeezedIds}
             />
           )}
           <div className="flex items-center gap-4">
@@ -1372,8 +1380,46 @@ export default function Schedule({ data }) {
 
   // ── Conflicts: the one list (S56a/b/c) + double-booking (S58) ───────
   const [showConflicts, setShowConflicts] = useState(false);
+
+  // Every buffer reserving time on the viewed day, with its window — per-day
+  // buffers plus templates synthesized onto today's events/blocks (S61 needs
+  // the windows to detect a squeeze).
+  const activeBufferWindows = useMemo(() => {
+    const out = [];
+    const labelOf = (buf) => buf.source_ref?.label
+      || (buf.source_ref?.target?.label
+        ? `${buf.source_ref.target.label} buffer` : "buffer");
+    const push = (id, buf, targetBucket) => {
+      const w = storedBufferWindow(buf);
+      if (w) out.push({ id, label: labelOf(buf), targetBucket, ...w });
+    };
+    for (const buf of buffers) {
+      push(buf.id, buf, buf.source_ref?.target?.kind === "block"
+        ? buf.source_ref.target.id : null);
+    }
+    for (const e of eventEntries) {
+      const anchor = {
+        startMin: hmToMin(e.occ.startTime), endMin: hmToMin(e.occ.endTime),
+      };
+      for (const t of buffersForTarget(bufferTemplates, "event", e.occ.instanceId)) {
+        const d = deriveTemplateBuffer(t, anchor, dateISO);
+        if (d) push(t.id, d, null);
+      }
+    }
+    for (const b of blockRows) {
+      if (!b.block) continue;
+      const w0 = blockWindow(b.bucket);
+      for (const t of buffersForTarget(bufferTemplates, "block", b.bucket)) {
+        const d = deriveTemplateBuffer(t, { startMin: w0.start, endMin: w0.end }, dateISO);
+        if (d) push(t.id, d, b.bucket);
+      }
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buffers, bufferTemplates, eventEntries, blockRows, dateISO]);
+
   // Viewed-day conflicts from the real (post-override) block rows: man-down
-  // leaks + same-person overlapping assignments. Each carries a jump target.
+  // leaks, same-person overlaps, and buffer squeezes. Each carries a jump.
   const todayConflicts = useMemo(() => {
     const out = [];
     const flat = [];
@@ -1404,9 +1450,21 @@ export default function Schedule({ data }) {
         detail: c.labels.join(" · "),
       });
     }
+    for (const sq of bufferSqueezes(activeBufferWindows, flat)) {
+      out.push({
+        type: "squeeze", scope: "today", bucket: sq.bucket, iso: dateISO,
+        bufferId: sq.bufferId, label: sq.label, detail: sq.detail,
+      });
+    }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockRows, manDown, dateISO]);
+  }, [blockRows, manDown, dateISO, activeBufferWindows]);
+
+  // Buffers squeezed today → an inline warn in their panel (S61).
+  const squeezedBufferIds = useMemo(
+    () => new Set(todayConflicts.filter((c) => c.type === "squeeze")
+      .map((c) => c.bufferId)),
+    [todayConflicts]);
 
   // Horizon scan (next 14 days) for man-down conflicts — driven by reservations
   // read once when the panel opens. Recurring days-off (S46) land here.
@@ -1435,7 +1493,7 @@ export default function Schedule({ data }) {
 
   const upcomingConflicts = useMemo(() => {
     if (!horizonRes) return [];
-    return scanHorizonManDown({
+    return scanHorizonConflicts({
       data, fromDate: today, days: HORIZON_DAYS, ruleOpts,
       reservationsByISO: horizonRes, ymd: ymdLocal,
     }).map((c) => ({ ...c, scope: "upcoming", label: c.label }));
@@ -1812,7 +1870,8 @@ export default function Schedule({ data }) {
             onToggleBufferItem={onBufferToggle}
             onRemoveBuffer={onBufferRemove}
             onAddBuffer={setBufferFor}
-            onEditTime={setEditingEvent} />
+            onEditTime={setEditingEvent}
+            squeezedIds={squeezedBufferIds} />
         </ol>
       ) : focusEntry ? (
         /* ── One block's detail (master-detail; never scroll past others) ── */
@@ -1854,6 +1913,7 @@ export default function Schedule({ data }) {
                         onToggleItem={onBufferToggle}
                         onRemove={onBufferRemove}
                         onAddBuffer={setBufferFor}
+                        squeezedIds={squeezedBufferIds}
                       />
                     </div>
                   );

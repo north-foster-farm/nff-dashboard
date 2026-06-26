@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  X, AlertTriangle, Users, ChevronUp, ChevronDown, ChevronRight,
+  X, AlertTriangle, Users, Timer, ChevronUp, ChevronDown, ChevronRight,
 } from "lucide-react";
 
 // The conflicts list (S56a) — every man-down + double-book on the viewed day
@@ -26,7 +26,9 @@ export default function ConflictsPanel({ conflicts, onJump, onClose }) {
 
   const Glyph = ({ type }) => type === "double"
     ? <Users size={15} className="shrink-0 text-warn" />
-    : <AlertTriangle size={15} className="shrink-0 text-warn" />;
+    : type === "squeeze"
+      ? <Timer size={15} className="shrink-0 text-warn" />
+      : <AlertTriangle size={15} className="shrink-0 text-warn" />;
 
   const row = (c, idx) => (
     <li key={idx}>

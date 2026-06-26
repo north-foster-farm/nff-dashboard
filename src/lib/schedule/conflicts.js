@@ -21,6 +21,30 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && bStart < aEnd;
 }
 
+// Buffer squeezes (S61) — a buffer reserves adjacent time and never moves the
+// thing it buffers; it only surfaces the squeeze when OTHER work lands in that
+// reserved window. `buffers` are { id, label, startMin, endMin, targetBucket }
+// (targetBucket = the buffer's own block, exempt; null for event buffers).
+// `rows` are the day's assigned { label, blockStart, blockEnd, bucket }.
+// Returns one squeeze per buffer that's encroached, naming the first hit's
+// block so the conflict can jump there.
+export function bufferSqueezes(buffers, rows) {
+  const out = [];
+  for (const b of buffers) {
+    if (b.startMin == null) continue;
+    const hits = rows.filter((r) =>
+      r.bucket !== b.targetBucket
+      && overlaps(b.startMin, b.endMin, r.blockStart, r.blockEnd));
+    if (!hits.length) continue;
+    out.push({
+      type: "squeeze", bufferId: b.id, bucket: hits[0].bucket,
+      label: `${b.label} squeezed`,
+      detail: `${hits.length} item${hits.length === 1 ? "" : "s"} land in the reserved window`,
+    });
+  }
+  return out;
+}
+
 // Same-person, overlapping, different-block assignments (S58). `rows` are
 // { key, label, assignee, blockStart, blockEnd, bucket }. Returns one conflict
 // per overlapping pair, deduped by the unordered bucket pair so a block with
@@ -84,11 +108,12 @@ function assignedRowsForDay(data, dayDate, ruleOpts) {
   return rows;
 }
 
-// Scan `days` days starting the day AFTER `fromDate` for man-down conflicts
-// (an assigned chore overlapping its assignee's reservation that day). Returns
-// a flat list of { type:'manDown', date:Date, iso, assignee, label, detail }.
-// `reservationsByISO` maps "YYYY-MM-DD" -> that day's reservation rows.
-export function scanHorizonManDown({
+// Scan `days` days starting the day AFTER `fromDate` for conflicts ahead:
+// man-downs (an assigned chore overlapping its assignee's reservation that
+// day) AND double-bookings (S58 — same person, two overlapping assignments).
+// Returns a flat list of { type:'manDown'|'double', date:Date, iso, assignee,
+// label, detail }. `reservationsByISO` maps "YYYY-MM-DD" -> reservation rows.
+export function scanHorizonConflicts({
   data, fromDate, days, ruleOpts, reservationsByISO, ymd,
 }) {
   const out = [];
@@ -98,25 +123,34 @@ export function scanHorizonManDown({
     const d = new Date(base);
     d.setDate(base.getDate() + i);
     const iso = ymd(d);
-    const res = reservationsByISO.get(iso) ?? [];
-    if (!res.length) continue;
-    const windows = reservationWindows(res);
-    if (!windows.length) continue;
     const rows = assignedRowsForDay(data, d, ruleOpts);
-    const md = computeManDown(rows, windows);
-    if (!md.size) continue;
-    // One entry per conflicted assignee that day (don't spam every chore).
-    const seen = new Set();
-    for (const row of rows) {
-      const hit = md.get(row.key);
-      if (!hit || seen.has(row.assignee)) continue;
-      seen.add(row.assignee);
+
+    // man-down (only when the day carries reservations)
+    const res = reservationsByISO.get(iso) ?? [];
+    const windows = res.length ? reservationWindows(res) : [];
+    if (windows.length) {
+      const md = computeManDown(rows, windows);
+      const seen = new Set();
+      for (const row of rows) {
+        const hit = md.get(row.key);
+        if (!hit || seen.has(row.assignee)) continue;
+        seen.add(row.assignee);
+        out.push({
+          type: "manDown", date: d, iso, assignee: row.assignee,
+          label: `${row.assignee} unavailable`,
+          detail: hit.label
+            ? `${hit.label} clashes with assigned work`
+            : "off during assigned work",
+        });
+      }
+    }
+
+    // double-book (independent of reservations)
+    for (const c of doubleBookConflicts(rows)) {
       out.push({
-        type: "manDown", date: d, iso, assignee: row.assignee,
-        label: `${row.assignee} unavailable`,
-        detail: hit.label
-          ? `${hit.label} clashes with assigned work`
-          : "off during assigned work",
+        type: "double", date: d, iso, assignee: c.assignee,
+        label: `${c.assignee} double-booked`,
+        detail: c.labels.join(" · "),
       });
     }
   }
