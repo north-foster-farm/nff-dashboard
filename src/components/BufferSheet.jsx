@@ -28,6 +28,11 @@ export default function BufferSheet({ activity, onAdd, onClose }) {
   const [assignee, setAssignee] = useState(null);
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState("");
+  // Scope (S53/S54): "this" = a one-day buffer; "all" = an auto-reserve
+  // template that re-appears on every occurrence of this activity.
+  const [scope, setScope] = useState("this");
+  const everyLabel = activity.target?.kind === "block"
+    ? "Every day" : "Every time";
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
@@ -59,7 +64,10 @@ export default function BufferSheet({ activity, onAdd, onClose }) {
       side, mins, label, checklist: items,
     });
     if (!built) return;
-    onAdd({ ...built, assignee });
+    const sourceRef = scope === "all"
+      ? { ...built.sourceRef, scope: "all", checklistState: {} }
+      : built.sourceRef;
+    onAdd({ ...built, sourceRef, assignee });
   };
 
   return (
@@ -177,6 +185,29 @@ export default function BufferSheet({ activity, onAdd, onClose }) {
               </button>
             ))}
           </div>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-muted">
+            Apply to
+          </span>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setScope("this")}
+              className={"text-[13px] px-3 py-1.5 border " + (scope === "this"
+                ? "border-accent text-accent" : "border-line text-dim")}>
+              This time
+            </button>
+            <button type="button" onClick={() => setScope("all")}
+              className={"text-[13px] px-3 py-1.5 border " + (scope === "all"
+                ? "border-accent text-accent" : "border-line text-dim")}>
+              {everyLabel}
+            </button>
+          </div>
+          {scope === "all" && (
+            <span className="text-[11px] text-faint mt-0.5">
+              Auto-reserves on every occurrence; the checklist resets each day.
+            </span>
+          )}
         </label>
 
         <div className="flex justify-end gap-2 mt-1">

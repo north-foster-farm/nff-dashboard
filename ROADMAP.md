@@ -3807,10 +3807,20 @@ versioned capture).
   unforeseen dependent fails the push loudly. **Pending the push protocol:**
   backup → confirm commitments(chore_block) parity → James runs
   `supabase db push --linked`. This closes the Schedule coverage tail.
-
----
-
-## Graveyard
+- **41.29 — buffers, all occurrences / auto-reserve (S53/S54). `v0.10.70-alpha`
+  (2026-06-25); pure frontend, NO migration.** `BufferSheet` gains an "Apply to"
+  toggle — **This time** (a one-day buffer, as before) or **Every time / Every
+  day** (an auto-reserve template). A template is a `buffer` commitment carrying
+  `source_ref.scope='all'`, read across all days by a new `useBufferTemplates`
+  hook and SYNTHESIZED onto each occurrence by `deriveTemplateBuffer` — its
+  window recomputed from that day's anchor (occurrences can shift), its
+  checklist done-state stored per-day in `source_ref.checklistState[iso]` so the
+  "load the truck" list resets each market day. Template buffers render in the
+  activity panel with an "every time" badge; per-day buffers exclude scope-'all'
+  rows so there's no double-render. So: set the market's 1-hour setup buffer +
+  equipment list ONCE and it appears on every market day.
+- **41.30+ →** remaining deferred polish: S61 live squeeze-detection + horizon
+  double-book; bulk recurring-reservation remove.
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.

@@ -22,8 +22,9 @@ import {
   computeManDown, reservationWindows, reservationWindow, pickCoverPerson,
 } from "../lib/schedule/manDown.js";
 import {
-  buffersForTarget, storedBufferWindow, describeBuffer,
+  buffersForTarget, storedBufferWindow, describeBuffer, deriveTemplateBuffer,
 } from "../lib/schedule/buffers.js";
+import { useBufferTemplates } from "../lib/data/useBufferTemplates.js";
 import {
   doubleBookConflicts, scanHorizonManDown,
 } from "../lib/schedule/conflicts.js";
@@ -144,9 +145,14 @@ function BufferSection({
                 {buf.source_ref?.label ? ` — ${buf.source_ref.label}` : ""}
                 {buf.assignee ? ` · ${buf.assignee}` : ""}
               </span>
-              <button type="button" onClick={() => onRemove(buf.id)}
+              {buf._template && (
+                <span className="shrink-0 inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-faint border border-line px-1">
+                  <Repeat size={10} /> every time
+                </span>
+              )}
+              <button type="button" onClick={() => onRemove(buf)}
                 className="shrink-0 text-faint hover:text-warn cursor-pointer"
-                aria-label="Remove buffer">
+                aria-label={buf._template ? "Remove for every time" : "Remove buffer"}>
                 <X size={13} />
               </button>
             </div>
@@ -155,7 +161,7 @@ function BufferSection({
                 {list.map((it) => (
                   <li key={it.id}>
                     <button type="button"
-                      onClick={() => onToggleItem(buf.id, it.id, !it.done)}
+                      onClick={() => onToggleItem(buf, it.id, !it.done)}
                       className="flex items-center gap-2 text-[13px] text-left cursor-pointer w-full">
                       {it.done
                         ? <Check size={14} className="shrink-0 text-resolved" strokeWidth={3} />
@@ -755,11 +761,30 @@ export default function Schedule({ data }) {
     () => deltas.filter((d) => d.source_type === "reservation"), [deltas]);
   const windows = useMemo(() => reservationWindows(reservations), [reservations]);
 
-  // Buffers (S53/S55/S57) — reserved adjacent time bound to an activity. Read
-  // for the day; each is rendered in the buffered activity's detail panel
-  // (event panel / focused block) via BufferSection.
+  // Buffers (S53/S55/S57) — reserved adjacent time bound to an activity. The
+  // per-day buffers come from this day's deltas (scope-'all' template rows are
+  // excluded — they ride the separate template hook and synthesize per day).
   const buffers = useMemo(
-    () => deltas.filter((d) => d.source_type === "buffer"), [deltas]);
+    () => deltas.filter((d) =>
+      d.source_type === "buffer" && d.source_ref?.scope !== "all"), [deltas]);
+
+  // All-occurrences buffer templates (S53/S54) + their per-day tick / remove.
+  const { templates: bufferTemplates, toggleTemplateItem, removeTemplate } =
+    useBufferTemplates();
+  // The buffers shown on an activity = its per-day buffers + any template's
+  // synthesized buffer for the viewed day (window recomputed from `anchor`).
+  const buffersForActivity = (kind, id, anchor) => [
+    ...buffersForTarget(buffers, kind, id),
+    ...buffersForTarget(bufferTemplates, kind, id)
+      .map((t) => deriveTemplateBuffer(t, anchor, dateISO))
+      .filter(Boolean),
+  ];
+  // Route a checklist tick / remove to the per-day or the template path.
+  const onBufferToggle = (buf, itemId, done) => buf._template
+    ? toggleTemplateItem(buf.id, itemId, done, dateISO)
+    : toggleBufferItem(buf.id, itemId, done);
+  const onBufferRemove = (buf) => buf._template
+    ? removeTemplate(buf.id) : removeDelta(buf.id);
 
   // Block window [start, start+duration) for overlap tests.
   const blockWindow = (bucket) => {
@@ -1780,9 +1805,12 @@ export default function Schedule({ data }) {
         /* ── One event's detail ── */
         <ol className="border border-line mt-3 lg:mt-0">
           <EventEntry occ={focusEntry.occ} isOpen onToggle={showOverview}
-            buffers={buffersForTarget(buffers, "event", focusEntry.occ.instanceId)}
-            onToggleBufferItem={toggleBufferItem}
-            onRemoveBuffer={removeDelta}
+            buffers={buffersForActivity("event", focusEntry.occ.instanceId, {
+              startMin: hmToMin(focusEntry.occ.startTime),
+              endMin: hmToMin(focusEntry.occ.endTime),
+            })}
+            onToggleBufferItem={onBufferToggle}
+            onRemoveBuffer={onBufferRemove}
             onAddBuffer={setBufferFor}
             onEditTime={setEditingEvent} />
         </ol>
@@ -1815,14 +1843,16 @@ export default function Schedule({ data }) {
                   return (
                     <div className="px-4 py-2 border-b border-line">
                       <BufferSection
-                        buffers={buffersForTarget(buffers, "block", b.bucket)}
+                        buffers={buffersForActivity("block", b.bucket, {
+                          startMin: w.start, endMin: w.end,
+                        })}
                         activity={{
                           target: { kind: "block", id: b.bucket, label: b.block.name },
                           label: b.block.name,
                           startMin: w.start, endMin: w.end,
                         }}
-                        onToggleItem={toggleBufferItem}
-                        onRemove={removeDelta}
+                        onToggleItem={onBufferToggle}
+                        onRemove={onBufferRemove}
                         onAddBuffer={setBufferFor}
                       />
                     </div>

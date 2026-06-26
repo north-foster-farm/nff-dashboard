@@ -71,6 +71,7 @@ export function buildBuffer({ target, anchor, side, mins, label, checklist }) {
     sourceRef: {
       target,
       side,
+      mins: Number(mins),
       end: toHHMM(win.endMin),
       label: label?.trim() || null,
       checklist: (checklist ?? [])
@@ -78,6 +79,31 @@ export function buildBuffer({ target, anchor, side, mins, label, checklist }) {
         .map((t) => (t ?? "").trim())
         .filter(Boolean)
         .map((text, i) => ({ id: `c${i}`, text, done: false })),
+    },
+  };
+}
+
+// Synthesize the per-day buffer an all-occurrences template (S53/S54) yields
+// for one day's occurrence of its activity. The window is recomputed from THAT
+// day's anchor (occurrences can shift time), and the checklist's done-state is
+// read from the template's per-day state map (`checklistState[iso]`) — so the
+// "load the truck" list resets each market day. Returns a buffer-shaped object
+// (id = the template's, `_template` flagged) BufferSection renders like any
+// stored buffer. null if the day's anchor can't support the configured side.
+export function deriveTemplateBuffer(template, anchor, dateISO) {
+  const sr = template.source_ref ?? {};
+  const win = bufferWindow(anchor, sr.side, sr.mins);
+  if (!win) return null;
+  const state = sr.checklistState?.[dateISO] ?? {};
+  return {
+    id: template.id,
+    _template: true,
+    assignee: template.assignee ?? null,
+    clock_time: toHHMM(win.startMin),
+    source_ref: {
+      ...sr,
+      end: toHHMM(win.endMin),
+      checklist: (sr.checklist ?? []).map((c) => ({ ...c, done: !!state[c.id] })),
     },
   };
 }
