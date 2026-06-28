@@ -254,11 +254,11 @@ function ProcessEditor({ process, kinds, proc }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => proc.createStep(process.id, {
-                title: "New task", kind: "task", offsetDays: 0,
+                title: "New chore", kind: "chore", offsetDays: 0,
               }).catch(() => {})}
               className="inline-flex items-center gap-1 bg-transparent border border-dashed border-line text-dim hover:text-fg hover:border-accent font-[inherit] text-[11px] font-semibold px-2.5 py-1.5 cursor-pointer"
             >
-              <Plus size={12} /> Task
+              <Plus size={12} /> Chore
             </button>
             <button
               onClick={() => proc.createStep(process.id, {

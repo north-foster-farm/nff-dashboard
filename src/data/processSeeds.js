@@ -12,15 +12,14 @@
 //     an occurrence of a linked kind sits inside the lookahead window,
 //     the process EXPANDS once (idempotent via process_expansions).
 //   * Each `process_step` is either:
-//       - kind "task" → spawns one one-time chore on
-//         (event date + offset_days). [F85: these are CHORES, not
-//         tasks — the legacy "task" name stays until a later migration
-//         tightens process_steps.kind once processes are reseeded.]
+//       - kind "chore" → spawns one one-time chore on
+//         (event date + offset_days). (Renamed from the legacy "task"
+//         in migration 0037 — these are CHORES, never project tasks.)
 //       - kind "chore_modifier" → writes a chore_modifiers row that
 //         skip/replace/prepend/restrict_until's ONE target chore on
 //         (event date + offset_days).
 //
-// Each task step references a stable `choreId` in EVENT_CHORES
+// Each chore step references a stable `choreId` in EVENT_CHORES
 // (choreSeeds.js) — the single source of truth for that chore's title,
 // block, place, deadline, checklist, etc. `offsetDays` is read straight
 // off the chore's own `trigger.offset` so the two can't drift.
@@ -39,7 +38,7 @@
 // (DEFERRED_LANDMARK_CHORES in choreSeeds.js).
 //
 // PHASE C NOTE: migration 0018 already seeds a disabled "Processing day
-// prep" process linked to processing_days with its own 6 task steps.
+// prep" process linked to processing_days with its own 6 chore steps.
 // The cutover should RETIRE that legacy process in favor of
 // "Broiler processing day" below (otherwise both expand on the same
 // processing_days occurrences). Exact-id / attended per the prod rules.
@@ -54,9 +53,9 @@ export const EVENT_KIND_LINKS = {
   farmers_market_or_popup: ["farmers_market", "popup_event"],
 };
 
-// A task step built from an EVENT_CHORES entry. offset_days comes from
+// A chore step built from an EVENT_CHORES entry. offset_days comes from
 // the chore's own trigger.offset so the two never drift.
-function taskStep(choreId, sortOrder, bodyMd) {
+function choreStep(choreId, sortOrder, bodyMd) {
   const c = BY_ID[choreId];
   if (!c) throw new Error(`processSeeds: unknown choreId ${choreId}`);
   return {
@@ -64,7 +63,7 @@ function taskStep(choreId, sortOrder, bodyMd) {
     title: c.title,
     bodyMd: bodyMd ?? c.description ?? null,
     offsetDays: c.trigger?.offset ?? 0,
-    kind: "task",
+    kind: "chore",
     sortOrder,
   };
 }
@@ -126,15 +125,15 @@ export const PROCESS_SEEDS = [
     eventKindIds: EVENT_KIND_LINKS.processing_day,
     steps: [
       // −1 day before
-      taskStep("proc-stage-crates-trailer", 0),
-      taskStep("proc-stage-coolers", 1),
+      choreStep("proc-stage-crates-trailer", 0),
+      choreStep("proc-stage-coolers", 1),
       // 0 day of
-      taskStep("proc-load-crates", 2, PROC_LOAD_BODY),
-      taskStep("proc-pwash-crates", 3),
-      taskStep("proc-pwash-deck", 4),
-      taskStep("proc-tractor-reset", 5),
+      choreStep("proc-load-crates", 2, PROC_LOAD_BODY),
+      choreStep("proc-pwash-crates", 3),
+      choreStep("proc-pwash-deck", 4),
+      choreStep("proc-tractor-reset", 5),
       // +1 day after
-      taskStep("proc-pickup", 6),
+      choreStep("proc-pickup", 6),
       // §6.1 pre-processing feed withhold — skip the three later tractor
       // feeders the day before (offset −1); the morning feed stands.
       // Mirrors CHORE_MODIFIER_SEEDS.mod-proc-no-feed expressed as the
@@ -159,8 +158,8 @@ export const PROCESS_SEEDS = [
     eventRef: "farmers_market_or_popup",
     eventKindIds: EVENT_KIND_LINKS.farmers_market_or_popup,
     steps: [
-      taskStep("mkt-prep-preorders", 0),
-      taskStep("mkt-load-vehicle", 1, MKT_LOAD_BODY),
+      choreStep("mkt-prep-preorders", 0),
+      choreStep("mkt-load-vehicle", 1, MKT_LOAD_BODY),
     ],
   },
 ];
