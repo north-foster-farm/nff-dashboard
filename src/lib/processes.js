@@ -7,9 +7,9 @@ import { formatISODate, formatDate } from "./dates.js";
 // A process is a template tied to one or more event kinds. When an
 // event occurrence of a linked kind sits within the process's
 // lookahead window, the process "expands": one-time chores are created
-// for task-type steps (dated event date + offset; pre-0025 these were
-// project steps), and chore_modifiers rows are written for
-// modifier-type steps.
+// for chore-kind steps from each step's full chore template (dated
+// event date + offset; pre-0025 these were project steps), and
+// chore_modifiers rows are written for modifier-kind steps.
 //
 // This module owns the planning math; the actual DB writes live in
 // lib/data/useProcessRunner.js. Framework-free and side-effect-free,
@@ -91,10 +91,14 @@ export function stepDateFor(step, eventDateISO) {
   return shiftISODate(eventDateISO, step.offsetDays ?? 0);
 }
 
-// Task-type steps become one-time chores; modifier-type steps become
+// Chore-kind steps become one-time chores; modifier-kind steps become
 // chore_modifiers rows. Split a process's steps into the two plans.
+// A chore-kind step is a full chore template (block, time window,
+// deadline, assignment, place anchor) carried through verbatim — only
+// the date (eventDate + offset) and the concrete batch/species anchor
+// are resolved later from the bound event.
 export function splitSteps(steps, eventDateISO) {
-  const tasks = [];
+  const chores = [];
   const modifiers = [];
   for (const step of [...steps].sort(bySort)) {
     const onDate = stepDateFor(step, eventDateISO);
@@ -109,16 +113,25 @@ export function splitSteps(steps, eventDateISO) {
         priority: step.modifierPriority ?? 10,
       });
     } else {
-      tasks.push({
+      chores.push({
         stepId: step.id,
         title: step.title,
         bodyMd: step.bodyMd,
         targetDate: onDate,
         sortOrder: step.sortOrder ?? 0,
+        blockId: step.blockId ?? null,
+        lastChanceBlockId: step.lastChanceBlockId ?? null,
+        startTime: step.startTime ?? null,
+        deadline: step.deadline ?? null,
+        assignment: step.assignment ?? null,
+        anchorType: step.anchorType ?? "none",
+        anchorKindTag: step.anchorKindTag ?? null,
+        placeId: step.placeId ?? null,
+        atPlaceId: step.atPlaceId ?? null,
       });
     }
   }
-  return { tasks, modifiers };
+  return { chores, modifiers };
 }
 
 function bySort(a, b) {
@@ -146,33 +159,69 @@ export function expansionProjectTitle(process, occurrence) {
     ` (${formatDate(occurrence.date)})`;
 }
 
-// ── Expansion → chores (0025 automations rework) ─────────────────────
-// Task-type steps become one-time chores, not project steps. Chore ids
+// ── Expansion → chores (0025 automations rework; Phase 1 template) ───
+// Chore-kind steps become one-time chores, not project steps. Chore ids
 // are deterministic per (expansion, step) so a re-run after a partial
 // failure conflicts instead of duplicating.
 
-export function processChoreId(expansionId, task, index) {
-  return `process_${expansionId}_${task.stepId ?? index}`;
+export function processChoreId(expansionId, chore, index) {
+  return `process_${expansionId}_${chore.stepId ?? index}`;
 }
 
-// The chore_definitions row a task-type step expands into. `batchLink`
-// is the anchor event's batch event_link (or null) — processing days
-// created with the batch picker carry one, and the chores inherit the
-// anchor so they surface on the batch page.
+// The anchor fields for a process chore. A step authors the anchor
+// *shape* (anchor_type + place / kind tag); the bound event supplies the
+// concrete batch/species id. A step that authored no anchor inherits the
+// event's batch (when present) so the chore still surfaces on the batch
+// page — the pre-Phase-1 behavior, now the unauthored default rather
+// than the only option.
+export function resolveChoreAnchor(chore, { batchLink, speciesId } = {}) {
+  const authored = chore.anchorType && chore.anchorType !== "none";
+  if (!authored) {
+    return batchLink
+      ? { anchor_type: "batch", anchor_batch_id: batchLink.targetId }
+      : { anchor_type: "none" };
+  }
+  const out = {
+    anchor_type: chore.anchorType,
+    anchor_kind_tag: chore.anchorKindTag ?? null,
+    place_id: chore.placeId ?? null,
+    at_place_id: chore.atPlaceId ?? null,
+  };
+  if (chore.anchorType === "batch" && batchLink) {
+    out.anchor_batch_id = batchLink.targetId;
+  }
+  if (chore.anchorType === "species" && speciesId) {
+    out.anchor_species_id = speciesId;
+  }
+  return out;
+}
+
+// The chore_definitions row a chore-kind step expands into. Carries the
+// step's full chore template through verbatim — block, time window,
+// deadline, assignment, place — and resolves the date from
+// eventDate + offset and the anchor from the bound event.
+// `morningBlockId` is the floor for the never-null block_id guarantee
+// (Phase 0 soft policy): a step should always carry a block (editor
+// default + backfill), but if one is somehow missing we resolve morning
+// rather than emit a block_id=null chore — the bug this rewrite closes.
 export function processChoreRow({
-  expansionId, task, index, process, occurrence, batchLink,
+  expansionId, chore, index, process, occurrence,
+  batchLink, speciesId, morningBlockId,
 }) {
   return {
-    id: processChoreId(expansionId, task, index),
-    title: task.title,
+    id: processChoreId(expansionId, chore, index),
+    title: chore.title,
     category: "one_time",
-    description: (task.bodyMd ? task.bodyMd + "\n\n" : "")
+    description: (chore.bodyMd ? chore.bodyMd + "\n\n" : "")
       + `Part of "${process.title}" for ${occurrence.instanceLabel}`
       + ` (${formatDate(occurrence.date)}).`,
-    frequency: { type: "once", date: task.targetDate },
-    period: "morning",
-    anchor_type: batchLink ? "batch" : "none",
-    anchor_batch_id: batchLink?.targetId ?? null,
+    frequency: { type: "once", date: chore.targetDate },
+    block_id: chore.blockId ?? morningBlockId ?? null,
+    last_chance_block_id: chore.lastChanceBlockId ?? null,
+    start_time: chore.startTime ?? null,
+    deadline: chore.deadline ?? null,
+    assignment: chore.assignment ?? null,
+    ...resolveChoreAnchor(chore, { batchLink, speciesId }),
     process_expansion_id: expansionId,
   };
 }

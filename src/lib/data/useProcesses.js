@@ -26,6 +26,8 @@ const PROCESS_COLS =
 const STEP_COLS =
   "id, process_id, title, body_md, offset_days, kind, target_chore_id, " +
   "modifier_action, modifier_text, modifier_priority, sort_order, " +
+  "block_id, last_chance_block_id, start_time, deadline, assignment, " +
+  "anchor_type, anchor_kind_tag, place_id, at_place_id, " +
   "created_at, updated_at";
 const KIND_LINK_COLS = "id, process_id, event_kind_id, created_at";
 const EXPANSION_COLS =
@@ -64,6 +66,17 @@ function shapeStep(r) {
     modifierText: r.modifier_text,
     modifierPriority: r.modifier_priority ?? 10,
     sortOrder: r.sort_order ?? 0,
+    // Chore-template fields (Phase 1): a chore-kind step is a full chore
+    // definition the expansion emits verbatim.
+    blockId: r.block_id,
+    lastChanceBlockId: r.last_chance_block_id,
+    startTime: r.start_time,
+    deadline: r.deadline ?? null,
+    assignment: r.assignment ?? null,
+    anchorType: r.anchor_type ?? "none",
+    anchorKindTag: r.anchor_kind_tag,
+    placeId: r.place_id,
+    atPlaceId: r.at_place_id,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -185,6 +198,18 @@ function stepPatch(patch) {
     out.modifier_priority = patch.modifierPriority;
   }
   if ("sortOrder" in patch) out.sort_order = patch.sortOrder;
+  // Chore-template fields (Phase 1 / editor).
+  if ("blockId" in patch) out.block_id = patch.blockId;
+  if ("lastChanceBlockId" in patch) {
+    out.last_chance_block_id = patch.lastChanceBlockId;
+  }
+  if ("startTime" in patch) out.start_time = patch.startTime;
+  if ("deadline" in patch) out.deadline = patch.deadline;
+  if ("assignment" in patch) out.assignment = patch.assignment;
+  if ("anchorType" in patch) out.anchor_type = patch.anchorType;
+  if ("anchorKindTag" in patch) out.anchor_kind_tag = patch.anchorKindTag;
+  if ("placeId" in patch) out.place_id = patch.placeId;
+  if ("atPlaceId" in patch) out.at_place_id = patch.atPlaceId;
   return out;
 }
 
@@ -261,11 +286,15 @@ export function useProcesses() {
       process_id: processId,
       title: (fields.title ?? "").trim() || "New step",
       offset_days: fields.offsetDays ?? 0,
-      kind: fields.kind ?? "task",
+      kind: fields.kind ?? "chore",
       target_chore_id: fields.targetChoreId ?? null,
       modifier_action: fields.modifierAction ?? null,
       modifier_text: fields.modifierText ?? null,
       sort_order: maxSort + 1,
+      // Seed a block when the caller supplies one (the editor's chore
+      // default); the expansion floors any null to morning regardless.
+      ...(fields.blockId !== undefined
+        ? { block_id: fields.blockId } : {}),
     }, STEP_COLS);
     await fetchAll();
     return data.id;

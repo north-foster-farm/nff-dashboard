@@ -15,11 +15,12 @@ import {
 //      unique (process_id, series_id, occurs_on) constraint means two
 //      clients racing produce exactly one expansion; the loser's
 //      insert conflicts and it skips.
-//   2. insert one-time chore_definitions — one per task-type process
-//      step, dated event date + offset_days, anchored to the event's
-//      batch when the event has a batch link. (Pre-0025 this created
-//      a project + steps; James's call: prep work is chores, not a
-//      project.)
+//   2. insert one-time chore_definitions — one per chore-kind process
+//      step, built from the step's full chore template (block, time
+//      window, deadline, assignment, place), dated event date +
+//      offset_days, with the concrete batch/species anchor resolved from
+//      the event. (Pre-0025 this created a project + steps; James's
+//      call: prep work is chores, not a project.)
 //   3. event_links    (series → each chore, role 'process')
 //   4. chore_modifiers for modifier-type steps (source 'process')
 //      + event_links (series → chore, role 'process_modifier') so the
@@ -92,13 +93,14 @@ async function expandOne(plan) {
   }
 
   const created = { chore_ids: [], modifier_ids: [], link_ids: [] };
-  const { tasks, modifiers } = splitSteps(steps, occurrence.date);
+  const { chores, modifiers } = splitSteps(steps, occurrence.date);
 
   // ── 2. one-time chores ──────────────────────────────────────────────
-  if (tasks.length > 0) {
-    // If the anchor event is linked to a batch (processing days created
-    // with the batch picker are), the chores inherit that anchor so
-    // they show on the batch page and in batch-scoped rounds.
+  if (chores.length > 0) {
+    // The anchor context comes from the event: its batch link (so the
+    // chores show on the batch page and in batch-scoped rounds) and that
+    // batch's species, used when a step authored a 'batch'/'species'
+    // anchor. Processing days created with the batch picker carry one.
     const { data: batchLinks } = await supabase
       .from("event_links")
       .select("id, target_id")
@@ -109,22 +111,42 @@ async function expandOne(plan) {
       ? { targetId: batchLinks[0].target_id }
       : null;
 
-    for (let i = 0; i < tasks.length; i++) {
+    let speciesId = null;
+    if (batchLink) {
+      const { data: grp } = await supabase
+        .from("livestock_groups")
+        .select("species_id")
+        .eq("id", batchLink.targetId)
+        .maybeSingle();
+      speciesId = grp?.species_id ?? null;
+    }
+
+    // Floor for the never-null block_id guarantee (Phase 0 soft policy).
+    const { data: morningBlock } = await supabase
+      .from("chore_blocks")
+      .select("id")
+      .eq("slug", "morning")
+      .maybeSingle();
+    const morningBlockId = morningBlock?.id ?? null;
+
+    for (let i = 0; i < chores.length; i++) {
       const row = processChoreRow({
         expansionId: expansion.id,
-        task: tasks[i],
+        chore: chores[i],
         index: i,
         process,
         occurrence,
         batchLink,
+        speciesId,
+        morningBlockId,
       });
-      const { data: chore, error: choreErr } = await supabase
+      const { data: inserted, error: choreErr } = await supabase
         .from("chore_definitions")
         .upsert(row, { onConflict: "id", ignoreDuplicates: true })
         .select("id")
         .maybeSingle();
       if (choreErr) throw choreErr;
-      const choreId = chore?.id ?? row.id;
+      const choreId = inserted?.id ?? row.id;
       created.chore_ids.push(choreId);
 
       // ── 3. event → chore link ─────────────────────────────────────
