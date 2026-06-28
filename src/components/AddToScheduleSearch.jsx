@@ -26,6 +26,9 @@ export default function AddToScheduleSearch({
   const [q, setQ] = useState("");
   // The chore being place-narrowed (step 2), or null (step 1).
   const [narrow, setNarrow] = useState(null);
+  // Multi-select within the narrow step (F73) — a Set of place indices the
+  // user has ticked; they're added together on Confirm, not one-tap-each.
+  const [narrowSel, setNarrowSel] = useState(() => new Set());
   // Which day(s) the add targets (S34) — the viewed day plus any of the next
   // six the user also ticks. Always ≥1 day selected.
   const anchorISO = anchorDate && ymd ? ymd(anchorDate) : null;
@@ -87,6 +90,9 @@ export default function AddToScheduleSearch({
           placeId: pid,
           name: pid == null ? null : (ctx.placesById?.get(pid)?.name ?? null),
           kindTag: pid == null ? null : (ctx.placesById?.get(pid)?.kindTag ?? null),
+          // The owning chore's anchor — differentiates two same-named chores
+          // (e.g. "whole farm" twice) in the picker (F75).
+          sublabel: describeChoreAnchor(c, ctx) || null,
         });
       }
       byTitle.set(c.title, g);
@@ -118,12 +124,31 @@ export default function AddToScheduleSearch({
       onAddChore(p.choreId, p.placeId, dateArr());
       onClose();
     } else {
+      setNarrowSel(new Set());
       setNarrow(g);
     }
   };
 
+  // Narrow-step multi-select (F73).
+  const toggleNarrow = (i) => setNarrowSel((s) => {
+    const n = new Set(s);
+    if (n.has(i)) n.delete(i); else n.add(i);
+    return n;
+  });
+  const allNarrowOn = !!narrow && narrowSel.size === narrow.places.length;
+  const toggleAllNarrow = () => setNarrowSel(
+    allNarrowOn ? new Set() : new Set(narrow.places.map((_, i) => i)));
+  const confirmNarrow = () => {
+    if (!narrow || narrowSel.size === 0) return;
+    for (const i of narrowSel) {
+      const p = narrow.places[i];
+      onAddChore(p.choreId, p.placeId, dateArr());
+    }
+    onClose();
+  };
+
   const placeLabel = (p) =>
-    p.name ?? (narrow?.sublabel ?? "Anywhere");
+    p.name ?? p.sublabel ?? "Whole farm";
 
   return (
     <div
@@ -158,43 +183,66 @@ export default function AddToScheduleSearch({
               </div>
             </div>
             <ul className="max-h-[50vh] overflow-y-auto">
+              {/* Select-all toggle (F73) — pick several places, then Confirm;
+                  no instant add-on-tap and no completion-looking checkbox. */}
               <li>
                 <button
                   type="button"
-                  onClick={() => {
-                    for (const p of narrow.places)
-                      onAddChore(p.choreId, p.placeId, dateArr());
-                    onClose();
-                  }}
+                  onClick={toggleAllNarrow}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line hover:bg-row-hover"
                 >
-                  <Plus size={15} className="shrink-0 text-faint" />
+                  <span className={"shrink-0 w-5 h-5 border-2 inline-flex items-center justify-center "
+                    + (allNarrowOn
+                      ? "bg-accent border-accent text-on-accent"
+                      : "border-line")}>
+                    {allNarrowOn && <Check size={13} strokeWidth={3} />}
+                  </span>
                   <span className="text-[14px] text-fg flex-1">
                     All {narrow.places.length} places
                   </span>
                 </button>
               </li>
-              {narrow.places.map((p, i) => (
-                <li key={p.choreId + "|" + (p.placeId ?? "") + "|" + i}>
-                  <button
-                    type="button"
-                    onClick={() => { onAddChore(p.choreId, p.placeId, dateArr()); onClose(); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line last:border-b-0 hover:bg-row-hover"
-                  >
-                    <span className="text-[14px] text-fg flex-1">
-                      {placeLabel(p)}
-                    </span>
-                    {p.kindTag && (
-                      <span className="text-[12px] text-faint">{p.kindTag}</span>
-                    )}
-                  </button>
-                </li>
-              ))}
+              {narrow.places.map((p, i) => {
+                const on = narrowSel.has(i);
+                return (
+                  <li key={p.choreId + "|" + (p.placeId ?? "") + "|" + i}>
+                    <button
+                      type="button"
+                      onClick={() => toggleNarrow(i)}
+                      aria-pressed={on}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line last:border-b-0 hover:bg-row-hover"
+                    >
+                      <span className={"shrink-0 w-5 h-5 border-2 inline-flex items-center justify-center "
+                        + (on
+                          ? "bg-accent border-accent text-on-accent"
+                          : "border-line")}>
+                        {on && <Check size={13} strokeWidth={3} />}
+                      </span>
+                      <span className="text-[14px] text-fg flex-1">
+                        {placeLabel(p)}
+                      </span>
+                      {p.kindTag && (
+                        <span className="text-[12px] text-faint">{p.kindTag}</span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
-            <div className="px-4 py-3 border-t border-line text-[12px] text-dim">
-              {multiDay
-                ? `Adds to ${dates.size} days — the same write as Rounds.`
-                : "Adds to the viewed day — the same write as Rounds."}
+            <div className="px-4 py-3 border-t border-line flex items-center justify-between gap-3">
+              <span className="text-[12px] text-dim">
+                {multiDay
+                  ? `${narrowSel.size} selected · ${dates.size} days`
+                  : `${narrowSel.size} selected`}
+              </span>
+              <button
+                type="button"
+                onClick={confirmNarrow}
+                disabled={narrowSel.size === 0}
+                className="bg-accent text-on-accent text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Add {narrowSel.size || ""}
+              </button>
             </div>
           </>
         ) : (
@@ -263,7 +311,6 @@ export default function AddToScheduleSearch({
                           onClick={() => pickGroup(g)}
                           className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-line hover:bg-row-hover"
                         >
-                          <span className="w-7 h-7 border-2 border-line shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="text-[14px] font-medium text-fg truncate">
                               {g.title}
