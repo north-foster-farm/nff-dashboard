@@ -81,12 +81,15 @@ export default function ChoreFieldsEditor({
       </EditField>
 
       <EditField label="When">
+        {/* Every chore belongs to a block — there is no "anytime". A new
+            chore step seeds to morning; existing chores already carry a
+            block. (The deadline block below stays optional.) */}
         <select
           value={value.blockId ?? ""}
           onChange={(e) => onChange({ blockId: e.target.value || null })}
           style={editInputStyle}
         >
-          <option value="">— anytime —</option>
+          {!value.blockId && <option value="">— pick a block —</option>}
           {activeBlocks.map(b => (
             <option key={b.id} value={b.id}>
               {b.name} · {displayBlockSide(b.startKind, b.startMinutes)}
@@ -112,7 +115,7 @@ export default function ChoreFieldsEditor({
         <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
           The last block on the deadline day before the chore counts as
           overrun. Drives the "(N days remaining)" pill on multi-day
-          and anytime chores.
+          chores.
         </div>
       </EditField>
     </div>

@@ -537,9 +537,3 @@ export const CHORE_CATEGORIES = {
   one_time: { label: "One-time", order: 6 },
 };
 
-export const CHORE_PERIODS = {
-  morning: { label: "Morning", hint: "8 AM", order: 1 },
-  afternoon: { label: "Afternoon", hint: "2 PM", order: 2 },
-  evening: { label: "Evening", hint: "after sunset", order: 3 },
-  anytime: { label: "Anytime", hint: "", order: 4 },
-};

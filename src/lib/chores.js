@@ -3,14 +3,14 @@
 // and resolved assignee.
 
 import {
-  CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS,
+  CHORE_SEEDS, CHORE_CATEGORIES,
   CHORE_BLOCK_IDS, CHORE_BLOCKS_META, CHORE_OWNERS,
 } from "../data/choreSeeds.js";
 import { sunMinutesOfDay, displayBlockSide } from "./sunTimes.js";
 import { descendantIds } from "./places.js";
 
 export {
-  CHORE_SEEDS, CHORE_CATEGORIES, CHORE_PERIODS,
+  CHORE_SEEDS, CHORE_CATEGORIES,
   CHORE_BLOCK_IDS, CHORE_BLOCKS_META, CHORE_OWNERS,
 };
 
