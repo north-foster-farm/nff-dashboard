@@ -666,6 +666,17 @@ export default function Schedule({ data }) {
   const addChoreAt = (choreId, placeId, dates = null) => {
     const c = choreById.get(choreId);
     if (!c) return;
+    // S37 / F74 — don't duplicate a chore already on the viewed day. Adds to
+    // other ticked days still go through; the viewed day is skipped with a
+    // warning when it's already present.
+    const key = choreId + "|" + (placeId ?? "");
+    const targetsViewed = !dates || dates.includes(dateISO);
+    if (targetsViewed && presentChoreKeys.has(key)) {
+      const others = (dates ?? []).filter((d) => d !== dateISO);
+      if (others.length) addChore(c.id, placeId, c.blockId ?? null, others);
+      alert(`"${c.title}" is already on this day.`);
+      return;
+    }
     addChore(c.id, placeId, c.blockId ?? null, dates);
   };
 
@@ -716,6 +727,28 @@ export default function Schedule({ data }) {
       data, dayDate: today, dayUTC, dayISO: dateISO, ruleOpts, deltas,
     }),
     [data, today, dayUTC, dateISO, ruleOpts, deltas]);
+
+  // Every (chore, place) already on the viewed day — derived instances plus
+  // pulled-chore deltas — so a re-add can dedupe/warn instead of duplicating
+  // (S37 / F74). Keyed "choreId|placeId".
+  const presentChoreKeys = useMemo(() => {
+    const s = new Set();
+    for (const r of derived.choreRollups) {
+      for (const inst of r.items) {
+        const pids = obligationPlaceIds(inst.chore, choreCtx ?? {});
+        for (const pid of (pids.length ? pids : [null])) {
+          s.add(inst.chore.id + "|" + (pid ?? ""));
+        }
+      }
+    }
+    for (const d of deltas) {
+      if (d.source_type === "chore") {
+        s.add((d.source_ref?.chore_id ?? "") + "|"
+          + (d.source_ref?.place_id ?? ""));
+      }
+    }
+    return s;
+  }, [derived, deltas, choreCtx]);
 
   // The day's tiled segments for time-routing (Project blocks): every real
   // chore-block window + the derived Project gaps. `segmentForStart` walks
