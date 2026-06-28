@@ -28,6 +28,7 @@ import { buildPlaceTree } from "../places.js";
 //     placements: [{ id, placeId, occupantType, occupantId, movedIn,
 //                    movedOut, notes }],
 //     placementsByPlaceId: Map<placeId, placements[]>, // current only
+//     placementsByOccupant: Map<"type:id", placements[]>, // open+closed
 //     groups: [{ id, speciesId, label, count }],
 //     groupsById: Map<id, group>,
 //     speciesById: Map<id, { id, name }>,
@@ -176,7 +177,16 @@ export function useSites() {
       notes: r.notes,
     }));
     const placementsByPlaceId = new Map();
+    // History index keyed by occupant ("type:id") — ALL rows, open and
+    // closed. Lets callers ask "which places has this batch occupied?"
+    // (e.g. brooder-cleanout resolving to the brooder a batch has since
+    // left). placementsByPlaceId stays current-only.
+    const placementsByOccupant = new Map();
     for (const pl of placementList) {
+      const okey = `${pl.occupantType}:${pl.occupantId}`;
+      if (!placementsByOccupant.has(okey))
+        placementsByOccupant.set(okey, []);
+      placementsByOccupant.get(okey).push(pl);
       if (pl.movedOut !== null) continue; // current occupancy only
       if (!placementsByPlaceId.has(pl.placeId))
         placementsByPlaceId.set(pl.placeId, []);
@@ -201,6 +211,7 @@ export function useSites() {
       roots,
       placementList,
       placementsByPlaceId,
+      placementsByOccupant,
       groupList,
       groupsById,
       speciesById,
@@ -210,6 +221,7 @@ export function useSites() {
         placesById: byId,
         childrenByParent,
         placementsByPlaceId,
+        placementsByOccupant,
         groupsById,
         speciesById,
       },
@@ -375,6 +387,33 @@ export function useSites() {
     []
   );
 
+  // Open a placement WITHOUT closing the occupant's other open rows —
+  // for split occupancy (a batch across N chicken tractors / two
+  // brooders at once). The per-(occupant, place) unique index (0039)
+  // still blocks a duplicate open row in the same place. Use
+  // assignOccupant instead when the occupant moves ENTIRELY to one place.
+  const addPlacement = useCallback(
+    async (placeId, occupantType, occupantId, movedIn = null) => {
+      if (!placeId) throw new Error("Placement needs a place.");
+      if (!occupantType || !occupantId)
+        throw new Error("Placement needs an occupant.");
+      const { data: created, error: err } = await supabase
+        .from("placements")
+        .insert({
+          place_id: placeId,
+          occupant_type: occupantType,
+          occupant_id: occupantId,
+          moved_in: movedIn || today(),
+        })
+        .select(PLACEMENT_COLS)
+        .single();
+      if (err) throw err;
+      setPlacements((prev) => (prev ? [...prev, created] : prev));
+      return created;
+    },
+    []
+  );
+
   const moveOutOccupant = useCallback(
     async (placementId, movedOut = null) => {
       const moved_out = movedOut || today();
@@ -428,6 +467,7 @@ export function useSites() {
     roots: shaped.roots,
     placements: shaped.placementList,
     placementsByPlaceId: shaped.placementsByPlaceId,
+    placementsByOccupant: shaped.placementsByOccupant,
     groups: shaped.groupList,
     groupsById: shaped.groupsById,
     speciesById: shaped.speciesById,
@@ -442,6 +482,7 @@ export function useSites() {
     reorderPlaces,
     reparentPlace,
     assignOccupant,
+    addPlacement,
     moveOutOccupant,
     updatePlacement,
   };
