@@ -2616,6 +2616,19 @@ export default function Schedule({ data }) {
                     {allDone ? "done" : `${done}/${total}`}
                   </span>
                 </div>
+                {/* Doing rounds is the intended way to work a block, so it's a
+                    prominent primary action at the TOP of the block (F47). */}
+                {b.block && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/rounds/${b.bucket}`)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-on-accent bg-accent hover:brightness-110 border-b border-line cursor-pointer"
+                  >
+                    <ListChecks size={15} />
+                    Open rounds
+                    <ChevronRight size={15} />
+                  </button>
+                )}
                 {blockAlerts(b, "pl-4")}
                 {b.block && b.startMin != null && (() => {
                   const w = blockWindow(b.bucket);
@@ -2673,17 +2686,6 @@ export default function Schedule({ data }) {
                   >
                     <Scissors size={15} />
                     Split block
-                  </button>
-                )}
-                {b.block && (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/rounds/${b.bucket}`)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-accent hover:bg-row-hover border-t border-line cursor-pointer"
-                  >
-                    <ListChecks size={15} />
-                    Open rounds
-                    <ChevronRight size={15} />
                   </button>
                 )}
               </>
