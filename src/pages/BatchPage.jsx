@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft, ArrowUpRight, Bird, CalendarRange, MapPin, Sparkles,
-  Trash2, TriangleAlert,
+  ArrowLeft, ArrowUpRight, Bird, CalendarRange, MapPin, Plus, Sparkles,
+  Trash2, TriangleAlert, X,
 } from "lucide-react";
 import { useSites } from "../lib/data/useSites.js";
+import { placeSelectOptions } from "../components/ChoreFieldsEditor.jsx";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useEventLinks } from "../lib/data/useEventLinks.js";
 import { supabase } from "../lib/supabase.js";
@@ -38,7 +39,8 @@ export default function BatchPage({
   batch, species, data, onOpenEvent, onNavigate,
 }) {
   const {
-    placesById, placements, moveOutOccupant, loading: sitesLoading,
+    places, placesById, placements, addPlacement, moveOutOccupant,
+    loading: sitesLoading,
   } = useSites();
   const { definitions } = useChoreDefinitions();
   const { links, loading: linksLoading, refresh } = useEventLinks({
@@ -48,19 +50,57 @@ export default function BatchPage({
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState(null);
+  const [addPlaceId, setAddPlaceId] = useState("");
+  const [placeBusy, setPlaceBusy] = useState(false);
 
-  // Current placement → "where is this batch right now".
-  const activePlacement = useMemo(
-    () => (placements ?? []).find(
-      (p) => p.occupantType === "batch"
-        && p.occupantId === batch?.id
-        && !p.movedOut
-    ) ?? null,
-    [placements, batch?.id]
+  // Current placements → "where is this batch right now". A batch can
+  // occupy several places at once (a broiler batch split across the
+  // chicken tractors; a brooder batch across two brooders), so this is
+  // a SET, not a single place (migration 0039).
+  const activePlacements = useMemo(
+    () => (placements ?? [])
+      .filter(
+        (p) => p.occupantType === "batch"
+          && p.occupantId === batch?.id
+          && !p.movedOut
+      )
+      .map((p) => ({ placement: p, place: placesById?.get(p.placeId) }))
+      .sort((a, b) =>
+        (a.place?.name ?? "").localeCompare(b.place?.name ?? "")),
+    [placements, placesById, batch?.id]
   );
-  const currentPlace = activePlacement
-    ? placesById?.get(activePlacement.placeId)
-    : null;
+
+  // Places the batch isn't already in — the "add a place" picker.
+  const addOptions = useMemo(() => {
+    const occupied = new Set(activePlacements.map((a) => a.placement.placeId));
+    return placeSelectOptions(places).filter((o) => !occupied.has(o.id));
+  }, [places, activePlacements]);
+
+  const addAtPlace = async () => {
+    if (!addPlaceId) return;
+    setPlaceBusy(true);
+    setError(null);
+    try {
+      await addPlacement(addPlaceId, "batch", batch.id);
+      setAddPlaceId("");
+    } catch (err) {
+      setError(err?.message ?? "Couldn't add the place.");
+    } finally {
+      setPlaceBusy(false);
+    }
+  };
+
+  const moveOutOf = async (placementId) => {
+    setPlaceBusy(true);
+    setError(null);
+    try {
+      await moveOutOccupant(placementId);
+    } catch (err) {
+      setError(err?.message ?? "Couldn't move out.");
+    } finally {
+      setPlaceBusy(false);
+    }
+  };
 
   // Chores tied to this batch: the auto cleanout chore + anything
   // anchored to the batch.
@@ -400,25 +440,68 @@ export default function BatchPage({
         <Card title="Where" icon={MapPin}>
           {sitesLoading ? (
             <div className="text-[12px] text-dim italic">Loading…</div>
-          ) : currentPlace ? (
-            <div>
-              <button
-                onClick={() => navigate(`/place/${currentPlace.id}`)}
-                className="bg-transparent border-0 p-0 cursor-pointer text-left font-[inherit] text-[15px] font-medium text-fg hover:text-accent-deep inline-flex items-center gap-1.5"
-              >
-                {currentPlace.name}
-                <ArrowUpRight size={13} className="shrink-0" />
-              </button>
-              {activePlacement?.movedIn && (
-                <div className="text-[11px] text-dim mt-1">
-                  since {formatDate(activePlacement.movedIn)}
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {activePlacements.length === 0 ? (
+                <div className="text-[12px] text-dim italic">
+                  Not placed anywhere right now.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {activePlacements.map(({ placement, place }) => (
+                    <div
+                      key={placement.id}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <button
+                          onClick={() => place && navigate(`/place/${place.id}`)}
+                          disabled={!place}
+                          className="bg-transparent border-0 p-0 cursor-pointer text-left font-[inherit] text-[14px] font-medium text-fg hover:text-accent-deep inline-flex items-center gap-1.5 disabled:cursor-default"
+                        >
+                          {place?.name ?? "Unknown place"}
+                          {place && <ArrowUpRight size={12} className="shrink-0" />}
+                        </button>
+                        {placement.movedIn && (
+                          <div className="text-[11px] text-dim">
+                            since {formatDate(placement.movedIn)}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => moveOutOf(placement.id)}
+                        disabled={placeBusy}
+                        title="Move the batch out of this place"
+                        className="shrink-0 bg-transparent border-0 p-1 cursor-pointer text-dim hover:text-warn disabled:opacity-50"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="text-[12px] text-dim italic">
-              Not placed anywhere right now. Assign it to a place from
-              the place tree (map → Edit places).
+
+              {/* Add another place — a batch can occupy several at once. */}
+              <div className="flex items-center gap-1.5 pt-1 border-t border-hair">
+                <select
+                  value={addPlaceId}
+                  onChange={(e) => setAddPlaceId(e.target.value)}
+                  disabled={placeBusy}
+                  className="flex-1 min-w-0 text-[12px] bg-surface border border-hair rounded px-1.5 py-1 text-fg"
+                >
+                  <option value="">— add a place —</option>
+                  {addOptions.map((o) => (
+                    <option key={o.id} value={o.id}>{o.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={addAtPlace}
+                  disabled={placeBusy || !addPlaceId}
+                  className="shrink-0 inline-flex items-center gap-1 text-[12px] bg-accent text-white rounded px-2 py-1 cursor-pointer disabled:opacity-50"
+                >
+                  <Plus size={13} /> Add
+                </button>
+              </div>
             </div>
           )}
         </Card>
