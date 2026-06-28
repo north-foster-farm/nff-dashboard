@@ -143,6 +143,7 @@ export default function App({ session }) {
     section.id === "map" ||
     section.id === "overview" ||
     section.id === "chores" ||
+    section.id === "schedule" ||
     section.id === "settings" ||
     section.id === "roadmap" ||
     section.comingSoon === true;
