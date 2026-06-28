@@ -8,7 +8,7 @@ import { useSites } from "../lib/data/useSites.js";
 import { descendantIds, placePath } from "../lib/places.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
-import { obligationPlaceIds } from "../lib/chores.js";
+import { obligationPlaceIds, compareChoreOrder } from "../lib/chores.js";
 import { useChoreRuns, formatElapsed } from "../lib/data/useChoreRuns.js";
 import { useRunEvents } from "../lib/data/useRunEvents.js";
 import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
@@ -567,9 +567,13 @@ function DoingSurface({
   // joined participants haven't yet.
   const [waitingOn, setWaitingOn] = useState(null);
 
-  // Filter chores to this run's block.
+  // Filter chores to this run's block, in the canonical global order
+  // (F49) so the run walks chores in the same sequence as the Today
+  // view and the All-chores tree.
   const blockChores = useMemo(
-    () => definitions.filter(d => d.blockId === block?.id),
+    () => definitions
+      .filter(d => d.blockId === block?.id)
+      .sort(compareChoreOrder),
     [definitions, block]
   );
 

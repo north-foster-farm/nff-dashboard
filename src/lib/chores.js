@@ -286,6 +286,21 @@ export function computeDeadline(chore, date, blocks) {
   }
 }
 
+// Canonical within-place chore order (F49). Chores share one global
+// `sort_order` rank; it's applied INSIDE each place group so the same
+// activity lands in the same position at every place it fans out to.
+// A positive rank sorts ascending (1 = first); an unranked chore
+// (sort_order 0 / null) sinks below the ranked ones and tie-breaks on
+// title, so a fresh, all-unranked set still reads alphabetically.
+// Used by the Today view, the All-chores "by place" tree, and Rounds so
+// the order is consistent everywhere it's "pulled in".
+export function compareChoreOrder(a, b) {
+  const ra = a?.sortOrder ? a.sortOrder : Infinity;
+  const rb = b?.sortOrder ? b.sortOrder : Infinity;
+  if (ra !== rb) return ra - rb;
+  return (a?.title ?? "").localeCompare(b?.title ?? "");
+}
+
 // A chore's start time as a Date on `date`. New-model chores derive it
 // from their block's resolved start; legacy chores use chore.startTime.
 function choreStartAt(chore, date, blocks) {

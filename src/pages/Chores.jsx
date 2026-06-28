@@ -8,6 +8,7 @@ import {
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete,
   obligationPlaceIds, describeChoreAnchor, describeChoreSchedule,
+  compareChoreOrder,
 } from "../lib/chores.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
@@ -437,9 +438,9 @@ function TodayPlaceTree({
         byPlace.get(pid).push({ inst, placeId: pid });
       }
     }
-    const byTitle = (a, b) =>
-      (a.inst.chore.title ?? "").localeCompare(b.inst.chore.title ?? "");
-    for (const list of byPlace.values()) list.sort(byTitle);
+    const byOrder = (a, b) =>
+      compareChoreOrder(a.inst.chore, b.inst.chore);
+    for (const list of byPlace.values()) list.sort(byOrder);
 
     // Subtree counts drive the auto-fold + top-level pruning.
     const counts = new Map();
@@ -458,7 +459,7 @@ function TodayPlaceTree({
       farm.push(...(byPlace.get(root.id) ?? []));
       byPlace.delete(root.id);
     }
-    farm.sort(byTitle);
+    farm.sort(byOrder);
 
     const top = [];
     for (const root of roots ?? []) {
@@ -855,11 +856,10 @@ function PlaceGroupedChores({
         byPlace.get(pid).push({ chore, placeIds });
       }
     }
-    const byTitle = (a, b) =>
-      (a.chore.title ?? "").localeCompare(b.chore.title ?? "");
-    for (const list of byPlace.values()) list.sort(byTitle);
-    farm.sort(byTitle);
-    sleeping.sort((a, b) => (a.title ?? "").localeCompare(b.title ?? ""));
+    const byOrder = (a, b) => compareChoreOrder(a.chore, b.chore);
+    for (const list of byPlace.values()) list.sort(byOrder);
+    farm.sort(byOrder);
+    sleeping.sort(compareChoreOrder);
     return { choresByPlace: byPlace, wholeFarm: farm, dormant: sleeping };
   }, [defs, choreCtx]);
 
