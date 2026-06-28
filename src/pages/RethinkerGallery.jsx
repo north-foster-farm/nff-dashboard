@@ -1,7 +1,7 @@
 import {
   Eyebrow, LoadMeter, LoadTrack, NowRule, SealStamp, RoundsCheckbox,
   DaySilhouette, EventBand, NeedsCoverCard, ConfirmCard, SourceChangeStrip,
-  BlockCard, SearchToAdd,
+  BlockCard, SearchToAdd, OutboxIndicator, DesktopRibbon, WeekSpines,
 } from "../components/rethinker/RethinkerKit.jsx";
 
 // Rethinker port gallery — the mockup's components ported 1:1 into our
@@ -121,8 +121,20 @@ export default function RethinkerGallery() {
           </div>
         </Specimen>
 
-        <Specimen n="11" title="Search-to-add" mapsTo="Add-chore / CommandPalette" wide>
+        <Specimen n="11" title="Search-to-add" mapsTo="Add-chore / CommandPalette">
           <div className="max-w-[360px]"><SearchToAdd /></div>
+        </Specimen>
+
+        <Specimen n="12" title="Outbox indicator" mapsTo="offline / queued writes">
+          <OutboxIndicator count={1} />
+        </Specimen>
+
+        <Specimen n="13" title="Desktop two-lane ribbon" mapsTo="desktop Schedule (wide tier)" wide>
+          <DesktopRibbon />
+        </Specimen>
+
+        <Specimen n="14" title="Week mini-spines + should-heat" mapsTo="the week pane" wide>
+          <WeekSpines />
         </Specimen>
       </div>
     </div>
