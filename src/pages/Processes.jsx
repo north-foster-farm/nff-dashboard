@@ -5,6 +5,9 @@ import {
 } from "lucide-react";
 import { useProcesses } from "../lib/data/useProcesses.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
+import { useSites } from "../lib/data/useSites.js";
+import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
+import ChoreFieldsEditor from "../components/ChoreFieldsEditor.jsx";
 import { describeOffset } from "../lib/processes.js";
 import { MODIFIER_ACTION_LABEL } from "../lib/modifiers.js";
 import { formatDate } from "../lib/dates.js";
@@ -176,6 +179,15 @@ function SavedInput({
 
 function ProcessEditor({ process, kinds, proc }) {
   const { definitions } = useChoreDefinitions();
+  // The chore-template fields a chore-kind step authors reuse the exact
+  // chore CRUD controls (<ChoreFieldsEditor>), so they need the same
+  // reference data the Chores editor pulls.
+  const { places, groups, speciesById } = useSites();
+  const { blocks } = useChoreBlocks();
+  // New chore steps seed to the morning block so they never start
+  // null (matches the expansion floor; resolved by stable slug).
+  const morningBlockId = blocks.find(b => b.slug === "morning")?.id;
+  const editorData = { places, blocks, groups, speciesById };
 
   return (
     <>
@@ -249,12 +261,14 @@ function ProcessEditor({ process, kinds, proc }) {
               step={step}
               proc={proc}
               chores={definitions ?? []}
+              editorData={editorData}
             />
           ))}
           <div className="flex items-center gap-2">
             <button
               onClick={() => proc.createStep(process.id, {
                 title: "New chore", kind: "chore", offsetDays: 0,
+                blockId: morningBlockId,
               }).catch(() => {})}
               className="inline-flex items-center gap-1 bg-transparent border border-dashed border-line text-dim hover:text-fg hover:border-accent font-[inherit] text-[11px] font-semibold px-2.5 py-1.5 cursor-pointer"
             >
@@ -272,8 +286,9 @@ function ProcessEditor({ process, kinds, proc }) {
           </div>
         </div>
         <p className="text-[11px] text-faint leading-relaxed m-0 mt-2">
-          Tasks become one-time chores, dated relative to the event.
-          Chore changes write a one-day modifier onto an existing chore
+          Chore steps become one-time chores, dated relative to the
+          event. Chore changes write a one-day modifier onto an existing
+          chore
           (skip it, replace it, add an instruction, or tighten its
           deadline).
         </p>
@@ -308,8 +323,11 @@ function Block({ title, children }) {
   );
 }
 
-// One process step row: offset + (task title | chore + action + text).
-function StepEditor({ step, proc, chores }) {
+// One process step row: offset + (chore template | chore-change target
+// + action + text). A chore-kind step is a full chore template authored
+// with the shared <ChoreFieldsEditor>; only its date (event + offset)
+// and concrete batch/species anchor are resolved later, at expansion.
+function StepEditor({ step, proc, chores, editorData }) {
   const isModifier = step.kind === "chore_modifier";
 
   return (
@@ -334,7 +352,7 @@ function StepEditor({ step, proc, chores }) {
             ? "text-accent-deep border-accent-deep"
             : "text-dim border-line")
         }>
-          {isModifier ? "Chore change" : "Task"}
+          {isModifier ? "Chore change" : "Chore"}
         </span>
         <button
           onClick={() => proc.removeStep(step.id).catch(() => {})}
@@ -389,22 +407,34 @@ function StepEditor({ step, proc, chores }) {
           )}
         </div>
       ) : (
-        <>
-          <SavedInput
-            value={step.title}
-            onSave={(v) => v && proc.updateStep(step.id, { title: v })
-              .catch(() => {})}
-            className="bg-surface border border-line text-fg text-[13px] px-2 py-1.5 outline-none focus:border-accent font-[inherit] w-full"
-            placeholder="Task title"
-          />
-          <SavedInput
-            value={step.bodyMd ?? ""}
-            onSave={(v) => proc.updateStep(step.id, { bodyMd: v })
-              .catch(() => {})}
-            className="bg-surface border border-line text-dim text-[12px] px-2 py-1.5 outline-none focus:border-accent font-[inherit] w-full"
-            placeholder="Details (optional, markdown)"
-          />
-        </>
+        <ChoreFieldsEditor
+          value={{
+            title: step.title,
+            description: step.bodyMd ?? "",
+            blockId: step.blockId ?? null,
+            lastChanceBlockId: step.lastChanceBlockId ?? null,
+            anchorType: step.anchorType ?? "none",
+            anchorKindTag: step.anchorKindTag ?? null,
+            placeId: step.placeId ?? null,
+            atPlaceId: step.atPlaceId ?? null,
+          }}
+          onChange={(patch) => {
+            // The step stores the chore description in body_md; every
+            // other field maps straight through to stepPatch.
+            const out = { ...patch };
+            if ("description" in out) {
+              out.bodyMd = out.description;
+              delete out.description;
+            }
+            proc.updateStep(step.id, out).catch(() => {});
+          }}
+          places={editorData.places}
+          blocks={editorData.blocks}
+          groups={editorData.groups}
+          speciesById={editorData.speciesById}
+          concreteAnimals={false}
+          commitMode="blur"
+        />
       )}
     </div>
   );

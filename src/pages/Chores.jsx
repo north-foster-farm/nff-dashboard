@@ -15,7 +15,7 @@ import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
 import { useSites } from "../lib/data/useSites.js";
-import { buildPlaceTree, childrenOf } from "../lib/places.js";
+import { childrenOf } from "../lib/places.js";
 import {
   useChoreBlocks, formatMinutesOfDay,
 } from "../lib/data/useChoreBlocks.js";
@@ -31,6 +31,9 @@ import ChoresPerformanceTab from "../components/ChoresPerformanceTab.jsx";
 import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 import AssignmentRulesEditor from "../components/AssignmentRulesEditor.jsx";
+import ChoreFieldsEditor, {
+  EditField, editInputStyle,
+} from "../components/ChoreFieldsEditor.jsx";
 import {
   PlaceTreeNode, PlaceTreeSection,
 } from "../components/PlaceTree.jsx";
@@ -1192,24 +1195,6 @@ function ChipSep() {
   return <span aria-hidden style={{ color: T.textFaint, userSelect: "none" }}>·</span>;
 }
 
-// Depth-ordered, indented options for a place <select>. A chore scoped
-// to a place applies to that place's whole subtree, so any node is a
-// valid target. Order is a pre-order tree walk; depth drives the indent.
-function placeSelectOptions(places) {
-  const { childrenByParent } = buildPlaceTree(
-    (places ?? []).filter(p => p.isActive !== false)
-  );
-  const out = [];
-  const walk = (parentId, depth) => {
-    for (const p of childrenByParent.get(parentId) ?? []) {
-      out.push({ id: p.id, label: `${"  ".repeat(depth)}${p.name}` });
-      walk(p.id, depth + 1);
-    }
-  };
-  walk(null, 0);
-  return out;
-}
-
 // ── Schedule (block) quick-edit ────────────────────────────────────
 function ScheduleQuickEdit({ chore, blocks, onSave, onCancel }) {
   const initial = chore.blockId ?? "";
@@ -1462,145 +1447,55 @@ function RowActions({ editing, onEdit, onDelete }) {
 }
 
 // Inline editor body — lives where ExpandedChoreDetail normally renders.
-// Editable fields: title, description, the anchor ("belongs to" — what
-// drives where obligations surface), block, sort_order. Frequency,
-// deadline, and per-day-of-week assignment editing are out of scope
-// for v1 — those JSON shapes deserve dedicated editors later.
+// The chore field-set (title, description, "belongs to" anchor, When
+// block, deadline block) is rendered by the shared <ChoreFieldsEditor>
+// — the same control set the Processes step editor uses, so the two
+// stay in lockstep. This host adds the chore-only bits around it: sort
+// order, the assignment-rules editor, and an explicit Save (the draft
+// accumulates locally and persists once, on Save).
 function ChoreInlineEditor({
   chore, places, blocks, groups, speciesById, choreCtx, onCancel, onSave,
 }) {
-  const [title, setTitle] = useState(chore.title);
-  const [description, setDescription] = useState(chore.description ?? "");
-  const [blockId, setBlockId] = useState(chore.blockId ?? "");
-  const [lastChanceBlockId, setLastChanceBlockId] = useState(
-    chore.lastChanceBlockId ?? ""
-  );
+  const [draft, setDraft] = useState(() => ({
+    title: chore.title,
+    description: chore.description ?? "",
+    blockId: chore.blockId ?? null,
+    lastChanceBlockId: chore.lastChanceBlockId ?? null,
+    anchorType:
+      chore.anchorType ?? (chore.placeId ? "occupied_place" : "none"),
+    anchorSpeciesId: chore.anchorSpeciesId ?? null,
+    anchorBatchId: chore.anchorBatchId ?? null,
+    anchorKindTag: chore.anchorKindTag ?? null,
+    placeId: chore.placeId ?? null,
+    atPlaceId: chore.atPlaceId ?? null,
+  }));
   const [sortOrder, setSortOrder] = useState(chore.sortOrder ?? 0);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // ── Anchor ("belongs to") state ──────────────────────────────────
-  // Four UI modes mapping onto the six anchor types:
-  //   animals    → 'species' | 'batch'
-  //   place      → 'place' | 'occupied_place' (checkbox)
-  //   place_kind → 'place_kind'
-  //   none       → 'none'
-  const initialType =
-    chore.anchorType ?? (chore.placeId ? "occupied_place" : "none");
-  const [anchorMode, setAnchorMode] = useState(
-    initialType === "species" || initialType === "batch" ? "animals"
-    : initialType === "place" || initialType === "occupied_place" ? "place"
-    : initialType === "place_kind" ? "place_kind"
-    : "none"
-  );
-  // animals mode: "species:<id>" or "batch:<id>"
-  const [animalKey, setAnimalKey] = useState(
-    initialType === "batch" && chore.anchorBatchId
-      ? `batch:${chore.anchorBatchId}`
-      : initialType === "species" && chore.anchorSpeciesId
-        ? `species:${chore.anchorSpeciesId}`
-        : ""
-  );
-  const [housedTag, setHousedTag] = useState(
-    initialType === "species" || initialType === "batch"
-      ? chore.anchorKindTag ?? ""
-      : ""
-  );
-  const [atPlaceId, setAtPlaceId] = useState(chore.atPlaceId ?? "");
-  const [placeId, setPlaceId] = useState(chore.placeId ?? "");
-  const [occupiedOnly, setOccupiedOnly] = useState(
-    initialType === "occupied_place"
-  );
-  const [kindTag, setKindTag] = useState(
-    initialType === "place_kind" ? chore.anchorKindTag ?? "" : ""
-  );
-
-  const placeOptions = placeSelectOptions(places);
-  const activeBlocks = blocks.filter(b => b.isActive);
-  const speciesList = [...(speciesById?.values() ?? [])];
-  const kindTags = [...new Set(
-    (places ?? [])
-      .filter(p => p.isActive !== false && p.kindTag)
-      .map(p => p.kindTag)
-  )].sort();
-  const prettyTag = (tag) => tag.replaceAll("_", " ");
-
-  // The anchor portion of the save patch, derived from the UI mode.
-  // Every anchor field is written every time so switching modes clears
-  // the fields the new mode doesn't use.
-  const anchorPatch = () => {
-    if (anchorMode === "animals") {
-      const [kind, id] = animalKey.split(":");
-      if (!id) return null; // validation failure
-      return {
-        anchorType: kind === "batch" ? "batch" : "species",
-        anchorSpeciesId: kind === "species" ? id : null,
-        anchorBatchId: kind === "batch" ? id : null,
-        anchorKindTag: housedTag || null,
-        atPlaceId: atPlaceId || null,
-        placeId: null,
-      };
-    }
-    if (anchorMode === "place") {
-      if (!placeId) return null;
-      return {
-        anchorType: occupiedOnly ? "occupied_place" : "place",
-        anchorSpeciesId: null,
-        anchorBatchId: null,
-        anchorKindTag: null,
-        atPlaceId: null,
-        placeId,
-      };
-    }
-    if (anchorMode === "place_kind") {
-      if (!kindTag) return null;
-      return {
-        anchorType: "place_kind",
-        anchorSpeciesId: null,
-        anchorBatchId: null,
-        anchorKindTag: kindTag,
-        atPlaceId: null,
-        placeId: null,
-      };
-    }
-    return {
-      anchorType: "none",
-      anchorSpeciesId: null,
-      anchorBatchId: null,
-      anchorKindTag: null,
-      atPlaceId: null,
-      placeId: null,
-    };
-  };
+  const patch = (p) => setDraft(d => ({ ...d, ...p }));
 
   const submit = async () => {
-    if (!title.trim()) {
+    if (!draft.title.trim()) {
       setErrorMsg("Title can't be empty.");
-      return;
-    }
-    const anchor = anchorPatch();
-    if (!anchor) {
-      setErrorMsg(
-        anchorMode === "animals"
-          ? "Pick which animals this chore belongs to."
-          : anchorMode === "place"
-            ? "Pick which place this chore belongs to."
-            : "Pick a kind of place."
-      );
       return;
     }
     setErrorMsg(null);
     setSaving(true);
     try {
-      const patch = {
-        title: title.trim(),
-        description: description,
+      await onSave({
+        title: draft.title.trim(),
+        description: draft.description,
         sortOrder: Number(sortOrder) || 0,
-        blockId: blockId || null,
-        lastChanceBlockId: lastChanceBlockId || null,
-        ...anchor,
-      };
-      await onSave(patch);
+        blockId: draft.blockId || null,
+        lastChanceBlockId: draft.lastChanceBlockId || null,
+        anchorType: draft.anchorType,
+        anchorSpeciesId: draft.anchorSpeciesId ?? null,
+        anchorBatchId: draft.anchorBatchId ?? null,
+        anchorKindTag: draft.anchorKindTag ?? null,
+        placeId: draft.placeId ?? null,
+        atPlaceId: draft.atPlaceId ?? null,
+      });
     } catch (err) {
       console.error("save chore:", err);
       setErrorMsg(err?.message ?? "Save failed.");
@@ -1617,177 +1512,16 @@ function ChoreInlineEditor({
       flexDirection: "column",
       gap: 12,
     }}>
-      <EditField label="Title">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          style={editInputStyle}
-        />
-      </EditField>
-      <EditField label="Description">
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={2}
-          style={{ ...editInputStyle, resize: "vertical", fontFamily: "inherit" }}
-        />
-      </EditField>
-      <EditField label="Belongs to">
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <AnchorModeRadio
-            value={anchorMode}
-            onChange={setAnchorMode}
-            options={[
-              { id: "animals", label: "Animals" },
-              { id: "place", label: "A place" },
-              { id: "place_kind", label: "Every place of a kind" },
-              { id: "none", label: "Nothing — whole farm" },
-            ]}
-          />
-          {anchorMode === "animals" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 22 }}>
-              <select
-                value={animalKey}
-                onChange={(e) => setAnimalKey(e.target.value)}
-                style={editInputStyle}
-              >
-                <option value="">— pick animals —</option>
-                <optgroup label="A species (every batch)">
-                  {speciesList.map(s => (
-                    <option key={s.id} value={`species:${s.id}`}>
-                      {s.name}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="One specific batch">
-                  {(groups ?? []).map(g => (
-                    <option key={g.id} value={`batch:${g.id}`}>
-                      {g.label}
-                      {speciesById?.get(g.speciesId)
-                        ? ` (${speciesById.get(g.speciesId).name})`
-                        : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <select
-                  value={housedTag}
-                  onChange={(e) => setHousedTag(e.target.value)}
-                  style={editInputStyle}
-                  title="Only count these animals where they're housed in this kind of place"
-                >
-                  <option value="">housed anywhere</option>
-                  {kindTags.map(tag => (
-                    <option key={tag} value={tag}>
-                      housed in {prettyTag(tag)}s
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={atPlaceId}
-                  onChange={(e) => setAtPlaceId(e.target.value)}
-                  style={editInputStyle}
-                  title="Where the work physically happens"
-                >
-                  <option value="">work happens where they live</option>
-                  {placeOptions.map(o => (
-                    <option key={o.id} value={o.id}>
-                      work happens at {o.label.trim()}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
-                The chore follows these animals — move them and the
-                chore moves with them. No active animals → the chore
-                goes dormant. "Wash eggs" belongs to the layers but
-                happens at the House.
-              </div>
-            </div>
-          )}
-          {anchorMode === "place" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 22 }}>
-              <select
-                value={placeId}
-                onChange={(e) => setPlaceId(e.target.value)}
-                style={editInputStyle}
-              >
-                <option value="">— pick a place —</option>
-                {placeOptions.map(o => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
-                ))}
-              </select>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: T.textDim, cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={occupiedOnly}
-                  onChange={(e) => setOccupiedOnly(e.target.checked)}
-                />
-                Only where animals currently live (fans into occupied
-                places beneath it)
-              </label>
-              <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
-                Unchecked: the chore sticks to this exact place whether
-                or not anything lives there ("mow Pasture B").
-              </div>
-            </div>
-          )}
-          {anchorMode === "place_kind" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 22 }}>
-              <select
-                value={kindTag}
-                onChange={(e) => setKindTag(e.target.value)}
-                style={editInputStyle}
-              >
-                <option value="">— pick a kind —</option>
-                {kindTags.map(tag => (
-                  <option key={tag} value={tag}>
-                    every {prettyTag(tag)}
-                  </option>
-                ))}
-              </select>
-              <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
-                One obligation per active place of this kind, occupied
-                or not ("power-wash nest boxes" → every coop).
-              </div>
-            </div>
-          )}
-        </div>
-      </EditField>
-      <EditField label="When">
-        <select
-          value={blockId}
-          onChange={(e) => setBlockId(e.target.value)}
-          style={editInputStyle}
-        >
-          <option value="">— anytime —</option>
-          {activeBlocks.map(b => (
-            <option key={b.id} value={b.id}>
-              {b.name} · {displayBlockSide(b.startKind, b.startMinutes)}
-            </option>
-          ))}
-        </select>
-      </EditField>
-      <EditField label="Deadline block">
-        <select
-          value={lastChanceBlockId}
-          onChange={(e) => setLastChanceBlockId(e.target.value)}
-          style={editInputStyle}
-        >
-          <option value="">— no specific deadline —</option>
-          {activeBlocks.map(b => (
-            <option key={b.id} value={b.id}>
-              {b.name} · {displayBlockSide(b.startKind, b.startMinutes)}
-            </option>
-          ))}
-        </select>
-        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
-          The last block on the deadline day before the chore counts as
-          overrun. Drives the "(N days remaining)" pill on multi-day
-          and anytime chores.
-        </div>
-      </EditField>
+      <ChoreFieldsEditor
+        value={draft}
+        onChange={patch}
+        places={places}
+        blocks={blocks}
+        groups={groups}
+        speciesById={speciesById}
+        concreteAnimals
+        commitMode="change"
+      />
       <EditField label="Sort order">
         <input
           type="number"
@@ -1838,55 +1572,6 @@ function ChoreInlineEditor({
     </div>
   );
 }
-
-function EditField({ label, children }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{
-        fontSize: 9,
-        color: T.textFaint,
-        textTransform: "uppercase",
-        letterSpacing: "0.12em",
-      }}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-// Radio row for the anchor mode in ChoreInlineEditor.
-function AnchorModeRadio({ value, onChange, options }) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px" }}>
-      {options.map(o => (
-        <label
-          key={o.id}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            fontSize: 12, color: value === o.id ? T.text : T.textDim,
-            cursor: "pointer",
-          }}
-        >
-          <input
-            type="radio"
-            name="chore-anchor-mode"
-            checked={value === o.id}
-            onChange={() => onChange(o.id)}
-          />
-          {o.label}
-        </label>
-      ))}
-    </div>
-  );
-}
-
-const editInputStyle = {
-  background: T.surface,
-  border: `1px solid ${T.border}`,
-  color: T.text,
-  fontSize: 12,
-  padding: "6px 8px",
-  fontFamily: "inherit",
-};
 
 function IconAction({ title, onClick, active, children }) {
   return (

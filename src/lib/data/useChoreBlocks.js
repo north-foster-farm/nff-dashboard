@@ -9,7 +9,7 @@ import { resolveBlockMinutes } from "../sunTimes.js";
 //
 // Returned shape:
 //   {
-//     blocks: [{ id, name, startKind, startMinutes,
+//     blocks: [{ id, name, slug, startKind, startMinutes,
 //                durationMinutes, sortOrder, isActive }],
 //     blocksOrdered: blocks sorted ascending by today's resolved
 //                    start minutes — what the UI should render,
@@ -26,7 +26,8 @@ import { resolveBlockMinutes } from "../sunTimes.js";
 // persist; on persistence failure we revert.
 
 const SELECT_COLS =
-  "id, name, start_kind, start_minutes, duration_minutes, sort_order, is_active";
+  "id, name, slug, start_kind, start_minutes, duration_minutes, " +
+  "sort_order, is_active";
 
 export function useChoreBlocks() {
   const instanceId = useId();
@@ -72,6 +73,7 @@ export function useChoreBlocks() {
     const list = (blocks ?? []).map(b => ({
       id: b.id,
       name: b.name,
+      slug: b.slug,
       startKind: b.start_kind,
       startMinutes: b.start_minutes,
       durationMinutes: b.duration_minutes,
