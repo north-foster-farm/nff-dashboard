@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Lightbulb, Send } from "lucide-react";
+import { Lightbulb, Send, X } from "lucide-react";
 import { useInboxItems } from "../lib/data/useInboxItems.js";
 
 // Top-bar "just a thought…" capture (Batch 21). A lightbulb button
@@ -62,23 +62,29 @@ export default function ThoughtCapture() {
           role="dialog"
           aria-label="Capture a thought"
         >
-          <div className="font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-bold">
-            Just a thought…
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-bold">
+              Just a thought…
+            </div>
+            {/* Explicit close — outside-click alone wasn't obvious, esp. on
+                mobile (F1). */}
+            <button type="button" onClick={() => setOpen(false)}
+              aria-label="Close"
+              className="bg-transparent border-0 text-faint hover:text-fg p-0.5 cursor-pointer">
+              <X size={14} />
+            </button>
           </div>
           <textarea
             autoFocus
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
-            }}
             rows={3}
-            placeholder="Anything worth not forgetting. It lands in the Inbox — not a project, not a chore, just captured."
+            placeholder="Anything worth not forgetting — lands in your Inbox."
             className="bg-bg border border-line text-fg text-[13px] px-3 py-2 outline-none focus:border-accent font-[inherit] w-full resize-none leading-relaxed"
           />
           <div className="flex items-center justify-between gap-2">
             <span className="text-[10px] text-faint">
-              {savedFlash ? "Captured ✓" : "⌘↵ to save"}
+              {savedFlash ? "Captured ✓" : ""}
             </span>
             <button
               onClick={submit}
