@@ -46,6 +46,7 @@ import { useEventSeries } from "../lib/data/useEventSeries.js";
 import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
 import { DayRailSpine, DayStrip, WeekList } from "../components/ScheduleSidebars.jsx";
+import LoadMeterSpecimen from "../components/schedule/LoadMeterSpecimen.jsx";
 import { WeekView, MonthView } from "../components/ScheduleZoom.jsx";
 import { ScheduleReview } from "../components/ScheduleReview.jsx";
 import { weekFullness, weekDays } from "../lib/schedule/weekView.js";
@@ -2057,6 +2058,8 @@ export default function Schedule({ data }) {
 
       <div className="flex-1 min-w-0 pb-24 lg:px-8">
       <PageHeader title="Schedule" subtitle={subtitle} />
+
+      <LoadMeterSpecimen />
 
       {viewMode === "week" ? (
         <WeekView
