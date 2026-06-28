@@ -2128,7 +2128,7 @@ export default function Schedule({ data }) {
           <button
             type="button"
             onClick={() => setPicking(true)}
-            className="text-[12px] font-medium text-accent inline-flex items-center gap-1 cursor-pointer"
+            className="text-[12px] font-medium text-accent hover:brightness-110 inline-flex items-center gap-1 cursor-pointer"
           >
             <Plus size={14} /> Add chore
           </button>

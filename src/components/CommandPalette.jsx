@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search, CornerDownLeft, ArrowRight, Bird, FolderKanban, MapPin,
-  Users, Tag, Store, Cog, Truck, MessageCircleQuestion, Receipt,
+  Users, Tag, Store, Cog, Truck, MessageCircleQuestion, Receipt, X,
 } from "lucide-react";
 import { SECTIONS } from "../sections.jsx";
 import { navigate, pathForSection } from "../lib/router.js";
@@ -158,6 +158,12 @@ export default function CommandPalette({ open, onClose, data }) {
           <kbd className="hidden sm:inline text-[10px] text-faint border border-line px-1.5 py-0.5 uppercase tracking-[0.1em]">
             Esc
           </kbd>
+          {/* Phones don't show the Esc hint and the backdrop tap isn't
+              obvious — give an explicit close (F2). */}
+          <button type="button" onClick={onClose} aria-label="Close"
+            className="sm:hidden shrink-0 text-faint hover:text-fg p-0.5 cursor-pointer">
+            <X size={16} />
+          </button>
         </div>
 
         {/* results */}
