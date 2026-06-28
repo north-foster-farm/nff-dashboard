@@ -45,14 +45,11 @@
   --color-warn:         var(--c-warn);
   --color-resolved:     var(--c-resolved);
   --color-project:      var(--c-project);
-  --color-now:          var(--c-now);
   --color-on-accent:    var(--c-on-accent);
   --color-on-cat:       var(--c-on-cat);
   --color-row-active:     var(--c-row-active);
   --color-row-active-dim: var(--c-row-active-dim);
   --color-row-hover:      var(--c-row-hover);
-  --color-block-chore:    var(--c-block-chore);
-  --color-block-project:  var(--c-block-project);
 
   /* Category dots — surfaced for the schedule + event color-key. */
   --color-cat-fm:          var(--c-cat-fm);
