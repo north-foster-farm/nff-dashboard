@@ -79,7 +79,7 @@ function Lane({ name, badge, segments, span, axisStart }) {
   );
 }
 
-export default function DayRibbon({ lanes, axisStart, axisEnd, nowMin }) {
+export default function DayRibbon({ lanes, axisStart, axisEnd, nowMin, silhouette }) {
   const span = Math.max(axisEnd - axisStart, 60);
   const hours = [];
   for (let m = axisStart; m <= axisEnd; m += 60) hours.push(m);
@@ -138,6 +138,29 @@ export default function DayRibbon({ lanes, axisStart, axisEnd, nowMin }) {
           </div>
         )}
       </div>
+
+      {/* combined day silhouette — the whole day's load as one bar per
+          block (height = item count), colored by completion / man-down. */}
+      {silhouette && silhouette.bars.length > 0 && (
+        <div className="px-5 pb-4">
+          <span className="block mb-1.5 font-ui text-[10px] font-semibold uppercase tracking-[0.12em] text-faint">
+            Day load — combined silhouette
+          </span>
+          <div className="flex items-end gap-0.5 h-10 border-b border-line">
+            {silhouette.bars.map((b) => (
+              <div
+                key={b.key}
+                className="flex-1"
+                title={b.name + " · " + b.load}
+                style={{
+                  height: Math.max(8, (b.load / silhouette.max) * 100) + "%",
+                  ...segStyle(b.state),
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

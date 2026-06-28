@@ -48,6 +48,7 @@ import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
 import { DayRailSpine, DayStrip, WeekList } from "../components/ScheduleSidebars.jsx";
 import DayRibbon from "../components/schedule/DayRibbon.jsx";
+import WeekSpines from "../components/schedule/WeekSpines.jsx";
 import { buildPersonLanes } from "../lib/schedule/personLoad.js";
 import { WeekView, MonthView } from "../components/ScheduleZoom.jsx";
 import { ScheduleReview } from "../components/ScheduleReview.jsx";
@@ -1208,6 +1209,27 @@ export default function Schedule({ data }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockRows, windows, manDown, completions, startMinByBucket, blocksById]);
 
+  // The combined day silhouette (the ribbon's bottom strip): the whole
+  // day's load as one bar per real block — height = item count, colored by
+  // completion, amber where the block carries a man-down.
+  const daySilhouette = useMemo(() => {
+    const bars = blockRows
+      .filter((b) => b.block && b.startMin != null)
+      .map((b) => {
+        const c = countByBucket.get(b.bucket) ?? { done: 0, total: 0 };
+        const hole = b.rows.some((r) => manDown.has(r.key));
+        return {
+          key: b.bucket,
+          name: b.block?.name ?? "",
+          load: c.total,
+          state: hole ? "hole"
+            : c.total > 0 && c.done === c.total ? "done" : "committed",
+        };
+      });
+    const max = Math.max(1, ...bars.map((b) => b.load));
+    return { bars, max };
+  }, [blockRows, countByBucket, manDown]);
+
   // The merged day timeline: chore blocks + event entries + project gaps +
   // overnight, in time order (the leading overnight pins first, the trailing
   // last — via startKey). "now"/seal stay on chore blocks; events are lines.
@@ -2179,12 +2201,23 @@ export default function Schedule({ data }) {
       ) : (
        <>
       {/* Desktop two-lane time ribbon (Rethinker Phase 3) — the day read as
-          per-person load. lg-only; the component hides itself below lg. */}
+          per-person load + the combined day silhouette. lg-only; the
+          component hides itself below lg. */}
       <DayRibbon
         lanes={personLanes.lanes}
         axisStart={personLanes.axisStart}
         axisEnd={personLanes.axisEnd}
         nowMin={viewingToday ? nowMin : null}
+        silhouette={daySilhouette}
+      />
+      {/* Week mini-spines — the week's shape as seven little load silhouettes
+          (lg-only). Tapping a day opens it. */}
+      <WeekSpines
+        week={week}
+        todayISO={realTodayISO}
+        selectedISO={dateISO}
+        ymd={ymdLocal}
+        onPickDay={openDay}
       />
       {/* Source-changed-after-confirm ribbon — informs, never auto-applies.
           Standardised to the carry-over banner shape (F22) and dismissible
