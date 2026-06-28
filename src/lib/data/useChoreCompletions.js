@@ -204,36 +204,27 @@ export function useChoreCompletions(date) {
     };
   }, [dateStr, maybeReload]);
 
-  // ── Realtime subscription, scoped to today's rows ──────────────────
-  // Filter pushes the date predicate down to the server so we don't get
-  // pinged about every chore in history.
+  // ── Realtime subscription → debounced day refetch ──────────────────
+  // We intentionally DON'T filter on completion_date. Supabase Realtime only
+  // delivers DELETE events to a *filtered* subscription when the table is
+  // REPLICA IDENTITY FULL — by default the delete payload carries just the PK,
+  // so a `completion_date=eq.X` filter silently drops every DELETE. That made
+  // a tick (INSERT) sync across devices but an untick (DELETE) not (F16). Any
+  // change to the table now triggers a debounced refetch of this day's rows,
+  // which applies INSERT/UPDATE/DELETE uniformly regardless of replica
+  // identity; this device's own ticks stay instant via the outbox overlay.
   useEffect(() => {
+    let scheduled = false;
+    const bump = () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(() => { scheduled = false; setReloadTick((t) => t + 1); }, 120);
+    };
     const channel = realtimeChannel(`chore_completions:${dateStr}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "chore_completions",
-          filter: `completion_date=eq.${dateStr}`
-        },
-        (payload) => {
-          setRowsByKey((prev) => {
-            if (!prev) return prev;
-            const next = new Map(prev);
-            if (
-              payload.eventType === "INSERT" ||
-              payload.eventType === "UPDATE"
-            ) {
-              const row = payload.new;
-              next.set(keyOf(row.chore_id, row.place_id), row);
-            } else if (payload.eventType === "DELETE") {
-              const row = payload.old;
-              next.delete(keyOf(row.chore_id, row.place_id));
-            }
-            return next;
-          });
-        }
+        { event: "*", schema: "public", table: "chore_completions" },
+        bump,
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
