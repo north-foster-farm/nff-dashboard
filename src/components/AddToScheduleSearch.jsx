@@ -7,7 +7,7 @@ import { obligationPlaceIds, describeChoreAnchor } from "../lib/chores.js";
 // The Schedule's add-to-day search (S33) — the mockup's Hero 4. One field,
 // categorised results:
 //   • Chores — deduped by title. A chore that fans out to several places
-//     appears ONCE ("N places · pick one") and a tap narrows to the place;
+//     appears ONCE ("N places", a Narrow affordance) and a tap narrows;
 //     a single-place chore adds in one tap.
 //   • One-off task — turns the raw query into a commitment.
 // Picking a place (or a single-place chore) writes the same chore_completion
@@ -317,7 +317,7 @@ export default function AddToScheduleSearch({
                             </div>
                             <div className="text-[12px] text-faint truncate">
                               {multi
-                                ? `${g.places.length} places · pick one`
+                                ? `${g.places.length} places`
                                 : (single?.name ?? g.sublabel ?? "anytime")}
                             </div>
                           </div>
