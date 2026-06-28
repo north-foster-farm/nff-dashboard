@@ -21,6 +21,7 @@ import { deriveDay, rollupChoresForDay } from "../lib/schedule/deriveDay.js";
 import { applyOverrides } from "../lib/schedule/overrides.js";
 import {
   computeManDown, reservationWindows, reservationWindow, pickCoverPerson,
+  ADMINS,
 } from "../lib/schedule/manDown.js";
 import {
   buffersForTarget, storedBufferWindow, describeBuffer, deriveTemplateBuffer,
@@ -1726,27 +1727,21 @@ export default function Schedule({ data }) {
   const rowLabel = (row) => row.kind === "chore"
     ? row.chore.title : (row.commitment.source_ref?.title ?? "task");
 
-  // The one-line leak text for a conflicted row: "<chore> needs cover —
-  // <person> off-site till <time>".
-  const leakLine = (row) => {
+  // The prose reason a row's assignee can't do it — "James is off-site until
+  // 1:00." Shared by the cover sheet and the needs-cover card.
+  const coverReason = (row) => {
     const res = manDown.get(row.key);
     if (!res) return null;
-    const until = res.kind === "day_off"
-      ? "today" : formatMinutesOfDay(res.endMin);
-    const word = res.kind === "break" ? "on break till"
-      : res.kind === "appointment" ? "out till"
-      : res.kind === "day_off" ? "off" : "off-site till";
-    return `${rowLabel(row)} needs cover — ${row.assignee} ${word} ${until}`;
+    if (res.kind === "day_off") return `${row.assignee} is off for the day.`;
+    const until = formatMinutesOfDay(res.endMin);
+    const where = res.kind === "break" ? "on a break"
+      : res.kind === "appointment" ? "out" : "off-site";
+    return `${row.assignee} is ${where} until ${until}.`;
   };
 
   const openCover = (row, b) => {
     const w = blockWindow(b.bucket);
-    const res = manDown.get(row.key);
-    const until = res?.kind === "day_off" ? null : formatMinutesOfDay(res?.endMin);
-    const reason = res?.kind === "day_off"
-      ? `${row.assignee} is off for the day.`
-      : `${row.assignee} is ${res?.kind === "break" ? "on a break"
-          : res?.kind === "appointment" ? "out" : "off-site"} until ${until}.`;
+    const reason = coverReason(row);
     setCovering({
       row, bucket: b.bucket,
       label: rowLabel(row),
@@ -1985,20 +1980,57 @@ export default function Schedule({ data }) {
   // overview rows and the open detail. `pad` sets the left indent.
   const blockAlerts = (b, pad) => (
     <>
-      {b.rows.filter((r) => manDown.has(r.key)).map((r) => (
-        <button
-          key={"leak|" + r.key}
-          type="button"
-          onClick={() => openCover(r, b)}
-          className={"w-full flex items-center gap-2 pr-4 pb-3 -mt-1 text-left cursor-pointer " + pad}
-        >
-          <AlertTriangle size={14} className="shrink-0 text-warn" />
-          <span className="flex-1 text-[12.5px] text-warn">{leakLine(r)}</span>
-          <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-warn border border-warn px-1.5 py-0.5">
-            Cover
-          </span>
-        </button>
-      ))}
+      {b.rows.filter((r) => manDown.has(r.key)).map((r) => {
+        const coverer = ADMINS.find((a) => a !== r.assignee);
+        return (
+          <div key={"leak|" + r.key} className={"pr-4 pb-3 -mt-1 " + pad}>
+            {/* Needs-cover card (Rethinker): a flush, amber-bordered card on
+                the page — the ⚠ eyebrow + work + reason + a single amber
+                action that opens the cover sheet. */}
+            <div
+              className="border"
+              style={{
+                borderColor: "color-mix(in srgb, var(--c-warn) 50%, transparent)",
+                background: "color-mix(in srgb, var(--c-warn) 7%, var(--c-bg))",
+              }}
+            >
+              <div
+                className="px-3 py-2 flex items-center gap-2 border-b"
+                style={{
+                  borderColor: "color-mix(in srgb, var(--c-warn) 22%, transparent)",
+                }}
+              >
+                <AlertTriangle size={15} className="shrink-0 text-warn" />
+                <span className="font-ui text-[11px] font-semibold uppercase tracking-[0.14em] text-warn">
+                  Needs cover
+                </span>
+              </div>
+              <div className="px-3 py-3">
+                <div className="text-[14px] font-medium text-fg">
+                  {rowLabel(r)}{r.placeLabel ? ` · ${r.placeLabel}` : ""}
+                </div>
+                <div className="text-[12px] text-dim mt-1 leading-snug">
+                  {coverReason(r)}
+                </div>
+                <div className="font-ui text-[12px] text-dim mt-2.5">
+                  Who can cover?
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openCover(r, b)}
+                  className="w-full mt-2 bg-warn text-on-accent border-0 py-2.5 cursor-pointer font-ui text-[12px] font-bold uppercase tracking-[0.1em]"
+                >
+                  {coverer} covers — I've got it
+                </button>
+                <div className="font-ui text-[11px] text-faint mt-2.5 leading-snug">
+                  The acknowledgment is the record — the hole closes green in
+                  {" "}{coverer}'s lane.
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
       {b.rows.filter((r) => r.edit?.cover && !r.edit.cover.ack
         && !manDown.has(r.key)).map((r) => (
         <div key={"ack|" + r.key}

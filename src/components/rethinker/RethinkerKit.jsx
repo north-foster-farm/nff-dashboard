@@ -79,7 +79,7 @@ export function LoadMeter({ lanes }) {
   return (
     <div className="flex flex-col gap-1">
       {lanes.map((lane, i) => (
-        <div key={lane.name ?? i} className="flex items-center gap-2">
+        <div key={i} className="flex items-center gap-2">
           <span className="w-[42px] shrink-0 font-ui text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
             {lane.name}
           </span>
