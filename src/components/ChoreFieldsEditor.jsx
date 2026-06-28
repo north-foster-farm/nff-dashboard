@@ -201,7 +201,8 @@ function AnchorEditor({
   const initialType =
     value.anchorType ?? (value.placeId ? "occupied_place" : "none");
   const initialMode =
-    initialType === "species" || initialType === "batch" ? "animals"
+    initialType === "species" || initialType === "batch"
+      || initialType === "former_occupancy" ? "animals"
     : initialType === "place" || initialType === "occupied_place" ? "place"
     : initialType === "place_kind" ? "place_kind"
     : "none";
@@ -210,18 +211,22 @@ function AnchorEditor({
     mode: initialMode,
     // concrete (chore): "species:<id>" | "batch:<id>"
     animalKey:
-      initialType === "batch" && value.anchorBatchId
+      (initialType === "batch" || initialType === "former_occupancy")
+        && value.anchorBatchId
         ? `batch:${value.anchorBatchId}`
         : initialType === "species" && value.anchorSpeciesId
           ? `species:${value.anchorSpeciesId}`
           : "",
-    // shape (step): 'batch' | 'species'
+    // shape (step): 'batch' | 'species'. former_occupancy is batch-only.
     animalScope:
-      initialType === "batch" || initialType === "species"
-        ? initialType
-        : "batch",
+      initialType === "species" ? "species" : "batch",
+    // cleanup-after-leaving: anchor to the places the batch USED, even
+    // once it's moved on (brooder cleanout). Resolves via placement
+    // history, kind-filtered by housedTag.
+    formerOccupancy: initialType === "former_occupancy",
     housedTag:
       initialType === "species" || initialType === "batch"
+        || initialType === "former_occupancy"
         ? value.anchorKindTag ?? ""
         : "",
     atPlaceId: value.atPlaceId ?? "",
@@ -336,10 +341,32 @@ function AnchorEditor({
               ))}
             </select>
           </div>
+          {anchor.housedTag &&
+            (concreteAnimals
+              ? anchor.animalKey.startsWith("batch:")
+              : anchor.animalScope === "batch") && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: T.textDim, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={anchor.formerOccupancy}
+                onChange={(e) => update({ formerOccupancy: e.target.checked })}
+                style={{ marginTop: 2 }}
+              />
+              Cleanup after they leave — anchor to the{" "}
+              {prettyTag(anchor.housedTag)}s this batch used, even once
+              it has moved on (brooder cleanout).
+            </label>
+          )}
           <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
-            The chore follows these animals — move them and the chore
-            moves with them. No active animals → the chore goes dormant.
-            "Wash eggs" belongs to the layers but happens at the House.
+            {anchor.formerOccupancy
+              ? `The chore stays on the ${prettyTag(anchor.housedTag)}s `
+                + `this batch occupied — resolved from its placement `
+                + `history — so a cleanout fires there after the batch `
+                + `has moved on.`
+              : `The chore follows these animals — move them and the `
+                + `chore moves with them. No active animals → the chore `
+                + `goes dormant. "Wash eggs" belongs to the layers but `
+                + `happens at the House.`}
           </div>
         </div>
       )}
@@ -408,12 +435,32 @@ function buildAnchorPatch(a, concreteAnimals) {
     if (concreteAnimals) {
       const [kind, id] = (a.animalKey || "").split(":");
       if (!id) return null;
+      // Cleanup-after-leaving only makes sense for a specific batch +
+      // a place kind (the brooders that batch used).
+      if (a.formerOccupancy && kind === "batch" && a.housedTag) {
+        return {
+          anchorType: "former_occupancy",
+          anchorSpeciesId: null,
+          anchorBatchId: id,
+          anchorKindTag: a.housedTag,
+          atPlaceId: null,
+          placeId: null,
+        };
+      }
       return {
         anchorType: kind === "batch" ? "batch" : "species",
         anchorSpeciesId: kind === "species" ? id : null,
         anchorBatchId: kind === "batch" ? id : null,
         anchorKindTag: a.housedTag || null,
         atPlaceId: a.atPlaceId || null,
+        placeId: null,
+      };
+    }
+    if (a.formerOccupancy && a.animalScope === "batch" && a.housedTag) {
+      return {
+        anchorType: "former_occupancy",
+        anchorKindTag: a.housedTag,
+        atPlaceId: null,
         placeId: null,
       };
     }

@@ -817,6 +817,7 @@ export function displayDeadlineConcrete(chore) {
 export function obligationPlaceIds(chore, ctx = {}) {
   const {
     placesById, childrenByParent, placementsByPlaceId, groupsById,
+    placementsByOccupant,
   } = ctx;
   // Legacy chores (static seeds / pre-0014 rows) have no anchorType;
   // infer the old semantics from place_id.
@@ -887,6 +888,27 @@ export function obligationPlaceIds(chore, ctx = {}) {
       // obligation, but the work happens somewhere specific.
       if (chore.atPlaceId) return [chore.atPlaceId];
       return [...placeIds];
+    }
+
+    case "former_occupancy": {
+      // Places of kind anchorKindTag that this batch has OCCUPIED —
+      // open OR closed placements. For "clean the place after the batch
+      // leaves it" chores: a broiler batch's brooder cleanout must fire
+      // on the brooder(s) it sat in, even though the batch has since
+      // moved to pasture, so it can't follow the batch's live location.
+      if (!chore.anchorBatchId) return [];
+      const out = new Set();
+      const history =
+        placementsByOccupant?.get(`batch:${chore.anchorBatchId}`) ?? [];
+      for (const pl of history) {
+        const place = placesById?.get(pl.placeId);
+        if (!place || place.isActive === false) continue;
+        if (chore.anchorKindTag && place.kindTag !== chore.anchorKindTag) {
+          continue;
+        }
+        out.add(pl.placeId);
+      }
+      return [...out];
     }
 
     case "none":
@@ -967,6 +989,14 @@ export function describeChoreAnchor(chore, ctx = {}) {
         label += ` · at ${p?.name ?? "(removed place)"}`;
       }
       return label;
+    }
+    case "former_occupancy": {
+      if (!chore.anchorBatchId) return "Needs re-anchoring";
+      const group = groupsById?.get(chore.anchorBatchId);
+      const where = chore.anchorKindTag
+        ? `${kindLabel(chore.anchorKindTag)}s it used`
+        : "places it used";
+      return group ? `${group.label} · ${where}` : `Batch · ${where}`;
     }
     case "none":
     default:

@@ -187,7 +187,13 @@ export function resolveChoreAnchor(chore, { batchLink, speciesId } = {}) {
     place_id: chore.placeId ?? null,
     at_place_id: chore.atPlaceId ?? null,
   };
-  if (chore.anchorType === "batch" && batchLink) {
+  // former_occupancy resolves like a batch anchor (the brooders THIS
+  // batch used), so it also takes the event's batch id.
+  if (
+    (chore.anchorType === "batch" ||
+      chore.anchorType === "former_occupancy") &&
+    batchLink
+  ) {
     out.anchor_batch_id = batchLink.targetId;
   }
   if (chore.anchorType === "species" && speciesId) {
