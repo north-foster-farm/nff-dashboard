@@ -2511,7 +2511,7 @@ export default function Schedule({ data }) {
               <>
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
                   <Icon size={18} className="shrink-0 text-accent-deep" />
-                  <span className="flex-1 min-w-0 truncate text-[15px] font-semibold text-fg">
+                  <span className="flex-1 min-w-0 truncate font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
                     Overnight · {b.rangeLabel}
                   </span>
                   {b.countsTonight && b.count > 0 && (
@@ -2583,7 +2583,7 @@ export default function Schedule({ data }) {
               <>
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
                   <FolderKanban size={18} className="shrink-0 text-project" />
-                  <span className="flex-1 min-w-0 truncate text-[15px] font-semibold text-fg">
+                  <span className="flex-1 min-w-0 truncate font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
                     Project · {range}
                   </span>
                   {b.count > 0 && (
@@ -2683,7 +2683,7 @@ export default function Schedule({ data }) {
               <>
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
                   {b.block && <BlockBadge block={b.block} />}
-                  <span className="flex-1 min-w-0 truncate text-[15px] font-semibold text-fg">
+                  <span className="flex-1 min-w-0 truncate font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
                     {b.block?.name ?? "Anytime"}
                   </span>
                   {b.startMin != null && (
