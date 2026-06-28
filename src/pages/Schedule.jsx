@@ -1738,7 +1738,19 @@ export default function Schedule({ data }) {
     writeRow(row, bucket, { cover: { by, ack: true } }, entry);
   };
 
+  // Carry-over banner dismissal persists per day on this device (F19) — once
+  // dismissed it stays gone across refreshes, re-appearing only on a new day.
+  const carryoverKey = `nff:sched:carryover-dismissed:${dateISO}`;
   const [dismissedYesterday, setDismissedYesterday] = useState(false);
+  useEffect(() => {
+    try {
+      setDismissedYesterday(localStorage.getItem(carryoverKey) === "1");
+    } catch { setDismissedYesterday(false); }
+  }, [carryoverKey]);
+  const dismissYesterday = () => {
+    setDismissedYesterday(true);
+    try { localStorage.setItem(carryoverKey, "1"); } catch { /* ignore */ }
+  };
 
   // ── Conflicts: the one list (S56a/b/c) + double-booking (S58) ───────
   const [showConflicts, setShowConflicts] = useState(false);
@@ -2085,14 +2097,9 @@ export default function Schedule({ data }) {
             <span className="font-medium text-fg">
               Yesterday — {yesterdayMusts.count} must-do
               {yesterdayMusts.count === 1 ? "" : "s"} unfinished.
-            </span>{" "}
-            <span className="text-faint">
-              {yesterdayMusts.titles.slice(0, 4).join(", ")}
-              {yesterdayMusts.titles.length > 4
-                ? ` +${yesterdayMusts.titles.length - 4} more` : ""}
             </span>
           </div>
-          <button type="button" onClick={() => setDismissedYesterday(true)}
+          <button type="button" onClick={dismissYesterday}
             className="shrink-0 text-faint hover:text-fg cursor-pointer"
             aria-label="Dismiss">
             <X size={14} />
