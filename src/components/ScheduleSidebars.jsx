@@ -127,7 +127,7 @@ export function DayRailSpine({
                 "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 "
                 + "text-left min-h-[52px] border-b border-line cursor-pointer "
                 + "transition-colors "
-                + (isFocus ? "bg-row-active" : "hover:bg-row-hover")
+                + (isFocus ? "bg-row-active" : "bg-block-project hover:bg-row-hover")
                 + (b.allDone ? " opacity-55" : "")
               }
             >
@@ -179,12 +179,12 @@ export function DayRailSpine({
                 className="shrink-0 w-[16px] h-[20px]"
                 style={{
                   background: "var(--accent-deep)", opacity: 0.55,
-                  boxShadow: isNow ? "0 0 0 2px var(--resolved)" : "none",
+                  boxShadow: isNow ? "0 0 0 2px var(--c-now)" : "none",
                 }}
               />
               <Icon size={15}
                 className={"shrink-0 "
-                  + (isNow ? "text-resolved" : "text-accent-deep")} />
+                  + (isNow ? "text-now" : "text-accent-deep")} />
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-1 text-[12px] font-medium text-fg">
                   <span className="truncate">
@@ -193,7 +193,7 @@ export function DayRailSpine({
                   {/* "now" rides the title line as a shrink-0 marker so it's
                       never clipped by the range label's truncation (F63). */}
                   {isNow && (
-                    <span className="shrink-0 text-[9px] uppercase tracking-wide text-resolved font-bold">
+                    <span className="shrink-0 text-[9px] uppercase tracking-wide text-now font-bold">
                       now
                     </span>
                   )}
@@ -224,19 +224,19 @@ export function DayRailSpine({
               "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 text-left "
               + "min-h-[52px] border-b border-line cursor-pointer "
               + "transition-colors "
-              + (isFocus ? "bg-row-active" : "hover:bg-row-hover")
+              + (isFocus ? "bg-row-active" : "bg-block-chore hover:bg-row-hover")
               + (b.allDone ? " opacity-55" : "")
             }
           >
             {/* the gauge: height = load; done (resolved) rises from the bottom
-                over the committed load (accent-deep); ring = now. */}
+                over the committed load (accent-deep); ring = now (amber). */}
             <span
               className="relative shrink-0 w-[16px] flex flex-col-reverse"
               style={{
                 height: h + "px",
                 background: "var(--surface-alt)",
                 boxShadow: isNow
-                  ? "0 0 0 2px var(--resolved)"
+                  ? "0 0 0 2px var(--c-now)"
                   : "inset 0 0 0 1px var(--line)",
               }}
             >
@@ -246,7 +246,7 @@ export function DayRailSpine({
             <Icon
               size={15}
               className={"shrink-0 "
-                + (isNow ? "text-resolved" : isFocus ? "text-accent" : "text-faint")}
+                + (isNow ? "text-now" : isFocus ? "text-accent" : "text-faint")}
             />
             <span className="flex-1 min-w-0">
               <span className={
@@ -257,7 +257,7 @@ export function DayRailSpine({
               </span>
               <span className="block text-[10px] [font-variant-numeric:tabular-nums]">
                 <span className="text-faint">{compactTime(b.startMin)}</span>
-                {isNow && <span className="text-resolved font-semibold"> · now</span>}
+                {isNow && <span className="text-now font-semibold"> · now</span>}
               </span>
             </span>
             {b.hasManDown && (
@@ -357,18 +357,18 @@ export function DayStrip({
                       className="w-full h-[20px]"
                       style={{
                         background: "var(--accent-deep)", opacity: 0.55,
-                        boxShadow: isNow ? "0 0 0 2px var(--resolved)"
+                        boxShadow: isNow ? "0 0 0 2px var(--c-now)"
                           : isFocus ? "inset 0 0 0 1px var(--accent-deep)" : "none",
                       }}
                     />
                   </span>
                   <Icon size={14}
-                    className={"mt-1.5 " + (isNow ? "text-resolved" : "text-accent-deep")} />
+                    className={"mt-1.5 " + (isNow ? "text-now" : "text-accent-deep")} />
                   <span className={
                     "mt-0.5 pb-0.5 text-[10.5px] [font-variant-numeric:tabular-nums] "
                     + "border-b-2 truncate max-w-full "
                     + (isFocus ? "text-accent-deep font-bold border-accent-deep"
-                      : isNow ? "text-resolved font-bold border-transparent"
+                      : isNow ? "text-now font-bold border-transparent"
                         : "text-faint border-transparent")
                   }>
                     o/n
@@ -404,7 +404,7 @@ export function DayStrip({
                       height: h + "px",
                       background: "var(--surface-alt)",
                       boxShadow: isNow
-                        ? "0 0 0 2px var(--resolved)"
+                        ? "0 0 0 2px var(--c-now)"
                         : isFocus
                           ? "inset 0 0 0 1px var(--accent)"
                           : "inset 0 0 0 1px var(--line)",
@@ -415,7 +415,7 @@ export function DayStrip({
                   </span>
                 </span>
                 <Icon size={14}
-                  className={"mt-1.5 " + (isNow ? "text-resolved" : "text-faint")} />
+                  className={"mt-1.5 " + (isNow ? "text-now" : "text-faint")} />
                 <StripTime
                   min={b.startMin}
                   className={
@@ -425,7 +425,7 @@ export function DayStrip({
                     + (isFocus
                       ? "text-accent font-bold border-accent"
                       : isNow
-                        ? "text-resolved font-bold border-transparent"
+                        ? "text-now font-bold border-transparent"
                         : "text-faint border-transparent")
                   }
                 />

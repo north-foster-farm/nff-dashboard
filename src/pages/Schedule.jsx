@@ -2403,8 +2403,8 @@ export default function Schedule({ data }) {
               <li key={b.bucket} ref={isNow ? focusRef : null}>
                 {isNow && (
                   <div className="px-4 pt-2">
-                    <div className="border-t border-resolved" />
-                    <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.14em] text-resolved mt-1">
+                    <div className="border-t border-now" />
+                    <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.14em] text-now mt-1">
                       Now{b.startMin != null ? " · " + formatMinutesOfDay(b.startMin) : ""}
                     </div>
                   </div>
