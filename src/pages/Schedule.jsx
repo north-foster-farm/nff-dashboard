@@ -64,7 +64,7 @@ import PageHeader from "../components/PageHeader.jsx";
 import { navigate } from "../lib/router.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { recordCapture, readCaptures } from "../lib/capture/capture.js";
-import { supabase } from "../lib/supabase.js";
+import { supabase, realtimeChannel } from "../lib/supabase.js";
 import { formatMinutesOfDay, resolveBlockMinutes } from "../lib/sunTimes.js";
 import { T } from "../theme.js";
 
@@ -1343,17 +1343,39 @@ export default function Schedule({ data }) {
   // The confirmed snapshot for today, if any. null = a draft.
   const [confirmedDoc, setConfirmedDoc] = useState(null);
   const [confirming, setConfirming] = useState(false);
+  // Bumped by a realtime captures change so the confirm state re-reads when
+  // ANOTHER device confirms/unconfirms the viewed day (F17).
+  const [confirmReloadTick, setConfirmReloadTick] = useState(0);
+  // Clear the previous day's stamp immediately on a date change so an
+  // unconfirmed day never shows a stale "Confirmed" (a realtime refetch swaps
+  // in place without this flash).
+  useEffect(() => { setConfirmedDoc(null); }, [dateISO]);
   useEffect(() => {
     let cancelled = false;
-    // Clear the previous day's stamp immediately so an unconfirmed day never
-    // shows a stale "Confirmed" while (or after) we read its captures.
-    setConfirmedDoc(null);
     readCaptures("schedule.confirmed_day", {
       subjectType: "schedule_day", subjectId: dateISO,
     }).then((rows) => {
       if (!cancelled) setConfirmedDoc(rows.length ? rows[0].doc : null);
     }).catch(() => { /* offline / unauth — stays a draft */ });
     return () => { cancelled = true; };
+  }, [dateISO, confirmReloadTick]);
+  // Realtime: a captures change (e.g. the other device confirming today)
+  // refetches the viewed day's confirm doc, debounced (F17).
+  useEffect(() => {
+    let scheduled = false;
+    const bump = () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(() => {
+        scheduled = false;
+        setConfirmReloadTick((t) => t + 1);
+      }, 150);
+    };
+    const ch = realtimeChannel(`sched-confirm:${dateISO}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "captures" }, bump)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [dateISO]);
 
   // Placed commitment items that live OUTSIDE the chore blocks — the
