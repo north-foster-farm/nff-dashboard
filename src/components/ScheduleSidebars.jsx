@@ -17,14 +17,6 @@ import { formatMinutesOfDay } from "../lib/sunTimes.js";
 //   the CLOCK's pick gets a RING (now);  YOUR pick gets a FILL (focus/selected).
 // Same rule on the spine, the strip, and the week pane (today=ring, viewed=fill).
 
-// The day's light as a token wash: dawn warm -> midday neutral -> night cool.
-// (Vertical only — the desktop spine. The phone strip dropped its
-// horizontal wash: at strip scale the gradient cut across the icons/labels
-// and never sat flush, so it's plain surface now. F38.)
-const WASH_V = "linear-gradient(180deg,rgba(230,184,90,0.085) 0%,"
-  + "rgba(173,200,173,0.04) 40%,rgba(120,140,175,0.04) 72%,"
-  + "rgba(70,92,135,0.11) 100%)";
-
 // Scale an item count to a bar size in px, between min and min+span.
 function barSize(count, max, min, span) {
   if (!count) return min;
@@ -86,8 +78,6 @@ export function DayRailSpine({
   const overview = focus == null;
   return (
     <div className="hidden lg:flex flex-col w-[180px] shrink-0 border-r border-line bg-surface relative pt-2">
-      <div className="absolute inset-0 pointer-events-none z-0"
-        style={{ background: WASH_V }} />
       {/* Whole-day overview affordance — the explicit way back to the agenda. */}
       <button
         type="button"
