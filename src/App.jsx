@@ -189,6 +189,7 @@ export default function App({ session }) {
         onOpenSettings={() => handleSelect("settings")}
         onToggleNav={handleToggleNav}
         onOpenSearch={() => setPaletteOpen(true)}
+        onHome={() => navigate(defaultPath())}
       />
       <div className="flex flex-1 items-stretch">
         {/* Desktop sidebar (collapsible via the TopBar hamburger) */}

@@ -10,7 +10,7 @@ import OutboxIndicator from "./OutboxIndicator.jsx";
 // the hamburger works on desktop too (collapses the sidebar).
 
 export default function TopBar({
-  data, session, onOpenSettings, onToggleNav, onOpenSearch,
+  data, session, onOpenSettings, onToggleNav, onOpenSearch, onHome,
 }) {
   return (
     <header className="border-b border-line py-3 px-4 sm:px-6 flex justify-between items-center bg-bg shrink-0 gap-[18px]">
@@ -27,36 +27,37 @@ export default function TopBar({
             <Menu size={18} />
           </button>
         )}
-        <LogoMark />
+        {/* The logo goes home — a convention people expect (F8). */}
+        {onHome ? (
+          <button
+            type="button"
+            onClick={onHome}
+            aria-label="Home"
+            title="Home"
+            className="bg-transparent border-0 p-0 cursor-pointer flex items-center"
+          >
+            <LogoMark />
+          </button>
+        ) : (
+          <LogoMark />
+        )}
         <span className="hidden sm:inline font-ui text-[11px] text-dim uppercase tracking-[0.12em] font-semibold">
           Admin · v{data.meta.version}
         </span>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {/* App-wide search / command palette (Batch 33) — cmd-K. The
-            wide pill shows on desktop; phones get just the icon. */}
+        {/* App-wide search / command palette (Batch 33) — cmd-K still works;
+            the toolbar just shows the magnifying-glass icon on every size, no
+            "Search" word or ⌘K chrome (F6). */}
         {onOpenSearch && (
-          <>
-            <button
-              onClick={onOpenSearch}
-              aria-label="Search"
-              title="Search (⌘K)"
-              className="hidden sm:flex items-center gap-2 bg-surface border border-line text-muted hover:text-fg hover:border-accent font-[inherit] text-[12px] px-2.5 py-1.5 cursor-pointer mr-2"
-            >
-              <Search size={13} className="shrink-0" />
-              <span>Search</span>
-              <kbd className="text-[10px] text-faint border border-line px-1 leading-none py-0.5 uppercase tracking-[0.08em]">
-                ⌘K
-              </kbd>
-            </button>
-            <button
-              onClick={onOpenSearch}
-              aria-label="Search"
-              className="sm:hidden bg-transparent border-0 text-dim hover:text-fg p-1.5 cursor-pointer flex items-center justify-center"
-            >
-              <Search size={18} />
-            </button>
-          </>
+          <button
+            onClick={onOpenSearch}
+            aria-label="Search"
+            title="Search (⌘K)"
+            className="bg-transparent border-0 text-dim hover:text-fg p-1.5 cursor-pointer flex items-center justify-center"
+          >
+            <Search size={18} />
+          </button>
         )}
         {/* Queued / not-synced field writes (Batch 16.2) */}
         <OutboxIndicator className="mr-2" />
