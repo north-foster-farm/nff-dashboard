@@ -124,6 +124,7 @@ export const SECTIONS = [
   // ── Other — kept last in the menu (2026-06 chore-ux fixes) ──────────
   { id: "inbox", group: "Other", label: "Inbox", icon: Lightbulb, description: "Just-a-thought capture — ideas that aren't yet projects or chores. Pin, archive, or promote them to events.", getCount: () => null },
   { id: "roadmap", group: "Other", label: "What's coming", icon: Telescope, description: "Features on deck for upcoming releases.", getCount: () => null },
+  { id: "rethinker", group: "Other", label: "Rethinker port", icon: Sparkles, description: "Design-bracket scratch — the Rethinker mockup's components ported into our architecture; the pool we restyle the Schedule from.", getCount: () => null },
   { id: "activity", group: "Other", label: "Activity", icon: Activity, description: "Every action logged across the farm — chore completions, temperature readings, weight logs, sales, and more.", getCount: () => null },
   { id: "observations", group: "Other", label: "Observations", icon: Eye, description: "Notes, condition flags, mortality, cohort moves, and infra sweeps logged from Rounds — filterable by site, kind, date, and author.", getCount: () => null },
   { id: "notes", group: "Other", label: "Notes", icon: NotebookPen, description: "Uncategorized brain dumps", getCount: () => null },

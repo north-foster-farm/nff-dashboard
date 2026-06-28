@@ -20,6 +20,7 @@ import Activity from "../pages/Activity.jsx";
 import Observations from "../pages/Observations.jsx";
 import Settings from "../pages/Settings.jsx";
 import Roadmap from "../pages/Roadmap.jsx";
+import RethinkerGallery from "../pages/RethinkerGallery.jsx";
 import SitesPage from "../pages/SitesPage.jsx";
 import Inbox from "../pages/Inbox.jsx";
 import Projects from "../pages/Projects.jsx";
@@ -141,6 +142,7 @@ export default function SectionContent({
     case "threads": return <Threads data={data} />;
     case "settings": return <Settings />;
     case "roadmap": return <Roadmap />;
+    case "rethinker": return <RethinkerGallery />;
     case "resources_sites": return <SitesPage data={data} />;
     default: {
       const items = data[section.id] ?? [];
