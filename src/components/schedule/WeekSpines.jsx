@@ -7,6 +7,15 @@
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// should-heat cell colour: cool stays surface-alt, a should warms through
+// warn (15→60% alpha), and the deadline day burns cat-processing.
+function heatColor(heat, peak) {
+  if (peak) return "var(--c-cat-processing)";
+  if (!heat || heat <= 0) return "var(--c-surface-alt)";
+  const pct = Math.round(15 + heat * 45);
+  return `color-mix(in srgb, var(--c-warn) ${pct}%, transparent)`;
+}
+
 function Spine({ day, max, isToday, isSelected, onPick }) {
   const blocks = (day.blocks ?? []).filter((b) => b.count > 0);
   const label = DOW[day.date.getDay()] + " " + day.date.getDate();
@@ -50,12 +59,19 @@ function Spine({ day, max, isToday, isSelected, onPick }) {
   );
 }
 
-export default function WeekSpines({ week, todayISO, selectedISO, ymd, onPickDay }) {
+export default function WeekSpines({
+  week, shouldHeat, todayISO, selectedISO, ymd, onPickDay,
+}) {
   if (!week?.days?.length) return null;
+  const top = shouldHeat?.top;
+  const towardLabel = shouldHeat?.peakDate
+    ? "warming toward " + DOW[shouldHeat.peakDate.getDay()]
+      + " " + shouldHeat.peakDate.getDate()
+    : "warming";
   return (
     <div className="hidden lg:block border border-line bg-bg mb-4 px-5 py-4">
       <span className="block mb-3 font-ui text-[10px] font-semibold uppercase tracking-[0.12em] text-faint">
-        This week — fullness spines
+        This week — fullness spines{top ? " + should-heat" : ""}
       </span>
       <div className="grid grid-cols-7 gap-2">
         {week.days.map((day) => {
@@ -72,6 +88,28 @@ export default function WeekSpines({ week, todayISO, selectedISO, ymd, onPickDay
           );
         })}
       </div>
+
+      {/* should-escalation heat row — only when something is actually
+          warming toward a deadline this week. */}
+      {top && (
+        <div className="mt-4">
+          <span className="block mb-1.5 font-ui text-[10px] font-semibold uppercase tracking-[0.12em] text-faint">
+            Should-escalation · “{top.title}” {towardLabel}
+          </span>
+          <div className="grid grid-cols-7 gap-2">
+            {(shouldHeat.days ?? []).map((d) => (
+              <div
+                key={ymd(d.date)}
+                className="h-2.5"
+                title={DOW[d.date.getDay()] + " " + d.date.getDate()
+                  + (d.peak ? " · deadline" : d.heat > 0
+                    ? " · " + Math.round(d.heat * 100) + "% warm" : "")}
+                style={{ background: heatColor(d.heat, d.peak) }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

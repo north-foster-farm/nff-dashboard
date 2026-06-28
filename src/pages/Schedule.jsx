@@ -52,7 +52,7 @@ import WeekSpines from "../components/schedule/WeekSpines.jsx";
 import { buildPersonLanes } from "../lib/schedule/personLoad.js";
 import { WeekView, MonthView } from "../components/ScheduleZoom.jsx";
 import { ScheduleReview } from "../components/ScheduleReview.jsx";
-import { weekFullness, weekDays } from "../lib/schedule/weekView.js";
+import { weekFullness, weekDays, weekShouldHeat } from "../lib/schedule/weekView.js";
 import { monthFullness } from "../lib/schedule/monthView.js";
 import { blockStartDrift, dayReviews } from "../lib/schedule/lookBack.js";
 import { useRunHistory } from "../lib/data/useRunHistory.js";
@@ -1281,6 +1281,11 @@ export default function Schedule({ data }) {
   const week = useMemo(
     () => weekFullness(data, today, ruleOpts), [data, today, ruleOpts]);
 
+  // Should-escalation heat across the week (Rethinker §3.7) — which
+  // deferrable "should" chores are warming toward a deadline this week.
+  const shouldHeat = useMemo(
+    () => weekShouldHeat(data, today, ruleOpts), [data, today, ruleOpts]);
+
   // The three zooms (S9 tail). "day" = the master-detail surface; "week" /
   // "month" replace the centre with a wider navigator. Desktop only — phone
   // stays the day surface. The month grid is keyed on its year-month so it
@@ -2214,6 +2219,7 @@ export default function Schedule({ data }) {
           (lg-only). Tapping a day opens it. */}
       <WeekSpines
         week={week}
+        shouldHeat={shouldHeat}
         todayISO={realTodayISO}
         selectedISO={dateISO}
         ymd={ymdLocal}

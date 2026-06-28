@@ -4,6 +4,7 @@
 // to compute for seven days. This is the "answers the one fair charge"
 // surface from the design: the day's shape is one glance away.
 import { rollupChoresForDay } from "./deriveDay.js";
+import { choreDaysRemaining } from "../chores.js";
 
 // The seven dates of the week containing `date` (Sunday-first, to match the
 // app's week elsewhere). Local dates, midnight.
@@ -48,4 +49,58 @@ export function weekFullness(data, date, ruleOpts) {
   }
   const total = (day) => day.blocks.reduce((s, b) => s + b.count, 0);
   return { days: days.map((d) => ({ ...d, total: total(d) })), max };
+}
+
+// ── Should-escalation heat (Rethinker §3.7) ────────────────────────────
+// A "should" is a deferrable window chore that still has days of runway;
+// it WARMS as its deadline nears (choreDaysRemaining `days` shrinks toward
+// the deadline, then flips to `today`). `weekShouldHeat` reads the week as
+// that pressure: per day, the hottest deferrable chore (0..1), and the one
+// chore driving the week's peak — so the row can name "X warming toward Y".
+
+const HEAT_RUNWAY = 5; // days over which a should warms from cool to hot.
+
+function choreHeat(remaining) {
+  if (!remaining) return 0;
+  if (remaining.kind === "today" || remaining.kind === "overran") return 1;
+  if (remaining.kind === "days") {
+    const n = remaining.days;
+    if (n <= 0) return 1;
+    return Math.max(0, Math.min(1, (HEAT_RUNWAY - n + 1) / HEAT_RUNWAY));
+  }
+  return 0;
+}
+
+// Returns { days:[{date, heat, peak, topTitle}], top:{title, date}|null,
+//   peakDate|null }. `top` is the week's driving should (highest heat);
+// `peakDate` is the first day a should reaches its deadline.
+export function weekShouldHeat(data, date, ruleOpts) {
+  const blocks = ruleOpts?.blocks ?? [];
+  const days = weekDays(date).map((d) => {
+    const rollups = rollupChoresForDay(data, d, ruleOpts);
+    let heat = 0;
+    let peak = false;
+    let topTitle = null;
+    let topHeat = 0;
+    for (const r of rollups) {
+      for (const inst of r.items) {
+        const rem = choreDaysRemaining(inst.chore, d, blocks);
+        const h = choreHeat(rem);
+        if (h <= 0) continue;
+        if (rem.kind === "today" || rem.kind === "overran") peak = true;
+        if (h > topHeat) { topHeat = h; topTitle = inst.chore.title; }
+        if (h > heat) heat = h;
+      }
+    }
+    return { date: d, heat, peak, topTitle };
+  });
+
+  let top = null;
+  for (const day of days) {
+    if (day.heat > 0 && (!top || day.heat > top.heat)) {
+      top = { title: day.topTitle, heat: day.heat, date: day.date };
+    }
+  }
+  const peakDay = days.find((d) => d.peak) ?? null;
+  return { days, top, peakDate: peakDay?.date ?? null };
 }
