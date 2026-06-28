@@ -1766,6 +1766,10 @@ export default function Schedule({ data }) {
     setDismissedYesterday(true);
     try { localStorage.setItem(carryoverKey, "1"); } catch { /* ignore */ }
   };
+  // The changes-since-confirmed ribbon is dismissible too (F29); dismissing
+  // remembers the current change-set signature so it re-surfaces only when the
+  // divergence actually changes.
+  const [dismissedChangeSig, setDismissedChangeSig] = useState(null);
 
   // ── Conflicts: the one list (S56a/b/c) + double-booking (S58) ───────
   const [showConflicts, setShowConflicts] = useState(false);
@@ -1914,7 +1918,17 @@ export default function Schedule({ data }) {
   });
 
   // The header subtitle tracks the zoom: a day, the week's range, or the month.
-  const subtitle = viewMode === "day" ? dateLabel
+  // Surface the day's events in the sub-line (F15) — e.g. a market day was
+  // happening but nothing in the header said so. Append up to three event
+  // labels after the date.
+  const daySubtitle = (() => {
+    if (!eventEntries.length) return dateLabel;
+    const labels = eventEntries.map((e) => e.occ.instanceLabel);
+    const shown = labels.slice(0, 3).join(" · ");
+    const more = labels.length > 3 ? ` +${labels.length - 3} more` : "";
+    return `${dateLabel} · ${shown}${more}`;
+  })();
+  const subtitle = viewMode === "day" ? daySubtitle
     : viewMode === "review" ? "Looking back"
     : viewMode === "month"
       ? today.toLocaleDateString("en-US", { month: "long", year: "numeric" })
@@ -2033,20 +2047,37 @@ export default function Schedule({ data }) {
         <ScheduleReview drift={drift} reviews={reviews} splitDays={DRIFT_SPLIT} />
       ) : (
        <>
-      {/* Source-changed-after-confirm ribbon — informs, never auto-applies. */}
-      {changes && (
-        <div className="px-3 py-2 mb-3 border border-warn text-[12px] text-warn">
-          <span className="font-semibold">
-            {changes.total} change{changes.total === 1 ? "" : "s"} since you confirmed
-          </span>
-          <span className="text-dim ml-2">
-            {[
-              ...changes.added.map((t) => "+ " + t),
-              ...changes.removed.map((t) => "− " + t),
-            ].slice(0, 4).join(" · ")}
-          </span>
-        </div>
-      )}
+      {/* Source-changed-after-confirm ribbon — informs, never auto-applies.
+          Standardised to the carry-over banner shape (F22) and dismissible
+          (F29). */}
+      {(() => {
+        const sig = changes
+          ? `${changes.total}|${changes.added.join(",")}|${changes.removed.join(",")}`
+          : null;
+        if (!changes || sig === dismissedChangeSig) return null;
+        return (
+          <div className="px-3 py-2 mb-3 border-l-2 border-warn bg-warn/5 flex items-start gap-2">
+            <AlertTriangle size={14} className="shrink-0 text-warn mt-0.5" />
+            <div className="flex-1 min-w-0 text-[12px] text-dim">
+              <span className="font-medium text-fg">
+                {changes.total} change{changes.total === 1 ? "" : "s"} since
+                you confirmed.
+              </span>{" "}
+              <span className="text-faint">
+                {[
+                  ...changes.added.map((t) => "+ " + t),
+                  ...changes.removed.map((t) => "− " + t),
+                ].slice(0, 4).join(" · ")}
+              </span>
+            </div>
+            <button type="button" onClick={() => setDismissedChangeSig(sig)}
+              className="shrink-0 text-faint hover:text-fg cursor-pointer"
+              aria-label="Dismiss">
+              <X size={14} />
+            </button>
+          </div>
+        );
+      })()}
 
       <div className="px-1 mb-3 flex flex-wrap items-start gap-x-3 gap-y-2">
         {confirmedDoc ? (
