@@ -896,8 +896,18 @@ export default function Schedule({ data }) {
     () => (derived.projectSegments ?? []).map((seg, idx) => {
       const bucket = "project:" + seg.startMin;
       const items = projectPlacements.byBucket.get(bucket) ?? [];
-      const occupant = (idx === 0 && items.length === 0)
+      // Auto-pull the top project's next step into the first gap, and keep
+      // pulling the NEXT one once placed steps are done — appended below the
+      // completed rows, never overwriting them (F69). A manual swap places an
+      // INCOMPLETE project step, which suppresses the auto-pull (the swap
+      // "overrides" the default). Already-placed steps aren't re-pulled.
+      const placedStepIds = new Set(
+        items.map((d) => d.source_ref?.step_id).filter(Boolean));
+      const hasIncompleteProj = items.some(
+        (d) => d.source_type === "project_node" && d.state !== "done");
+      let occupant = (idx === 0 && !hasIncompleteProj)
         ? nextProjectStep(data.projects, dateISO) : null;
+      if (occupant && placedStepIds.has(occupant.stepId)) occupant = null;
       const doneCount = items.filter((d) => d.state === "done").length;
       return {
         kind: "projectblock",
@@ -2374,6 +2384,14 @@ export default function Schedule({ data }) {
                 completeProjectStep(stepId, done);
               }
             };
+            // Ticking the auto-pulled occupant materialises it as a placed,
+            // done row so it persists; the next step then auto-pulls and
+            // appends below it (F69) instead of swapping it out.
+            const completeOccupant = (occ) => {
+              const id = addProject(occ, null, null, minToHM(b.startMin));
+              setDone(id, true);
+              completeProjectStep(occ.stepId, true);
+            };
             return (
               <>
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
@@ -2398,7 +2416,7 @@ export default function Schedule({ data }) {
                     </span>
                   )}
                 </div>
-                {b.items.length > 0 ? (
+                {b.items.length > 0 && (
                   <ul>
                     {b.items.map((d) => (
                       <AdHocRow
@@ -2410,14 +2428,16 @@ export default function Schedule({ data }) {
                       />
                     ))}
                   </ul>
-                ) : b.occupant ? (
-                  /* The auto-pulled occupant (display-only; not yet a row).
-                     Checking it completes the step; "Swap" places a different
-                     one, which then overrides this default. */
+                )}
+                {b.occupant ? (
+                  /* The auto-pulled occupant (display-only; not yet a row),
+                     appended below any placed items. Checking it persists it as
+                     a done row and pulls the next step (F69); "Swap" places a
+                     different one, which overrides the auto-pull. */
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
                     <button
                       type="button"
-                      onClick={() => completeProjectStep(b.occupant.stepId, true)}
+                      onClick={() => completeOccupant(b.occupant)}
                       className="shrink-0 w-7 h-7 border-2 bg-bg border-line text-transparent hover:border-fg inline-flex items-center justify-center cursor-pointer"
                       aria-label="Mark done"
                     >
@@ -2444,11 +2464,11 @@ export default function Schedule({ data }) {
                       Swap
                     </button>
                   </div>
-                ) : (
+                ) : b.items.length === 0 ? (
                   <div className="px-4 py-3 border-b border-line text-[13px] text-faint italic">
                     free — nothing planned
                   </div>
-                )}
+                ) : null}
                 <AddTaskRow
                   onAdd={(title) =>
                     addTask(title, null, null, null, minToHM(b.startMin))}
@@ -2607,6 +2627,7 @@ export default function Schedule({ data }) {
           chores={choreDefs}
           choreCtx={choreCtx}
           projectNodes={projectNodes}
+          scope="project"
           anchorDate={today}
           todayISO={realTodayISO}
           ymd={ymdLocal}

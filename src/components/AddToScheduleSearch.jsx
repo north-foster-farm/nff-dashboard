@@ -16,8 +16,13 @@ export default function AddToScheduleSearch({
   chores, choreCtx, projectNodes = [], onAddChore, onAddProject, onAddTask,
   onAddNote,
   anchorDate, todayISO, ymd,
+  scope = "all",
   onClose,
 }) {
+  // A Project block's "Add a project step" searches PROJECTS, not chores
+  // (F68) — hide the chore + note results so the projects list (plus an
+  // ad-hoc task, P13) is what you search.
+  const projectScope = scope === "project";
   const [q, setQ] = useState("");
   // The chore being place-narrowed (step 2), or null (step 1).
   const [narrow, setNarrow] = useState(null);
@@ -201,7 +206,8 @@ export default function AddToScheduleSearch({
                 ref={inputRef}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search chores to add…"
+                placeholder={projectScope
+                  ? "Search projects to add…" : "Search chores to add…"}
                 className="flex-1 bg-transparent text-[14px] text-fg placeholder:text-faint outline-none py-1"
               />
               <button type="button" onClick={onClose}
@@ -237,6 +243,7 @@ export default function AddToScheduleSearch({
               </div>
             )}
             <div className="max-h-[55vh] overflow-y-auto">
+              {!projectScope && (<>
               <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-faint">
                 Chores
               </div>
@@ -281,6 +288,7 @@ export default function AddToScheduleSearch({
                   })}
                 </ul>
               )}
+              </>)}
 
               {q.trim() && (
                 <>
@@ -297,7 +305,7 @@ export default function AddToScheduleSearch({
                       Add “{q.trim()}” as a task
                     </span>
                   </button>
-                  {onAddNote && (
+                  {!projectScope && onAddNote && (
                     <button
                       type="button"
                       onClick={() => { onAddNote(q.trim(), dateArr()); onClose(); }}
