@@ -123,7 +123,13 @@ function foldDeltas(day, deltas, blocks) {
   for (const d of deltas) {
     // 'override' deltas edit a DERIVED instance; they're applied at the
     // place-expanded row level (applyOverrides), not as block extras here.
-    if (d.source_type === "override") continue;
+    // 'reservation' (time off) and 'buffer' are reserved NON-WORK time, shown
+    // in the chip strip (reservation windows + buffer chips). They must never
+    // fold in as block extras or they surface as phantom "(task)" rows in the
+    // Anytime group and inflate the change ribbon (F25).
+    if (d.source_type === "override"
+        || d.source_type === "reservation"
+        || d.source_type === "buffer") continue;
     // Deltas keep block_id null (the chore_block run path); their placement
     // block lives in source_ref.block_id.
     let bucket = d.block_id ?? d.source_ref?.block_id ?? "anytime";
