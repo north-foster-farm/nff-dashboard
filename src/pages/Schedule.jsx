@@ -1957,6 +1957,27 @@ export default function Schedule({ data }) {
 
   return (
     <div className="max-w-2xl lg:max-w-[1120px] mx-auto">
+     {/* Day/Week/Month/Review lives at the TOP LEVEL (above the spine+pane
+         split) so it stays put when the day-spine appears/disappears with the
+         view mode — it never shuffles under the cursor (F20). */}
+     <div className="hidden lg:flex items-center justify-end gap-1 font-ui text-[12px] mb-2">
+       {[["day", "Day"], ["week", "Week"], ["month", "Month"],
+         ["review", "Review"]].map(([m, label]) => (
+         <button
+           key={m}
+           type="button"
+           onClick={() => setViewMode(m)}
+           className={
+             "px-3 py-1 border cursor-pointer transition-colors "
+             + (viewMode === m
+               ? "bg-surface-alt border-line text-fg font-medium"
+               : "border-transparent text-faint hover:text-dim")
+           }
+         >
+           {label}
+         </button>
+       ))}
+     </div>
      <div className="lg:flex lg:items-start">
       {/* Desktop load-spine — the day's shape AND the navigator (Day zoom). */}
       {viewMode === "day" && (
@@ -1971,28 +1992,7 @@ export default function Schedule({ data }) {
       )}
 
       <div className="flex-1 min-w-0 pb-24 lg:px-8">
-      <div className="flex items-start justify-between">
-        <PageHeader title="Schedule" subtitle={subtitle} />
-        {/* Day/Week/Month/Review — desktop only; the zooms of one timeline. */}
-        <div className="hidden lg:flex items-center gap-1 font-ui text-[12px] mt-1">
-          {[["day", "Day"], ["week", "Week"], ["month", "Month"],
-            ["review", "Review"]].map(([m, label]) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setViewMode(m)}
-              className={
-                "px-3 py-1 border cursor-pointer transition-colors "
-                + (viewMode === m
-                  ? "bg-surface-alt border-line text-fg font-medium"
-                  : "border-transparent text-faint hover:text-dim")
-              }
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader title="Schedule" subtitle={subtitle} />
 
       {viewMode === "week" ? (
         <WeekView
@@ -2067,10 +2067,10 @@ export default function Schedule({ data }) {
             onClick={() => setShowConflicts(true)}
             className={"text-[12px] font-medium inline-flex items-center gap-1 cursor-pointer "
               + (todayConflicts.length > 0
-                ? "text-warn hover:brightness-110" : "text-dim hover:text-fg")}
+                ? "text-warn hover:brightness-110" : "text-faint hover:text-dim")}
           >
             <AlertTriangle size={14} />
-            {todayConflicts.length > 0 ? `${todayConflicts.length} conflict${todayConflicts.length === 1 ? "" : "s"}` : "Conflicts"}
+            {`${todayConflicts.length} conflict${todayConflicts.length === 1 ? "" : "s"}`}
           </button>
           <button
             type="button"
