@@ -18,12 +18,12 @@ import { formatMinutesOfDay } from "../lib/sunTimes.js";
 // Same rule on the spine, the strip, and the week pane (today=ring, viewed=fill).
 
 // The day's light as a token wash: dawn warm -> midday neutral -> night cool.
+// (Vertical only — the desktop spine. The phone strip dropped its
+// horizontal wash: at strip scale the gradient cut across the icons/labels
+// and never sat flush, so it's plain surface now. F38.)
 const WASH_V = "linear-gradient(180deg,rgba(230,184,90,0.085) 0%,"
   + "rgba(173,200,173,0.04) 40%,rgba(120,140,175,0.04) 72%,"
   + "rgba(70,92,135,0.11) 100%)";
-const WASH_H = "linear-gradient(90deg,rgba(230,184,90,0.11) 0%,"
-  + "rgba(173,200,173,0.05) 40%,rgba(120,140,175,0.05) 72%,"
-  + "rgba(70,92,135,0.14) 100%)";
 
 // Scale an item count to a bar size in px, between min and min+span.
 function barSize(count, max, min, span) {
@@ -277,10 +277,8 @@ export function DayStrip({
           <LayoutList size={12} /> Whole day
         </button>
       </div>
-      <div className="relative px-4 pb-2">
-        <div className="absolute left-4 right-4 top-0 bottom-[34px] pointer-events-none z-0"
-          style={{ background: WASH_H }} />
-        <div className="relative z-[1] flex items-end gap-1.5 border-b border-line">
+      <div className="px-4 pb-2">
+        <div className="flex items-end gap-1.5 border-b border-line">
           {blocks.map((b) => {
             if (b.isProject) {
               const free = freeShort(b.who);
