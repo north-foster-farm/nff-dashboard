@@ -47,6 +47,8 @@ import { useEventSeries } from "../lib/data/useEventSeries.js";
 import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
 import { DayRailSpine, DayStrip, WeekList } from "../components/ScheduleSidebars.jsx";
+import DayRibbon from "../components/schedule/DayRibbon.jsx";
+import { buildPersonLanes } from "../lib/schedule/personLoad.js";
 import { WeekView, MonthView } from "../components/ScheduleZoom.jsx";
 import { ScheduleReview } from "../components/ScheduleReview.jsx";
 import { weekFullness, weekDays } from "../lib/schedule/weekView.js";
@@ -1164,6 +1166,48 @@ export default function Schedule({ data }) {
     return m;
   }, [blockRows, counts]);
 
+  // Per-person load model for the desktop two-lane ribbon (Phase 1/3). Shape
+  // each real block into { startMin, endMin, rows:[{key, assignee, done}] }
+  // and let buildPersonLanes split it into Jim/James lanes + reservations +
+  // man-down holes. Recomputes with the same inputs as `counts` / `manDown`.
+  const personLanes = useMemo(() => {
+    const blocks = blockRows
+      .filter((b) => b.block && b.startMin != null)
+      .map((b) => {
+        const w = blockWindow(b.bucket);
+        return {
+          bucket: b.bucket,
+          name: b.block?.name ?? "Anytime",
+          startMin: w.start,
+          endMin: w.end,
+          rows: b.rows
+            .filter((r) => r.kind !== "note")
+            .map((r) => ({
+              key: r.key,
+              assignee: r.assignee ?? null,
+              done: r.kind === "chore"
+                ? completions.isDone(r.chore.id, r.placeId)
+                : r.commitment?.state === "done",
+            })),
+        };
+      });
+    // Axis spans the whole working day — earliest block start to latest
+    // block end — so the ribbon shows the day's full shape, not just the
+    // assigned span.
+    let dayStart = Infinity;
+    let dayEnd = -Infinity;
+    for (const b of blocks) {
+      dayStart = Math.min(dayStart, b.startMin);
+      dayEnd = Math.max(dayEnd, b.endMin);
+    }
+    return buildPersonLanes({
+      admins: ADMINS, blocks, windows, manDownKeys: manDown,
+      dayStart: Number.isFinite(dayStart) ? dayStart : undefined,
+      dayEnd: Number.isFinite(dayEnd) ? dayEnd : undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockRows, windows, manDown, completions, startMinByBucket, blocksById]);
+
   // The merged day timeline: chore blocks + event entries + project gaps +
   // overnight, in time order (the leading overnight pins first, the trailing
   // last — via startKey). "now"/seal stay on chore blocks; events are lines.
@@ -2134,6 +2178,14 @@ export default function Schedule({ data }) {
         <ScheduleReview drift={drift} reviews={reviews} splitDays={DRIFT_SPLIT} />
       ) : (
        <>
+      {/* Desktop two-lane time ribbon (Rethinker Phase 3) — the day read as
+          per-person load. lg-only; the component hides itself below lg. */}
+      <DayRibbon
+        lanes={personLanes.lanes}
+        axisStart={personLanes.axisStart}
+        axisEnd={personLanes.axisEnd}
+        nowMin={viewingToday ? nowMin : null}
+      />
       {/* Source-changed-after-confirm ribbon — informs, never auto-applies.
           Standardised to the carry-over banner shape (F22) and dismissible
           (F29). */}
