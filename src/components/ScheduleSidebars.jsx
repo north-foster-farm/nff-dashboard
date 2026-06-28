@@ -58,6 +58,26 @@ function compactTime(min) {
   return formatMinutesOfDay(min).replace(":00", "");
 }
 
+// Split a strip time into its numeric part and am/pm period so the phone
+// strip can stack them on two fixed lines. Without this the inline
+// "5:15 AM" wraps where it likes, giving some columns one tier and others
+// three — F41. The number line never wraps; am/pm always sits on its own
+// line; every column is exactly two tiers tall.
+function StripTime({ min, className }) {
+  const full = compactTime(min);
+  const sp = full.lastIndexOf(" ");
+  const num = sp === -1 ? full : full.slice(0, sp);
+  const period = sp === -1 ? "" : full.slice(sp + 1);
+  return (
+    <span className={className}>
+      <span className="block leading-tight whitespace-nowrap">{num}</span>
+      <span className="block leading-tight text-[8px] tracking-wider">
+        {period}
+      </span>
+    </span>
+  );
+}
+
 // ── Desktop load-spine (the primary navigator) ──────────────────────────
 export function DayRailSpine({
   blocks, focus, nowBucket, onPick, onWholeDay, totalItems,
@@ -305,13 +325,15 @@ export function DayStrip({
                     />
                   </span>
                   <FolderKanban size={14} className="mt-1.5 text-project" />
-                  <span className={
-                    "mt-0.5 pb-0.5 text-[10.5px] [font-variant-numeric:tabular-nums] "
-                    + "border-b-2 text-project font-medium "
-                    + (isFocus ? "border-project font-bold" : "border-transparent")
-                  }>
-                    {compactTime(b.startMin)}
-                  </span>
+                  <StripTime
+                    min={b.startMin}
+                    className={
+                      "mt-0.5 pb-0.5 text-center text-[10.5px] "
+                      + "[font-variant-numeric:tabular-nums] "
+                      + "border-b-2 text-project font-medium "
+                      + (isFocus ? "border-project font-bold" : "border-transparent")
+                    }
+                  />
                 </button>
               );
             }
@@ -394,17 +416,19 @@ export function DayStrip({
                 </span>
                 <Icon size={14}
                   className={"mt-1.5 " + (isNow ? "text-resolved" : "text-faint")} />
-                <span className={
-                  "mt-0.5 pb-0.5 text-[10.5px] [font-variant-numeric:tabular-nums] "
-                  + "border-b-2 transition-colors "
-                  + (isFocus
-                    ? "text-accent font-bold border-accent"
-                    : isNow
-                      ? "text-resolved font-bold border-transparent"
-                      : "text-faint border-transparent")
-                }>
-                  {compactTime(b.startMin)}
-                </span>
+                <StripTime
+                  min={b.startMin}
+                  className={
+                    "mt-0.5 pb-0.5 text-center text-[10.5px] "
+                    + "[font-variant-numeric:tabular-nums] "
+                    + "border-b-2 transition-colors "
+                    + (isFocus
+                      ? "text-accent font-bold border-accent"
+                      : isNow
+                        ? "text-resolved font-bold border-transparent"
+                        : "text-faint border-transparent")
+                  }
+                />
               </button>
             );
           })}
