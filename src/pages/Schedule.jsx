@@ -238,7 +238,9 @@ function EventEntry({
     : formatMinutesOfDay(startMin)
       + (endMin != null ? "–" + formatMinutesOfDay(endMin) : "");
   return (
-    <li>
+    /* Rethinker EventBand: a left color-bar (the event-kind hue) defines
+       the card's left edge, spanning header + detail. */
+    <li style={{ borderLeft: "3px solid " + color }}>
       <button
         type="button"
         onClick={onToggle}
@@ -248,13 +250,9 @@ function EventEntry({
         }
         aria-expanded={isOpen}
       >
-        <span
-          className="shrink-0 w-2.5 h-2.5 rounded-full"
-          style={{ background: color }}
-        />
         <span className={
           "flex-1 min-w-0 truncate text-[14px] " +
-          (isOpen ? "font-semibold text-fg" : "text-fg")
+          (isOpen ? "font-heading font-semibold text-fg -tracking-[0.01em]" : "text-fg")
         }>
           {occ.instanceLabel}
         </span>
