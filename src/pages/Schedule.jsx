@@ -558,23 +558,50 @@ function DraggableRow({
 
 // The inline "add a one-off task" input at the foot of a block.
 function AddTaskRow({ onAdd }) {
+  // Collapsed to a button by default (F61) — it reads as an action, not a raw
+  // input sitting open; clicking expands the field.
+  const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  const inputRef = useRef(null);
+  useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
   const submit = () => {
     const t = text.trim();
     if (!t) return;
     onAdd(t);
     setText("");
+    setOpen(false);
   };
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center gap-2 px-4 py-2 border-t border-line text-[13px] text-dim hover:bg-row-hover hover:text-fg cursor-pointer"
+      >
+        <Plus size={15} className="shrink-0 text-faint" />
+        Add a one-off task
+      </button>
+    );
+  }
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-t border-line">
       <Plus size={15} className="shrink-0 text-faint" />
       <input
+        ref={inputRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submit();
+          else if (e.key === "Escape") { setText(""); setOpen(false); }
+        }}
         placeholder="Add a one-off task…"
         className="flex-1 bg-transparent text-[14px] text-fg placeholder:text-faint outline-none py-1"
       />
+      <button type="button"
+        onClick={() => { setText(""); setOpen(false); }}
+        className="shrink-0 text-[12px] text-faint hover:text-fg">
+        Cancel
+      </button>
       {text.trim() && (
         <button type="button" onClick={submit}
           className="shrink-0 text-[12px] font-medium text-accent">

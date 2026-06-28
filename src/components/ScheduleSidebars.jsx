@@ -166,12 +166,20 @@ export function DayRailSpine({
                 className={"shrink-0 "
                   + (isNow ? "text-resolved" : "text-accent-deep")} />
               <span className="flex-1 min-w-0">
-                <span className="block text-[12px] truncate font-medium text-fg">
-                  Overnight{b.count > 0 ? ` · ${b.done}/${b.count}` : ""}
+                <span className="flex items-center gap-1 text-[12px] font-medium text-fg">
+                  <span className="truncate">
+                    Overnight{b.count > 0 ? ` · ${b.done}/${b.count}` : ""}
+                  </span>
+                  {/* "now" rides the title line as a shrink-0 marker so it's
+                      never clipped by the range label's truncation (F63). */}
+                  {isNow && (
+                    <span className="shrink-0 text-[9px] uppercase tracking-wide text-resolved font-bold">
+                      now
+                    </span>
+                  )}
                 </span>
                 <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint truncate">
                   {b.rangeLabel}
-                  {isNow && <span className="text-resolved font-semibold"> · now</span>}
                 </span>
               </span>
               {isFocus && (
