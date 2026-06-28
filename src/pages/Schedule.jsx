@@ -2638,7 +2638,14 @@ export default function Schedule({ data }) {
         <ReservationSheet
           anchorDate={today}
           ymd={ymdLocal}
-          onAdd={(r) => { addReservation(r); setAddingTimeOff(false); }}
+          existingWindows={windows}
+          onAdd={({ assignees, ...rest }) => {
+            // Fan out one reservation per selected person (F70); a shared
+            // series id (when repeating) keeps them removable as one group.
+            (assignees ?? []).forEach((a) =>
+              addReservation({ ...rest, assignee: a }));
+            setAddingTimeOff(false);
+          }}
           onClose={() => setAddingTimeOff(false)}
         />
       )}

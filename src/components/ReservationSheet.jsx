@@ -26,8 +26,18 @@ const HORIZONS = [
   { weeks: 12, label: "12 wks" },
 ];
 
-export default function ReservationSheet({ onAdd, onClose, anchorDate, ymd }) {
-  const [assignee, setAssignee] = useState(ADMINS[0]);
+// Minutes-of-day from an "HH:MM" time input value.
+const toMin = (t) => {
+  if (!t) return null;
+  const [h, m] = t.split(":").map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+};
+
+export default function ReservationSheet({
+  onAdd, onClose, anchorDate, ymd, existingWindows = [],
+}) {
+  // Multi-person (F70): time off can be reserved for several people at once.
+  const [assignees, setAssignees] = useState(() => new Set([ADMINS[0]]));
   const [kind, setKind] = useState("off_site");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -49,6 +59,12 @@ export default function ReservationSheet({ onAdd, onClose, anchorDate, ymd }) {
       document.body.style.overflow = prev;
     };
   }, [onClose]);
+
+  const toggleAssignee = (a) => setAssignees((s) => {
+    const n = new Set(s);
+    if (n.has(a)) { if (n.size > 1) n.delete(a); } else n.add(a);
+    return n;
+  });
 
   const toggleDow = (i) => setDows((s) => {
     const n = new Set(s);
@@ -72,13 +88,31 @@ export default function ReservationSheet({ onAdd, onClose, anchorDate, ymd }) {
   }, [repeat, canRepeat, anchorDate, ymd, dows, weeks]);
 
   const isDayOff = kind === "day_off";
+
+  // Overlap guard (F78) — you can't be off twice in the same slot. Checks the
+  // viewed day's existing reservations for each selected person; the anchor day
+  // is always part of the new reservation, so blocking it covers the case
+  // James hit (double-booking himself). Cross-horizon repeat days aren't
+  // checked here — the viewed-day guard is the load-bearing one.
+  const newStart = isDayOff ? 0 : toMin(start);
+  const newEnd = isDayOff
+    ? 1440
+    : (toMin(end) ?? (newStart == null ? null : newStart + 30));
+  const overlapNames = useMemo(() => {
+    if (newStart == null || newEnd == null) return [];
+    return [...assignees].filter((a) => existingWindows.some(
+      (w) => w.assignee === a && newStart < w.endMin && newEnd > w.startMin));
+  }, [assignees, existingWindows, newStart, newEnd]);
+
   const valid = (isDayOff || start)
+    && assignees.size > 0
+    && overlapNames.length === 0
     && (!repeat || (repeatDates && repeatDates.length > 0));
 
   const submit = () => {
     if (!valid) return;
     onAdd({
-      assignee, kind,
+      assignees: [...assignees], kind,
       start: isDayOff ? null : start,
       end: isDayOff ? null : (end || null),
       label: label.trim() || null,
@@ -109,8 +143,9 @@ export default function ReservationSheet({ onAdd, onClose, anchorDate, ymd }) {
               <button
                 key={a}
                 type="button"
-                onClick={() => setAssignee(a)}
-                className={"text-[13px] px-3 py-1.5 border " + (assignee === a
+                onClick={() => toggleAssignee(a)}
+                aria-pressed={assignees.has(a)}
+                className={"text-[13px] px-3 py-1.5 border " + (assignees.has(a)
                   ? "border-accent text-accent" : "border-line text-dim")}
               >
                 {a}
@@ -203,6 +238,13 @@ export default function ReservationSheet({ onAdd, onClose, anchorDate, ymd }) {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {overlapNames.length > 0 && (
+          <div className="text-[12px] text-warn">
+            {overlapNames.join(" & ")} already {overlapNames.length > 1
+              ? "have" : "has"} time off overlapping this slot.
           </div>
         )}
 
