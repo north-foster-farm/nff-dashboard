@@ -331,6 +331,28 @@ function EventEntry({
   );
 }
 
+// The now-marker (Rethinker §3.4): a green hairline rule with a 7px dot +
+// soft glow and a "Now · <time>" eyebrow. Leads the now-block in both the
+// whole-day overview and the focused block detail.
+function NowMarker({ startMin }) {
+  return (
+    <div className="px-4 pt-2">
+      <div className="relative border-t border-resolved">
+        <span
+          className="absolute -top-1 left-0 w-[7px] h-[7px] rounded-full"
+          style={{
+            background: "var(--c-resolved)",
+            boxShadow: "0 0 0 3px rgba(76,186,133,0.22)",
+          }}
+        />
+      </div>
+      <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.14em] text-resolved mt-1">
+        Now{startMin != null ? " · " + formatMinutesOfDay(startMin) : ""}
+      </div>
+    </div>
+  );
+}
+
 // must vs should (S13–S15, reused for S12). A "should" is a deferrable window
 // chore that still has days of runway on `date`; everything else — fixed
 // daily/specific/weekly work, or a window chore whose deadline has arrived —
@@ -2443,14 +2465,7 @@ export default function Schedule({ data }) {
             const isNow = b.bucket === nowBucket;
             return (
               <li key={b.bucket} ref={isNow ? focusRef : null}>
-                {isNow && (
-                  <div className="px-4 pt-2">
-                    <div className="border-t border-resolved" />
-                    <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.14em] text-resolved mt-1">
-                      Now{b.startMin != null ? " · " + formatMinutesOfDay(b.startMin) : ""}
-                    </div>
-                  </div>
-                )}
+                {isNow && viewingToday && <NowMarker startMin={b.startMin} />}
                 <button
                   type="button"
                   onClick={() => pickBlock(b.bucket)}
@@ -2680,12 +2695,7 @@ export default function Schedule({ data }) {
             return (
               <>
                 {b.bucket === nowBucket && viewingToday && (
-                  <div className="px-4 pt-2">
-                    <div className="border-t border-resolved" />
-                    <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.14em] text-resolved mt-1">
-                      Now{b.startMin != null ? " · " + formatMinutesOfDay(b.startMin) : ""}
-                    </div>
-                  </div>
+                  <NowMarker startMin={b.startMin} />
                 )}
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
                   {b.block && <BlockBadge block={b.block} />}
