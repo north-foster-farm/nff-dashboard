@@ -413,6 +413,8 @@ function StepEditor({ step, proc, chores, editorData }) {
             description: step.bodyMd ?? "",
             blockId: step.blockId ?? null,
             lastChanceBlockId: step.lastChanceBlockId ?? null,
+            startTime: step.startTime ?? null,
+            assignment: step.assignment ?? null,
             anchorType: step.anchorType ?? "none",
             anchorKindTag: step.anchorKindTag ?? null,
             placeId: step.placeId ?? null,
@@ -434,6 +436,7 @@ function StepEditor({ step, proc, chores, editorData }) {
           speciesById={editorData.speciesById}
           concreteAnimals={false}
           commitMode="blur"
+          showAssignment
         />
       )}
     </div>

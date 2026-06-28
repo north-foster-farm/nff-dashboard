@@ -17,7 +17,7 @@ import { resolveAssignees } from "../lib/chores.js";
 // the existing fake-auth user picker uses. Down the road this could
 // pull from the admins table.
 
-const ASSIGNEES = ["James", "Jim"];
+export const ASSIGNEES = ["James", "Jim"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function AssignmentRulesEditor({

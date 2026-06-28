@@ -1461,6 +1461,7 @@ function ChoreInlineEditor({
     description: chore.description ?? "",
     blockId: chore.blockId ?? null,
     lastChanceBlockId: chore.lastChanceBlockId ?? null,
+    startTime: chore.startTime ?? null,
     anchorType:
       chore.anchorType ?? (chore.placeId ? "occupied_place" : "none"),
     anchorSpeciesId: chore.anchorSpeciesId ?? null,
@@ -1489,6 +1490,7 @@ function ChoreInlineEditor({
         sortOrder: Number(sortOrder) || 0,
         blockId: draft.blockId || null,
         lastChanceBlockId: draft.lastChanceBlockId || null,
+        startTime: draft.startTime || null,
         anchorType: draft.anchorType,
         anchorSpeciesId: draft.anchorSpeciesId ?? null,
         anchorBatchId: draft.anchorBatchId ?? null,

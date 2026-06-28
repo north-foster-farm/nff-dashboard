@@ -149,6 +149,6 @@ function camelToDb(patch) {
     out.last_chance_block_id = patch.lastChanceBlockId || null;
   }
   if (typeof patch.sortOrder === "number") out.sort_order = patch.sortOrder;
-  if (typeof patch.startTime === "string") out.start_time = patch.startTime;
+  if ("startTime" in patch) out.start_time = patch.startTime || null;
   return out;
 }

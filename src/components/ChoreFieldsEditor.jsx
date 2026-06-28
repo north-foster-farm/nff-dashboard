@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { T } from "../theme.js";
 import { buildPlaceTree } from "../lib/places.js";
 import { displayBlockSide } from "../lib/sunTimes.js";
+import { ASSIGNEES } from "./AssignmentRulesEditor.jsx";
 
 // ChoreFieldsEditor — the single source of truth for the chore
 // field-set (Phase 2 of processes-as-chore-generators). It renders the
@@ -28,6 +29,11 @@ import { displayBlockSide } from "../lib/sunTimes.js";
 //     chore editor accumulates locally, so per-keystroke is free);
 //     "blur" commits text only on blur / Enter (the step editor writes
 //     to the DB per change, so we don't want a write per keystroke).
+//   showAssignment — true renders a simple default-assignee dropdown that
+//     writes the `assignment` jsonb ({ default: name } | null). Used by
+//     the process step editor, whose steps carry assignment inline. The
+//     Chores host leaves this off and mounts the full per-day
+//     <AssignmentRulesEditor> (chore-scoped rules table) instead.
 export default function ChoreFieldsEditor({
   value,
   onChange,
@@ -39,8 +45,12 @@ export default function ChoreFieldsEditor({
   commitMode = "change",
   showTitle = true,
   showDescription = true,
+  showAssignment = false,
 }) {
   const activeBlocks = (blocks ?? []).filter(b => b.isActive);
+  // The DB stores start_time as free "HH:MM" text; a few legacy rows
+  // carry "HH:MM:SS". Normalize to what <input type="time"> expects.
+  const startTimeValue = (value.startTime ?? "").slice(0, 5);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -98,6 +108,34 @@ export default function ChoreFieldsEditor({
         </select>
       </EditField>
 
+      <EditField label="Start time">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            type="time"
+            value={startTimeValue}
+            onChange={(e) =>
+              onChange({ startTime: e.target.value || null })}
+            style={{ ...editInputStyle, width: 120 }}
+          />
+          {startTimeValue && (
+            <button
+              type="button"
+              onClick={() => onChange({ startTime: null })}
+              style={{
+                fontSize: 11, color: T.textDim, background: "none",
+                border: "none", cursor: "pointer", padding: 0,
+              }}
+            >
+              clear
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
+          Overrides the block's default start for ordering and the day
+          strip. Empty = inherit the block's time.
+        </div>
+      </EditField>
+
       <EditField label="Deadline block">
         <select
           value={value.lastChanceBlockId ?? ""}
@@ -118,6 +156,28 @@ export default function ChoreFieldsEditor({
           chores.
         </div>
       </EditField>
+
+      {showAssignment && (
+        <EditField label="Assigned to">
+          <select
+            value={value.assignment?.default ?? ""}
+            onChange={(e) => {
+              const who = e.target.value;
+              onChange({ assignment: who ? { default: who } : null });
+            }}
+            style={editInputStyle}
+          >
+            <option value="">Unassigned</option>
+            {ASSIGNEES.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+          <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
+            Who the generated chores default to. Per-day rules can refine
+            this later on the chore itself.
+          </div>
+        </EditField>
+      )}
     </div>
   );
 }
