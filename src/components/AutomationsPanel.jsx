@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Sparkles } from "lucide-react";
 import {
   useAutomations, useAutomationEmissions,
 } from "../lib/data/useAutomations.js";
-import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 
 // AutomationsPanel (Batch 27.5) — the automation rules UI, relocated
 // from the Settings page to live next to the thing each rule is about:
@@ -20,17 +19,17 @@ import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 // behavior).
 const AUTOMATION_COPY = {
   batch_created:
-    "When a new broiler batch is added, creates its arrival event, a "
-    + "pasture-move chore, and a brooder cleanout chore. Processing "
-    + "days are not auto-created — add them from the Schedule once "
-    + "the date is set.",
+    "When a new broiler batch is added, creates its arrival event. Its "
+    + "pasture-move and brooder-cleanout chores come from the broiler "
+    + "pasture process. Processing days are not auto-created — add them "
+    + "from the Schedule once the date is set.",
   inventory_reorder:
     "When a feed's on-hand amount drops to or below its reorder "
     + "point, creates a feed-order chore and a delivery event.",
 };
 
 export default function AutomationsPanel({ triggerKind, speciesId = null }) {
-  const { automations, loading, setEnabled, updateConfig } = useAutomations();
+  const { automations, loading, setEnabled } = useAutomations();
   const { emissions } = useAutomationEmissions({ activeOnly: false });
 
   const rules = useMemo(() => {
@@ -76,7 +75,6 @@ export default function AutomationsPanel({ triggerKind, speciesId = null }) {
           key={rule.id}
           automation={rule}
           onToggle={(enabled) => setEnabled(rule.id, enabled)}
-          onUpdateConfig={(cfg) => updateConfig(rule.id, cfg)}
         />
       ))}
 
@@ -87,8 +85,7 @@ export default function AutomationsPanel({ triggerKind, speciesId = null }) {
 
 // ── rule card ──────────────────────────────────────────────────────────
 
-function AutomationRuleCard({ automation: a, onToggle, onUpdateConfig }) {
-  const cfg = a.triggerConfig ?? {};
+function AutomationRuleCard({ automation: a, onToggle }) {
   const lastFired = a.lastFiredAt
     ? new Date(a.lastFiredAt).toLocaleString("en-US", {
         month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
@@ -110,83 +107,6 @@ function AutomationRuleCard({ automation: a, onToggle, onUpdateConfig }) {
           </div>
         </div>
         <Toggle checked={a.enabled} onChange={onToggle} />
-      </div>
-
-      {a.triggerKind === "batch_created" && (
-        <BatchRuleConfig cfg={cfg} onUpdateConfig={onUpdateConfig} />
-      )}
-    </div>
-  );
-}
-
-// Config block for the broiler-lifecycle rule: the week offsets plus
-// the pasture-move chore's block / custom-time overrides (read by the
-// 0025 trigger when it creates the chore).
-function BatchRuleConfig({ cfg, onUpdateConfig }) {
-  const { blocksOrdered } = useChoreBlocks();
-  const activeBlocks = (blocksOrdered ?? []).filter(b => b.isActive);
-
-  return (
-    <div className="flex flex-col gap-3 pl-7">
-      <div className="flex items-center gap-4 flex-wrap">
-        <NumberSetting
-          label="Pasture move"
-          unit="weeks after arrival"
-          value={cfg.pasture_move_weeks ?? 3}
-          min={1} max={12}
-          onCommit={(v) =>
-            onUpdateConfig({ ...cfg, pasture_move_weeks: v })}
-        />
-        <NumberSetting
-          label="Brooder cleanout"
-          unit="days after the move"
-          value={cfg.cleanout_offset_days ?? 1}
-          min={0} max={14}
-          onCommit={(v) =>
-            onUpdateConfig({ ...cfg, cleanout_offset_days: v })}
-        />
-      </div>
-
-      {/* Pasture-move chore: which block it lands in + optional custom
-          start time. */}
-      <div className="flex items-end gap-4 flex-wrap">
-        <div>
-          <div className="text-[9px] text-faint uppercase tracking-[0.12em] mb-1">
-            Pasture-move chore block
-          </div>
-          <select
-            value={cfg.pasture_move_block_id ?? ""}
-            onChange={(e) => onUpdateConfig({
-              ...cfg,
-              pasture_move_block_id: e.target.value || null,
-            })}
-            className="bg-bg border border-line text-fg text-[12px] px-2 py-1.5 outline-none focus:border-accent font-[inherit]"
-          >
-            <option value="">No block — uses the morning period</option>
-            {activeBlocks.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <div className="text-[9px] text-faint uppercase tracking-[0.12em] mb-1">
-            Custom time override
-          </div>
-          <input
-            type="time"
-            value={cfg.pasture_move_start_time ?? ""}
-            onChange={(e) => onUpdateConfig({
-              ...cfg,
-              pasture_move_start_time: e.target.value || null,
-            })}
-            className="bg-bg border border-line text-fg text-[12px] px-2 py-1.5 outline-none focus:border-accent font-[inherit]"
-          />
-        </div>
-      </div>
-      <div className="text-[10px] text-faint leading-relaxed">
-        Block and time apply to the pasture-move chores this rule
-        creates from now on — already-created chores keep what they
-        have (editable on the Chores page).
       </div>
     </div>
   );
@@ -252,37 +172,5 @@ function Toggle({ checked, onChange }) {
         }
       />
     </button>
-  );
-}
-
-// Small inline number editor: label + stepper input + unit hint.
-// Commits on blur or Enter so half-typed numbers don't thrash the DB.
-function NumberSetting({ label, unit, value, min, max, onCommit }) {
-  const [draft, setDraft] = useState(null); // null = not editing
-
-  const commit = () => {
-    if (draft === null) return;
-    const n = Number(draft);
-    if (Number.isFinite(n) && n >= min && n <= max && n !== value) {
-      onCommit(Math.round(n));
-    }
-    setDraft(null);
-  };
-
-  return (
-    <label className="flex items-center gap-2">
-      <span className="text-[12px] text-fg font-medium">{label}</span>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        value={draft ?? value}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
-        className="w-14 bg-surface border border-line px-2 py-1 text-[12px] text-fg font-[inherit] outline-none text-center"
-      />
-      <span className="text-[11px] text-faint">{unit}</span>
-    </label>
   );
 }
