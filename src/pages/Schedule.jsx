@@ -2679,6 +2679,14 @@ export default function Schedule({ data }) {
             const allDone = total > 0 && done === total;
             return (
               <>
+                {b.bucket === nowBucket && viewingToday && (
+                  <div className="px-4 pt-2">
+                    <div className="border-t border-resolved" />
+                    <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.14em] text-resolved mt-1">
+                      Now{b.startMin != null ? " · " + formatMinutesOfDay(b.startMin) : ""}
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
                   {b.block && <BlockBadge block={b.block} />}
                   <span className="flex-1 min-w-0 truncate font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
