@@ -2123,7 +2123,13 @@ export default function Schedule({ data }) {
           : null;
         if (!changes || sig === dismissedChangeSig) return null;
         return (
-          <div className="px-3 py-2 mb-3 border-l-2 border-warn bg-warn/5 flex items-start gap-2">
+          <div
+            className="px-3 py-2 mb-3 border flex items-start gap-2"
+            style={{
+              borderColor: "color-mix(in srgb, var(--c-warn) 45%, transparent)",
+              background: "color-mix(in srgb, var(--c-warn) 6%, var(--c-bg))",
+            }}
+          >
             <AlertTriangle size={14} className="shrink-0 text-warn mt-0.5" />
             <div className="flex-1 min-w-0 text-[12px] text-dim">
               <span className="font-medium text-fg">
@@ -2204,7 +2210,13 @@ export default function Schedule({ data }) {
 
       {/* Yesterday's unfinished musts (S12) — only when building today. */}
       {viewMode === "day" && !dismissedYesterday && yesterdayMusts.count > 0 && (
-        <div className="px-3 py-2 mb-3 border-l-2 border-warn bg-warn/5 flex items-start gap-2">
+        <div
+          className="px-3 py-2 mb-3 border flex items-start gap-2"
+          style={{
+            borderColor: "color-mix(in srgb, var(--c-warn) 45%, transparent)",
+            background: "color-mix(in srgb, var(--c-warn) 6%, var(--c-bg))",
+          }}
+        >
           <AlertTriangle size={14} className="shrink-0 text-warn mt-0.5" />
           <div className="flex-1 min-w-0 text-[12px] text-dim">
             <span className="font-medium text-fg">
