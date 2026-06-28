@@ -2759,6 +2759,7 @@ export default function Schedule({ data }) {
           isFirstInBlock={editing.isFirstInBlock}
           currentClockTime={editing.currentClockTime}
           canMoveDay={editing.canMoveDay}
+          committed={!!confirmedDoc}
           blocks={blocks}
           onApply={applyEdit}
           onClose={() => setEditing(null)}

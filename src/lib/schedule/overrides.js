@@ -86,24 +86,31 @@ export function applyOverrides(blockRows, overrides, isRealBlock) {
 // the double-confirm isn't a generic "are you sure".
 export function assessEdit({
   label, fromBucket, fromBlockName, isFirstInBlock, toBlockId, toDate,
+  committed,
 }) {
   const movingDay = !!toDate;
   const movingBlock = toBlockId != null && toBlockId !== fromBucket;
   if (!movingDay && !movingBlock) return { protected: false, why: null };
 
-  if (movingDay) {
+  // A day move only "changes the plan you already agreed on" once the day is
+  // CONFIRMED. On an unconfirmed draft you're still building it, so moving an
+  // item to another day is free — no protection prompt (F62).
+  if (movingDay && committed) {
     return {
       protected: true,
       why: `“${label}” is committed for today. Moving it to another day `
         + `changes the plan you already agreed on.`,
     };
   }
-  const where = fromBlockName ? ` from the ${fromBlockName} block` : "";
-  const first = isFirstInBlock
-    ? " It’s the first task there — animals may depend on it being done on time."
-    : "";
-  return {
-    protected: true,
-    why: `Moving “${label}”${where} takes it off its planned window.${first}`,
-  };
+  if (movingBlock) {
+    const where = fromBlockName ? ` from the ${fromBlockName} block` : "";
+    const first = isFirstInBlock
+      ? " It’s the first task there — animals may depend on it being done on time."
+      : "";
+    return {
+      protected: true,
+      why: `Moving “${label}”${where} takes it off its planned window.${first}`,
+    };
+  }
+  return { protected: false, why: null };
 }

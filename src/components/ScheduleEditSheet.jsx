@@ -29,7 +29,7 @@ function ymd(d) {
 
 export default function ScheduleEditSheet({
   label, fromBucket, fromBlockName, isFirstInBlock, currentClockTime,
-  canMoveDay, blocks, onApply, onClose,
+  canMoveDay, committed, blocks, onApply, onClose,
 }) {
   const [toBlockId, setToBlockId] = useState(fromBucket ?? ANYTIME);
   const [clockTime, setClockTime] = useState(currentClockTime ?? "");
@@ -59,7 +59,7 @@ export default function ScheduleEditSheet({
 
   const assessment = assessEdit({
     label, fromBucket, fromBlockName, isFirstInBlock,
-    toBlockId: change.toBlockId, toDate: change.toDate,
+    toBlockId: change.toBlockId, toDate: change.toDate, committed,
   });
 
   const submit = () => {
@@ -109,8 +109,15 @@ export default function ScheduleEditSheet({
           </>
         ) : (
           <>
-            <div className="font-heading text-[18px] font-semibold truncate">
-              {label}
+            {/* A clear action title so the sheet says what it does, not just
+                the row name (F52). */}
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-muted">
+                Move or edit
+              </div>
+              <div className="font-heading text-[18px] font-semibold truncate">
+                {label}
+              </div>
             </div>
 
             <label className="flex flex-col gap-1">
@@ -174,9 +181,9 @@ export default function ScheduleEditSheet({
             )}
 
             {assessment.protected && (
-              <div className="flex items-start gap-2 text-[12px] text-warn border border-warn px-2 py-1.5">
-                <ShieldAlert size={14} className="shrink-0 mt-0.5" />
-                <span>Protected change — you’ll confirm why on the next step.</span>
+              <div className="flex items-center gap-1.5 text-[12px] text-warn">
+                <ShieldAlert size={13} className="shrink-0" />
+                <span>Protected change.</span>
               </div>
             )}
 
