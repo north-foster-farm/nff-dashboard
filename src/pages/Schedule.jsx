@@ -1928,12 +1928,20 @@ export default function Schedule({ data }) {
     [todayConflicts, upcomingConflicts]);
 
   // Jump to a conflict (S56b): focus its block on the viewed day, or open the
-  // day it falls on first.
+  // day it falls on first. On phones the focused block renders below the
+  // day-strip, off-screen, so focusing alone looked like nothing happened
+  // (F60) — scroll the focused detail into view once it has committed. Two
+  // frames so the newly-focused block has mounted before we scroll to it.
   const jumpToConflict = (c) => {
     if (c.scope === "upcoming" && c.date) {
       goToDay(new Date(c.date), c.bucket ?? "overview");
     } else if (c.bucket) {
       setFocusSel(c.bucket);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        focusRef.current?.scrollIntoView?.({
+          behavior: REDUCED_MOTION ? "auto" : "smooth", block: "center",
+        });
+      }));
     }
     setShowConflicts(false);
   };
