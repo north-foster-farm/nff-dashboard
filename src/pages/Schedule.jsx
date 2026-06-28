@@ -1269,16 +1269,31 @@ export default function Schedule({ data }) {
   });
   const showOverview = () => setFocusSel("overview");
 
+  // Per-day focus memory (F45): remember the open block for each visited day
+  // and restore it on return; a day not opened this session defaults to the
+  // whole-day overview, so a block selected on one day never carries onto a
+  // day where it doesn't exist. `focusOverride` forces a specific target
+  // (e.g. opening straight to a block from Week/Month).
+  const focusByDayRef = useRef(new Map());
+  const goToDay = (date, focusOverride) => {
+    focusByDayRef.current.set(dateISO, focusSel);
+    const nextISO = ymdLocal(date);
+    const next = focusOverride !== undefined
+      ? focusOverride
+      : (focusByDayRef.current.has(nextISO)
+        ? focusByDayRef.current.get(nextISO) : "overview");
+    setToday(date);
+    setFocusSel(next);
+  };
+
   // Zoom navigation: tapping a day (or a day's block) in Week/Month snaps the
   // surface back to the Day zoom on that target.
   const openDay = (date) => {
-    setToday(date);
-    setFocusSel("overview");
+    goToDay(date);
     setViewMode("day");
   };
   const openDayBlock = (date, bucket) => {
-    setToday(date);
-    setFocusSel(bucket);
+    goToDay(date, bucket);
     setViewMode("day");
   };
 
@@ -1885,7 +1900,7 @@ export default function Schedule({ data }) {
   // day it falls on first.
   const jumpToConflict = (c) => {
     if (c.scope === "upcoming" && c.date) {
-      setToday(new Date(c.date));
+      goToDay(new Date(c.date), c.bucket ?? "overview");
     } else if (c.bucket) {
       setFocusSel(c.bucket);
     }
@@ -2661,7 +2676,7 @@ export default function Schedule({ data }) {
           Hidden in the wider zooms (the centre is the navigator there). */}
       {viewMode === "day" && (
         <WeekList week={week} todayISO={realTodayISO} selectedISO={dateISO}
-          ymd={ymdLocal} onPickDay={setToday} />
+          ymd={ymdLocal} onPickDay={goToDay} />
       )}
      </div>{/* /lg workbench flex */}
 
