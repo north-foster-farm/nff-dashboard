@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { FolderKanban, Plus } from "lucide-react";
+import { BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
 import { useProjects } from "../lib/data/useProjects.js";
 import { navigate, pathForProject } from "../lib/router.js";
 import { formatDateRange } from "../lib/projects.js";
@@ -57,7 +58,7 @@ export default function Projects() {
         />
         <button
           onClick={() => setCreating(c => !c)}
-          className="ml-auto inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 mb-2 cursor-pointer"
+          className={"ml-auto mb-2 " + BTN_ACCENT}
         >
           <Plus size={13} /> New project
         </button>
@@ -114,7 +115,7 @@ function EmptyState({ tab }) {
         : "Nothing archived. Archiving hides a project from the other " +
           "tabs without deleting anything.";
   return (
-    <div className="bg-surface border border-line px-6 py-10 text-center">
+    <div className="border border-line px-6 py-10 text-center">
       <FolderKanban size={20} className="text-faint mx-auto mb-3" />
       <div className="text-[13px] text-muted leading-relaxed max-w-[420px] mx-auto">
         {copy}
@@ -142,7 +143,7 @@ function NewProjectForm({ onCreate, onCancel }) {
   };
 
   return (
-    <div className="bg-surface border border-line p-4 flex flex-col gap-3">
+    <div className="border border-line p-4 flex flex-col gap-3">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -160,18 +161,10 @@ function NewProjectForm({ onCreate, onCancel }) {
       />
       {errorMsg && <div className="text-[11px] text-warn">{errorMsg}</div>}
       <div className="flex items-center justify-end gap-2">
-        <button
-          onClick={onCancel}
-          disabled={pending}
-          className="bg-transparent border border-line text-dim font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
-        >
+        <button onClick={onCancel} disabled={pending} className={BTN_GHOST}>
           Cancel
         </button>
-        <button
-          onClick={submit}
-          disabled={pending}
-          className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50"
-        >
+        <button onClick={submit} disabled={pending} className={BTN_ACCENT}>
           {pending ? "Creating…" : "Create project"}
         </button>
       </div>
@@ -186,7 +179,7 @@ function ProjectCard({ project }) {
   return (
     <button
       onClick={() => navigate(pathForProject(project.id))}
-      className="bg-surface border border-line p-4 text-left cursor-pointer hover:border-accent font-[inherit] flex flex-col gap-2.5 w-full"
+      className="border border-line p-4 text-left cursor-pointer hover:border-accent font-[inherit] flex flex-col gap-2.5 w-full"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
