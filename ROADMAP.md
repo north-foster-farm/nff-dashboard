@@ -4234,12 +4234,13 @@ below.
 
 ### Projects rework — forced-ranked priority (major rework of Batch 22)
 **Status (2026-06-30):** structural-core foundation SHIPPED on `main`
-(commit `c911ea4`, NOT pushed) — migration `0041` (additive: `queue_state`,
-`timing_note`, `locked_date`; **authored, NOT applied to prod**), the
-`useProjects` data layer (forced-rank reorder, queue-state moves, lock,
-timing note), and the rewritten `Projects.jsx` (ranked list w/ dnd-kit +
-Focus emphasis, Unprioritized bucket, lock-to-date, timing note). Build
-green; NOT runtime-verified (blocked on the `0041` push). Still deferred:
+(commit `c911ea4`, not git-pushed) — migration `0041` (additive:
+`queue_state`, `timing_note`, `locked_date`) **applied to prod 2026-06-30,
+lossless** (existing 3 projects defaulted to `ranked`); the `useProjects`
+data layer (forced-rank reorder, queue-state moves, lock, timing note);
+and the rewritten `Projects.jsx` (ranked list w/ dnd-kit + Focus emphasis,
+Unprioritized bucket, lock-to-date, timing note). Build green and
+**runtime-verified light+dark** against prod. Still deferred:
 the schedule reflow engine + stale indicator + Today integration,
 lock-to-date UI at phase/step/item level, clone-from-stub, and retiring
 the vestigial `status` column + the ProjectPage status select.
