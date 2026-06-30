@@ -1,41 +1,61 @@
 import { useMemo, useState } from "react";
-import { FolderKanban, Plus } from "lucide-react";
+import {
+  DndContext, PointerSensor, closestCenter, useSensor, useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  FolderKanban, Plus, GripVertical, Lock, ArrowDownToLine, ArrowUp,
+} from "lucide-react";
 import { BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
 import { useProjects } from "../lib/data/useProjects.js";
 import { navigate, pathForProject } from "../lib/router.js";
 import { formatDateRange } from "../lib/projects.js";
 
-// The Projects list page (Batch 22). Every project as a card with its
-// status, progress (the completeness rule's verbatim copy), and dates.
-// Clicking a card opens the project's detail page
-// (/projects/<projectId> → ProjectPage.jsx).
-
-const STATUS_META = {
-  planned: { label: "Planned", cls: "text-dim border-line" },
-  in_progress: { label: "In progress", cls: "text-accent border-accent" },
-  completed: { label: "Completed", cls: "text-resolved border-resolved" },
-};
+// The Projects list page — forced-ranked rework (Batch: projects rework,
+// structural core). Priority is a SINGLE total order, not plural flags:
+//   • Ranked list — every active project ranked against every other; the
+//     top is THE focus and ranks 2+ are deliberately de-emphasized
+//     ("working on anything but the top should feel wrong"). Drag to
+//     reorder; the cascade is implicit (drop P1 at slot 2 and P2 takes
+//     the top).
+//   • Unprioritized bucket — scoped-but-not-yet-actionable / one-line
+//     ideas, with an optional plain-text timing note. Replaces "on hold".
+//   • Lock-to-date — the escape hatch to jump the queue; a locked project
+//     stays put and (a later batch) the schedule flows around it.
+// Done is completedAt; archived is archivedAt — both orthogonal to the
+// queue. The old status-as-priority model is gone.
 
 export default function Projects() {
   const {
-    projects, archived, loading, createProject,
+    projects, archived, loading,
+    createProject, reorderProjects, setQueueState, setProjectLocked,
+    setTimingNote, archiveProject,
   } = useProjects();
   const [tab, setTab] = useState("active");
   const [creating, setCreating] = useState(false);
 
-  const active = useMemo(
-    () => projects.filter(p => p.status !== "completed"),
+  // Active (non-archived, non-done) split by queue placement; done +
+  // archived live in their own tabs.
+  const ranked = useMemo(
+    () => projects
+      .filter(p => !p.completedAt && p.queueState !== "unprioritized")
+      .sort((a, b) => a.sortOrder - b.sortOrder),
+    [projects]
+  );
+  const unprioritized = useMemo(
+    () => projects.filter(
+      p => !p.completedAt && p.queueState === "unprioritized"),
     [projects]
   );
   const completed = useMemo(
-    () => projects.filter(p => p.status === "completed"),
+    () => projects.filter(p => p.completedAt),
     [projects]
   );
 
-  const visible =
-    tab === "active" ? active :
-    tab === "completed" ? completed :
-    archived;
+  const actions = { setQueueState, setProjectLocked, archiveProject };
 
   return (
     <div className="max-w-[860px] flex flex-col gap-5">
@@ -44,7 +64,7 @@ export default function Projects() {
         <Tab
           active={tab === "active"}
           onClick={() => setTab("active")}
-          label={`Active · ${active.length}`}
+          label={`Active · ${ranked.length + unprioritized.length}`}
         />
         <Tab
           active={tab === "completed"}
@@ -77,13 +97,116 @@ export default function Projects() {
 
       {loading ? (
         <div className="text-[12px] text-dim italic">Loading…</div>
-      ) : visible.length === 0 ? (
-        <EmptyState tab={tab} />
+      ) : tab === "active" ? (
+        <ActiveView
+          ranked={ranked}
+          unprioritized={unprioritized}
+          reorderProjects={reorderProjects}
+          actions={actions}
+          setTimingNote={setTimingNote}
+        />
+      ) : tab === "completed" ? (
+        <FlatList list={completed} empty={<EmptyState tab="completed" />} />
       ) : (
-        <div className="flex flex-col gap-2">
-          {visible.map(p => <ProjectCard key={p.id} project={p} />)}
-        </div>
+        <FlatList list={archived} empty={<EmptyState tab="archived" />} />
       )}
+    </div>
+  );
+}
+
+// ── Active view: ranked list + Unprioritized bucket ────────────────────
+
+function ActiveView({
+  ranked, unprioritized, reorderProjects, actions, setTimingNote,
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+  const rankedIds = ranked.map(p => p.id);
+
+  const onDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const from = rankedIds.indexOf(active.id);
+    const to = rankedIds.indexOf(over.id);
+    if (from < 0 || to < 0) return;
+    reorderProjects(arrayMove(rankedIds, from, to)).catch(() => {});
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <section className="flex flex-col gap-2">
+        <SectionLabel>
+          The ranked list — top is the focus
+        </SectionLabel>
+        {ranked.length === 0 ? (
+          <EmptyState tab="active" />
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={onDragEnd}
+          >
+            <SortableContext
+              items={rankedIds}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="flex flex-col gap-2">
+                {ranked.map((p, i) => (
+                  <SortableProjectCard
+                    key={p.id}
+                    project={p}
+                    rank={i + 1}
+                    actions={actions}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <SectionLabel>
+          Unprioritized · {unprioritized.length}
+        </SectionLabel>
+        <div className="text-[11px] text-faint leading-relaxed -mt-1 mb-1">
+          Not yet scoped or not yet actionable. Rank one when you commit
+          to it.
+        </div>
+        {unprioritized.length === 0 ? (
+          <div className="border border-line px-5 py-6 text-center text-[12px] text-faint">
+            Nothing parked here.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {unprioritized.map(p => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                actions={actions}
+                setTimingNote={setTimingNote}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function FlatList({ list, empty }) {
+  if (list.length === 0) return empty;
+  return (
+    <div className="flex flex-col gap-2">
+      {list.map(p => <ProjectCard key={p.id} project={p} />)}
+    </div>
+  );
+}
+
+function SectionLabel({ children }) {
+  return (
+    <div className="font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-bold">
+      {children}
     </div>
   );
 }
@@ -108,8 +231,8 @@ function Tab({ active, onClick, label }) {
 function EmptyState({ tab }) {
   const copy =
     tab === "active"
-      ? "No active projects. Hit \"New project\" to start one — phases, " +
-        "steps, and checklists live inside it."
+      ? "No ranked projects. Hit \"New project\" to start one — it joins " +
+        "the bottom of the list; drag it up when it's the focus."
       : tab === "completed"
         ? "Nothing completed yet."
         : "Nothing archived. Archiving hides a project from the other " +
@@ -172,18 +295,85 @@ function NewProjectForm({ onCreate, onCancel }) {
   );
 }
 
-function ProjectCard({ project }) {
-  const status = STATUS_META[project.status] ?? STATUS_META.planned;
+// ── one project card ───────────────────────────────────────────────────
+// `rank` (1-based) + `dragHandleProps` are passed only on the ranked
+// list. The #1 focus is emphasized (accent edge + eyebrow); ranks 2+ are
+// muted so the eye is pulled to the top.
+
+function SortableProjectCard({ project, rank, actions }) {
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: project.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={isDragging ? "opacity-60 z-10 relative" : ""}
+    >
+      <ProjectCard
+        project={project}
+        rank={rank}
+        actions={actions}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
+  );
+}
+
+function ProjectCard({
+  project, rank, actions, dragHandleProps, setTimingNote,
+}) {
   const dates = formatDateRange(project.startedAt, project.targetDate);
+  const isFocus = rank === 1;
+  const isRanked = rank != null;
+  const unprioritized = project.queueState === "unprioritized";
 
   return (
-    <button
-      onClick={() => navigate(pathForProject(project.id))}
-      className="border border-line p-4 text-left cursor-pointer hover:border-accent font-[inherit] flex flex-col gap-2.5 w-full"
+    <div
+      className={
+        "border p-4 flex flex-col gap-2.5 " +
+        (isFocus ? "border-accent" : "border-line")
+      }
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="font-heading text-[16px] font-semibold text-fg leading-snug">
+      {isFocus && (
+        <div className="font-ui text-[10px] text-accent uppercase tracking-[0.16em] font-bold">
+          Focus
+        </div>
+      )}
+      <div className="flex items-start gap-2.5">
+        {isRanked && (
+          <span
+            {...dragHandleProps}
+            className="shrink-0 mt-0.5 text-faint hover:text-dim cursor-grab touch-none"
+            title="Drag to reorder"
+          >
+            <GripVertical size={15} />
+          </span>
+        )}
+        {isRanked && (
+          <span
+            className={
+              "shrink-0 mt-0.5 font-ui text-[12px] font-bold tabular-nums " +
+              (isFocus ? "text-accent" : "text-faint")
+            }
+          >
+            {rank}
+          </span>
+        )}
+        <div
+          onClick={() => navigate(pathForProject(project.id))}
+          className="min-w-0 flex-1 cursor-pointer"
+        >
+          <div
+            className={
+              "font-heading text-[16px] font-semibold leading-snug " +
+              (isRanked && !isFocus ? "text-dim" : "text-fg")
+            }
+          >
             {project.title}
           </div>
           {project.description && (
@@ -192,26 +382,146 @@ function ProjectCard({ project }) {
             </div>
           )}
         </div>
-        <span
-          className={
-            "shrink-0 text-[10px] uppercase tracking-[0.12em] font-semibold " +
-            "border px-2 py-0.5 " + status.cls
-          }
-        >
-          {status.label}
-        </span>
+        {actions && (
+          <CardActions
+            project={project}
+            isRanked={isRanked}
+            actions={actions}
+          />
+        )}
       </div>
 
       <ProgressBar progress={project.progress} />
 
-      <div className="flex items-center gap-3 text-[11px] text-muted">
+      <div className="flex items-center gap-3 text-[11px] text-muted flex-wrap">
         {project.progress && <span>{project.progress.label}</span>}
         {!project.progress && project.phaseCount === 0 && (
           <span className="italic">No phases yet</span>
         )}
+        {project.lockedDate && (
+          <span className="inline-flex items-center gap-1 text-accent-deep">
+            <Lock size={11} /> {project.lockedDate}
+          </span>
+        )}
         {dates && <span className="ml-auto">{dates}</span>}
       </div>
+
+      {unprioritized && setTimingNote && (
+        <TimingNote project={project} onSave={setTimingNote} />
+      )}
+    </div>
+  );
+}
+
+// Per-card controls: lock-to-date, and a one-tap move between the ranked
+// list and the Unprioritized bucket. Stop propagation so they never
+// trigger the card's navigate.
+function CardActions({ project, isRanked, actions }) {
+  return (
+    <div
+      className="shrink-0 flex items-center gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <LockControl project={project} onLock={actions.setProjectLocked} />
+      {isRanked ? (
+        <IconBtn
+          title="Send to Unprioritized"
+          onClick={() => actions.setQueueState(project.id, "unprioritized")
+            .catch(() => {})}
+        >
+          <ArrowDownToLine size={14} />
+        </IconBtn>
+      ) : (
+        <IconBtn
+          title="Rank it (move to the list)"
+          onClick={() => actions.setQueueState(project.id, "ranked")
+            .catch(() => {})}
+        >
+          <ArrowUp size={14} />
+        </IconBtn>
+      )}
+    </div>
+  );
+}
+
+function IconBtn({ title, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="shrink-0 text-faint hover:text-fg cursor-pointer p-1 bg-transparent border-0"
+    >
+      {children}
     </button>
+  );
+}
+
+// Lock-to-date: a lock toggle that reveals a native date input. A set
+// lock shows as the date badge in the card footer; here we only edit.
+function LockControl({ project, onLock }) {
+  const [open, setOpen] = useState(false);
+  if (!open) {
+    return (
+      <IconBtn
+        title={project.lockedDate ? "Change the lock date" : "Lock to a date"}
+        onClick={() => setOpen(true)}
+      >
+        <Lock
+          size={14}
+          className={project.lockedDate ? "text-accent-deep" : ""}
+        />
+      </IconBtn>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input
+        type="date"
+        value={project.lockedDate ?? ""}
+        autoFocus
+        onChange={(e) => onLock(project.id, e.target.value || null)
+          .catch(() => {})}
+        className="bg-surface border border-line text-fg text-[11px] px-1.5 py-1 outline-none focus:border-accent font-[inherit]"
+      />
+      {project.lockedDate && (
+        <button
+          type="button"
+          onClick={() => onLock(project.id, null).catch(() => {})}
+          className="text-[10px] text-dim hover:text-warn bg-transparent border-0 cursor-pointer uppercase tracking-[0.1em] font-semibold"
+        >
+          clear
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-[10px] text-dim hover:text-fg bg-transparent border-0 cursor-pointer uppercase tracking-[0.1em] font-semibold"
+      >
+        done
+      </button>
+    </span>
+  );
+}
+
+// Plain-text timing for an unprioritized project ("when it cools off,
+// ~September"). Pure metadata — committed on blur, never scheduled on.
+function TimingNote({ project, onSave }) {
+  const [val, setVal] = useState(project.timingNote ?? "");
+  return (
+    <input
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+      onBlur={() => {
+        if ((val ?? "") !== (project.timingNote ?? "")) {
+          onSave(project.id, val).catch(() => {});
+        }
+      }}
+      placeholder="Timing note — e.g. when it cools off, ~September"
+      className="bg-surface border border-line text-dim text-[11px] px-2 py-1.5 outline-none focus:border-accent font-[inherit] w-full"
+    />
   );
 }
 

@@ -24,16 +24,18 @@ import {
 const PROJECT_COLS =
   "id, title, description, status, owner_email, started_at, " +
   "target_date, completed_at, notes, created_at, body_md, created_by, " +
-  "archived_at, sort_order, updated_at";
+  "archived_at, sort_order, updated_at, queue_state, timing_note, " +
+  "locked_date";
 const PHASE_COLS =
   "id, project_id, title, description, sort_order, start_date, " +
-  "target_date, completed_at, created_at, updated_at";
+  "target_date, completed_at, locked_date, created_at, updated_at";
 const STEP_COLS =
   "id, project_id, phase_id, title, body_md, sort_order, start_date, " +
-  "target_date, completed_at, assignees, created_at, updated_at";
+  "target_date, completed_at, locked_date, assignees, created_at, " +
+  "updated_at";
 const CHECKLIST_COLS = "id, step_id, title, sort_order, created_at";
 const ITEM_COLS =
-  "id, checklist_id, body, done_at, sort_order, created_at";
+  "id, checklist_id, body, done_at, sort_order, locked_date, created_at";
 const LINK_COLS =
   "id, project_id, target_kind, target_id, label, created_at";
 const DEP_COLS =
@@ -68,6 +70,11 @@ function shapeProject(r) {
     notes: r.notes,
     archivedAt: r.archived_at,
     sortOrder: r.sort_order ?? 0,
+    // Forced-ranked queue placement: 'ranked' | 'unprioritized'. Done is
+    // completedAt; archived is archivedAt — both orthogonal to this.
+    queueState: r.queue_state ?? "ranked",
+    timingNote: r.timing_note,
+    lockedDate: r.locked_date,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -83,6 +90,7 @@ function shapePhase(r) {
     startDate: r.start_date,
     targetDate: r.target_date,
     completedAt: r.completed_at,
+    lockedDate: r.locked_date,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -99,6 +107,7 @@ function shapeStep(r) {
     startDate: r.start_date,
     targetDate: r.target_date,
     completedAt: r.completed_at,
+    lockedDate: r.locked_date,
     assignees: Array.isArray(r.assignees) ? r.assignees : [],
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -122,6 +131,7 @@ function shapeItem(r) {
     body: r.body,
     doneAt: r.done_at,
     sortOrder: r.sort_order ?? 0,
+    lockedDate: r.locked_date,
     createdAt: r.created_at,
   };
 }
@@ -259,6 +269,9 @@ function projectPatch(patch) {
   if ("notes" in patch) out.notes = patch.notes;
   if ("archivedAt" in patch) out.archived_at = patch.archivedAt;
   if ("sortOrder" in patch) out.sort_order = patch.sortOrder;
+  if ("queueState" in patch) out.queue_state = patch.queueState;
+  if ("timingNote" in patch) out.timing_note = patch.timingNote;
+  if ("lockedDate" in patch) out.locked_date = patch.lockedDate;
   return out;
 }
 
@@ -270,6 +283,7 @@ function phasePatch(patch) {
   if ("startDate" in patch) out.start_date = patch.startDate;
   if ("targetDate" in patch) out.target_date = patch.targetDate;
   if ("completedAt" in patch) out.completed_at = patch.completedAt;
+  if ("lockedDate" in patch) out.locked_date = patch.lockedDate;
   return out;
 }
 
@@ -282,6 +296,7 @@ function stepPatch(patch) {
   if ("startDate" in patch) out.start_date = patch.startDate;
   if ("targetDate" in patch) out.target_date = patch.targetDate;
   if ("completedAt" in patch) out.completed_at = patch.completedAt;
+  if ("lockedDate" in patch) out.locked_date = patch.lockedDate;
   if ("assignees" in patch) out.assignees = patch.assignees;
   return out;
 }
@@ -322,26 +337,66 @@ export function useProjects() {
     [tables, withProgress]
   );
 
-  const createProject = useCallback(async ({ title, description }) => {
+  // The live ranked rank-numbers, used to place a project at the bottom
+  // of the forced-ranked list (a new / re-ranked project never claims
+  // the #1 focus slot by surprise — it joins at the tail).
+  const rankedTailSort = useCallback(() => {
+    const sorts = (tables?.projects ?? [])
+      .filter(p => p.queueState === "ranked" && !p.archivedAt
+        && !p.completedAt)
+      .map(p => p.sortOrder);
+    return Math.max(0, ...sorts) + 1;
+  }, [tables]);
+
+  const createProject = useCallback(async ({
+    title, description, queueState = "ranked",
+  }) => {
     const trimmed = (title ?? "").trim();
     if (!trimmed) throw new Error("Title required.");
-    const minSort = Math.min(
-      0, ...(tables?.projects ?? []).map(p => p.sortOrder));
     const data = await dbInsert("projects", {
       title: trimmed,
       description: (description ?? "").trim() || null,
-      status: "planned",
       created_by: userEmail,
-      sort_order: minSort - 1,
+      queue_state: queueState,
+      sort_order: queueState === "ranked" ? rankedTailSort() : 0,
     }, PROJECT_COLS);
     await fetchAll();
     return data.id;
-  }, [tables, userEmail, fetchAll]);
+  }, [userEmail, rankedTailSort, fetchAll]);
 
   const updateProject = useCallback(async (id, patch) => {
     await dbUpdate("projects", id, projectPatch(patch));
     await fetchAll();
   }, [fetchAll]);
+
+  // Forced rank: write the new total order straight onto sort_order
+  // (0..n-1). Cascade is implicit — moving P1 to slot 2 renumbers P2 to
+  // the top in the same pass. Caller passes the full ranked-id order.
+  const reorderProjects = useCallback(async (idsInOrder) => {
+    for (let i = 0; i < idsInOrder.length; i += 1) {
+      await dbUpdate("projects", idsInOrder[i], { sort_order: i });
+    }
+    await fetchAll();
+  }, [fetchAll]);
+
+  // Move between the ranked list and the Unprioritized bucket. Entering
+  // the ranked list joins at the tail; leaving it just flips the state
+  // (rank is meaningless off the list).
+  const setQueueState = useCallback(async (id, state) => {
+    const patch = { queueState: state };
+    if (state === "ranked") patch.sortOrder = rankedTailSort();
+    await dbUpdate("projects", id, projectPatch(patch));
+    await fetchAll();
+  }, [rankedTailSort, fetchAll]);
+
+  const setProjectLocked = useCallback(
+    (id, date) => updateProject(id, { lockedDate: date }),
+    [updateProject]
+  );
+  const setTimingNote = useCallback(
+    (id, note) => updateProject(id, { timingNote: (note ?? "").trim() || null }),
+    [updateProject]
+  );
 
   const archiveProject = useCallback(
     (id) => updateProject(id, { archivedAt: new Date().toISOString() }),
@@ -364,6 +419,10 @@ export function useProjects() {
     error,
     createProject,
     updateProject,
+    reorderProjects,
+    setQueueState,
+    setProjectLocked,
+    setTimingNote,
     archiveProject,
     unarchiveProject,
     removeProject,
