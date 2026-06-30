@@ -13,7 +13,7 @@ import { batchLifecycle, BATCH_STATES } from "../lib/metrics.js";
 import { navigate, pathForSection } from "../lib/router.js";
 import BatchMetricsSection from "../components/BatchMetrics.jsx";
 import BatchStatePill from "../components/BatchStatePill.jsx";
-import { Card } from "../components/ui.jsx";
+import { Pane } from "../components/ui.jsx";
 
 // The batch lifecycle page (Batch 20) — everything the dashboard knows
 // about one livestock batch: its lifespan timeline (arrival → pasture
@@ -384,7 +384,7 @@ export default function BatchPage({
       </div>
 
       {/* ── lifecycle strip ── */}
-      <Card title="Lifecycle" icon={CalendarRange}>
+      <Pane title="Lifecycle" icon={CalendarRange}>
         {linksLoading ? (
           <div className="text-[12px] text-dim italic">Loading…</div>
         ) : (
@@ -424,7 +424,7 @@ export default function BatchPage({
           underlying event. Click a milestone name to open it in the
           event editor.
         </p>
-      </Card>
+      </Pane>
 
       {/* ── metrics: performance / production + capture (Batch 26.1) ── */}
       <BatchMetricsSection
@@ -437,7 +437,7 @@ export default function BatchPage({
 
       {/* ── where + chores ── */}
       <div className="grid sm:grid-cols-2 gap-4">
-        <Card title="Where" icon={MapPin}>
+        <Pane title="Where" icon={MapPin}>
           {sitesLoading ? (
             <div className="text-[12px] text-dim italic">Loading…</div>
           ) : (
@@ -504,9 +504,9 @@ export default function BatchPage({
               </div>
             </div>
           )}
-        </Card>
+        </Pane>
 
-        <Card title="Chores for this batch" icon={Bird}>
+        <Pane title="Chores for this batch" icon={Bird}>
           {/* Batch-specific chores + the ones inherited from the
               species anchor (2026-06 chore-ux fixes): a broiler batch
               does every species-anchored broiler chore, so both belong
@@ -532,12 +532,12 @@ export default function BatchPage({
               )}
             </div>
           )}
-        </Card>
+        </Pane>
       </div>
 
       {/* ── other linked events ── */}
       {otherLinks.length > 0 && (
-        <Card title="Also linked" icon={CalendarRange}>
+        <Pane title="Also linked" icon={CalendarRange}>
           <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
             {otherLinks.map((l) => (
               <li key={l.id}>
@@ -562,7 +562,7 @@ export default function BatchPage({
               </li>
             ))}
           </ul>
-        </Card>
+        </Pane>
       )}
 
       {error && (
@@ -572,7 +572,7 @@ export default function BatchPage({
       )}
 
       {/* ── danger zone ── */}
-      <Card title="Danger zone" icon={TriangleAlert}>
+      <Pane title="Danger zone" icon={TriangleAlert}>
         {!confirmOpen ? (
           <button
             onClick={() => setConfirmOpen(true)}
@@ -620,7 +620,7 @@ export default function BatchPage({
             </div>
           </div>
         )}
-      </Card>
+      </Pane>
     </div>
   );
 }

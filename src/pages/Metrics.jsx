@@ -13,7 +13,7 @@ import {
   mortalityStats, bodyWeightTrend, uniformity, weeksTimeline,
 } from "../lib/metrics.js";
 import { navigate, pathForBatch } from "../lib/router.js";
-import { Card } from "../components/ui.jsx";
+import { Pane } from "../components/ui.jsx";
 
 // The Metrics page (Batch 26.2) — the "how are we doing?" surface.
 //
@@ -140,7 +140,7 @@ function BroilerComparison({
   });
 
   return (
-    <Card
+    <Pane
       title={`${species.name} — batch comparison`}
       icon={Bird}
       subtitle={`${rows.length} batch${rows.length === 1 ? "" : "es"}`}
@@ -193,7 +193,7 @@ function BroilerComparison({
         Cuts ordered joins chicken lots recorded on the batch's
         processing day. Click a row to open the batch.
       </p>
-    </Card>
+    </Pane>
   );
 }
 
@@ -222,7 +222,7 @@ function LayerComparison({
   });
 
   return (
-    <Card
+    <Pane
       title={`${species.name} — flock comparison`}
       icon={Egg}
       subtitle={`${rows.length} flock${rows.length === 1 ? "" : "s"}`}
@@ -271,7 +271,7 @@ function LayerComparison({
         metered feed schedule — free-choice stages can't be projected.
         Click a row to open the flock.
       </p>
-    </Card>
+    </Pane>
   );
 }
 
@@ -284,7 +284,7 @@ const FAMILY_LABELS = {
 
 function Registry({ byAppliesTo, loading }) {
   return (
-    <Card title="Metric definitions" icon={BookOpen}>
+    <Pane title="Metric definitions" icon={BookOpen}>
       {loading ? (
         <div className="text-[12px] text-dim italic">Loading…</div>
       ) : (
@@ -322,7 +322,7 @@ function Registry({ byAppliesTo, loading }) {
           ))}
         </div>
       )}
-    </Card>
+    </Pane>
   );
 }
 

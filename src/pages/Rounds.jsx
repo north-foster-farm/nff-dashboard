@@ -21,6 +21,12 @@ import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
 import { useChoreModifiers } from "../lib/data/useChoreModifiers.js";
 import { resolveModifiers, applyModifier } from "../lib/modifiers.js";
 import { formatISODate, todayUTC } from "../lib/dates.js";
+import { useChoreAssignmentRules }
+  from "../lib/data/useChoreAssignmentRules.js";
+import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
+import { farmLoad } from "../lib/load/farmLoad.js";
+import { AttentionCard } from "../components/ui.jsx";
+import { navigate, pathForSection } from "../lib/router.js";
 
 // Full-screen takeover for actually doing chores. Bypasses the
 // normal layout (no TopBar, no Sidebar, no SectionHeader).
@@ -74,6 +80,24 @@ export default function Rounds({ data, initialBlockId, onClose }) {
 
   const today = useMemo(() => new Date(), []);
   const completions = useChoreCompletions(today);
+
+  // Man-down inside the live run (C9): the ONE mid-round actionable signal.
+  // Read the shared farmLoad model so it matches the Schedule exactly — if
+  // the active block carries an uncovered assigned obligation, surface a
+  // single AttentionCard that deep-links to the Schedule's cover flow (the
+  // cover sheet itself stays there; Rounds is execution, not planning).
+  const { rulesByChoreId, rulesByBlockId } = useChoreAssignmentRules();
+  const runRuleOpts = useMemo(
+    () => ({ rulesByChoreId, rulesByBlockId, blocks }),
+    [rulesByChoreId, rulesByBlockId, blocks]);
+  const todayDeltaISO = formatISODate(todayUTC());
+  const { deltas: runDeltas } = useScheduleDeltas(todayDeltaISO);
+  const runFarm = useMemo(
+    () => farmLoad({
+      data, date: today, ruleOpts: runRuleOpts, choreCtx,
+      completions, deltas: runDeltas,
+    }),
+    [data, today, runRuleOpts, choreCtx, completions, runDeltas]);
 
   // Selected place for the Switcher. selectedPlaceId is a top-level
   // place (a "zone" chip); selectedChildId drills to one place inside
@@ -185,6 +209,8 @@ export default function Rounds({ data, initialBlockId, onClose }) {
       data={data}
       run={activeRun}
       block={targetBlock}
+      manDownInBlock={!!activeRun && !!runFarm.blocks.find(
+        (b) => b.blockId === activeRun.blockId && b.state === "hole")}
       blocks={blocks}
       places={places}
       placesById={placesById}
@@ -534,7 +560,7 @@ function formatBlockDuration(minutes) {
 
 // ── Doing surface (active run) ────────────────────────────────────────
 function DoingSurface({
-  run, block, blocks, places, placesById, childrenByParent,
+  run, block, manDownInBlock, blocks, places, placesById, childrenByParent,
   switcherPlaces, switcherIdOf, placementsByPlaceId, choreCtx,
   definitions, completions,
   logRunEvent, logMortality, logEggCollection,
@@ -853,6 +879,17 @@ function DoingSurface({
 
       {/* Body */}
       <main className="flex-1 px-4 sm:px-6 py-5">
+        {manDownInBlock && (
+          <div className="mb-5">
+            <AttentionCard
+              kind="cover"
+              work="This block needs cover"
+              reason="An assigned chore here has no one on it right now — sort it on the Schedule before you finish the round."
+              action="Open Schedule to cover"
+              onAct={() => navigate(pathForSection("schedule"))}
+            />
+          </div>
+        )}
         {groupMode === "kind" ? (
           <KindView
             obligationsByKind={obligationsByKind}

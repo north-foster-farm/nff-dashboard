@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Clock, CheckCircle2, ArrowUpRight,
+  Clock, CheckCircle2, ArrowUpRight, ArrowRight,
   FolderKanban, Receipt, Newspaper, Activity as ActivityIcon,
-  MapPin, User, CloudOff, Workflow, Bird
+  MapPin, User, CloudOff, Workflow, Bird,
+  Sun, CloudSun, Cloud, CloudRain, CloudSnow,
 } from "lucide-react";
 import { T } from "../theme.js";
 import { formatDate, formatTime12h } from "../lib/dates.js";
@@ -26,7 +27,9 @@ import {
 import { useProcessingDates } from "../lib/data/useProcessingDates.js";
 import { batchLifecycle, isMeatSpecies, weeksTimeline } from "../lib/metrics.js";
 import { isActiveProject } from "../lib/projects.js";
-import { Card } from "../components/ui.jsx";
+import { Pane, LoadSpine, AttentionCard, NowRule } from "../components/ui.jsx";
+import { farmLoad } from "../lib/load/farmLoad.js";
+import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
@@ -71,6 +74,11 @@ export default function Overview({ data, onNavigate }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Phone-led Today glance (Round-3): the lead signals stacked in
+          tap-priority — now → needs-cover → day-load — above the
+          reflowed desktop grid. Phone only; desktop keeps the grid. */}
+      <TodayGlance
+        data={data} today={today} blocks={blocks} ruleOpts={ruleOpts} />
       {/* The Heads-up lane lived here from Batch 19 until Batch 27.5 —
           automation firings now surface as bell notifications
           (InboxBell), and process expansions create chores that show
@@ -120,6 +128,112 @@ function Stack({ children }) {
   return <div className="flex flex-col gap-4">{children}</div>;
 }
 
+// Open-Meteo weather code → a Lucide icon (C1: no emoji). Buckets mirror
+// `describeCode` in lib/weather.js.
+function weatherIcon(code) {
+  if (code == null) return Cloud;
+  if (code <= 1) return Sun;
+  if (code === 2) return CloudSun;
+  if (code === 3 || code === 45 || code === 48) return Cloud;
+  if (code >= 71 && code <= 77) return CloudSnow;
+  if (code >= 85 && code <= 86) return CloudSnow;
+  if (code >= 51) return CloudRain;
+  return Cloud;
+}
+
+// ─── Phone Today glance (Round-3, phone-led lead tier) ──────────────────
+// The Operator's headline read: the day's live signals in tap-priority —
+// now-marker, an emphatic needs-cover card (man-down only), and the
+// count-driven day-load — sitting above the reflowed desktop grid. Reads
+// the one `farmLoad` model so it can never drift from the Schedule. Phone
+// only (`lg:hidden`); desktop keeps its multi-pane grid. The full block
+// list + ticking lives one tap away in Rounds, so this stays a glance.
+function TodayGlance({ data, today, blocks, ruleOpts }) {
+  const { choreCtx } = useSites();
+  const completions = useChoreCompletions(today);
+  const todayISO = useMemo(() => {
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${today.getFullYear()}-${m}-${d}`;
+  }, [today]);
+  const { deltas } = useScheduleDeltas(todayISO);
+  const { data: wx } = useCurrentWeather();
+  const [nowMin, setNowMin] = useState(
+    () => today.getHours() * 60 + today.getMinutes());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const n = new Date();
+      setNowMin(n.getHours() * 60 + n.getMinutes());
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const fl = useMemo(
+    () => farmLoad({
+      data, date: today, ruleOpts, choreCtx, completions, deltas, nowMin,
+    }),
+    // completions/deltas are stable per-day subscriptions; rerun on their
+    // identity so a fresh tick or a new completion redraws the load.
+    [data, today, ruleOpts, choreCtx, completions, deltas, nowMin],
+  );
+
+  const uncovered = fl.totals.uncovered;
+  const projectCount = fl.projects.length;
+  const summary = [
+    `${fl.totals.items} ${fl.totals.items === 1 ? "item" : "items"}`,
+    `${fl.totals.blocks} ${fl.totals.blocks === 1 ? "block" : "blocks"}`,
+    projectCount > 0
+      ? `${projectCount} ${projectCount === 1 ? "project" : "projects"}`
+      : null,
+  ].filter(Boolean).join(" · ");
+
+  const WxIcon = weatherIcon(wx?.code);
+
+  return (
+    <section className="lg:hidden flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-[22px] -tracking-[0.01em] text-fg">
+          {today.toLocaleDateString("en-US", {
+            weekday: "long", month: "long", day: "numeric",
+          })}
+        </h1>
+        {wx && (
+          <span className="inline-flex items-center gap-1.5 text-dim [font-variant-numeric:tabular-nums]">
+            <WxIcon size={16} className="text-dim" />
+            <span className="text-[13px] font-medium">{wx.tempCurrent}°</span>
+          </span>
+        )}
+      </div>
+
+      <NowRule
+        className="!px-0"
+        time={formatTime12h(minutesToHHMM(nowMin))}
+      />
+
+      {uncovered > 0 && (
+        <AttentionCard
+          kind="cover"
+          work={`${uncovered} ${uncovered === 1 ? "chore" : "chores"} need cover`}
+          reason="An assigned obligation has no one on it right now."
+          action="Open Schedule"
+          onAct={() => navigate(pathForSection("schedule"))}
+        />
+      )}
+
+      <Pane title="Day load" subtitle={summary}>
+        <LoadSpine blocks={fl.spine} />
+        <button
+          type="button"
+          onClick={() => navigate(pathForSection("rounds"))}
+          className="mt-3 inline-flex items-center gap-1 self-start font-ui text-[11px] font-semibold uppercase tracking-[0.12em] text-accent hover:text-accent-deep cursor-pointer"
+        >
+          Open Rounds <ArrowRight size={13} />
+        </button>
+      </Pane>
+    </section>
+  );
+}
+
 // ─── Activity (capped + link) ───────────────────────────────────────────────
 
 function ActivitySinceYesterday({ data, today, onNavigate }) {
@@ -141,7 +255,7 @@ function ActivitySinceYesterday({ data, today, onNavigate }) {
   const hasMore = all.length > ACTIVITY_LIMIT;
 
   return (
-    <Card
+    <Pane
       title="Activity"
       subtitle={`Since ${windowStart.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}, 12:00 AM`}
       icon={ActivityIcon}
@@ -174,7 +288,7 @@ function ActivitySinceYesterday({ data, today, onNavigate }) {
           )}
         </>
       )}
-    </Card>
+    </Pane>
   );
 }
 
@@ -339,7 +453,7 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
     todayItems.length === 0 && tomorrowItems.length === 0 && upcomingItems.length === 0;
 
   return (
-    <Card title="Schedule at a glance" icon={Clock}>
+    <Pane title="Schedule at a glance" icon={Clock}>
       <SunCountdownPill />
       {nothingToShow ? (
         <EmptyLine>Nothing on the calendar today.</EmptyLine>
@@ -383,7 +497,7 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
           )}
         </div>
       )}
-    </Card>
+    </Pane>
   );
 }
 
@@ -592,7 +706,7 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
   );
 
   return (
-    <Card title="Upcoming chores" icon={CheckCircle2}>
+    <Pane title="Upcoming chores" icon={CheckCircle2}>
       {upcoming.length === 0 ? (
         <EmptyLine>No more chores on the list today.</EmptyLine>
       ) : (
@@ -610,7 +724,7 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
           ))}
         </div>
       )}
-    </Card>
+    </Pane>
   );
 }
 
@@ -785,7 +899,7 @@ function ProjectsInProgressCard({ data }) {
   const inProgress = (data.projects ?? [])
     .filter(p => isActiveProject(p, todayISO));
   return (
-    <Card title="Active projects" icon={FolderKanban}>
+    <Pane title="Active projects" icon={FolderKanban}>
       {inProgress.length === 0 ? (
         <EmptyLine>No active projects.</EmptyLine>
       ) : (
@@ -801,7 +915,7 @@ function ProjectsInProgressCard({ data }) {
           ))}
         </div>
       )}
-    </Card>
+    </Pane>
   );
 }
 
@@ -811,7 +925,7 @@ function OpenOrdersCard({ data }) {
   const open = (data.orders ?? []).filter(
     o => o.status === "open" || o.status === "ready");
   return (
-    <Card title="Open orders" icon={Receipt}>
+    <Pane title="Open orders" icon={Receipt}>
       {open.length === 0 ? (
         <EmptyLine>No open orders.</EmptyLine>
       ) : (
@@ -821,7 +935,7 @@ function OpenOrdersCard({ data }) {
           onOpen={() => navigate(pathForSection("orders"))}
         />
       )}
-    </Card>
+    </Pane>
   );
 }
 
@@ -830,7 +944,7 @@ function FarmUpdatesCard({ data }) {
     u.status === "ready_for_review" || u.status === "reviewed"
   );
   return (
-    <Card title="In-progress farm updates" icon={Newspaper}>
+    <Pane title="In-progress farm updates" icon={Newspaper}>
       {needsAttention.length === 0 ? (
         <EmptyLine>Nothing in the review queue.</EmptyLine>
       ) : (
@@ -840,7 +954,7 @@ function FarmUpdatesCard({ data }) {
           ))}
         </div>
       )}
-    </Card>
+    </Pane>
   );
 }
 
@@ -902,7 +1016,7 @@ function BroilerWeeksCard({ data }) {
   if (rows.length === 0) return null;
 
   return (
-    <Card title="Broilers" icon={Bird} subtitle="weeks to processing">
+    <Pane title="Broilers" icon={Bird} subtitle="weeks to processing">
       <div className="flex flex-col">
         {rows.map(({ speciesId, batch, life, weeks }) => {
           const arriving = life.state === "arriving";
@@ -947,7 +1061,7 @@ function BroilerWeeksCard({ data }) {
           );
         })}
       </div>
-    </Card>
+    </Pane>
   );
 }
 

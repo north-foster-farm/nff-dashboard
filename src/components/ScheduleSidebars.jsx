@@ -1,8 +1,10 @@
+import { Fragment } from "react";
 import {
   LayoutList, AlertTriangle, FolderKanban,
-  ClockArrowRight, ClockArrowLeft,
+  ClockArrowRight, ClockArrowLeft, Moon,
 } from "lucide-react";
 import { blockIcon } from "./BlockBadge.jsx";
+import { KindBadge, NowTag, WarmingBadge } from "./ui.jsx";
 import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
 // Schedule navigators (Design Bracket 2 — the day-spine + accordion rework).
@@ -71,192 +73,178 @@ function StripTime({ min, className }) {
 }
 
 // ── Desktop load-spine (the primary navigator) ──────────────────────────
+// Restyled to the WeekStrip visual language (findings slice B): no dividers,
+// an outlined active row (the border IS the indicator), lighter-on-hover,
+// equal heights, lettered KindBadge identity, and the canonical NowRule in
+// the list. Block names collapse to "Chores" (F12) — the C badge + time
+// carry the identity, like every project reads "Project".
 export function DayRailSpine({
-  blocks, focus, nowBucket, onPick, onWholeDay, totalItems,
+  blocks, focus, nowBucket, nowMin, onPick, onWholeDay,
 }) {
-  const max = maxLoad(blocks);
   const overview = focus == null;
+  const nowTime = nowMin != null ? compactTime(nowMin) : null;
+
+  // One row shell (F1/F2/F3): a border that stays transparent until the row
+  // is the focus (the active bounding box); equal heights — the load rail
+  // self-stretches now, so item count no longer drives the row height. The
+  // CURRENT block reads as a green-accent fill + a "Now" tag (no divider rule).
+  const rowCls = (isFocus, allDone, isNow) =>
+    "relative z-[1] w-full flex items-center gap-2 px-2 py-2 text-left "
+    + "min-h-[46px] border cursor-pointer transition-colors "
+    + (isFocus
+      ? "bg-row-active border-resolved "
+      : (isNow ? "bg-accent/[0.08] " : "") + "border-transparent hover:bg-row-hover ")
+    + (allDone ? "opacity-55" : "");
+
   return (
-    <div className="hidden lg:flex flex-col w-[180px] shrink-0 border-r border-line bg-surface relative pt-2">
-      {/* Whole-day overview affordance — the explicit way back to the agenda. */}
+    <div className="hidden lg:flex flex-col gap-1 w-[180px] shrink-0 border-r border-line bg-bg relative px-2 pt-2">
+      {/* Whole-day overview affordance (F4 — no "overview · N items" subtext;
+          F5 — icon normalized to the row rhythm, neutral until active). */}
       <button
         type="button"
         onClick={onWholeDay}
         title="Show the whole day (overview)"
-        className={
-          "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2.5 text-left "
-          + "border-b border-line cursor-pointer transition-colors "
-          + (overview ? "bg-row-active text-fg" : "text-dim hover:bg-row-hover hover:text-fg")
-        }
+        className={rowCls(overview, false)}
       >
+        <span className="w-1 shrink-0" />
         <LayoutList size={16}
-          className={"shrink-0 " + (overview ? "text-accent" : "")} />
-        <span className="flex-1 min-w-0 leading-tight">
-          <span className="block text-[13px] font-medium">Whole day</span>
-          <span className="block text-[10px] text-faint">
-            overview · {totalItems} items
-          </span>
+          className={"shrink-0 " + (overview ? "text-fg" : "text-faint")} />
+        <span className="flex-1 min-w-0 text-[13px] font-medium leading-tight">
+          Whole day
         </span>
-        {overview && (
-          <span className="eyebrow text-[9px] text-accent">open</span>
-        )}
       </button>
 
       {blocks.map((b) => {
+        const isFocus = b.bucket === focus;
+        const isNow = nowTime != null && b.bucket === nowBucket;
+
         if (b.isProject) {
           const free = freeShort(b.who);
-          const h = projSize(b.durationMin, 16, 34);
-          const isFocus = b.bucket === focus;
           return (
+            <Fragment key={b.bucket}>
+              <button
+                type="button"
+                onClick={() => onPick(b.bucket)}
+                title={`Project${free ? " · " + free + " free" : ""}`}
+                className={rowCls(isFocus, b.allDone, isNow)}
+              >
+                {/* thin slate gap rail — full height; the P badge carries the
+                    identity now, so the title is plain text (F10). */}
+                <span className="w-1 self-stretch shrink-0 bg-project/25 ring-1 ring-inset ring-project/40" />
+                <KindBadge kind="project" size={16} title="Project" />
+                <span className="flex-1 min-w-0">
+                  <span className={
+                    "block text-[13px] truncate leading-tight text-fg "
+                    + (isFocus ? "font-semibold" : "font-medium")
+                  }>
+                    Project
+                  </span>
+                  <span className="block text-[10px] [font-variant-numeric:tabular-nums] leading-tight">
+                    {isNow && <><NowTag /><span className="text-faint"> · </span></>}
+                    <span className="text-faint">{compactTime(b.startMin)}</span>
+                    {free && (
+                      <span className="text-project font-semibold"> · {free} free</span>
+                    )}
+                  </span>
+                </span>
+              </button>
+            </Fragment>
+          );
+        }
+
+        // Events ride the block list too, where present — a periwinkle E badge
+        // + the event title + its start time (a thin periwinkle gap rail).
+        if (b.kind === "event") {
+          const occ = b.occ;
+          return (
+            <Fragment key={b.bucket}>
+              <button
+                type="button"
+                onClick={() => onPick(b.bucket)}
+                title={occ?.instanceLabel ?? "Event"}
+                className={rowCls(isFocus, false, isNow)}
+              >
+                <span className="w-1 self-stretch shrink-0 bg-event/25 ring-1 ring-inset ring-event/40" />
+                <KindBadge kind="event" size={16} title="Event" />
+                <span className="flex-1 min-w-0">
+                  <span className={
+                    "block text-[13px] truncate leading-tight text-fg "
+                    + (isFocus ? "font-semibold" : "font-medium")
+                  }>
+                    {occ?.instanceLabel ?? "Event"}
+                  </span>
+                  <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint leading-tight truncate">
+                    {isNow && <><NowTag /><span> · </span></>}
+                    {b.startMin != null ? compactTime(b.startMin) : "All day"}
+                  </span>
+                </span>
+              </button>
+            </Fragment>
+          );
+        }
+
+        // Every remaining block is a chore block. Regular blocks read "Chores"
+        // (F12); the overnight wrap reads "Overnight" + a Moon badge on the
+        // right edge (teal). The C badge + time carry the identity (F6: no
+        // done/count suffix in the title).
+        const count = b.count ?? 0;
+        const doneFrac = count ? (b.done ?? 0) / count : 0;
+        // F14 — overnight reads "Until <end>" (lead, rode in from yesterday)
+        // or "After <start>" (trail, runs into tomorrow); else the start time.
+        const timeText = b.isOvernight
+          ? (b.side === "lead"
+            ? "Until " + compactTime(b.winEnd)
+            : "After " + compactTime(b.winStart))
+          : compactTime(b.startMin);
+        return (
+          <Fragment key={b.bucket}>
             <button
-              key={b.bucket}
               type="button"
               onClick={() => onPick(b.bucket)}
-              title={`Project${free ? " · " + free + " free" : ""}`}
-              className={
-                "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 "
-                + "text-left min-h-[52px] border-b border-line cursor-pointer "
-                + "transition-colors "
-                + (isFocus ? "bg-row-active" : "hover:bg-row-hover")
-                + (b.allDone ? " opacity-55" : "")
-              }
+              title={`${b.isOvernight ? "Overnight" : "Chores"} · ${b.done ?? 0}/${count}`}
+              className={rowCls(isFocus, b.allDone, isNow)}
             >
-              {/* soft slate-blue gap gauge — coarse-duration sized, de-hatched */}
-              <span
-                className="shrink-0 w-[16px] bg-project/25 ring-1 ring-inset ring-project/40"
-                style={{ height: h + "px" }}
-              />
-              <FolderKanban size={15} className="shrink-0 text-project" />
+              {/* load rail: done (resolved green) rises from the bottom over the
+                  committed remainder in the chore identity color (teal); full
+                  row height (F3). */}
+              <span className="w-1 self-stretch shrink-0 flex flex-col-reverse bg-surface-alt ring-1 ring-inset ring-line">
+                <span style={{
+                  height: (count ? Math.round(doneFrac * 100) : 0) + "%",
+                  background: "var(--c-resolved)",
+                }} />
+                <span style={{
+                  height: (count ? Math.round((1 - doneFrac) * 100) : 0) + "%",
+                  background: "var(--c-chore)", opacity: 0.9,
+                }} />
+              </span>
+              <KindBadge kind="chore" size={16} title="Chores" />
               <span className="flex-1 min-w-0">
                 <span className={
-                  "block text-[12px] truncate font-medium text-project "
-                  + (isFocus ? "font-semibold" : "")
+                  "block text-[13px] truncate leading-tight text-fg "
+                  + (isFocus ? "font-semibold" : "font-medium")
                 }>
-                  Project{b.count > 0 ? ` · ${b.done}/${b.count}` : ""}
+                  {b.isOvernight ? "Overnight" : "Chores"}
                 </span>
-                <span className="block text-[10px] [font-variant-numeric:tabular-nums]">
-                  <span className="text-faint">{compactTime(b.startMin)}</span>
-                  {free && (
-                    <span className="text-project font-semibold"> · {free} free</span>
-                  )}
+                <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint leading-tight truncate">
+                  {isNow && <><NowTag /><span> · </span></>}
+                  {timeText}
                 </span>
               </span>
-              {isFocus && (
-                <span className="absolute right-0 top-0 bottom-0 w-[2px] bg-project" />
+              {b.hasManDown && (
+                <AlertTriangle size={13} className="shrink-0 text-warn" />
               )}
-            </button>
-          );
-        }
-        if (b.isOvernight) {
-          const isFocus = b.bucket === focus;
-          const isNow = b.bucket === nowBucket;
-          const Icon = b.side === "lead" ? ClockArrowLeft : ClockArrowRight;
-          return (
-            <button
-              key={b.bucket}
-              type="button"
-              onClick={() => onPick(b.bucket)}
-              title={`Overnight · ${b.rangeLabel}`}
-              className={
-                "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 "
-                + "text-left min-h-[52px] border-b border-line cursor-pointer "
-                + "transition-colors "
-                + (isFocus ? "bg-row-active" : "hover:bg-row-hover")
-                + (b.allDone ? " opacity-55" : "")
-              }
-            >
-              <span
-                className="shrink-0 w-[16px] h-[20px]"
-                style={{
-                  background: "var(--accent-deep)", opacity: 0.55,
-                  boxShadow: isNow ? "0 0 0 2px var(--resolved)" : "none",
-                }}
+              {/* F24b — the day-load's warn/due ClockAlert repeats on the
+                  block that owns the warming chore (count hidden; the row is
+                  one block, so the hover detail carries the names). */}
+              <WarmingBadge
+                warn={b.warn} due={b.due} size={13} showCount={false}
               />
-              <Icon size={15}
-                className={"shrink-0 "
-                  + (isNow ? "text-resolved" : "text-accent-deep")} />
-              <span className="flex-1 min-w-0">
-                <span className="flex items-center gap-1 text-[12px] font-medium text-fg">
-                  <span className="truncate">
-                    Overnight{b.count > 0 ? ` · ${b.done}/${b.count}` : ""}
-                  </span>
-                  {/* "now" rides the title line as a shrink-0 marker so it's
-                      never clipped by the range label's truncation (F63). */}
-                  {isNow && (
-                    <span className="shrink-0 text-[9px] uppercase tracking-wide text-resolved font-bold">
-                      now
-                    </span>
-                  )}
-                </span>
-                <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint truncate">
-                  {b.rangeLabel}
-                </span>
-              </span>
-              {isFocus && (
-                <span className="absolute right-0 top-0 bottom-0 w-[2px] bg-accent-deep" />
+              {/* Overnight wrap: a teal Moon on the right edge of the block. */}
+              {b.isOvernight && (
+                <Moon size={14} className="shrink-0 text-chore" title="Overnight" />
               )}
             </button>
-          );
-        }
-        const isNow = b.bucket === nowBucket;
-        const isFocus = b.bucket === focus;
-        const Icon = blockIcon(b.block);
-        const h = barSize(b.count, max, 16, 34);
-        const fillH = b.count ? Math.round(h * (b.done / b.count)) : 0;
-        const remH = b.count ? h - fillH : 0;
-        return (
-          <button
-            key={b.bucket}
-            type="button"
-            onClick={() => onPick(b.bucket)}
-            title={`${b.name} · ${b.done}/${b.count}`}
-            className={
-              "relative z-[1] w-full flex items-center gap-2.5 px-3 py-2 text-left "
-              + "min-h-[52px] border-b border-line cursor-pointer "
-              + "transition-colors "
-              + (isFocus ? "bg-row-active" : "hover:bg-row-hover")
-              + (b.allDone ? " opacity-55" : "")
-            }
-          >
-            {/* the gauge: height = load; done (resolved) rises from the bottom
-                over the committed load (accent-deep); ring = now. */}
-            <span
-              className="relative shrink-0 w-[16px] flex flex-col-reverse"
-              style={{
-                height: h + "px",
-                background: "var(--surface-alt)",
-                boxShadow: isNow
-                  ? "0 0 0 2px var(--resolved)"
-                  : "inset 0 0 0 1px var(--line)",
-              }}
-            >
-              <span style={{ height: fillH + "px", background: "var(--resolved)" }} />
-              <span style={{ height: remH + "px", background: "var(--accent-deep)", opacity: 0.85 }} />
-            </span>
-            <Icon
-              size={15}
-              className={"shrink-0 "
-                + (isNow ? "text-resolved" : isFocus ? "text-accent" : "text-faint")}
-            />
-            <span className="flex-1 min-w-0">
-              <span className={
-                "block text-[13px] truncate "
-                + (isFocus ? "font-semibold text-fg" : "text-fg")
-              }>
-                {b.name}
-              </span>
-              <span className="block text-[10px] [font-variant-numeric:tabular-nums]">
-                <span className="text-faint">{compactTime(b.startMin)}</span>
-                {isNow && <span className="text-resolved font-semibold"> · now</span>}
-              </span>
-            </span>
-            {b.hasManDown && (
-              <AlertTriangle size={13} className="shrink-0 text-warn" />
-            )}
-            {isFocus && (
-              <span className="absolute right-0 top-0 bottom-0 w-[2px] bg-accent" />
-            )}
-          </button>
+          </Fragment>
         );
       })}
     </div>
@@ -428,73 +416,6 @@ export function DayStrip({
   );
 }
 
-// ── Week pane: today = ring, viewed = fill (the dual-marker graft) ──────
-export function WeekList({ week, todayISO, selectedISO, ymd, onPickDay }) {
-  return (
-    <div className="hidden lg:block border-l border-line py-5 px-4 bg-surface w-[300px]">
-      <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.16em] text-faint mb-4">
-        This week
-      </div>
-      <div className="flex flex-col gap-1">
-        {week.days.map((day) => {
-          const iso = ymd(day.date);
-          const isToday = iso === todayISO;
-          const isSel = iso === selectedISO;
-          return (
-            <button
-              key={iso}
-              type="button"
-              onClick={() => onPickDay?.(day.date)}
-              className={
-                "w-full flex items-center gap-3 px-2 py-2 text-left border cursor-pointer "
-                + (isSel ? "bg-row-active " : "hover:bg-row-hover ")
-                + (isToday ? "border-resolved" : "border-transparent")
-              }
-            >
-              <span className={
-                "w-12 shrink-0 text-[12px] [font-variant-numeric:tabular-nums] "
-                + (isSel ? "font-semibold text-fg" : "text-dim")
-              }>
-                {day.date.toLocaleDateString("en-US", {
-                  weekday: "short",
-                }).slice(0, 3)}{" "}
-                {day.date.getDate()}
-              </span>
-              <span className="flex-1 flex items-end gap-1 h-7">
-                {day.blocks.map((b) => (
-                  <span
-                    key={b.bucket}
-                    title={`${b.name} · ${b.count}`}
-                    style={{ height: barSize(b.count, week.max, 3, 25) + "px" }}
-                    className={
-                      "flex-1 min-w-[3px] "
-                      + (b.count ? "bg-accent/70" : "bg-line")
-                    }
-                  />
-                ))}
-              </span>
-              <span className="w-10 shrink-0 text-right text-[11px] text-faint [font-variant-numeric:tabular-nums] inline-flex items-center justify-end gap-1">
-                {isToday && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-resolved"
-                    title="Today" />
-                )}
-                {day.total}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-5 pt-4 border-t border-line text-[11px] text-faint font-ui space-y-1">
-        <div>Taller bar = heavier block. Tap a day to open it.</div>
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1">
-            <span className="w-3 h-3 border border-resolved inline-block" /> today
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="w-3 h-3 bg-[color:var(--row-active)] inline-block" /> viewing
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
+// (Round-3 NO-LEGACY) `WeekList` was deleted — the desktop week sidebar is now
+// the one `WeekStrip` (ui.jsx), reading the shared farmLoad week/heat. It folded
+// in this pane + the old center `WeekSpines`.

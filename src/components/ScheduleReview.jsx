@@ -39,8 +39,7 @@ export function ScheduleReview({ drift, reviews, splitDays }) {
             Routine drift
           </div>
           <div className="text-[11px] text-dim mt-0.5">
-            Average start, last {splitDays} days vs before — for learning the
-            routine, not grading.
+            Average start, last {splitDays} days vs before.
           </div>
         </div>
         {drift.length === 0 ? (
@@ -56,7 +55,7 @@ export function ScheduleReview({ drift, reviews, splitDays }) {
               return (
                 <li key={b.blockId}
                   className="flex items-center gap-3 px-4 py-3">
-                  <span className="flex-1 min-w-0 truncate text-[14px] text-fg">
+                  <span className="flex-1 min-w-0 truncate text-[13px] text-fg">
                     {b.name}
                   </span>
                   {b.recentAvg != null && (
@@ -98,7 +97,7 @@ export function ScheduleReview({ drift, reviews, splitDays }) {
                   className="flex items-center gap-3 px-4 py-3">
                   <CalendarCheck size={15}
                     className={"shrink-0 " + (held ? "text-resolved" : "text-faint")} />
-                  <span className="flex-1 min-w-0 truncate text-[14px] text-fg">
+                  <span className="flex-1 min-w-0 truncate text-[13px] text-fg">
                     {dayLabel(d.date)}
                   </span>
                   <span className="shrink-0 text-[12px] text-dim [font-variant-numeric:tabular-nums]">

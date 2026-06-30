@@ -3,7 +3,7 @@ import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
   GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
   Repeat, StickyNote, Timer, Scissors, CalendarX, FolderKanban,
-  ClockArrowRight, ClockArrowLeft,
+  ClockArrowRight, ClockArrowLeft, CornerDownRight,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -46,23 +46,21 @@ import EventScopePrompt from "../components/EventScopePrompt.jsx";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory from "../components/EditedHistory.jsx";
-import { DayRailSpine, DayStrip, WeekList } from "../components/ScheduleSidebars.jsx";
-import DayRibbon from "../components/schedule/DayRibbon.jsx";
-import WeekSpines from "../components/schedule/WeekSpines.jsx";
-import { buildPersonLanes } from "../lib/schedule/personLoad.js";
+import { DayRailSpine, DayStrip } from "../components/ScheduleSidebars.jsx";
 import { WeekView, MonthView } from "../components/ScheduleZoom.jsx";
 import { ScheduleReview } from "../components/ScheduleReview.jsx";
-import { weekFullness, weekDays, weekShouldHeat } from "../lib/schedule/weekView.js";
+import { weekDays } from "../lib/schedule/weekView.js";
 import { monthFullness } from "../lib/schedule/monthView.js";
 import { blockStartDrift, dayReviews } from "../lib/schedule/lookBack.js";
 import { useRunHistory } from "../lib/data/useRunHistory.js";
-import { isActiveProject, nextProjectStep } from "../lib/projects.js";
+import {
+  isActiveProject, nextProjectStep, nextProjectStepFor,
+} from "../lib/projects.js";
 import { segmentForStart, buildDaySegments } from "../lib/schedule/placement.js";
 import {
   overnightWindow, inOvernight, OVERNIGHT_LEAD, OVERNIGHT_TRAIL,
 } from "../lib/schedule/partition.js";
 import { useNeighborDeltas } from "../lib/data/useNeighborDeltas.js";
-import BlockBadge from "../components/BlockBadge.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { navigate } from "../lib/router.js";
@@ -70,6 +68,12 @@ import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { recordCapture, readCaptures } from "../lib/capture/capture.js";
 import { supabase, realtimeChannel } from "../lib/supabase.js";
 import { formatMinutesOfDay, resolveBlockMinutes } from "../lib/sunTimes.js";
+import {
+  NowTag, KindBadge, AttentionCard, LoadSpine, WeekStrip, WarmingBadge,
+  AlertStrip,
+} from "../components/ui.jsx";
+import { farmLoad, dayConflictCount, dayWarming }
+  from "../lib/load/farmLoad.js";
 import { T } from "../theme.js";
 
 // The Schedule — the phone-first, single-open accordion of the day's chore
@@ -331,28 +335,6 @@ function EventEntry({
         </div>
       )}
     </li>
-  );
-}
-
-// The now-marker (Rethinker §3.4): a green hairline rule with a 7px dot +
-// soft glow and a "Now · <time>" eyebrow. Leads the now-block in both the
-// whole-day overview and the focused block detail.
-function NowMarker({ startMin }) {
-  return (
-    <div className="px-4 pt-2">
-      <div className="relative border-t border-resolved">
-        <span
-          className="absolute -top-1 left-0 w-[7px] h-[7px] rounded-full"
-          style={{
-            background: "var(--c-resolved)",
-            boxShadow: "0 0 0 3px rgba(76,186,133,0.22)",
-          }}
-        />
-      </div>
-      <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.14em] text-resolved mt-1">
-        Now{startMin != null ? " · " + formatMinutesOfDay(startMin) : ""}
-      </div>
-    </div>
   );
 }
 
@@ -976,8 +958,16 @@ export default function Schedule({ data }) {
   // ad_hoc deltas routed here by time) and, for the FIRST gap only when it has
   // no items, the auto-pulled `occupant` (the top project's next step —
   // display-only, swappable). `startMin` sorts them into the agenda/spine.
-  const projectEntries = useMemo(
-    () => (derived.projectSegments ?? []).map((seg, idx) => {
+  const projectEntries = useMemo(() => {
+    const projectsById = new Map(
+      (data.projects ?? []).map((p) => [p.id, p]));
+    // Running state threaded DOWN the day's Project blocks (F32): which
+    // project is featured in the block above (`carryProjectId`) and every step
+    // id already placed or auto-shown above (`seenStepIds`), so a "Continue"
+    // copies the project's NEXT step down — never a step already used above.
+    const seenStepIds = new Set();
+    let carryProjectId = null;
+    return (derived.projectSegments ?? []).map((seg, idx) => {
       const bucket = "project:" + seg.startMin;
       const items = projectPlacements.byBucket.get(bucket) ?? [];
       // Auto-pull the top project's next step into the first gap, and keep
@@ -987,11 +977,29 @@ export default function Schedule({ data }) {
       // "overrides" the default). Already-placed steps aren't re-pulled.
       const placedStepIds = new Set(
         items.map((d) => d.source_ref?.step_id).filter(Boolean));
+      const placedProjId = items
+        .map((d) => d.source_ref?.project_id).filter(Boolean).at(-1) ?? null;
       const hasIncompleteProj = items.some(
         (d) => d.source_type === "project_node" && d.state !== "done");
       let occupant = (idx === 0 && !hasIncompleteProj)
         ? nextProjectStep(data.projects, dateISO) : null;
       if (occupant && placedStepIds.has(occupant.stepId)) occupant = null;
+
+      // "Continue project above" (F32): an empty later block can copy the
+      // carried project's next undone step down. Only offered when nothing is
+      // placed or auto-shown in this block and a project is being carried.
+      let continueFrom = null;
+      if (idx > 0 && items.length === 0 && !occupant && carryProjectId) {
+        continueFrom = nextProjectStepFor(
+          projectsById.get(carryProjectId), seenStepIds);
+      }
+
+      // Advance the carry/seen state for the blocks below.
+      for (const sid of placedStepIds) seenStepIds.add(sid);
+      if (occupant) seenStepIds.add(occupant.stepId);
+      const blockProjId = placedProjId ?? (occupant?.projectId ?? null);
+      if (blockProjId) carryProjectId = blockProjId;
+
       const doneCount = items.filter((d) => d.state === "done").length;
       return {
         kind: "projectblock",
@@ -1003,12 +1011,13 @@ export default function Schedule({ data }) {
         who: seg.who,
         items,
         occupant,
+        continueFrom,
         count: items.length,
         done: doneCount,
         allDone: items.length > 0 && doneCount === items.length,
       };
-    }),
-    [derived, projectPlacements, data, dateISO]);
+    });
+  }, [derived, projectPlacements, data, dateISO]);
 
   // Overnight blocks as timeline + navigator entries (batch 3). Two per page:
   // the LEADING shift (last night → this morning, the first segment, continued)
@@ -1167,68 +1176,26 @@ export default function Schedule({ data }) {
     return m;
   }, [blockRows, counts]);
 
-  // Per-person load model for the desktop two-lane ribbon (Phase 1/3). Shape
-  // each real block into { startMin, endMin, rows:[{key, assignee, done}] }
-  // and let buildPersonLanes split it into Jim/James lanes + reservations +
-  // man-down holes. Recomputes with the same inputs as `counts` / `manDown`.
-  const personLanes = useMemo(() => {
-    const blocks = blockRows
-      .filter((b) => b.block && b.startMin != null)
-      .map((b) => {
-        const w = blockWindow(b.bucket);
-        return {
-          bucket: b.bucket,
-          name: b.block?.name ?? "Anytime",
-          startMin: w.start,
-          endMin: w.end,
-          rows: b.rows
-            .filter((r) => r.kind !== "note")
-            .map((r) => ({
-              key: r.key,
-              assignee: r.assignee ?? null,
-              done: r.kind === "chore"
-                ? completions.isDone(r.chore.id, r.placeId)
-                : r.commitment?.state === "done",
-            })),
-        };
-      });
-    // Axis spans the whole working day — earliest block start to latest
-    // block end — so the ribbon shows the day's full shape, not just the
-    // assigned span.
-    let dayStart = Infinity;
-    let dayEnd = -Infinity;
-    for (const b of blocks) {
-      dayStart = Math.min(dayStart, b.startMin);
-      dayEnd = Math.max(dayEnd, b.endMin);
-    }
-    return buildPersonLanes({
-      admins: ADMINS, blocks, windows, manDownKeys: manDown,
-      dayStart: Number.isFinite(dayStart) ? dayStart : undefined,
-      dayEnd: Number.isFinite(dayEnd) ? dayEnd : undefined,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockRows, windows, manDown, completions, startMinByBucket, blocksById]);
+  // The one farmLoad model for the viewed day (Round-3, harvest-remix). The
+  // shared day-load read consumed by the LoadSpine and the WeekStrip — folding
+  // what were the inline `daySilhouette` / `week` / `shouldHeat` computations
+  // into ONE (those are deleted below; NO-LEGACY). It reads the same walks they
+  // did, so it can't drift. `nowMin` only flows on a today-view (else block
+  // now/future state is meaningless).
+  const farm = useMemo(
+    () => farmLoad({
+      data, date: today, ruleOpts, choreCtx, completions, deltas,
+      nowMin: dateISO === realTodayISO ? nowMin : null,
+    }),
+    [data, today, ruleOpts, choreCtx, completions, deltas, dateISO,
+      realTodayISO, nowMin],
+  );
 
-  // The combined day silhouette (the ribbon's bottom strip): the whole
-  // day's load as one bar per real block — height = item count, colored by
-  // completion, amber where the block carries a man-down.
-  const daySilhouette = useMemo(() => {
-    const bars = blockRows
-      .filter((b) => b.block && b.startMin != null)
-      .map((b) => {
-        const c = countByBucket.get(b.bucket) ?? { done: 0, total: 0 };
-        const hole = b.rows.some((r) => manDown.has(r.key));
-        return {
-          key: b.bucket,
-          name: b.block?.name ?? "",
-          load: c.total,
-          state: hole ? "hole"
-            : c.total > 0 && c.done === c.total ? "done" : "committed",
-        };
-      });
-    const max = Math.max(1, ...bars.map((b) => b.load));
-    return { bars, max };
-  }, [blockRows, countByBucket, manDown]);
+  // (Round-3 NO-LEGACY) The inline `personLanes` + `daySilhouette` memos that
+  // used to feed the two-lane DayRibbon are GONE — the day-load is the LoadSpine
+  // over `farm.blocks`. The two-lane "who's on what" overlay was removed
+  // entirely (F27): it leaned on per-chore assignment that the farm doesn't
+  // commit to, so it added noise more than signal.
 
   // The merged day timeline: chore blocks + event entries + project gaps +
   // overnight, in time order (the leading overnight pins first, the trailing
@@ -1258,33 +1225,38 @@ export default function Schedule({ data }) {
   // The day-spine / phone-strip segments — one per chore block of the viewed
   // day, carrying the load (count), done, time, and the man-down flag so the
   // navigator reads as a labelled time axis (Design Bracket 2).
-  const spineBlocks = useMemo(() => blockRows.map((b, i) => ({
-    bucket: b.bucket,
-    name: b.block?.name ?? "Anytime",
-    block: b.block,
-    startMin: b.startMin,
-    count: counts[i].total,
-    done: counts[i].done,
-    allDone: counts[i].total > 0 && counts[i].done === counts[i].total,
-    hasManDown: b.rows.some((r) => manDown.has(r.key)),
-  })), [blockRows, counts, manDown]);
+  const spineBlocks = useMemo(() => blockRows.map((b, i) => {
+    // F24b — the same warning the day-load summary shows, attributed to its
+    // block (keyed by bucket = farmLoad blockId) so the row repeats the signal.
+    const w = farm.warming?.byBucket.get(b.bucket);
+    return {
+      bucket: b.bucket,
+      name: b.block?.name ?? "Anytime",
+      block: b.block,
+      startMin: b.startMin,
+      count: counts[i].total,
+      done: counts[i].done,
+      allDone: counts[i].total > 0 && counts[i].done === counts[i].total,
+      hasManDown: b.rows.some((r) => manDown.has(r.key)),
+      warn: w?.warn ?? [],
+      due: w?.due ?? [],
+    };
+  }), [blockRows, counts, manDown, farm]);
 
   // The navigator segments = chore blocks + Project gaps + the Overnight wrap,
   // in time order, so the spine/strip read as one tiled time axis (the leading
   // overnight pins first, the trailing last — via startKey).
   const navSegments = useMemo(
-    () => [...spineBlocks, ...projectEntries, ...overnightEntries]
+    () => [...spineBlocks, ...projectEntries, ...overnightEntries,
+      ...eventEntries]
       .sort((a, b) => startKey(a) - startKey(b)),
-    [spineBlocks, projectEntries, overnightEntries]);
+    [spineBlocks, projectEntries, overnightEntries, eventEntries]);
 
-  // Desktop week list (S9) — seven days of fullness silhouettes by count.
-  const week = useMemo(
-    () => weekFullness(data, today, ruleOpts), [data, today, ruleOpts]);
-
-  // Should-escalation heat across the week (Rethinker §3.7) — which
-  // deferrable "should" chores are warming toward a deadline this week.
-  const shouldHeat = useMemo(
-    () => weekShouldHeat(data, today, ruleOpts), [data, today, ruleOpts]);
+  // (Round-3 NO-LEGACY) The inline `week` (weekFullness) memo is GONE — it is
+  // folded into the one `farm` model (`farm.week`) consumed by the sidebar
+  // WeekStrip and the Week zoom. weekFullness is still called — inside
+  // farmLoad, not here. (The old `shouldHeat` fold went with the should-heat
+  // gradient — warming is now the binary day-load ClockAlert, F24.)
 
   // The three zooms (S9 tail). "day" = the master-detail surface; "week" /
   // "month" replace the centre with a wider navigator. Desktop only — phone
@@ -1883,6 +1855,9 @@ export default function Schedule({ data }) {
   // remembers the current change-set signature so it re-surfaces only when the
   // divergence actually changes.
   const [dismissedChangeSig, setDismissedChangeSig] = useState(null);
+  // The change-set names are hidden behind an on-demand "Details" toggle (F28)
+  // — the strip leads with the count, not an inline list of every name.
+  const [showChangeDetail, setShowChangeDetail] = useState(false);
 
   // ── Conflicts: the one list (S56a/b/c) + double-booking (S58) ───────
   const [showConflicts, setShowConflicts] = useState(false);
@@ -1979,39 +1954,110 @@ export default function Schedule({ data }) {
   // Horizon scan (next 14 days) for man-down conflicts — driven by reservations
   // read once when the panel opens. Recurring days-off (S46) land here.
   const HORIZON_DAYS = 14;
-  const [horizonRes, setHorizonRes] = useState(null);
+  // { res: Map<iso, reservation[]>, ovr: Map<iso, override[]> }. Always loaded
+  // (not gated on the conflicts panel) so the week pane can mark EVERY day of
+  // the displayed week (F17), not just focal/forward days. One read-only query
+  // for both reservation + override commitments, spanning the week's Sunday
+  // through the forward 14-day horizon. Overrides are needed because a man-down
+  // often only exists after a block-move/reassignment override (see
+  // `dayConflictCount`).
+  const [horizon, setHorizon] = useState(null);
   useEffect(() => {
-    if (!showConflicts) return;
     let cancelled = false;
+    const from = new Date(today);
+    from.setDate(from.getDate() - from.getDay()); // the week's Sunday
     const to = new Date(today);
     to.setDate(to.getDate() + HORIZON_DAYS);
     supabase.from("commitments")
       .select("id, source_type, source_ref, run_date, clock_time, assignee")
-      .eq("source_type", "reservation")
-      .gt("run_date", dateISO).lte("run_date", ymdLocal(to))
+      .in("source_type", ["reservation", "override"])
+      .gte("run_date", ymdLocal(from)).lte("run_date", ymdLocal(to))
       .then((res) => {
         if (cancelled) return;
-        const m = new Map();
-        for (const r of res.data ?? []) {
-          if (!m.has(r.run_date)) m.set(r.run_date, []);
-          m.get(r.run_date).push(r);
+        const r = new Map();
+        const o = new Map();
+        for (const row of res.data ?? []) {
+          const m = row.source_type === "override" ? o : r;
+          if (!m.has(row.run_date)) m.set(row.run_date, []);
+          m.get(row.run_date).push(row);
         }
-        setHorizonRes(m);
+        setHorizon({ res: r, ovr: o });
       });
     return () => { cancelled = true; };
-  }, [showConflicts, dateISO, today]);
+  }, [today]);
 
   const upcomingConflicts = useMemo(() => {
-    if (!horizonRes) return [];
+    if (!horizon) return [];
     return scanHorizonConflicts({
       data, fromDate: today, days: HORIZON_DAYS, ruleOpts,
-      reservationsByISO: horizonRes, ymd: ymdLocal,
+      reservationsByISO: horizon.res, ymd: ymdLocal,
     }).map((c) => ({ ...c, scope: "upcoming", label: c.label }));
-  }, [horizonRes, data, today, ruleOpts]);
+  }, [horizon, data, today, ruleOpts]);
 
   const conflicts = useMemo(
     () => [...todayConflicts, ...upcomingConflicts],
     [todayConflicts, upcomingConflicts]);
+
+  // Per-day conflict counts for the week pane (F17) — for EVERY day of the
+  // displayed week, so a triangle shows without first selecting the day. Uses
+  // `dayConflictCount` (the focal day's place-expanded rollup engine: man-down
+  // against each day's reservations + double-book, with block-move/reassign
+  // overrides applied so a relocated chore's conflict is caught), fed the
+  // horizon query's reservations + overrides. The focal day is overridden with
+  // its live `todayConflicts` count (which additionally catches buffer
+  // squeezes — those stay focal-only).
+  const weekConflictsByISO = useMemo(() => {
+    const m = new Map();
+    if (horizon) {
+      for (const d of weekDays(today)) {
+        const iso = ymdLocal(d);
+        const n = dayConflictCount({
+          data, date: d, ruleOpts, choreCtx, completions,
+          reservations: horizon.res.get(iso) ?? [],
+          overrides: horizon.ovr.get(iso) ?? [],
+        });
+        if (n > 0) m.set(iso, n);
+      }
+    }
+    if (todayConflicts.length) m.set(dateISO, todayConflicts.length);
+    else m.delete(dateISO);
+    return m;
+  }, [horizon, today, data, ruleOpts, choreCtx, completions,
+    todayConflicts, dateISO]);
+
+  // Per-day warming (F24/F25) for the week pane — a ClockAlert marker on every
+  // day that has a warn/due chore, mirroring `weekConflictsByISO`. Reuses the
+  // same `dayWarming` the focal day-load reads, so the week marker can't
+  // disagree with the day it opens to. Keyed iso → { warn:[…], due:[…] }.
+  const weekWarmingByISO = useMemo(() => {
+    const m = new Map();
+    for (const d of weekDays(today)) {
+      const w = dayWarming({ data, date: d, ruleOpts, choreCtx, completions });
+      if (w.warn.length || w.due.length) m.set(ymdLocal(d), w);
+    }
+    return m;
+  }, [today, data, ruleOpts, choreCtx, completions]);
+
+  // Week-pane overnight marker (Moon): a night spans two calendar days, so the
+  // focal day's overnight entries mark BOTH days they touch — a `lead` block
+  // (last night → this morning) marks yesterday + today; a `trail` block
+  // (tonight → tomorrow) marks today + tomorrow. Derived from the loaded
+  // overnight entries (week-wide overnight detection would need each day's
+  // neighbor deltas, which aren't fetched — this reflects the overnight in view).
+  const weekOvernightISOs = useMemo(() => {
+    const s = new Set();
+    for (const e of overnightEntries) {
+      if (!e.count) continue;
+      if (e.side === "lead") {
+        s.add(ymdLocal(yesterday));
+        s.add(ymdLocal(today));
+      } else {
+        s.add(ymdLocal(today));
+        s.add(ymdLocal(tomorrow));
+      }
+    }
+    return s;
+  }, [overnightEntries, yesterday, today, tomorrow]);
 
   // Jump to a conflict (S56b): focus its block on the viewed day, or open the
   // day it falls on first. On phones the focused block renders below the
@@ -2075,50 +2121,19 @@ export default function Schedule({ data }) {
         const coverer = ADMINS.find((a) => a !== r.assignee);
         return (
           <div key={"leak|" + r.key} className={"pr-4 pb-3 -mt-1 " + pad}>
-            {/* Needs-cover card (Rethinker): a flush, amber-bordered card on
-                the page — the ⚠ eyebrow + work + reason + a single amber
-                action that opens the cover sheet. */}
-            <div
-              className="border"
-              style={{
-                borderColor: "color-mix(in srgb, var(--c-warn) 50%, transparent)",
-                background: "color-mix(in srgb, var(--c-warn) 7%, var(--c-bg))",
-              }}
-            >
-              <div
-                className="px-3 py-2 flex items-center gap-2 border-b"
-                style={{
-                  borderColor: "color-mix(in srgb, var(--c-warn) 22%, transparent)",
-                }}
-              >
-                <AlertTriangle size={15} className="shrink-0 text-warn" />
-                <span className="font-ui text-[11px] font-semibold uppercase tracking-[0.14em] text-warn">
-                  Needs cover
-                </span>
-              </div>
-              <div className="px-3 py-3">
-                <div className="text-[14px] font-medium text-fg">
-                  {rowLabel(r)}{r.placeLabel ? ` · ${r.placeLabel}` : ""}
-                </div>
-                <div className="text-[12px] text-dim mt-1 leading-snug">
-                  {coverReason(r)}
-                </div>
-                <div className="font-ui text-[12px] text-dim mt-2.5">
-                  Who can cover?
-                </div>
-                <button
-                  type="button"
-                  onClick={() => openCover(r, b)}
-                  className="w-full mt-2 bg-warn text-on-accent border-0 py-2.5 cursor-pointer font-ui text-[12px] font-bold uppercase tracking-[0.1em]"
-                >
-                  {coverer} covers — I've got it
-                </button>
-                <div className="font-ui text-[11px] text-faint mt-2.5 leading-snug">
-                  The acknowledgment is the record — the hole closes green in
-                  {" "}{coverer}'s lane.
-                </div>
-              </div>
-            </div>
+            {/* The one promoted needs-cover surface (AttentionCard) — same
+                man-down row, reason, and cover action; flush amber, Lora work
+                line, solid-amber button (C6). */}
+            <AttentionCard
+              kind="cover"
+              work={rowLabel(r)}
+              where={r.placeLabel ?? null}
+              reason={coverReason(r)}
+              action={`${coverer} covers — I've got it`}
+              onAct={() => openCover(r, b)}
+              note={`The acknowledgment is the record — the hole closes green `
+                + `in ${coverer}'s lane.`}
+            />
           </div>
         );
       })}
@@ -2147,7 +2162,7 @@ export default function Schedule({ data }) {
      {/* Day/Week/Month/Review lives at the TOP LEVEL (above the spine+pane
          split) so it stays put when the day-spine appears/disappears with the
          view mode — it never shuffles under the cursor (F20). */}
-     <div className="hidden lg:flex items-center justify-end gap-1 font-ui text-[12px] mb-2">
+     <div className="hidden lg:flex items-center justify-end gap-1 font-ui text-[12px] mb-4">
        {[["day", "Day"], ["week", "Week"], ["month", "Month"],
          ["review", "Review"]].map(([m, label]) => (
          <button
@@ -2155,10 +2170,10 @@ export default function Schedule({ data }) {
            type="button"
            onClick={() => setViewMode(m)}
            className={
-             "px-3 py-1 border cursor-pointer transition-colors "
+             "px-3 py-1 border border-transparent cursor-pointer transition-colors "
              + (viewMode === m
-               ? "bg-surface-alt border-line text-fg font-medium"
-               : "border-transparent text-faint hover:text-dim")
+               ? "bg-row-active text-fg font-medium"
+               : "text-faint hover:bg-row-hover hover:text-dim")
            }
          >
            {label}
@@ -2172,9 +2187,9 @@ export default function Schedule({ data }) {
           blocks={navSegments}
           focus={focus}
           nowBucket={nowBucket}
+          nowMin={viewingToday ? nowMin : null}
           onPick={pickBlock}
           onWholeDay={showOverview}
-          totalItems={totalRows}
         />
       )}
 
@@ -2183,7 +2198,7 @@ export default function Schedule({ data }) {
 
       {viewMode === "week" ? (
         <WeekView
-          week={week}
+          week={farm.week}
           todayISO={realTodayISO}
           selectedISO={dateISO}
           confirmedDays={confirmedDays}
@@ -2205,65 +2220,63 @@ export default function Schedule({ data }) {
         <ScheduleReview drift={drift} reviews={reviews} splitDays={DRIFT_SPLIT} />
       ) : (
        <>
-      {/* Desktop two-lane time ribbon (Rethinker Phase 3) — the day read as
-          per-person load + the combined day silhouette. lg-only; the
-          component hides itself below lg. */}
-      <DayRibbon
-        lanes={personLanes.lanes}
-        axisStart={personLanes.axisStart}
-        axisEnd={personLanes.axisEnd}
-        nowMin={viewingToday ? nowMin : null}
-        silhouette={daySilhouette}
-      />
-      {/* Week mini-spines — the week's shape as seven little load silhouettes
-          (lg-only). Tapping a day opens it. */}
-      <WeekSpines
-        week={week}
-        shouldHeat={shouldHeat}
-        todayISO={realTodayISO}
-        selectedISO={dateISO}
-        ymd={ymdLocal}
-        onPickDay={openDay}
-      />
-      {/* Source-changed-after-confirm ribbon — informs, never auto-applies.
-          Standardised to the carry-over banner shape (F22) and dismissible
-          (F29). */}
+      {/* Day load — the count-driven silhouette, promoted to the shared
+          LoadSpine reading farmLoad (Round-3 demote). lg-only. */}
+      <div className="hidden lg:block border border-line bg-bg mb-4 px-5 py-4">
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="font-ui text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
+            Day load
+          </span>
+          {/* F24/F25 — the binary warn/due ClockAlert sits INLINE in the
+              count run, after a "·"; hover names each warming/due chore. */}
+          <span className="flex items-center gap-1 font-ui text-[10px] text-faint [font-variant-numeric:tabular-nums]">
+            <span className="flex items-center gap-1">
+              {farm.totals.items} items · {farm.totals.blocks} blocks
+              {farm.projects.length > 0
+                ? ` · ${farm.projects.length} projects` : ""}
+              {(farm.warming.warn.length + farm.warming.due.length) > 0
+                && " · "}
+              <WarmingBadge warn={farm.warming.warn} due={farm.warming.due} />
+            </span>
+          </span>
+        </div>
+        <LoadSpine blocks={farm.spine.filter((b) => b.startMin != null)} />
+      </div>
+      {/* Source-changed-after-confirm strip — informs, never auto-applies. A
+          passive AlertStrip leading with the count; the per-item names sit
+          behind an on-demand "Details" toggle, not an inline list (F28).
+          Dismiss remembers the current change-set signature so it re-surfaces
+          only when the divergence actually changes. */}
       {(() => {
         const sig = changes
           ? `${changes.total}|${changes.added.join(",")}|${changes.removed.join(",")}`
           : null;
         if (!changes || sig === dismissedChangeSig) return null;
+        const names = [
+          ...changes.added.map((t) => "+ " + t),
+          ...changes.removed.map((t) => "− " + t),
+        ];
         return (
-          <div
-            className="px-3 py-2 mb-3 border flex items-start gap-2"
-            style={{
-              borderColor: "color-mix(in srgb, var(--c-warn) 45%, transparent)",
-              background: "color-mix(in srgb, var(--c-warn) 6%, var(--c-bg))",
-            }}
+          <AlertStrip
+            className="mb-3"
+            action={names.length > 0 ? (showChangeDetail ? "Hide" : "Details") : undefined}
+            onAct={() => setShowChangeDetail((v) => !v)}
+            onDismiss={() => setDismissedChangeSig(sig)}
           >
-            <AlertTriangle size={14} className="shrink-0 text-warn mt-0.5" />
-            <div className="flex-1 min-w-0 text-[12px] text-dim">
-              <span className="font-medium text-fg">
-                {changes.total} change{changes.total === 1 ? "" : "s"} since
-                you confirmed.
-              </span>{" "}
-              <span className="text-faint">
-                {[
-                  ...changes.added.map((t) => "+ " + t),
-                  ...changes.removed.map((t) => "− " + t),
-                ].slice(0, 4).join(" · ")}
+            <span className="font-medium text-fg">
+              {changes.total} change{changes.total === 1 ? "" : "s"} since
+              you confirmed.
+            </span>
+            {showChangeDetail && names.length > 0 && (
+              <span className="block mt-1 text-faint">
+                {names.join(" · ")}
               </span>
-            </div>
-            <button type="button" onClick={() => setDismissedChangeSig(sig)}
-              className="shrink-0 text-faint hover:text-fg cursor-pointer"
-              aria-label="Dismiss">
-              <X size={14} />
-            </button>
-          </div>
+            )}
+          </AlertStrip>
         );
       })()}
 
-      <div className="px-1 mb-3 flex flex-wrap items-start gap-x-3 gap-y-2">
+      <div className="px-1 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         {confirmedDoc ? (
           <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-resolved border border-resolved px-2 py-0.5 inline-flex items-center gap-1">
             <Check size={12} strokeWidth={3} /> Confirmed
@@ -2295,9 +2308,8 @@ export default function Schedule({ data }) {
           <button
             type="button"
             onClick={() => setShowConflicts(true)}
-            className={"text-[12px] font-medium inline-flex items-center gap-1 cursor-pointer "
-              + (todayConflicts.length > 0
-                ? "text-warn hover:brightness-110" : "text-faint hover:text-dim")}
+            className={"text-[12px] font-medium inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer "
+              + (todayConflicts.length > 0 ? "text-warn" : "text-faint")}
           >
             <AlertTriangle size={14} />
             {`${todayConflicts.length} conflict${todayConflicts.length === 1 ? "" : "s"}`}
@@ -2305,42 +2317,29 @@ export default function Schedule({ data }) {
           <button
             type="button"
             onClick={() => setAddingTimeOff(true)}
-            className="text-[12px] font-medium text-dim hover:text-fg inline-flex items-center gap-1 cursor-pointer"
+            className="text-[12px] font-medium text-dim inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
           >
             <Ban size={14} /> Time off
           </button>
           <button
             type="button"
             onClick={() => setPicking(true)}
-            className="text-[12px] font-medium text-accent hover:brightness-110 inline-flex items-center gap-1 cursor-pointer"
+            className="text-[12px] font-medium text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
           >
             <Plus size={14} /> Add chore
           </button>
         </div>
       </div>
 
-      {/* Yesterday's unfinished musts (S12) — only when building today. */}
+      {/* Yesterday's unfinished musts (S12) — only when building today. A
+          passive count strip (F28), no per-item names. */}
       {viewMode === "day" && !dismissedYesterday && yesterdayMusts.count > 0 && (
-        <div
-          className="px-3 py-2 mb-3 border flex items-start gap-2"
-          style={{
-            borderColor: "color-mix(in srgb, var(--c-warn) 45%, transparent)",
-            background: "color-mix(in srgb, var(--c-warn) 6%, var(--c-bg))",
-          }}
-        >
-          <AlertTriangle size={14} className="shrink-0 text-warn mt-0.5" />
-          <div className="flex-1 min-w-0 text-[12px] text-dim">
-            <span className="font-medium text-fg">
-              Yesterday — {yesterdayMusts.count} must-do
-              {yesterdayMusts.count === 1 ? "" : "s"} unfinished.
-            </span>
-          </div>
-          <button type="button" onClick={dismissYesterday}
-            className="shrink-0 text-faint hover:text-fg cursor-pointer"
-            aria-label="Dismiss">
-            <X size={14} />
-          </button>
-        </div>
+        <AlertStrip className="mb-3" onDismiss={dismissYesterday}>
+          <span className="font-medium text-fg">
+            Yesterday — {yesterdayMusts.count} must-do
+            {yesterdayMusts.count === 1 ? "" : "s"} unfinished.
+          </span>
+        </AlertStrip>
       )}
 
       {/* Non-work time (S7) + buffers (S53) — the day's reserved time as a
@@ -2554,21 +2553,23 @@ export default function Schedule({ data }) {
             const { done, total } = countByBucket.get(b.bucket) ?? { done: 0, total: 0 };
             const allDone = total > 0 && done === total;
             const isNow = b.bucket === nowBucket;
+            const nowHere = isNow && viewingToday;
             return (
               <li key={b.bucket} ref={isNow ? focusRef : null}>
-                {isNow && viewingToday && <NowMarker startMin={b.startMin} />}
                 <button
                   type="button"
                   onClick={() => pickBlock(b.bucket)}
                   className={
-                    "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-row-hover cursor-pointer "
+                    "w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer "
+                    + (nowHere ? "bg-accent/[0.08] " : "hover:bg-row-hover ")
                     + (allDone ? "opacity-60" : "")
                   }
                 >
-                  {b.block && <BlockBadge block={b.block} />}
+                  <KindBadge kind="chore" size={16} title="Chores" />
                   <span className="flex-1 min-w-0 truncate text-[14px] text-fg">
                     {b.block?.name ?? "Anytime"}
                   </span>
+                  {nowHere && <NowTag />}
                   <span className="shrink-0 text-[12px] [font-variant-numeric:tabular-nums] text-dim">
                     {allDone ? "done" : `${done}/${total}`}
                   </span>
@@ -2756,9 +2757,26 @@ export default function Schedule({ data }) {
                     </button>
                   </div>
                 ) : b.items.length === 0 ? (
-                  <div className="px-4 py-3 border-b border-line text-[13px] text-faint italic">
-                    free — nothing planned
-                  </div>
+                  b.continueFrom ? (
+                    /* Copy the project carried from the block above down into
+                       this gap — its next undone step (F32). One quick tap to
+                       keep working the same project across the day. */
+                    <button
+                      type="button"
+                      onClick={() => addProject(
+                        b.continueFrom, null, null, minToHM(b.startMin))}
+                      className="w-full flex items-center gap-2 px-4 py-3 border-b border-line text-[13px] font-medium text-project hover:bg-row-hover cursor-pointer"
+                    >
+                      <CornerDownRight size={15} className="shrink-0" />
+                      <span className="truncate">
+                        Continue {b.continueFrom.projectTitle}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="px-4 py-3 border-b border-line text-[13px] text-faint italic">
+                      free — nothing planned
+                    </div>
+                  )
                 ) : null}
                 <AddTaskRow
                   onAdd={(title) =>
@@ -2783,16 +2801,18 @@ export default function Schedule({ data }) {
             const b = focusEntry;
             const { done, total } = countByBucket.get(b.bucket) ?? { done: 0, total: 0 };
             const allDone = total > 0 && done === total;
+            const nowHere = b.bucket === nowBucket && viewingToday;
             return (
               <>
-                {b.bucket === nowBucket && viewingToday && (
-                  <NowMarker startMin={b.startMin} />
-                )}
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
-                  {b.block && <BlockBadge block={b.block} />}
+                <div className={
+                  "flex items-center gap-3 px-4 py-3 border-b border-line "
+                  + (nowHere ? "bg-accent/[0.08]" : "bg-row-active")
+                }>
+                  <KindBadge kind="chore" size={16} title="Chores" />
                   <span className="flex-1 min-w-0 truncate font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
                     {b.block?.name ?? "Anytime"}
                   </span>
+                  {nowHere && <NowTag />}
                   {b.startMin != null && (
                     <span className="shrink-0 text-[12px] text-faint [font-variant-numeric:tabular-nums]">
                       {formatMinutesOfDay(b.startMin)}
@@ -2891,11 +2911,25 @@ export default function Schedule({ data }) {
       )}
       </div>{/* /center column */}
 
-      {/* Desktop week list — today = ring, viewed day = fill; tap to open.
-          Hidden in the wider zooms (the centre is the navigator there). */}
+      {/* Desktop week — the one WeekStrip (folds the old center WeekSpines +
+          sidebar WeekList): a row per day · count mini-spine · E/conflict
+          symbols. Hidden in the wider zooms (the centre is the navigator). */}
       {viewMode === "day" && (
-        <WeekList week={week} todayISO={realTodayISO} selectedISO={dateISO}
-          ymd={ymdLocal} onPickDay={goToDay} />
+        <aside className="hidden lg:block border-l border-line py-5 px-4 w-[240px]">
+          <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.16em] text-faint mb-4">
+            This week
+          </div>
+          <WeekStrip
+            week={farm.week}
+            todayISO={realTodayISO}
+            selectedISO={dateISO}
+            ymd={ymdLocal}
+            onPickDay={goToDay}
+            conflictsByISO={weekConflictsByISO}
+            warmingByISO={weekWarmingByISO}
+            overnightByISO={weekOvernightISOs}
+          />
+        </aside>
       )}
      </div>{/* /lg workbench flex */}
 

@@ -11,7 +11,7 @@ import {
   layingRate, mortalityStats, summarizeSamples, uniformity, weeksTimeline,
 } from "../lib/metrics.js";
 import { formatDate } from "../lib/dates.js";
-import { Card, INPUT_SURFACE_CLS } from "./ui.jsx";
+import { Pane, INPUT_SURFACE_CLS } from "./ui.jsx";
 
 // Batch / flock metrics section (Batch 26.1) — the per-cohort slice of
 // the Metrics & analytics subsystem, embedded on BatchPage.
@@ -59,7 +59,7 @@ export default function BatchMetricsSection({
   return (
     <>
       {notYetArrived && (
-        <Card title="Performance" icon={ChartLine}>
+        <Pane title="Performance" icon={ChartLine}>
           <div className="text-[12px] text-dim leading-relaxed">
             This batch hasn&rsquo;t arrived yet
             {lifecycle?.arrivalISO
@@ -67,7 +67,7 @@ export default function BatchMetricsSection({
               : ""}. Performance numbers start once it&rsquo;s on the
             farm and the first weigh-in is logged.
           </div>
-        </Card>
+        </Pane>
       )}
       {isMeat && !notYetArrived && (
         <PerformanceCard
@@ -123,7 +123,7 @@ function PerformanceCard({
   ]);
 
   return (
-    <Card title="Performance" icon={ChartLine}>
+    <Pane title="Performance" icon={ChartLine}>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-5 gap-y-4">
         <MetricStat
           label="Feed conversion"
@@ -184,7 +184,7 @@ function PerformanceCard({
         </div>
       )}
       <CaveatList caveats={caveats} />
-    </Card>
+    </Pane>
   );
 }
 
@@ -203,7 +203,7 @@ function ProductionCard({ batch, samples, collections, mortalityEvents, ctx }) {
   ]);
 
   return (
-    <Card title="Production" icon={Egg}>
+    <Pane title="Production" icon={Egg}>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-5 gap-y-4">
         <MetricStat
           label="Hen-housed"
@@ -241,7 +241,7 @@ function ProductionCard({ batch, samples, collections, mortalityEvents, ctx }) {
       </div>
       <BodyWeightStrip weight={weight} />
       <CaveatList caveats={caveats} />
-    </Card>
+    </Pane>
   );
 }
 
@@ -315,7 +315,7 @@ function WeighInsCard({ samples, onRecord, onRemove }) {
   };
 
   return (
-    <Card title="Weigh-ins" icon={Scale}>
+    <Pane title="Weigh-ins" icon={Scale}>
       {!open ? (
         <button
           onClick={() => setOpen(true)}
@@ -415,7 +415,7 @@ function WeighInsCard({ samples, onRecord, onRemove }) {
           gain, conversion, and uniformity numbers.
         </div>
       )}
-    </Card>
+    </Pane>
   );
 }
 
@@ -456,7 +456,7 @@ function EggLogCard({ collections, onRecord, onRemove }) {
   };
 
   return (
-    <Card
+    <Pane
       title="Egg log"
       icon={Egg}
       subtitle={last7 > 0 ? `${last7} this week` : null}
@@ -528,7 +528,7 @@ function EggLogCard({ collections, onRecord, onRemove }) {
           start computing once counts come in.
         </div>
       )}
-    </Card>
+    </Pane>
   );
 }
 

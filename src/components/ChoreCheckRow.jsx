@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Check, CloudOff, X, GripVertical, MoreHorizontal } from "lucide-react";
+import { CloudOff, X, GripVertical, MoreHorizontal } from "lucide-react";
+import { CheckTarget } from "./ui.jsx";
 import ChoreRemainingPill from "./ChoreRemainingPill.jsx";
 import ModifierBadges from "./ModifierBadge.jsx";
 import EditedHistory from "./EditedHistory.jsx";
@@ -40,10 +41,13 @@ export default function ChoreCheckRow({
   const rem = isWindowish ? choreDaysRemaining(chore, new Date(), blocks) : null;
   const isShould = rem?.kind === "days";       // future deadline → optional now
   const escalating = rem?.kind === "today" || rem?.kind === "overran";
+  // Escalation chrome is flush (DESIGN principle 1): a flat fill, no raised
+  // left-rail. The full Hole/AttentionCard treatment (amber inset ring +
+  // gutter hatch + WindowBar) lands in Step 2; here we only de-raise.
   const escalateClass = !done && escalating
     ? (rem.kind === "overran"
-      ? " border-l-2 border-warn bg-warn/5"
-      : " border-l-2 border-accent-deep bg-accent-deep/[0.06]")
+      ? " bg-warn/[0.08]"
+      : " bg-accent-deep/[0.06]")
     : "";
   // True while this row's tick is sitting in the device-local outbox
   // waiting for connectivity.
@@ -89,22 +93,12 @@ export default function ChoreCheckRow({
           <GripVertical size={16} />
         </button>
       )}
-      <button
-        type="button"
-        onClick={onToggle}
-        disabled={pending}
-        className={
-          "shrink-0 w-7 h-7 border-2 inline-flex items-center justify-center " +
-          "cursor-pointer transition-colors duration-100 " +
-          (done
-            ? "bg-resolved border-resolved text-on-accent"
-            : "bg-bg border-line text-transparent hover:border-fg")
-        }
-        aria-pressed={done}
-        aria-label={done ? "Mark not done" : "Mark done"}
-      >
-        <Check size={16} strokeWidth={3} />
-      </button>
+      <CheckTarget
+        done={done}
+        queued={queued}
+        pending={pending}
+        onToggle={onToggle}
+      />
       <div className="flex-1 min-w-0">
         <div className={
           "text-[14px] flex items-center gap-2 " +
