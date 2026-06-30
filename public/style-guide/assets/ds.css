@@ -1,0 +1,389 @@
+/* =========================================================================
+   NFF Design System — documentation stylesheet
+   The docs are built IN the system they document: the same --c-* tokens,
+   the same data-theme switch, the same type roles, sharp corners, flush
+   panes. Flip the theme and the whole site re-skins — that is the proof
+   the token layer is real.
+   Token values are mirrored from index.html (the app's source of truth).
+   ========================================================================= */
+
+/* ---- Real Nacelle body font (served at /fonts/ when same-origin; falls
+   back to system-ui standalone / over file://) ---- */
+@font-face {
+  font-family: "Nacelle";
+  src: url('/fonts/Nacelle-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Nacelle";
+  src: url('/fonts/Nacelle-SemiBold.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Nacelle";
+  src: url('/fonts/Nacelle-Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
+/* ---- Real semantic tokens (mirrored from index.html) ---- */
+html[data-theme="dark"] {
+  --c-bg: #101614;
+  --c-surface: #151a15;
+  --c-surface-alt: #1d231e;
+  --c-border: #3e473d;
+  --c-text: #f2efe4;
+  --c-text-dim: #c4bfad;
+  --c-text-muted: #8e8877;
+  --c-text-faint: #6a6658;
+  --c-accent: #adc8ad;
+  --c-accent-deep: #297d5a;
+  --c-warn: #e6b85a;
+  --c-resolved: #4cba85;
+  --c-project: #7d9ec9;
+  --c-on-accent: #0d1410;
+  --c-cat-fm: #5dd585;
+  --c-cat-popup: #ffaa33;
+  --c-cat-egg: #68d5fd;
+  --c-cat-chore: #c4bfad;
+  --c-cat-deliveries: #ffbf66;
+  --c-cat-farm-visits: #ff6675;
+  --c-cat-pickups: #65cda2;
+  --c-cat-processing: #ff3347;
+  --c-cat-default: #8e8877;
+}
+html[data-theme="light"] {
+  --c-bg: #f6f6f6;
+  --c-surface: #ffffff;
+  --c-surface-alt: #ececec;
+  --c-border: #d6d6d6;
+  --c-text: #14180f;
+  --c-text-dim: #2f3329;
+  --c-text-muted: #4d4a3e;
+  --c-text-faint: #6f6b5d;
+  --c-accent: #297d5a;
+  --c-accent-deep: #1d5a40;
+  --c-warn: #a06d10;
+  --c-resolved: #297d5a;
+  --c-project: #3f6da3;
+  --c-on-accent: #ffffff;
+  --c-cat-fm: #2aa252;
+  --c-cat-popup: #cc7700;
+  --c-cat-egg: #0295ca;
+  --c-cat-chore: #7a7666;
+  --c-cat-deliveries: #995900;
+  --c-cat-farm-visits: #cc0014;
+  --c-cat-pickups: #21ab4f;
+  --c-cat-processing: #99000f;
+  --c-cat-default: #7a7666;
+}
+
+/* ---- Type roles (Nacelle vendored in-app; system fallback in docs) ---- */
+:root {
+  --font-body: "Nacelle", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Lora", Georgia, "Times New Roman", serif;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ds-nav-w: 246px;
+  --ds-max: 880px;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--c-accent-deep); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code, .mono {
+  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-size: 0.86em;
+}
+
+/* ---- Layout: sticky sidebar + content column ---- */
+.ds-shell { display: flex; min-height: 100vh; }
+
+.ds-nav {
+  width: var(--ds-nav-w);
+  flex: 0 0 var(--ds-nav-w);
+  border-right: 1px solid var(--c-border);
+  padding: 22px 18px 60px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.ds-brand {
+  font-family: var(--font-heading);
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  margin: 0 0 2px;
+}
+.ds-brand-sub {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--c-text-muted);
+  margin: 0 0 20px;
+}
+.ds-navgroup {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--c-text-muted);
+  margin: 18px 0 6px;
+}
+.ds-nav a {
+  display: block;
+  color: var(--c-text-dim);
+  font-size: 14px;
+  padding: 4px 8px;
+  border-left: 2px solid transparent;
+  margin-left: -8px;
+}
+.ds-nav a:hover { color: var(--c-text); text-decoration: none; }
+.ds-nav a.active {
+  color: var(--c-text);
+  border-left-color: var(--c-accent-deep);
+  font-weight: 600;
+}
+
+.ds-main { flex: 1 1 auto; min-width: 0; }
+.ds-content {
+  max-width: var(--ds-max);
+  margin: 0 auto;
+  padding: 30px 40px 120px;
+}
+
+/* ---- Top bar (theme toggle) ---- */
+.ds-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 40px;
+  border-bottom: 1px solid var(--c-border);
+  position: sticky;
+  top: 0;
+  background: var(--c-bg);
+  z-index: 5;
+}
+.ds-toggle {
+  display: inline-flex;
+  border: 1px solid var(--c-border);
+}
+.ds-toggle button {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: transparent;
+  color: var(--c-text-muted);
+  border: 0;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.ds-toggle button[aria-pressed="true"] {
+  background: var(--c-accent-deep);
+  color: var(--c-on-accent);
+}
+
+/* ---- Page typography ---- */
+.ds-eyebrow {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--c-text-muted);
+}
+h1.ds-h1 {
+  font-family: var(--font-heading);
+  font-size: 40px;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 6px 0 10px;
+}
+h2.ds-h2 {
+  font-family: var(--font-heading);
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  margin: 52px 0 6px;
+  padding-top: 18px;
+  border-top: 1px solid var(--c-border);
+}
+h3.ds-h3 {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  margin: 30px 0 8px;
+}
+.ds-lede { font-size: 17px; color: var(--c-text-dim); max-width: 60ch; }
+p { max-width: 70ch; }
+.ds-muted { color: var(--c-text-muted); }
+
+/* ---- Doc widgets ---- */
+
+/* status tag — the one structural device; encodes maturity */
+.ds-status {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  vertical-align: middle;
+}
+.ds-status.stable { color: var(--c-resolved); }
+.ds-status.converging { color: var(--c-warn); }
+.ds-status.proposed { color: var(--c-project); }
+
+/* flush pane — the canonical container (border on bg, never raised) */
+.ds-pane {
+  border: 1px solid var(--c-border);
+  background: var(--c-bg);
+  padding: 16px 18px;
+}
+
+/* live example frame + its code caption */
+.ds-example {
+  border: 1px solid var(--c-border);
+  margin: 14px 0 4px;
+}
+.ds-example-stage {
+  padding: 24px;
+  background: var(--c-bg);
+}
+.ds-example-stage.alt { background: var(--c-surface-alt); }
+.ds-example-meta {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  padding: 7px 12px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+.ds-code {
+  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--c-border);
+  border-top: 0;
+  background: var(--c-surface);
+  color: var(--c-text-dim);
+  margin: 0 0 6px;
+}
+
+/* swatches */
+.ds-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.ds-swatch { border: 1px solid var(--c-border); }
+.ds-swatch-chip { height: 56px; }
+.ds-swatch-body {
+  padding: 7px 9px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+}
+.ds-swatch-name { font-weight: 700; letter-spacing: 0.02em; }
+.ds-swatch-hex { color: var(--c-text-muted); font-size: 10px; }
+
+/* spec tables */
+table.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin: 14px 0;
+}
+.ds-table th, .ds-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--c-border);
+  vertical-align: top;
+}
+.ds-table th {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--c-text-muted);
+}
+.ds-table td .mono { color: var(--c-text); }
+.ds-num { font-variant-numeric: tabular-nums; }
+
+/* do / don't */
+.ds-dodont {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 14px 0;
+}
+.ds-do, .ds-dont { border: 1px solid var(--c-border); padding: 12px 14px; }
+.ds-do { border-left: 3px solid var(--c-resolved); }
+.ds-dont { border-left: 3px solid var(--c-cat-processing); }
+.ds-do .ds-tag, .ds-dont .ds-tag {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.ds-do .ds-tag { color: var(--c-resolved); }
+.ds-dont .ds-tag { color: var(--c-cat-processing); }
+
+/* "when to use" callout */
+.ds-use {
+  border: 1px solid var(--c-border);
+  border-left: 3px solid var(--c-accent-deep);
+  padding: 10px 14px;
+  margin: 12px 0;
+  font-size: 14px;
+}
+.ds-use b {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--c-text-muted);
+}
+
+/* verbatim voice example */
+.ds-quote {
+  border-left: 3px solid var(--c-accent-deep);
+  padding: 4px 0 4px 14px;
+  margin: 8px 0;
+  color: var(--c-text-dim);
+  font-style: italic;
+  max-width: 66ch;
+}
+.ds-quote.stack { margin-bottom: 2px; }
+
+@media (max-width: 760px) {
+  .ds-nav { display: none; }
+  .ds-content { padding: 24px 20px 90px; }
+  .ds-dodont { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

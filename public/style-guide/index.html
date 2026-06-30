@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFF Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ds.css">
+</head>
+<body>
+<main class="ds-content" data-ds-page="index">
+
+  <span class="ds-eyebrow">Field-ops design system · living reference</span>
+  <h1 class="ds-h1">A bounded set of ways things look.</h1>
+  <p class="ds-lede">
+    This is the source of truth for how the NFF farm dashboard looks and how
+    its pieces fit together. The design language is settled here — color, type,
+    shape, the components and when to use them — so that building a screen is
+    mostly a question of layout and structure, not of inventing a look each
+    time. If a treatment isn't in this system, it isn't an option yet.
+  </p>
+
+  <div class="ds-use">
+    <b>How to use it</b><br>
+    Browse it like any framework's docs — every swatch and example is rendered
+    from the real tokens, so the theme toggle (top right) re-skins the whole
+    site, proving the token layer. When Claude builds, it reads the same system
+    from <span class="mono">DESIGN-SYSTEM.md</span> (the machine reference) and
+    the canonical source files this doc cites.
+  </div>
+
+  <h3 class="ds-h3">Maturity tags</h3>
+  <p>
+    We iterate aggressively, so a treatment's status is part of its
+    documentation. Every component and pattern carries one:
+  </p>
+  <p>
+    <span class="ds-status stable">Stable</span>
+    shipped and ratified — build on it freely.
+    &nbsp;&nbsp;
+    <span class="ds-status converging">Converging</span>
+    the agreed direction, partly shipped — build toward it; expect the old form
+    still in places.
+    &nbsp;&nbsp;
+    <span class="ds-status proposed">Proposed</span>
+    decided in design, not yet built — don't rely on it in code.
+  </p>
+
+  <h2 class="ds-h2" id="principles">Principles</h2>
+  <p class="ds-muted">
+    Nine rules that decide the close calls. They are ranked: when two conflict,
+    the earlier one wins.
+  </p>
+
+  <h3 class="ds-h3">1 · Flush, not raised</h3>
+  <p>
+    Panes are defined by a hairline border on the page background, not by a
+    raised surface in a different color. Figure-ground comes from the line, not
+    from stacking another fill. The one exception is a floating element over a
+    scrim — sheets, modals, trays keep a raised surface, because a figure over a
+    dimmed page needs it.
+  </p>
+
+  <h3 class="ds-h3">2 · Color is functional, never decorative</h3>
+  <p>
+    A hue always means something: green is resolved, amber is caution, the
+    category colors map to real event kinds, the project hue is calm time. We
+    never reach for color to liven a screen up. A surface with no state to
+    signal stays in the neutral text/border tokens.
+  </p>
+
+  <h3 class="ds-h3">3 · Sharp corners</h3>
+  <p>
+    Cards, panes, rows, and inputs are square. Only genuinely circular things
+    round — status dots, avatars, toggle knobs, count badges. Rounding a card
+    reads as a different product; don't.
+  </p>
+
+  <h3 class="ds-h3">4 · Three type roles, no fourth</h3>
+  <p>
+    <b>Lora</b> (serif) carries headings and the few hero numbers.
+    <b>Inter</b> sets every uppercase eyebrow and label.
+    <b>Nacelle</b> is the body voice for everything else. Each role has a job;
+    a screen never mixes a fourth family or uses a face outside its role.
+  </p>
+
+  <h3 class="ds-h3">5 · Tokens only — the theme decides the value</h3>
+  <p>
+    Never a raw hex in a component. Color, through the <span class="mono">--c-*</span>
+    tokens, follows the active theme automatically; both light and dark must
+    read. If you need a value the tokens don't have, that's a system change, not
+    a one-off.
+  </p>
+
+  <h3 class="ds-h3">6 · Field reality decides the tie</h3>
+  <p>
+    The phone is the deciding tier: one-handed, gloves on, sun on the screen,
+    signal dropping. A treatment that's only legible on a calm desktop loses to
+    one a covered operator can parse cold. Must-see states — needs-cover,
+    overdue, offline — stay loud everywhere.
+  </p>
+
+  <h3 class="ds-h3">7 · A bounded list of options</h3>
+  <p>
+    For any given job there is one canonical component or treatment, with a
+    named, finite set of variants. The value of this system is the closing of
+    the option space — fewer decisions, more consistency. New looks are
+    proposed here first, not improvised in a page.
+  </p>
+
+  <h3 class="ds-h3">8 · Fold the old in, then delete it</h3>
+  <p>
+    This is a two-person tool with high tolerance for change: each iteration
+    replaces the prior form and removes it, rather than leaving a dual-source
+    shim to soak. The same applies to display — never mutate committed data as a
+    side effect of showing it; surface the change and let the operator act.
+  </p>
+
+  <h3 class="ds-h3">9 · Words are design material</h3>
+  <p>
+    Copy is part of the look. Plain verbs, active voice, sentence case. Name
+    things by what the operator controls, not by how the system is built. An
+    action keeps its name through the whole flow; an empty state invites an
+    action; an error says what happened and how to fix it.
+  </p>
+
+  <h2 class="ds-h2">The system</h2>
+  <p>
+    <a href="foundations.html">Foundations</a> — color, typography, shape,
+    motion, voice.<br>
+    <a href="components.html">Components</a> — the bounded component library,
+    each with when-to-use guidance.<br>
+    <a href="patterns.html">Patterns</a> — how components compose into the
+    page-level shapes we reuse.<br>
+    <a href="voice.html">Tone &amp; voice</a> — the brand voice for
+    customer-facing copy, and how it applies to dashboard microcopy.
+  </p>
+
+</main>
+<script src="assets/ds.js"></script>
+</body>
+</html>

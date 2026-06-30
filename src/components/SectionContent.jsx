@@ -21,6 +21,7 @@ import Observations from "../pages/Observations.jsx";
 import Settings from "../pages/Settings.jsx";
 import Roadmap from "../pages/Roadmap.jsx";
 import RethinkerGallery from "../pages/RethinkerGallery.jsx";
+import StyleGuide from "../pages/StyleGuide.jsx";
 import SitesPage from "../pages/SitesPage.jsx";
 import Inbox from "../pages/Inbox.jsx";
 import Projects from "../pages/Projects.jsx";
@@ -143,6 +144,7 @@ export default function SectionContent({
     case "settings": return <Settings />;
     case "roadmap": return <Roadmap />;
     case "rethinker": return <RethinkerGallery />;
+    case "style_guide": return <StyleGuide />;
     case "resources_sites": return <SitesPage data={data} />;
     default: {
       const items = data[section.id] ?? [];

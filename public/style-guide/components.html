@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Components — NFF Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ds.css">
+<style>
+  /* Local example helpers — reproduce real component treatments with tokens */
+  .x-eyebrow{font-family:var(--font-ui);font-size:11px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.14em;color:var(--c-text-muted)}
+  .x-pane{border:1px solid var(--c-border);background:var(--c-bg);
+    padding:16px 18px}
+  .x-card{border:1px solid var(--c-border);background:var(--c-surface);
+    padding:16px 18px}
+  .x-htitle{font-family:var(--font-heading);font-size:18px;
+    letter-spacing:-.01em;margin:0}
+  .x-btn{font-family:var(--font-ui);font-size:11px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.12em;padding:7px 14px;
+    border:1px solid;cursor:pointer}
+  .x-btn-accent{background:var(--c-accent);color:var(--c-on-accent);
+    border-color:var(--c-accent)}
+  .x-btn-ghost{background:transparent;color:var(--c-text-dim);
+    border-color:var(--c-border)}
+  .x-btn-warn{background:var(--c-warn);color:var(--c-on-accent);
+    border-color:var(--c-warn)}
+  .x-pill{display:inline-flex;font-family:var(--font-ui);font-size:9px;
+    font-weight:600;text-transform:uppercase;letter-spacing:.12em;
+    padding:2px 6px;border:1px solid;margin-right:6px}
+  .x-check{width:28px;height:28px;border:2px solid var(--c-border);
+    background:var(--c-bg);display:inline-flex;align-items:center;
+    justify-content:center;flex:0 0 auto}
+  .x-check.done{background:var(--c-resolved);border-color:var(--c-resolved);
+    color:var(--c-on-accent)}
+  .x-row{display:flex;align-items:center;gap:12px;padding:10px 4px;
+    border-bottom:1px solid var(--c-border)}
+  .x-num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<main class="ds-content" data-ds-page="components">
+
+  <span class="ds-eyebrow">Components</span>
+  <h1 class="ds-h1">The bounded component library.</h1>
+  <p class="ds-lede">
+    One canonical component per job, each with a finite set of variants. Build
+    from these. Where a component is <span class="ds-status converging">Converging</span>
+    or <span class="ds-status proposed">Proposed</span>, the entry says what
+    ships today versus the target — build toward the target. Live examples render
+    from the real tokens; flip the theme to check both.
+  </p>
+
+  <!-- ============ PRIMITIVES ============ -->
+  <h2 class="ds-h2" id="primitives">Primitives</h2>
+
+  <h3 class="ds-h3">Pane <span class="ds-status converging">Converging</span></h3>
+  <p>
+    The default content container: a hairline border on the page background with
+    an Inter eyebrow (and optional Lora title) header. This is the canonical
+    surface — it replaces the raised <span class="mono">Card</span>.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div class="x-pane">
+        <div class="x-eyebrow" style="margin-bottom:8px">Today's chores</div>
+        <div style="color:var(--c-text-dim);font-size:14px">Pane content sits
+          directly on the page background — figure-ground from the border, not a
+          raised fill.</div>
+      </div>
+    </div>
+    <div class="ds-example-meta">Target: <span class="mono">Pane</span> ·
+      ships today as raised <span class="mono">Card</span> (ui.jsx:42)</div>
+  </div>
+  <div class="ds-use">
+    <b>Use</b> for every in-page section/pane. &nbsp;
+    <b>Not</b> for floating overlays — sheets, modals, and trays stay raised
+    (<span class="mono">bg-surface</span>) because a figure over a scrim needs
+    it.
+  </div>
+  <table class="ds-table">
+    <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">title</td><td>string</td><td>Lora title (optional)</td></tr>
+      <tr><td class="mono">subtitle</td><td>string</td><td>floats right</td></tr>
+      <tr><td class="mono">icon</td><td>lucide</td><td>14px, in the header</td></tr>
+    </tbody>
+  </table>
+  <div class="ds-dont" style="max-width:72ch">
+    <span class="ds-tag">Migration</span>
+    <p style="margin:.4em 0 0">The Step-1 flip is a ~1-line change in
+      <span class="mono">ui.jsx</span> (<span class="mono">bg-surface</span> →
+      border-on-<span class="mono">bg</span>). <span class="mono">StatTile</span>,
+      Rounds <span class="mono">PlaceSection</span>, and the sidebar
+      <span class="mono">WeekList</span> are raised today and flip as deferrable
+      follow-ups.</p>
+  </div>
+
+  <h3 class="ds-h3">Eyebrow <span class="ds-status converging">Converging</span></h3>
+  <p>
+    The signature label: uppercase Inter, <span class="mono">tracking-[0.12–0.16em]</span>,
+    in a text token. It titles sections and cards across every page. It exists as
+    a pattern everywhere but is not yet a single shared component (it's inlined,
+    and once as <span class="mono">RethinkerKit.Eyebrow</span>).
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div class="x-eyebrow">Schedule at a glance</div>
+      <div class="x-eyebrow" style="color:var(--c-text-faint);font-size:10px;
+        letter-spacing:.16em;margin-top:10px">This week · navigator</div>
+    </div>
+    <div class="ds-example-meta">11px/0.14em titles · 10px/0.16em faint
+      sub-labels</div>
+  </div>
+  <div class="ds-use"><b>Use</b> to delimit a section or kick a card.
+    &nbsp; <b>Not</b> for body text or data values.</div>
+
+  <h3 class="ds-h3">Heading <span class="ds-status converging">Converging</span></h3>
+  <p>
+    Lora, used big and confidently, with slight negative tracking. One component
+    should serve page title (32px), section/card title (17–22px), and the hero
+    numbers; today three separate implementations exist
+    (<span class="mono">PageHeader</span>, an inline <span class="mono">h2</span>
+    in Chores, the Rounds takeover hero).
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="font-family:var(--font-heading);font-size:32px;font-weight:700;
+        letter-spacing:-.02em;line-height:1.1">Schedule</div>
+      <div class="x-htitle" style="margin-top:14px">Midmorning round</div>
+    </div>
+    <div class="ds-example-meta">32px page title · 18px section title</div>
+  </div>
+
+  <h3 class="ds-h3">Button <span class="ds-status proposed">Proposed</span></h3>
+  <p>
+    There is no shared <span class="mono">Button</span> today — the
+    <span class="mono">BTN_ACCENT</span>/<span class="mono">BTN_GHOST</span>
+    constants coexist with three inline accent-button implementations. The
+    bounded set is three kinds; one component should own them.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <button class="x-btn x-btn-accent">Save changes</button>
+      &nbsp;
+      <button class="x-btn x-btn-ghost">Cancel</button>
+      &nbsp;
+      <button class="x-btn x-btn-warn">Jim covers — I've got it</button>
+    </div>
+    <div class="ds-example-meta">accent (primary) · ghost (secondary) ·
+      warn (the single cover/attention action)</div>
+  </div>
+  <div class="ds-use">
+    <b>Bounded kinds:</b> <b>accent</b> for the primary action,
+    <b>ghost</b> for secondary, <b>warn</b> reserved for the one
+    attention/cover action on an AttentionCard. &nbsp;
+    <b>Not</b> more than one accent button per surface.
+  </div>
+
+  <h3 class="ds-h3">Input &amp; label <span class="ds-status stable">Stable</span></h3>
+  <p>
+    Square inputs on a hairline border, focus to <span class="mono">accent</span>;
+    a tiny uppercase label above. Two surface variants only:
+    <span class="mono">INPUT_CLS</span> (on a card) and
+    <span class="mono">INPUT_SURFACE_CLS</span> (on the page).
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage" style="max-width:280px">
+      <div style="font-family:var(--font-ui);font-size:9px;
+        text-transform:uppercase;letter-spacing:.12em;color:var(--c-text-faint);
+        margin-bottom:4px">Start time</div>
+      <input style="width:100%;background:var(--c-bg);border:1px solid
+        var(--c-border);color:var(--c-text);font-size:13px;padding:7px 9px;
+        outline:none" value="9:30a">
+    </div>
+    <div class="ds-example-meta">LABEL_CLS + INPUT_CLS (ui.jsx:14, :17)</div>
+  </div>
+
+  <!-- ============ DATA DISPLAY ============ -->
+  <h2 class="ds-h2" id="data">Data display</h2>
+
+  <h3 class="ds-h3">StatusPill <span class="ds-status stable">Stable</span></h3>
+  <p>
+    The base one-word status chip. Bounded tones map to tokens — this is the one
+    pill base; other chips should consolidate onto it.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <span class="x-pill" style="color:var(--c-resolved)">Done</span>
+      <span class="x-pill" style="color:var(--c-accent-deep)">Upcoming</span>
+      <span class="x-pill" style="color:var(--c-resolved)">Live</span>
+      <span class="x-pill" style="color:var(--c-warn)">Overrun</span>
+      <span class="x-pill" style="color:var(--c-text-muted)">Muted</span>
+    </div>
+    <div class="ds-example-meta">tones: done · future · live/resolved · warn ·
+      muted (ui.jsx:64)</div>
+  </div>
+  <div class="ds-use"><b>Use</b> for a single-word state. Backs
+    <span class="mono">BatchStatePill</span>. &nbsp;
+    <b>Not</b> for countdowns — that's <span class="mono">ChoreRemainingPill</span>.</div>
+
+  <h3 class="ds-h3">ChoreRemainingPill ·
+    BlockBadge · BatchStatePill <span class="ds-status stable">Stable</span></h3>
+  <table class="ds-table">
+    <thead><tr><th>Component</th><th>Job</th><th>Bounded states</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">ChoreRemainingPill</td>
+        <td>Deadline countdown for window chores (re-ticks 60s)</td>
+        <td>days (neutral) · today (accent) · overran (warn)</td></tr>
+      <tr><td class="mono">BlockBadge</td>
+        <td>Icon-only time-of-day for a chore row</td>
+        <td>Sunrise/Sun/Sunset/Moon/Clock; list collapses to glyph + ×N</td></tr>
+      <tr><td class="mono">BatchStatePill</td>
+        <td>Broiler batch lifecycle</td>
+        <td>arriving · on-farm · processed (via StatusPill)</td></tr>
+    </tbody>
+  </table>
+  <div class="ds-dont" style="max-width:72ch">
+    <span class="ds-tag">Consolidation</span>
+    <p style="margin:.4em 0 0">
+      <span class="mono">ChoreRemainingPill</span> rolls its own pill base rather
+      than StatusPill, and there are ~4 ad-hoc chip treatments
+      (assignee chips, place-code chips). Target: one pill base (StatusPill),
+      variants on top.</p>
+  </div>
+
+  <h3 class="ds-h3">StatTile <span class="ds-status converging">Converging</span></h3>
+  <p>
+    Big Lora number + uppercase label for a KPI. Raised today; flips flush with
+    the Pane migration. Under-adopted given how general it is.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage" style="display:flex;gap:10px">
+      <div class="x-pane" style="min-width:120px">
+        <div style="font-family:var(--font-heading);font-size:26px;
+          font-weight:600;line-height:1" class="x-num">42</div>
+        <div style="font-family:var(--font-ui);font-size:10px;
+          text-transform:uppercase;letter-spacing:.12em;
+          color:var(--c-text-faint);margin-top:4px">Items today</div>
+      </div>
+      <div class="x-pane" style="min-width:120px">
+        <div style="font-family:var(--font-heading);font-size:26px;
+          font-weight:600;line-height:1" class="x-num">6</div>
+        <div style="font-family:var(--font-ui);font-size:10px;
+          text-transform:uppercase;letter-spacing:.12em;
+          color:var(--c-text-faint);margin-top:4px">Musts</div>
+      </div>
+    </div>
+    <div class="ds-example-meta">font-heading 26px value · Inter 10px label
+      (shown flush)</div>
+  </div>
+
+  <!-- ============ ROWS ============ -->
+  <h2 class="ds-h2" id="rows">Rows &amp; lists</h2>
+
+  <h3 class="ds-h3">CheckTarget + ChoreCheckRow
+    <span class="ds-status converging">Converging</span></h3>
+  <p>
+    The one completion row — the single source of completion truth, keyed by
+    (chore, place), shared by Rounds and the Schedule accordion so both write the
+    same outbox path. Its 28px checkbox is the canonical
+    <span class="mono">CheckTarget</span> — fat enough for gloves.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div class="x-row">
+        <span class="x-check done">✓</span>
+        <div><div style="text-decoration:line-through;color:var(--c-text-muted)">
+          Fill feeder</div>
+          <div style="font-size:12px;color:var(--c-text-faint)">Chicken
+            tractor 1</div></div>
+      </div>
+      <div class="x-row">
+        <span class="x-check"></span>
+        <div><div>Collect eggs</div>
+          <div style="font-size:12px;color:var(--c-text-faint)">Egg room</div></div>
+      </div>
+    </div>
+    <div class="ds-example-meta">28px <span class="mono">w-7 h-7 border-2</span> ·
+      done = bg-resolved + line-through</div>
+  </div>
+  <div class="ds-use">
+    <b>Use</b> this one row everywhere a chore is ticked. &nbsp;
+    <b>Not</b> the 20/16/14px reimplementations in Overview/Chores — those
+    collapse onto the 28px target.
+  </div>
+
+  <h3 class="ds-h3">EventRow <span class="ds-status converging">Converging</span></h3>
+  <p>
+    A row for an event that owns time: a left color-bar in the event-kind hue.
+    Two mechanisms ship today (a real <span class="mono">border-left</span> and an
+    inset box-shadow that preserves grid alignment); they unify into one.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div class="x-row" style="border-left:3px solid var(--c-cat-fm);
+        padding-left:12px;background:color-mix(in srgb,var(--c-cat-fm) 8%,
+        var(--c-bg))">
+        <div class="x-num" style="width:54px;color:var(--c-text-muted);
+          font-size:13px">9:00a</div>
+        <div>Farmers market <span style="color:var(--c-text-faint);
+          font-size:12px">· off-site · James</span></div>
+      </div>
+    </div>
+    <div class="ds-example-meta">left bar = category hue · faint color-mix
+      tint</div>
+  </div>
+
+  <!-- ============ ATTENTION ============ -->
+  <h2 class="ds-h2" id="attention">Attention &amp; state</h2>
+
+  <h3 class="ds-h3">AttentionCard / Hole
+    <span class="ds-status converging">Converging</span></h3>
+  <p>
+    The one treatment for a blocked or orphaned obligation — needs-cover,
+    overdue, in-run escalation. A flush amber-bordered card with a ⚠ eyebrow, the
+    work, a plain-language reason, and a single solid-amber action; the hole
+    itself drawn with an amber inset ring + 45° hatch. Shipped flush on the
+    schedule needs-cover card; supersedes the raised escalation tint everywhere.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="border:1px solid color-mix(in srgb,var(--c-warn) 50%,
+        transparent);background:color-mix(in srgb,var(--c-warn) 7%,var(--c-bg));
+        padding:14px 16px;max-width:380px">
+        <div class="x-eyebrow" style="color:var(--c-warn);margin-bottom:6px">
+          ⚠ Needs cover</div>
+        <div style="font-weight:600">Wash eggs · Egg room</div>
+        <div style="color:var(--c-text-dim);font-size:13px;margin:4px 0 12px">
+          James is off-site at market til 1:00p — the egg-wash window opens
+          1:00–4:00 and no one is on it.</div>
+        <button class="x-btn x-btn-warn" style="width:100%">Jim covers —
+          I've got it</button>
+        <div style="color:var(--c-text-faint);font-size:11px;margin-top:8px">
+          The acknowledgment is the record. No lane to fill in — the hole just
+          closes.</div>
+      </div>
+    </div>
+    <div class="ds-example-meta">flush warn card · one solid-amber action
+      (Schedule.jsx:2078)</div>
+  </div>
+  <div class="ds-use">
+    <b>Use</b> for any must-see blocked obligation, on every surface it can
+    appear (phone Today, in the live round, the schedule). &nbsp;
+    <b>Not</b> the old raised <span class="mono">border-l-2 bg-warn/5</span> tint —
+    that migrates here.
+  </div>
+
+  <h3 class="ds-h3">Attention banner <span class="ds-status stable">Stable</span></h3>
+  <p>
+    A flush, full-width warn strip for a page-level notice ("N changes since you
+    confirmed", "Yesterday — N must-dos"). Border-on-bg, never raised.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="border:1px solid color-mix(in srgb,var(--c-warn) 45%,
+        transparent);background:color-mix(in srgb,var(--c-warn) 6%,var(--c-bg));
+        padding:10px 14px;font-size:14px">
+        <span style="color:var(--c-warn);font-weight:600">3 changes</span>
+        since you confirmed this day.</div>
+    </div>
+    <div class="ds-example-meta">color-mix(warn 45% border / 6% fill)</div>
+  </div>
+
+  <h3 class="ds-h3">NowRule <span class="ds-status converging">Converging</span></h3>
+  <p>
+    The "now" divider: a green 1.5px hairline + a 7px dot with a glow ring + a
+    "Now · time" eyebrow. Today-views only. Ships as
+    <span class="mono">NowMarker</span>; collapses with the pool copy into one.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="width:7px;height:7px;border-radius:50%;
+          background:var(--c-resolved);box-shadow:0 0 0 3px
+          color-mix(in srgb,var(--c-resolved) 22%,transparent)"></span>
+        <span class="x-eyebrow" style="color:var(--c-resolved);letter-spacing:
+          .12em">Now · 9:40a</span>
+        <span style="flex:1;height:0;border-top:1px solid var(--c-resolved)">
+        </span>
+      </div>
+    </div>
+    <div class="ds-example-meta">resolved hairline + dot + glow ·
+      viewingToday only</div>
+  </div>
+  <div class="ds-use"><b>Not</b> a colored block, and never on a non-today
+    view.</div>
+
+  <h3 class="ds-h3">SealStamp <span class="ds-status proposed">Proposed</span></h3>
+  <p>
+    The celadon completion seal — <span class="mono">✓ Sealed · who · window ·
+    N/N</span>. Anchors the Rounds wrap and any block-sealed-by-completion
+    moment. Not yet built; the wrap card shows elapsed time only today.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:inline-flex;align-items:center;gap:8px;
+        color:var(--c-resolved);font-family:var(--font-ui);font-size:12px;
+        font-weight:600;letter-spacing:.04em">
+        <span>✓</span><span class="x-num">Sealed · Jim · 6:08–8:10a · 7/7</span>
+      </div>
+    </div>
+    <div class="ds-example-meta">no separate "confirm the day" — sealing is by
+      completion</div>
+  </div>
+
+  <!-- ============ LOAD ============ -->
+  <h2 class="ds-h2" id="load">Load &amp; week</h2>
+
+  <h3 class="ds-h3">LoadSpine <span class="ds-status converging">Converging</span></h3>
+  <p>
+    Count-driven height bars — one per block, height = item count — for a
+    day-at-a-glance read. <b>Always show the count next to the bar</b> ("N items ·
+    M blocks"); never height alone. Keep it semantically separate from a
+    progress bar even if they look kin.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div class="x-eyebrow" style="margin-bottom:6px">Day load
+        <span class="x-num" style="color:var(--c-text-faint);font-weight:400;
+          letter-spacing:0">· 22 items · 5 blocks</span></div>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:56px">
+        <div style="flex:1;height:40%;background:var(--c-resolved)"></div>
+        <div style="flex:1;height:70%;background:var(--c-accent-deep)"></div>
+        <div style="flex:1;height:30%;background:var(--c-text-faint)"></div>
+        <div style="flex:1;height:22%;background:var(--c-text-faint)"></div>
+        <div style="flex:1;height:48%;background:var(--c-text-faint)"></div>
+      </div>
+    </div>
+    <div class="ds-example-meta">done=resolved · now=accent-deep · future=faint ·
+      over-cap=warn</div>
+  </div>
+
+  <h3 class="ds-h3">WeekStrip <span class="ds-status converging">Converging</span></h3>
+  <p>
+    The week drawn <b>once</b>, in the sidebar list — each day row carries an
+    inline mini-spine + a single should-heat tick. Resolves the duplicate week
+    views (center <span class="mono">WeekSpines</span> + sidebar
+    <span class="mono">WeekList</span> today render the same data twice).
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div class="x-pane" style="max-width:240px">
+        <div class="x-eyebrow" style="margin-bottom:8px">This week</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
+          <span style="width:42px;font-size:13px">Thu 26</span>
+          <span class="x-num" style="width:22px;color:var(--c-text-muted);
+            font-size:13px">12</span>
+          <span style="display:flex;align-items:flex-end;gap:2px;height:16px">
+            <i style="width:4px;height:60%;background:var(--c-accent-deep)"></i>
+            <i style="width:4px;height:100%;background:var(--c-accent-deep)"></i>
+            <i style="width:4px;height:40%;background:var(--c-accent-deep)"></i>
+          </span>
+          <span style="margin-left:auto;width:10px;height:10px;
+            background:var(--c-cat-processing)" title="processing deadline">
+          </span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
+          <span style="width:42px;font-size:13px">Fri 27</span>
+          <span class="x-num" style="width:22px;color:var(--c-text-muted);
+            font-size:13px">5</span>
+          <span style="display:flex;align-items:flex-end;gap:2px;height:16px">
+            <i style="width:4px;height:30%;background:var(--c-accent-deep)"></i>
+            <i style="width:4px;height:45%;background:var(--c-accent-deep)"></i>
+            <i style="width:4px;height:20%;background:var(--c-accent-deep)"></i>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="ds-example-meta">inline spine + count + should-heat tick
+      (amber→cat-processing)</div>
+  </div>
+
+  <!-- ============ NAV / OVERLAYS / STATUS ============ -->
+  <h2 class="ds-h2" id="nav">Navigation, overlays, status</h2>
+  <table class="ds-table">
+    <thead><tr><th>Component</th><th>Status</th><th>Job &amp; bounded form</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">PageHeader / SectionHeader</td>
+        <td><span class="ds-status converging">Conv.</span></td>
+        <td>Page title (Lora 32px) + uppercase back-link + bottom hairline. Two
+          near-identical impls → unify to one Heading-based header.</td></tr>
+      <tr><td class="mono">Tabs</td>
+        <td><span class="ds-status converging">Conv.</span></td>
+        <td>Underline-active (Chores) and bordered-active (Schedule) both ship →
+          pick one. Rounds PlaceSwitcher is a chip-rail variant.</td></tr>
+      <tr><td class="mono">CommandPalette</td>
+        <td><span class="ds-status stable">Stable</span></td>
+        <td>⌘K app-wide search; keyboard-first; type-icon chips; overlay panel
+          (raised, over scrim — correct).</td></tr>
+      <tr><td class="mono">Sheet / Modal</td>
+        <td><span class="ds-status proposed">Proposed</span></td>
+        <td>No shared primitive — 15 files roll their own
+          <span class="mono">fixed inset-0</span>. QuickActionsTray's internal
+          <span class="mono">Sheet</span> is the extraction target: bottom-sheet
+          on phone, centered on desktop, raised over <span class="mono">bg-black/60</span>.</td></tr>
+      <tr><td class="mono">OutboxIndicator</td>
+        <td><span class="ds-status stable">Stable</span></td>
+        <td>Offline/queued/failed sync state. Bounded: failed (warn + retry) ·
+          offline (CloudOff) · in-flight (spin). One impl, mounted in TopBar +
+          Rounds.</td></tr>
+      <tr><td class="mono">EmptyState</td>
+        <td><span class="ds-status converging">Conv.</span></td>
+        <td>"Nothing here yet" — dashed box. Several shapes ship
+          (EmptyLine/EmptyCard/Rounds panel) → consolidate; an empty screen
+          invites an action.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ============ CONSOLIDATION BACKLOG ============ -->
+  <h2 class="ds-h2" id="backlog">Consolidation backlog</h2>
+  <p>
+    The point of a bounded system is the closing of the option space. These are
+    the live duplications to collapse — tracked here so "how should this look" is
+    never re-litigated.
+  </p>
+  <table class="ds-table">
+    <thead><tr><th>Today</th><th>Collapse to</th></tr></thead>
+    <tbody>
+      <tr><td>Raised <span class="mono">Card</span> / StatTile / PlaceSection /
+        WeekList</td><td>flush <span class="mono">Pane</span></td></tr>
+      <tr><td>4 checkbox sizes (28/20/16/14px)</td>
+        <td>one 28px <span class="mono">CheckTarget</span></td></tr>
+      <tr><td><span class="mono">BTN_ACCENT</span> + 3 inline accent buttons</td>
+        <td>one <span class="mono">Button</span> (accent/ghost/warn)</td></tr>
+      <tr><td>15 hand-rolled <span class="mono">fixed inset-0</span> overlays</td>
+        <td>one <span class="mono">Sheet</span>/<span class="mono">Modal</span></td></tr>
+      <tr><td>PlaceSearch / AddToSchedule / CommandPalette result rows</td>
+        <td>one <span class="mono">ResultRow</span></td></tr>
+      <tr><td>StatusPill + ChoreRemainingPill base + ad-hoc chips</td>
+        <td>one pill base, variants on top</td></tr>
+      <tr><td>2 now-markers · 2 event-bar mechanisms</td>
+        <td>one <span class="mono">NowRule</span> · one <span class="mono">EventRow</span></td></tr>
+      <tr><td>Inline <span class="mono">T.*</span> idiom (Chores.jsx)</td>
+        <td>token classes (fold &amp; delete the legacy idiom)</td></tr>
+      <tr><td><span class="mono">/rethinker</span> scratch pool + 2 nav lines</td>
+        <td>delete after promotion (it was the harvest checklist)</td></tr>
+    </tbody>
+  </table>
+
+</main>
+<script src="assets/ds.js"></script>
+</body>
+</html>

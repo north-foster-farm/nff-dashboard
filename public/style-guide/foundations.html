@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foundations — NFF Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ds.css">
+</head>
+<body>
+<main class="ds-content" data-ds-page="color">
+
+  <span class="ds-eyebrow">Foundations</span>
+  <h1 class="ds-h1">Color, type, shape, motion, voice.</h1>
+  <p class="ds-lede">
+    The settled vocabulary every component is built from. Everything here is
+    <span class="ds-status stable">Stable</span> — these are ratified and the
+    base the rest of the system stands on. Swatches render from the live
+    <span class="mono">--c-*</span> tokens, so flip the theme to see both.
+  </p>
+
+  <!-- ================= COLOR ================= -->
+  <h2 class="ds-h2" id="color">Color</h2>
+  <p>
+    Color is functional, never decorative (principle 2). Every component reads
+    its color through a <span class="mono">--c-*</span> token; never a raw hex.
+    The token resolves per theme automatically — both light and dark must read.
+    There is no <span class="mono">white</span> token: text/icons on a colored
+    fill use <span class="mono">on-accent</span> / <span class="mono">on-cat</span>.
+  </p>
+
+  <h3 class="ds-h3">Semantic tokens</h3>
+  <p class="ds-muted">
+    The working palette. Use these for everything structural — surfaces, text,
+    borders, and the four state hues. Light hex · dark hex shown under each.
+  </p>
+  <div class="ds-swatch-grid" id="grid-semantic"></div>
+
+  <div class="ds-use">
+    <b>The text ramp</b><br>
+    Four weights of foreground, loudest to faintest:
+    <span class="mono">fg</span> (primary) →
+    <span class="mono">dim</span> (secondary) →
+    <span class="mono">muted</span> (captions, sub-labels) →
+    <span class="mono">faint</span> (timestamps, micro-eyebrows). Don't invent
+    intermediate opacities — pick the rung that fits.
+  </div>
+
+  <h3 class="ds-h3">State hues — what each one means</h3>
+  <table class="ds-table">
+    <thead><tr><th>Hue</th><th>Means</th><th>Use for</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">resolved</span> (green)</td>
+        <td>Done / success / sealed</td>
+        <td>Completed checks, the now-rule, sealed blocks</td></tr>
+      <tr><td><span class="mono">warn</span> (amber)</td>
+        <td>Caution / needs attention</td>
+        <td>Overrun, needs-cover, escalation, attention banners</td></tr>
+      <tr><td><span class="mono">accent</span> / <span class="mono">accent-deep</span></td>
+        <td>Active / brand / primary action</td>
+        <td>Links, active state, primary buttons, committed work</td></tr>
+      <tr><td><span class="mono">project</span> (slate-blue)</td>
+        <td>Calm planned time</td>
+        <td>Schedule "project time" — distinct from green chore work</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="ds-h3">Row tints</h3>
+  <p class="ds-muted">
+    For selectable rows. Accent-tinted for active/hover; a neutral variant when
+    no accent hue is wanted. These are rgba, not solid tokens.
+  </p>
+  <table class="ds-table">
+    <thead><tr><th>Token</th><th>Light</th><th>Dark</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">row-active</span></td><td>rgba(41,125,90,.16)</td>
+        <td>rgba(173,200,173,.12)</td><td>Selected row</td></tr>
+      <tr><td><span class="mono">row-hover</span></td><td>rgba(41,125,90,.09)</td>
+        <td>rgba(173,200,173,.07)</td><td>Hover</td></tr>
+      <tr><td><span class="mono">row-active-dim</span></td><td>rgba(0,0,0,.06)</td>
+        <td>rgba(255,255,255,.05)</td><td>Active, no hue (e.g. done row)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="ds-h3">Category hues</h3>
+  <p class="ds-muted">
+    Event-kind colors. Fixed mapping — a category always wears its hue. Dark
+    uses lighter ramp stops, light uses deeper ones, for contrast on each bg.
+  </p>
+  <div class="ds-swatch-grid" id="grid-cat"></div>
+
+  <h3 class="ds-h3">Decorative ramps</h3>
+  <p>
+    The source ramps (50 lightest → 950 darkest) that the category + project
+    tokens are drawn from. Use a ramp stop directly only for a chip/badge that
+    needs a specific tint; otherwise reach for a semantic token.
+  </p>
+  <div class="ds-dont" style="max-width:70ch">
+    <span class="ds-tag">Heads up — known debt</span>
+    <p style="margin:.4em 0 0">
+      Three ramps are byte-identical duplicates of others
+      (<span class="mono">frozen-lake</span>=sky-aqua,
+      <span class="mono">honey-bronze</span>=amber-glow,
+      <span class="mono">grapefruit-pink</span>=hot-fuchsia) and two
+      (<span class="mono">emerald</span>, <span class="mono">periwinkle</span>)
+      have no semantic mapping yet. Prefer the named-and-mapped ramp; the
+      duplicates should collapse.
+    </p>
+  </div>
+  <div id="ramps"></div>
+
+  <!-- ================= TYPOGRAPHY ================= -->
+  <h2 class="ds-h2" id="type">Typography</h2>
+  <p>
+    Three roles, no fourth (principle 4). Sizes in the app are authored as fixed
+    pixels and then scaled globally by <span class="mono">body { zoom: 1.20 }</span>
+    (the comfortable/spacious density modes bump it to 1.35 / 1.50). The scale
+    below shows the authored intent.
+  </p>
+
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="font-family:var(--font-heading);font-size:32px;font-weight:700;letter-spacing:-.02em;line-height:1.08">
+        Lora — display &amp; headings</div>
+      <div style="font-family:var(--font-ui);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--c-text-muted);margin-top:14px">
+        Inter — uppercase eyebrows &amp; labels</div>
+      <div style="font-family:var(--font-body);font-size:15px;color:var(--c-text-dim);margin-top:10px;max-width:54ch">
+        Nacelle — the body voice for everything else: prose, row text, values.
+        It carries the bulk of the reading, so it stays quiet and even.</div>
+    </div>
+    <div class="ds-example-meta">Nacelle is vendored in-app; these docs fall
+      back to system-ui for body. Lora + Inter load from Google Fonts.</div>
+  </div>
+
+  <h3 class="ds-h3">The roles</h3>
+  <table class="ds-table">
+    <thead><tr><th>Role</th><th>Family</th><th>Token</th><th>Job</th></tr></thead>
+    <tbody>
+      <tr><td>Body</td><td>Nacelle</td><td><span class="mono">font-body</span></td>
+        <td>Prose, row text, the default voice</td></tr>
+      <tr><td>Heading</td><td>Lora (serif)</td><td><span class="mono">font-heading</span></td>
+        <td>Titles, section headings, the few hero numbers</td></tr>
+      <tr><td>UI / label</td><td>Inter</td><td><span class="mono">font-ui</span></td>
+        <td>Uppercase eyebrows, nav group titles, pill labels only</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="ds-h3">The type scale (authored px, by role)</h3>
+  <table class="ds-table">
+    <thead><tr><th>Role</th><th>Spec</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Page title</td>
+        <td class="mono">font-heading 32px / 700 / -0.02em</td>
+        <td>SectionHeader, PageHeader</td></tr>
+      <tr><td>Hero number</td>
+        <td class="mono">font-heading 26–44px / 600</td>
+        <td>StatTile, Rounds "{done}/{total}"</td></tr>
+      <tr><td>Section / card heading</td>
+        <td class="mono">font-heading 17–22px / 600 / -0.01em</td>
+        <td>Sheets, card titles</td></tr>
+      <tr><td>Eyebrow / label</td>
+        <td class="mono">font-ui 10–11px / 600–700 / uppercase / 0.12–0.16em</td>
+        <td>Card header, group labels — the signature label</td></tr>
+      <tr><td>Body</td>
+        <td class="mono">font-body 12–13px / 400 / leading-relaxed</td>
+        <td>Prose, row text</td></tr>
+      <tr><td>Data / number</td>
+        <td class="mono">[font-variant-numeric:tabular-nums]</td>
+        <td>All times, durations, counts, metric columns</td></tr>
+      <tr><td>Caption / micro</td>
+        <td class="mono">9–10px text-faint, often Inter uppercase</td>
+        <td>Timestamps, footnotes</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ds-use">
+    <b>Two rules that carry the personality</b><br>
+    <b>Eyebrows</b> are the app's signature label — Inter, uppercase,
+    <span class="mono">tracking-[0.12em]</span> and up. They title sections and
+    cards. <b>Tabular numerals</b> are mandatory for any data that lines up in a
+    column — times, durations, counts — set with
+    <span class="mono">[font-variant-numeric:tabular-nums]</span> and a
+    fixed-width container so digits align.
+  </div>
+
+  <!-- ================= SHAPE & SPACE ================= -->
+  <h2 class="ds-h2" id="space">Shape &amp; space</h2>
+  <h3 class="ds-h3">Sharp corners</h3>
+  <p>
+    Cards, panes, rows, and inputs are square (principle 3). Rounding is reserved
+    for genuinely circular things only:
+  </p>
+  <div class="ds-dodont">
+    <div class="ds-do">
+      <span class="ds-tag">Round these</span>
+      <p style="margin:.4em 0 0">Status / now dots, count badges, avatars,
+        toggle knobs (<span class="mono">rounded-full</span>).</p>
+    </div>
+    <div class="ds-dont">
+      <span class="ds-tag">Never round these</span>
+      <p style="margin:.4em 0 0">Cards, panes, rows, inputs, sheets, buttons.
+        A rounded card reads as a different product.</p>
+    </div>
+  </div>
+
+  <h3 class="ds-h3">Density &amp; spacing</h3>
+  <p>
+    No custom spacing or radius tokens — Tailwind defaults, applied with
+    intent: generous padding inside panes, hairline gaps between rows. The deep
+    place hierarchy uses <span class="mono">--tree-indent: 18px</span> /
+    <span class="mono">--tree-rail: 12px</span>, tightened to 7px / 6px on phones.
+  </p>
+
+  <!-- ================= MOTION ================= -->
+  <h2 class="ds-h2" id="motion">Motion</h2>
+  <p>
+    Motion is sparse and fast. There are two animation tokens and one
+    transition; we don't add ambient or decorative animation (it reads as
+    generated, and it costs battery in the field).
+  </p>
+  <table class="ds-table">
+    <thead><tr><th>Token</th><th>Spec</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">animate-flyout-in</span></td>
+        <td class="mono">translateX(-8px)→0 + fade · 140ms ease</td>
+        <td>Flyout panels, menus</td></tr>
+      <tr><td><span class="mono">animate-flyout-out</span></td>
+        <td class="mono">reverse · 140ms ease forwards</td>
+        <td>Flyout dismiss</td></tr>
+      <tr><td>theme swap</td>
+        <td class="mono">background+color 120ms ease</td>
+        <td>The body transition on theme change</td></tr>
+    </tbody>
+  </table>
+  <p class="ds-muted">
+    Respect <span class="mono">prefers-reduced-motion</span>; the floor (visible
+    focus, reduced motion) is non-negotiable.
+  </p>
+
+  <!-- ================= VOICE ================= -->
+  <h2 class="ds-h2" id="voice">Voice</h2>
+  <p>
+    Words are design material (principle 9). Copy is written from the operator's
+    side of the screen, in the interface's voice.
+  </p>
+  <div class="ds-dodont">
+    <div class="ds-do">
+      <span class="ds-tag">Do</span>
+      <ul style="margin:.4em 0 0;padding-left:1.1em">
+        <li>Active voice, plain verbs: "Save changes," not "Submit."</li>
+        <li>Sentence case everywhere except eyebrows (which are uppercase).</li>
+        <li>An action keeps its name through the flow — "Cover" → "Covered."</li>
+        <li>Name things by what the operator controls.</li>
+        <li>Empty states invite an action; errors say what to do next.</li>
+      </ul>
+    </div>
+    <div class="ds-dont">
+      <span class="ds-tag">Don't</span>
+      <ul style="margin:.4em 0 0;padding-left:1.1em">
+        <li>Marketing words: seamless, intuitive, clean, powerful.</li>
+        <li>System vocabulary in the UI: "webhook," "sync conflict," "null."</li>
+        <li>Vague errors or apologies. Say what happened.</li>
+        <li>Two elements doing the same job with different words.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // Compact, churn-friendly swatch rendering. Live --c-* vars = theme-aware.
+  var SEMANTIC = [
+    ["bg","#f6f6f6","#101614"],["surface","#ffffff","#151a15"],
+    ["surface-alt","#ececec","#1d231e"],["line","#d6d6d6","#3e473d"],
+    ["fg","#14180f","#f2efe4"],["dim","#2f3329","#c4bfad"],
+    ["muted","#4d4a3e","#8e8877"],["faint","#6f6b5d","#6a6658"],
+    ["accent","#297d5a","#adc8ad"],["accent-deep","#1d5a40","#297d5a"],
+    ["warn","#a06d10","#e6b85a"],["resolved","#297d5a","#4cba85"],
+    ["project","#3f6da3","#7d9ec9"],["on-accent","#ffffff","#0d1410"]
+  ];
+  var CAT = [
+    ["cat-fm","Farmers market"],["cat-popup","Pop-up event"],
+    ["cat-egg","Egg drop"],["cat-chore","Chore"],
+    ["cat-deliveries","Deliveries"],["cat-farm-visits","Farm visits"],
+    ["cat-pickups","Pickups"],["cat-processing","Processing"],
+    ["cat-default","Default"]
+  ];
+  var RAMPS = [
+    ["sky-aqua → cat-egg",["#e6f8ff","#cdf1fe","#9ae3fe","#68d5fd","#35c8fd","#03bafc","#0295ca","#026f97","#014a65","#012532","#001a23"]],
+    ["celadon → cat-fm",["#ebfaf0","#d6f5e0","#aeeac2","#85e0a3","#5dd585","#34cb66","#2aa252","#1f7a3d","#155129","#0a2914","#071c0e"]],
+    ["turf-green → cat-pickups (dark)",["#ecf9f3","#d8f3e8","#b2e6d0","#8bdab9","#65cda2","#3ec18a","#329a6f","#257453","#194d37","#0c271c","#091b13"]],
+    ["tea-green → cat-pickups (light)",["#eafbef","#d4f7e0","#a9efc0","#7ee7a1","#54de82","#29d663","#21ab4f","#18813b","#105627","#082b14","#061e0e"]],
+    ["amber-glow → cat-popup",["#fff4e5","#ffeacc","#ffd599","#ffbf66","#ffaa33","#ff9500","#cc7700","#995900","#663c00","#331e00","#241500"]],
+    ["honey-bronze → cat-deliveries",["#fff4e5","#ffeacc","#ffd599","#ffbf66","#ffaa33","#ff9500","#cc7700","#995900","#663c00","#331e00","#241500"]],
+    ["hot-fuchsia → cat-farm-visits / cat-processing",["#ffe5e8","#ffccd1","#ff99a3","#ff6675","#ff3347","#ff001a","#cc0014","#99000f","#66000a","#330005","#240004"]],
+    ["slate-blue → project",["#f1f5fa","#e3eaf4","#c6d3e7","#a2b9d9","#7d9ec9","#5c83b8","#3f6da3","#345a86","#284465","#1a2c41","#12202f"]],
+    ["periwinkle (unmapped)",["#f3f2fc","#e8e6f9","#d0ccf2","#b6afe9","#9a93e0","#7a71cf","#5b54a8","#494388","#363263","#221f3f","#17152c"]]
+  ];
+
+  function swatch(varName, name, hexes) {
+    return '<div class="ds-swatch">' +
+      '<div class="ds-swatch-chip" style="background:var(--c-' + varName +
+      ')"></div><div class="ds-swatch-body"><div class="ds-swatch-name">' +
+      name + '</div><div class="ds-swatch-hex">' + hexes + '</div></div></div>';
+  }
+  document.getElementById("grid-semantic").innerHTML = SEMANTIC.map(function (s) {
+    return swatch(s[0], s[0], "L " + s[1] + " · D " + s[2]);
+  }).join("");
+  document.getElementById("grid-cat").innerHTML = CAT.map(function (c) {
+    return swatch(c[0], c[0], c[1]);
+  }).join("");
+  document.getElementById("ramps").innerHTML = RAMPS.map(function (r) {
+    var stops = r[1].map(function (h) {
+      return '<div title="' + h + '" style="flex:1;height:30px;background:' +
+        h + '"></div>';
+    }).join("");
+    return '<div style="margin:12px 0"><div class="ds-swatch-hex" ' +
+      'style="margin-bottom:4px;font-family:var(--font-ui);' +
+      'text-transform:uppercase;letter-spacing:.08em;font-size:10px">' + r[0] +
+      '</div><div style="display:flex;border:1px solid var(--c-border)">' +
+      stops + "</div></div>";
+  }).join("");
+</script>
+<script src="assets/ds.js"></script>
+</body>
+</html>
