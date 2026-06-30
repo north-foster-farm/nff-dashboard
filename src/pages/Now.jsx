@@ -175,7 +175,7 @@ export default function Now({ onOpenRounds }) {
               onStart={() => onOpenRounds(nextBlock.block.id)}
             />
           ) : (
-            <div className="bg-surface border border-line px-5 py-6 text-center">
+            <div className="border border-line px-5 py-6 text-center">
               <div className="text-[13px] text-muted">
                 {blocks.some(b => b.isActive)
                   ? "All rounds are done for today."
@@ -330,7 +330,7 @@ function ObligationList({
 
   if (overdue.length === 0 && done.length === 0) {
     return (
-      <div className="bg-surface border border-line px-5 py-8 text-center">
+      <div className="border border-line px-5 py-8 text-center">
         <div className="text-[13px] text-muted">
           Nothing overdue — everything else rides with its round.
         </div>
@@ -374,7 +374,7 @@ function ObligationList({
         </div>
       )}
       {overdue.length === 0 && (
-        <div className="bg-surface border border-line px-5 py-6 text-center">
+        <div className="border border-line px-5 py-6 text-center">
           <div className="text-[13px] text-muted">
             Nothing overdue — everything else rides with its round.
           </div>

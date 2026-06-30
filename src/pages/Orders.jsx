@@ -133,7 +133,7 @@ export default function Orders({ startCreating = false }) {
       {loading ? (
         <div className="text-[12px] text-dim italic">Loading…</div>
       ) : db.orders.length === 0 ? (
-        <div className="bg-surface border border-line px-6 py-10 text-center">
+        <div className="border border-line px-6 py-10 text-center">
           <Receipt size={20} className="text-faint mx-auto mb-3" />
           <div className="text-[13px] text-muted">No orders yet.</div>
           <div className="text-[11px] text-faint leading-relaxed max-w-[520px] mx-auto mt-2">
@@ -183,7 +183,7 @@ function SummaryStrip({ byStatus }) {
       {tiles.map(t => (
         <div
           key={t.label}
-          className="bg-surface border border-line px-4 py-3 min-w-[110px]"
+          className="border border-line px-4 py-3 min-w-[110px]"
         >
           <div className="font-heading text-[26px] font-semibold leading-none text-fg">
             {t.value}
@@ -1353,7 +1353,7 @@ function ShippingSettingsPanel({ db, onClose }) {
   };
 
   return (
-    <div className="bg-surface border border-line p-4 flex flex-col gap-3">
+    <div className="border border-line p-4 flex flex-col gap-3">
       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg">
         Shipping settings
       </div>
@@ -1606,7 +1606,7 @@ function OrderForm({
   };
 
   return (
-    <div className="bg-surface border border-accent p-4 flex flex-col gap-3">
+    <div className="border border-accent p-4 flex flex-col gap-3">
       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg">
         {order ? "Edit order" : "New order"}
       </div>
