@@ -43,16 +43,24 @@ Surfaces: `bg` #f6f6f6/#101614 · `surface` #fff/#151a15 · `surface-alt`
 Text ramp (loud→faint): `fg` #14180f/#f2efe4 · `dim` #2f3329/#c4bfad ·
 `muted` #4d4a3e/#8e8877 · `faint` #6f6b5d/#6a6658.
 State: `accent` #297d5a/#adc8ad · `accent-deep` #1d5a40/#297d5a ·
-`warn` #a06d10/#e6b85a · `resolved` #297d5a/#4cba85 ·
-`project` #3f6da3/#7d9ec9. On-fill text: `on-accent` #fff/#0d1410,
-`on-cat` #fff/#0d1410. No `white` token.
+`warn` #a06d10/#e6b85a · `resolved` #297d5a/#4cba85. On-fill text:
+`on-accent` #fff/#0d1410, `on-cat` #fff/#0d1410. No `white` token.
+Block-identity trio (Schedule, F8/F9 — the `KindBadge` letters + bars):
+`chore` #0c7e6e/#2bb6a2 (teal, letter **C**) · `project` #3f6da3/#7d9ec9
+(slate-blue, **P**) · `event` #5b54a8/#b6afe9 (periwinkle, **E**). Each badge
+also gets a 16% same-hue background wash so adjacent C/P/E stay distinct. Chore
+was recolored amber-glow → **teal** (slice D): amber was overloaded and
+collided with the `warn` UI. Chores don't borrow `accent` green either; green
+stays a state color only.
 Row tints (rgba): `row-active`, `row-hover`, `row-active-dim`.
 Category hues (`cat-*`): fm (farmers market), popup, egg, chore, deliveries,
 farm-visits, pickups, processing, default — see foundations.html.
 Decorative ramps (50→950): sky-aqua, celadon, turf-green, tea-green,
-amber-glow, honey-bronze, hot-fuchsia, slate-blue, periwinkle (+ 3 dupes to
+amber-glow, honey-bronze, hot-fuchsia, slate-blue, periwinkle, **teal**, and the
+two new palette additions **mulberry** + **terracotta** (unmapped) (+ 3 dupes to
 collapse: frozen-lake=sky-aqua, honey-bronze=amber-glow,
-grapefruit-pink=hot-fuchsia; emerald/periwinkle unmapped).
+grapefruit-pink=hot-fuchsia). Mappings: periwinkle → `event`, teal → `chore`;
+amber-glow now serves only `cat-popup` (no longer chore).
 
 ## Typography
 
@@ -78,9 +86,13 @@ is non-negotiable.
 
 Each: STATUS · what · use/not · canonical source.
 
-- **Pane** · Converging · flush bordered section + eyebrow/Lora header; the
-  default container, replaces raised `Card`. Not for overlays (raised).
-  Source: `src/components/ui.jsx:42` (Card, raised today → flip flush).
+- **Pane** · Stable · flush bordered section + eyebrow/Lora header; the
+  default container. Built flush (`border` on `--c-bg`, never `bg-surface`);
+  the raised `Card` was folded into it and deleted (NO-LEGACY) — all four
+  former call sites (Overview/Metrics/BatchMetrics/BatchPage) import `Pane`.
+  `tone="warn"` flat-tints via color-mix. Not for overlays (raised).
+  Source: `src/components/ui.jsx` (`Pane`). Still-raised cousins to migrate:
+  StatTile, PlaceSection. (WeekList folded into `WeekStrip`.)
 - **Eyebrow** · Converging · uppercase Inter section/card label. Not body/data.
   Pattern everywhere; consolidate to one component.
 - **Heading** · Converging · Lora title, -0.01..-0.02em. Unify the 3 impls
@@ -94,37 +106,106 @@ Each: STATUS · what · use/not · canonical source.
   muted (`ui.jsx:64/73`). The one pill base — other chips consolidate onto it.
 - **ChoreRemainingPill / BlockBadge / BatchStatePill** · Stable · countdown /
   time-of-day glyph / batch lifecycle. (`src/components/*`.)
+- **KindBadge** · Converging · the Schedule block-identity box (F8): a single
+  Inter-600 letter in a tight bordered square, tinted to the kind token —
+  `chore` **C** (teal), `project` **P** (slate-blue), `event` **E**
+  (periwinkle). Each badge also carries a 16% same-hue background wash
+  (`bg-<kind>/[0.16]`) so adjacent C/P/E stay legibly distinct (the three hues
+  are close). Square `size` px edge, letter scales ~0.6×. Replaces the
+  per-block Lucide glyphs; reused in the block list, week-pane day symbols,
+  and day-load. Source: `src/components/ui.jsx` (`KindBadge`).
 - **StatTile** · Converging · Lora number + uppercase label KPI; flush w/ Pane
   migration (`ui.jsx:88`).
-- **CheckTarget + ChoreCheckRow** · Converging · the ONE completion row,
-  keyed (chore, place), shared Rounds+Schedule, one outbox path. 28px box
-  (`w-7 h-7 border-2`, done=bg-resolved). Kill the 20/16/14px reimpls.
-  Source: `src/components/ChoreCheckRow.jsx:22`.
-- **EventRow** · Converging · row with left color-bar in the category hue.
-  Unify the 2 mechanisms (`Schedule.jsx:246` border-left,
-  `Overview.jsx:489` inset box-shadow).
-- **AttentionCard / Hole** · Converging · flush amber card (`color-mix warn`),
-  ⚠ eyebrow + work + reason + ONE solid-amber action; hole = amber inset ring +
-  45° hatch. The one treatment for blocked/orphaned obligations; supersedes
-  ChoreCheckRow's raised `border-l-2 bg-warn/5`. Source: `Schedule.jsx:2078`.
-- **Attention banner** · Stable · flush full-width warn strip (border-on-bg).
-  Source: `Schedule.jsx:2237`.
-- **NowRule** · Converging · green hairline + 7px dot + glow + "Now · time"
-  eyebrow; today-views only. Collapse `NowMarker` + pool copy. Not a colored
-  block. Source: `Schedule.jsx:340` (NowMarker).
-- **SealStamp** · Proposed · celadon "✓ Sealed · who · window · N/N"; anchors
-  the Rounds wrap; no separate "confirm the day" (sealed by completion).
-  Home: `Rounds.jsx:470` (WrapCard).
-- **LoadSpine** · Converging · count-driven height bars per block; ALWAYS show
-  the count beside it, never height alone. Keep semantically distinct from a
-  progress bar. Source: `DayRibbon.jsx`, `WeekSpines.jsx`, `ScheduleSidebars`.
-- **WeekStrip** · Converging · the week drawn ONCE, in the sidebar list, each
-  row = inline mini-spine + should-heat tick. Resolves the duplicate week
-  (center `WeekSpines` + sidebar `WeekList`).
-- **should-heat / heatColor()** · Converging→Proposed · warn ramp over a
-  deadline runway → `cat-processing` on the deadline day; one shared
-  `heatColor()` in a future `lib/load/farmLoad.js`. Ships as `weekShouldHeat`
-  (`lib/schedule/weekView.js`).
+- **CheckTarget + ChoreCheckRow** · Stable · the ONE completion box, factored
+  into `ui.jsx` and composed by ChoreCheckRow — keyed (chore, place), shared
+  Rounds+Schedule, one outbox path. 28px box (`w-7 h-7 border-2`,
+  done=bg-resolved; `queued` warms the border). Kills the 20/16/14px reimpls.
+  Source: `src/components/ui.jsx` (`CheckTarget`).
+- **EventRow** · Stable · one row with an inset 3px left color-bar in the
+  category hue + a faint color-mix wash (an inset shadow, not a border, so
+  rows stay column-aligned). Unified the 2 mechanisms (`Schedule.jsx:246`
+  border-left, `Overview.jsx:489` inset box-shadow); chore-time blue reserved
+  (C7). Source: `src/components/ui.jsx` (`EventRow`).
+- **AttentionCard / Hole** · Stable · flush amber card (`color-mix warn` body
+  + 50%-warn border), ⚠ eyebrow + Lora work line + reason + ONE solid-amber
+  action (C6). The compact `AttentionCard.Row` (Hole.row) is the one-line
+  inline variant. Flat fill only — a man-down on the LoadSpine reads as a
+  conflict `AlertTriangle` on the bar (slice D, F23), never behind prose (C4).
+  The one treatment for blocked/
+  orphaned obligations; supersedes ChoreCheckRow's raised `border-l-2
+  bg-warn/5` (de-raised to a flat fill in Step 1, full card promoted Step 2).
+  Source: `src/components/ui.jsx` (`AttentionCard`).
+- **AlertStrip** · Stable · flush passive warn strip with an inset 3px left
+  rule — offline / "N changes since confirmed" / yesterday's-unfinished. Never
+  a gate (the confirm-day affordance is separate). Absorbs the Schedule banner
+  + source-change ribbon. Source: `src/components/ui.jsx` (`AlertStrip`).
+- **WindowBar** · Stable · the window-of-time track for one obligation — the
+  L5 should/must signal kept as a visual with the WORDS dropped (C3); fill =
+  open fraction, color warms amber → `--c-cat-processing` as it narrows.
+  Replaces `ChoreRemainingPill`'s should/must text. Shared-curve aggregation
+  feeding it lands in Step 4. Source: `src/components/ui.jsx` (`WindowBar`).
+- **NowRule** · Stable · the "now" divider — a 7px dot + glow + "Now · time"
+  eyebrow INLINE at the left, the green hairline filling the rest of the row to
+  the right (the rule is broken by the text — matches the style guide). Takes a
+  preformatted `time` (or a `label` override); today-views only. Used by the
+  **phone Today glance** (a divider, no block row to highlight). The desktop
+  Schedule no longer uses it — it marks the current block on the row via
+  `NowTag` (slice D refinement). Source: `src/components/ui.jsx` (`NowRule`).
+- **NowTag** · Converging · the desktop Schedule's now-marker: the current
+  block's row gets a faint green-accent fill (`bg-accent/[0.08]`) + this small
+  "Now" word in primary green, in the block-list sidebar, the whole-day list,
+  and the master-detail header. Replaces a divider rule above the row (which
+  read as belonging to the gap, not the block). Source: `src/components/ui.jsx`
+  (`NowTag`).
+- **FinishStamp** · Stable · celadon ✓ in a square + "Finished · who · window
+  · N/N" (C5 — the word "Sealed" is killed). Whole-run, never a sub-bucket;
+  anchors the Rounds wrap. Block completion auto-derives (no submit gate); the
+  Schedule confirm-DAY action is a SEPARATE, KEPT plan-level concept, not this.
+  Source: `src/components/ui.jsx` (`FinishStamp`).
+- **LoadSpine** · Stable · the day-load silhouette — one bar per block,
+  interleaved with the day's project gaps, reading `farmLoad.spine` directly.
+  Color is by KIND, not a load-state ramp (slice D, F23/F26): a chore bar is
+  `--c-chore` (teal, height ∝ item count); a man-down `hole` keeps the chore
+  color and carries a small conflict `AlertTriangle` (F23 — a symbol, NOT a
+  hatch/fill, replaces the old warn treatment); a project bar is `--c-project`
+  (slate, height ∝ block DURATION), solid when `planned` and a blue cross-hatch
+  (`HATCH_UNPLANNED`, the F11/F26 shared util) when unplanned. **No per-bar item
+  counts** (F23). Bars clamped to the track + `overflow-hidden` (B2); the
+  optional `summary` read sits beside it. Kept distinct from the Rounds
+  completion-fraction bar. Source: `src/components/ui.jsx` (`LoadSpine`).
+- **WarmingBadge** · Converging · the binary warn/due signal (slice D, F24/F25)
+  that REPLACED the continuous should-heat gradient. A Lucide `ClockAlert`,
+  reading a `farmLoad.warming` bucket `{ warn:[…], due:[…] }`: any DUE-today
+  chore → red (`--c-cat-processing`, the deadline red); else WARN amber
+  (`--c-warn`). `×N` when more than one chore is warm; the hover names each chore
+  + when it's due (F25). **Inline — no background fill or padding**, just the
+  colored glyph, so it reads as part of its line. Three surfaces: the day-load
+  summary (after a `·`), the affected `DayRailSpine` block row (count hidden),
+  and the week pane (per warming day, count hidden — fed by `warmingByISO`).
+  Backed by exported `dayWarming(...)` in `farmLoad` (the focal day-load and the
+  week scan share it). Source: `src/components/ui.jsx` (`WarmingBadge`).
+- **WeekStrip** · Stable · the week drawn ONCE off `farmLoad.week`, desktop
+  sidebar only (the phone `layout="header"` variant + its should-heat tick were
+  DELETED — slice D, NO-LEGACY). A row per day · count mini-spine · identity
+  symbols on the right (F15–F17): the per-day number + heat box are dropped for a
+  teal **Moon** when an overnight chore touches that day (`overnightByISO` —
+  both calendar days a night spans), a periwinkle **E** `KindBadge` when the day
+  has an event (hover → count), a warn/due `WarmingBadge` (ClockAlert) when it
+  has a warming chore (`warmingByISO`), and an amber conflict `AlertTriangle`
+  when it has man-down conflicts (hover → count, fed by `conflictsByISO`). The
+  symbol cell is a FIXED width, LEFT-aligned, so every day's mini-spine is the
+  same width and the badges line up in a column. Bars scaled to `week.max`,
+  clamped +
+  `overflow-hidden` (B1 — no silent overflow). **Folded in + deleted (Step 3):**
+  the center `WeekSpines` (`schedule/WeekSpines.jsx`, removed) + the sidebar
+  `WeekList` (removed from `ScheduleSidebars.jsx`); the Schedule renders this
+  once in the right sidebar. Source: `src/components/ui.jsx` (`WeekStrip`).
+- **day-load color (by kind)** · Stable · the day-load no longer has a load-state
+  fill ramp or a should-heat gradient — both `loadColor()` and `heatColor()` were
+  DELETED (slice D, NO-LEGACY). Bars color by kind directly: chore=`--c-chore`,
+  project=`--c-project`; warming is the binary `WarmingBadge` (warn=`--c-warn`,
+  due=`--c-cat-processing`). `weekShouldHeat` (`lib/schedule/weekView.js`) is
+  gone; `farmLoad` still folds `weekFullness` for the week silhouette.
 - **CommandPalette** · Stable · ⌘K app-wide search, keyboard-first
   (`src/components/CommandPalette.jsx`).
 - **Sheet / Modal** · Proposed · NO shared primitive (15 hand-rolled
@@ -140,31 +221,68 @@ Each: STATUS · what · use/not · canonical source.
 - **Page shell** — header (Lora title + uppercase back-link + bottom hairline)
   over flush eyebrow-titled sections.
 - **Master–detail** (Schedule desktop) — left load rail · center detail ·
-  right week sidebar (→ one WeekStrip). Phone collapses to day-strip + column.
+  right week sidebar (→ one WeekStrip). The left rail speaks the WeekStrip
+  visual language (F1–F3): no dividers, an outlined active row (the border is
+  the indicator, **green `border-resolved`** like the week pane), lighter-on-
+  hover, equal heights; each row is a `KindBadge` (C/P/E) + label
+  ("Chores"/"Project"/event title) + time, with the current block marked by a
+  green-accent fill + a `NowTag` "Now" (not a divider rule). The chore load rail
+  fills in the chore identity color (teal). The **overnight** wrap reads
+  "Overnight" + a teal `Moon` on the row's right edge; **events** appear here
+  too (periwinkle **E** + title) where present. Phone collapses to day-strip +
+  column.
 - **Full-screen takeover** (Rounds) — Lora hero count + progress + NowRule +
-  PlaceSwitcher + CheckTarget rows + tray + SealStamp on wrap.
+  PlaceSwitcher + CheckTarget rows + tray + FinishStamp on wrap.
 - **Dashboard glance** — stack of flush panes; EventRow + LoadSpine + NowRule.
 - **Phone Today glance** (Proposed) — signals stacked in tap-priority:
   NowRule → AttentionCard (if down) → LoadSpine+count → block groups → deep-link
   to Rounds.
 - **Attention placement** — man-down=AttentionCard (everywhere it appears);
-  overdue=Hole in the row; page notices=flush banner; offline=OutboxIndicator;
-  now=NowRule (today only).
+  overdue=AttentionCard.Row (Hole.row) in the row; page notices=AlertStrip;
+  offline=OutboxIndicator; now=`NowTag` on the block row (Schedule) /
+  `NowRule` divider (phone glance), today only.
 
 ## Consolidation backlog (the bounded-options payoff)
 
-Collapse, don't re-litigate: raised Card/StatTile/PlaceSection/WeekList →
-flush Pane; 4 checkbox sizes → one 28px CheckTarget; BTN_* + 3 inline →
+Collapse, don't re-litigate: raised Card/StatTile/PlaceSection →
+flush Pane (Card done; WeekList folded into WeekStrip, not Pane); 4 checkbox
+sizes → one 28px CheckTarget; BTN_* + 3 inline →
 one Button; 15 overlays → one Sheet/Modal; 3 result-row impls → one ResultRow;
 StatusPill + other pill bases → one base; 2 now-markers → one NowRule;
 2 event-bars → one EventRow; inline `T.*` idiom (Chores.jsx) → token classes;
 delete the `/rethinker` scratch after promotion.
 
 Migration order (cheapest-first): Step 1 — Card→Pane flush flip, ChoreCheckRow
-escalation→Hole, unify NowRule. Step 2 — promote AttentionCard/SealStamp/
-CheckTarget/LoadSpine into ui.jsx, add `lib/load/farmLoad.js`. Step 3 — fold
-week into sidebar WeekStrip, delete center WeekSpines + DayRibbon. Last —
-delete `/rethinker`. (Full rationale, from repo root:
+escalation→Hole, unify NowRule. ✓ SHIPPED (`feat/harvest-remix`): Pane built
+flush + Card deleted; escalation de-raised to flat fill; NowRule unified +
+NowMarker collapsed. Step 2 — promote the vocabulary into ui.jsx
+(`lib/load/farmLoad.js` is built; step 0). ◐ IN PROGRESS (`feat/harvest-remix`):
+CheckTarget / AttentionCard(+Hole.row) / FinishStamp / LoadSpine / EventRow /
+WindowBar / AlertStrip / WeekStrip promoted into `ui.jsx`; phone Today glance +
+in-run cover card + Schedule needs-cover wired. Step 3 — fold the week + demote
+DayRibbon. ✓ SHIPPED (`feat/harvest-remix`): Schedule reads one `farmLoad` memo;
+inline daySilhouette/personLanes/week/shouldHeat deleted; the day-load is a
+LoadSpine, the two-lane ribbon a conditional `farm.lanes` overlay; the week is
+one sidebar WeekStrip (center WeekSpines + sidebar WeekList deleted). Findings
+slice D (`feat/harvest-remix`, F22–F26): the day-load colors by kind (chore
+teal / project slate, height ∝ duration, unplanned blue cross-hatch), a
+man-down is a conflict triangle on the bar (not a hatch), and warming collapsed
+to the binary `WarmingBadge` (ClockAlert warn/due) — `weekShouldHeat`,
+`heatColor`, `loadColor`, and the WeekStrip should-heat tick all DELETED. Chore
+identity recolored amber-glow → **teal** + `KindBadge` gained a same-hue bg wash
+(James, 2026-06-30); **mulberry** + **terracotta** added to the palette
+(unmapped). Findings slice E (`feat/harvest-remix`, F27–F31): the two-lane
+"who's on what" `DayRibbon` overlay + `personLoad`/`buildPersonLanes` are
+DELETED (it leaned on per-chore assignment the farm doesn't commit to); the
+Schedule recap ("N changes since you confirmed" + "Yesterday — N must-dos
+unfinished") collapsed to passive `AlertStrip`s showing a count with names
+behind an on-demand detail toggle, and the "for learning the routine, not
+grading" caption was dropped. Findings slice F (`feat/harvest-remix`, F32):
+Schedule Project blocks carry a project DOWN the day — an empty later block
+offers a **"Continue ⟨project⟩"** action (a `CornerDownRight`, project-color
+button) that copies the carried project's next undone step into that gap, so one
+project can span multiple blocks without re-searching (`nextProjectStepFor` in
+`lib/projects.js`). Last — delete `/rethinker`. (Full rationale, from repo root:
 `.ignored/playbooks/design-bracket/examples/harvest-remix/DESIGN.md`.)
 
 ## Voice

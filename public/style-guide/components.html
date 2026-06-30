@@ -56,11 +56,13 @@
   <!-- ============ PRIMITIVES ============ -->
   <h2 class="ds-h2" id="primitives">Primitives</h2>
 
-  <h3 class="ds-h3">Pane <span class="ds-status converging">Converging</span></h3>
+  <h3 class="ds-h3">Pane <span class="ds-status stable">Stable</span></h3>
   <p>
     The default content container: a hairline border on the page background with
     an Inter eyebrow (and optional Lora title) header. This is the canonical
-    surface — it replaces the raised <span class="mono">Card</span>.
+    surface — built flush in <span class="mono">ui.jsx</span>, it replaced the
+    raised <span class="mono">Card</span> (folded in and deleted; all four call
+    sites now import <span class="mono">Pane</span>).
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -71,8 +73,9 @@
           raised fill.</div>
       </div>
     </div>
-    <div class="ds-example-meta">Target: <span class="mono">Pane</span> ·
-      ships today as raised <span class="mono">Card</span> (ui.jsx:42)</div>
+    <div class="ds-example-meta">Shipped: <span class="mono">Pane</span> —
+      flush <span class="mono">border</span> on <span class="mono">--c-bg</span>
+      (ui.jsx)</div>
   </div>
   <div class="ds-use">
     <b>Use</b> for every in-page section/pane. &nbsp;
@@ -226,6 +229,40 @@
       variants on top.</p>
   </div>
 
+  <h3 class="ds-h3">KindBadge <span class="ds-status converging">Converging</span></h3>
+  <p>
+    The Schedule block-identity box (F8): one Inter-600 letter in a tight
+    bordered square, tinted to the kind token (chore = <b>teal</b>, project =
+    slate, event = periwinkle). Each badge also carries a faint background WASH
+    in its own hue — the colored fill is what tells C/P/E apart at a glance when
+    they sit adjacent (the three hues are close enough that border+letter alone
+    read as three near-identical boxes). Replaces the per-block Lucide glyphs;
+    the same C/P/E reads across the block list, the week-pane day symbols, and
+    the day-load. Chores stop borrowing accent green or amber.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage" style="display:flex;gap:14px;align-items:center">
+      <span style="display:inline-flex;align-items:center;justify-content:center;
+        width:22px;height:22px;font-size:13px;font-family:var(--font-ui);
+        font-weight:600;line-height:1;border:1px solid var(--c-chore);
+        color:var(--c-chore);background:color-mix(in srgb,var(--c-chore) 16%,transparent)">C</span>
+      <span style="display:inline-flex;align-items:center;justify-content:center;
+        width:22px;height:22px;font-size:13px;font-family:var(--font-ui);
+        font-weight:600;line-height:1;border:1px solid var(--c-project);
+        color:var(--c-project);background:color-mix(in srgb,var(--c-project) 16%,transparent)">P</span>
+      <span style="display:inline-flex;align-items:center;justify-content:center;
+        width:22px;height:22px;font-size:13px;font-family:var(--font-ui);
+        font-weight:600;line-height:1;border:1px solid var(--c-event);
+        color:var(--c-event);background:color-mix(in srgb,var(--c-event) 16%,transparent)">E</span>
+    </div>
+    <div class="ds-example-meta">chore = teal <b>C</b> · project = slate-blue
+      <b>P</b> · event = periwinkle <b>E</b> — each with a 16% same-hue wash so
+      adjacent badges stay distinct (ui.jsx <span class="mono">KindBadge</span>)</div>
+  </div>
+  <div class="ds-use"><b>Use</b> to mark a chore / project / event block in any
+    Schedule surface. &nbsp;<b>Not</b> a status chip — that's
+    <span class="mono">StatusPill</span>.</div>
+
   <h3 class="ds-h3">StatTile <span class="ds-status converging">Converging</span></h3>
   <p>
     Big Lora number + uppercase label for a KPI. Raised today; flips flush with
@@ -256,12 +293,14 @@
   <h2 class="ds-h2" id="rows">Rows &amp; lists</h2>
 
   <h3 class="ds-h3">CheckTarget + ChoreCheckRow
-    <span class="ds-status converging">Converging</span></h3>
+    <span class="ds-status stable">Stable</span></h3>
   <p>
     The one completion row — the single source of completion truth, keyed by
     (chore, place), shared by Rounds and the Schedule accordion so both write the
-    same outbox path. Its 28px checkbox is the canonical
-    <span class="mono">CheckTarget</span> — fat enough for gloves.
+    same outbox path. Its 28px checkbox is now the factored-out
+    <span class="mono">CheckTarget</span> in <span class="mono">ui.jsx</span>
+    (ChoreCheckRow composes it) — fat enough for gloves; a queued (unsynced)
+    tick warms the box border.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -287,11 +326,13 @@
     collapse onto the 28px target.
   </div>
 
-  <h3 class="ds-h3">EventRow <span class="ds-status converging">Converging</span></h3>
+  <h3 class="ds-h3">EventRow <span class="ds-status stable">Stable</span></h3>
   <p>
-    A row for an event that owns time: a left color-bar in the event-kind hue.
-    Two mechanisms ship today (a real <span class="mono">border-left</span> and an
-    inset box-shadow that preserves grid alignment); they unify into one.
+    A row for an event that owns time: an inset 3px left color-bar in the
+    event-kind hue + a faint color-mix wash. Now one component in
+    <span class="mono">ui.jsx</span> (an inset box-shadow, not a real border, so
+    rows stay column-aligned); the two old mechanisms are unified. Chore-time
+    blue stays reserved for chore rows (C7).
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -312,13 +353,16 @@
   <h2 class="ds-h2" id="attention">Attention &amp; state</h2>
 
   <h3 class="ds-h3">AttentionCard / Hole
-    <span class="ds-status converging">Converging</span></h3>
+    <span class="ds-status stable">Stable</span></h3>
   <p>
     The one treatment for a blocked or orphaned obligation — needs-cover,
-    overdue, in-run escalation. A flush amber-bordered card with a ⚠ eyebrow, the
-    work, a plain-language reason, and a single solid-amber action; the hole
-    itself drawn with an amber inset ring + 45° hatch. Shipped flush on the
-    schedule needs-cover card; supersedes the raised escalation tint everywhere.
+    overdue, in-run escalation. A flush amber card (flat <span class="mono">
+    color-mix</span> warn body + 50%-warn border) with a ⚠ eyebrow, a Lora work
+    line, a plain-language reason, and a single solid-amber action (C6). The
+    compact <span class="mono">AttentionCard.Row</span> (Hole.row) is the
+    one-line inline variant. Flat fill only — a man-down reads as a conflict
+    triangle on the LoadSpine bar (slice D, F23), never behind prose (C4). Now in
+    <span class="mono">ui.jsx</span>; supersedes the raised escalation tint.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -348,27 +392,67 @@
     that migrates here.
   </div>
 
-  <h3 class="ds-h3">Attention banner <span class="ds-status stable">Stable</span></h3>
+  <h3 class="ds-h3">AlertStrip <span class="ds-status stable">Stable</span></h3>
   <p>
-    A flush, full-width warn strip for a page-level notice ("N changes since you
-    confirmed", "Yesterday — N must-dos"). Border-on-bg, never raised.
+    A flush, passive warn strip for ambient page-level context ("N changes since
+    you confirmed", "Yesterday — N unfinished", offline). An inset 3px left
+    rule, never raised and <b>never a gate</b> — it informs, it doesn't block
+    (the confirm-day affordance is separate). Now in
+    <span class="mono">ui.jsx</span>; absorbs the Schedule banner +
+    source-change ribbon. It leads with a <b>count</b>, never an inline list of
+    every name — per-item detail sits behind an on-demand
+    <span class="mono">action</span> toggle ("Details"), and an optional
+    <span class="mono">onDismiss</span> adds a trailing ✕ so the strip clears
+    until its signal changes (F28).
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
-      <div style="border:1px solid color-mix(in srgb,var(--c-warn) 45%,
-        transparent);background:color-mix(in srgb,var(--c-warn) 6%,var(--c-bg));
-        padding:10px 14px;font-size:14px">
-        <span style="color:var(--c-warn);font-weight:600">3 changes</span>
-        since you confirmed this day.</div>
+      <div style="display:flex;align-items:center;gap:8px;
+        box-shadow:inset 3px 0 0 0 var(--c-warn);
+        background:color-mix(in srgb,var(--c-warn) 7%,var(--c-bg));
+        padding:8px 12px;font-size:12px;color:var(--c-text-dim)">
+        <span style="flex:1">
+          <span style="color:var(--c-text);font-weight:600">3 changes</span>
+          since you confirmed.</span>
+        <span style="font-family:var(--font-ui);font-size:11px;font-weight:600;
+          text-transform:uppercase;letter-spacing:0.1em">Details</span>
+        <span style="color:var(--c-text-faint)">✕</span></div>
     </div>
-    <div class="ds-example-meta">color-mix(warn 45% border / 6% fill)</div>
+    <div class="ds-example-meta">count-led · Details toggle · dismiss ✕ · passive</div>
   </div>
 
-  <h3 class="ds-h3">NowRule <span class="ds-status converging">Converging</span></h3>
+  <h3 class="ds-h3">WindowBar <span class="ds-status stable">Stable</span></h3>
   <p>
-    The "now" divider: a green 1.5px hairline + a 7px dot with a glow ring + a
-    "Now · time" eyebrow. Today-views only. Ships as
-    <span class="mono">NowMarker</span>; collapses with the pool copy into one.
+    The window-of-time track for one obligation — the should/must signal kept as
+    a visual with the <b>words dropped</b> (C3). Fill = how much of the window is
+    still open; color warms amber → <span class="mono">--c-cat-processing</span>
+    as it narrows. Replaces <span class="mono">ChoreRemainingPill</span>'s
+    should/must text; the shared-curve aggregation that feeds it lands in Step 4.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="display:inline-flex;width:64px;height:6px;
+          background:var(--c-surface-alt);overflow:hidden"><span
+          style="width:80%;height:100%;background:var(--c-warn)"></span></span>
+        <span style="display:inline-flex;width:64px;height:6px;
+          background:var(--c-surface-alt);overflow:hidden"><span
+          style="width:25%;height:100%;background:color-mix(in srgb,
+          var(--c-cat-processing) 70%,var(--c-warn))"></span></span>
+      </div>
+    </div>
+    <div class="ds-example-meta">wide+amber = room · narrow+hot = closing</div>
+  </div>
+
+  <h3 class="ds-h3">NowRule <span class="ds-status stable">Stable</span></h3>
+  <p>
+    The "now" divider: a 7px dot with a glow ring + a "Now · time" eyebrow
+    sitting INLINE at the left, with the green hairline filling the rest of the
+    row to the right (the rule is broken by the text). Today-views only (gate at
+    the call site). Used by the <b>phone Today glance</b> (a divider, since the
+    glance has no block row to highlight). The desktop Schedule no longer uses a
+    rule — it marks the current block on the row itself (see
+    <span class="mono">NowTag</span>).
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -382,63 +466,155 @@
         </span>
       </div>
     </div>
-    <div class="ds-example-meta">resolved hairline + dot + glow ·
+    <div class="ds-example-meta">dot + label inline, hairline fills the rest ·
       viewingToday only</div>
   </div>
   <div class="ds-use"><b>Not</b> a colored block, and never on a non-today
     view.</div>
 
-  <h3 class="ds-h3">SealStamp <span class="ds-status proposed">Proposed</span></h3>
+  <h3 class="ds-h3">NowTag <span class="ds-status converging">Converging</span></h3>
   <p>
-    The celadon completion seal — <span class="mono">✓ Sealed · who · window ·
-    N/N</span>. Anchors the Rounds wrap and any block-sealed-by-completion
-    moment. Not yet built; the wrap card shows elapsed time only today.
+    The desktop Schedule marks the current block <b>on the row</b>, not with a
+    divider rule: the row gets a faint green-accent fill
+    (<span class="mono">bg-accent/[0.08]</span>) and this small "Now" word in
+    primary green sits in the row (block-list sidebar, whole-day list, and the
+    master-detail header). Clearer than a rule above the row, which read as
+    belonging to the gap rather than the block.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
-      <div style="display:inline-flex;align-items:center;gap:8px;
-        color:var(--c-resolved);font-family:var(--font-ui);font-size:12px;
-        font-weight:600;letter-spacing:.04em">
-        <span>✓</span><span class="x-num">Sealed · Jim · 6:08–8:10a · 7/7</span>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;
+        background:color-mix(in srgb,var(--c-accent) 8%,transparent)">
+        <span style="display:inline-flex;align-items:center;justify-content:center;
+          width:18px;height:18px;font-size:11px;font-family:var(--font-ui);
+          font-weight:600;border:1px solid var(--c-chore);color:var(--c-chore);
+          background:color-mix(in srgb,var(--c-chore) 16%,transparent)">C</span>
+        <span style="font-weight:600">Mid-Morning</span>
+        <span style="font-family:var(--font-ui);font-size:10px;font-weight:700;
+          text-transform:uppercase;letter-spacing:.12em;color:var(--c-accent)">Now</span>
+        <span style="margin-left:auto;color:var(--c-text-faint);font-size:12px">10 AM · 0/10</span>
       </div>
     </div>
-    <div class="ds-example-meta">no separate "confirm the day" — sealing is by
-      completion</div>
+    <div class="ds-example-meta">green-accent row fill + "Now" in primary green
+      (ui.jsx <span class="mono">NowTag</span>)</div>
+  </div>
+
+  <h3 class="ds-h3">FinishStamp <span class="ds-status stable">Stable</span></h3>
+  <p>
+    The whole-run completion stamp — a celadon ✓ in a square +
+    <span class="mono">Finished · who · window · N/N</span>. The word "Sealed"
+    is killed (C5). Anchors the Rounds wrap; block completion auto-derives (no
+    submit gate). The Schedule confirm-DAY action is a <b>separate, kept</b>
+    plan-level concept — not this. Now in <span class="mono">ui.jsx</span>.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:inline-flex;align-items:center;gap:10px">
+        <span style="width:26px;height:26px;background:var(--c-resolved);
+          color:var(--c-on-accent);display:inline-flex;align-items:center;
+          justify-content:center;font-weight:700">✓</span>
+        <span class="x-num" style="color:var(--c-resolved);
+          font-family:var(--font-ui);font-size:12px;font-weight:600;
+          letter-spacing:.1em;text-transform:uppercase">Finished · Jim ·
+          6:08–8:10a · 7/7</span>
+      </div>
+    </div>
+    <div class="ds-example-meta">celadon ✓ square · whole-run · no "Sealed"</div>
   </div>
 
   <!-- ============ LOAD ============ -->
   <h2 class="ds-h2" id="load">Load &amp; week</h2>
 
-  <h3 class="ds-h3">LoadSpine <span class="ds-status converging">Converging</span></h3>
+  <h3 class="ds-h3">LoadSpine <span class="ds-status stable">Stable</span></h3>
   <p>
-    Count-driven height bars — one per block, height = item count — for a
-    day-at-a-glance read. <b>Always show the count next to the bar</b> ("N items ·
-    M blocks"); never height alone. Keep it semantically separate from a
-    progress bar even if they look kin.
+    The day-load silhouette — one bar per block, interleaved with the day's
+    project gaps, reading <span class="mono">farmLoad.spine</span> directly.
+    Color is <b>by kind</b>, not a load-state ramp (slice D, F23/F26): a chore
+    bar is <span class="mono">--c-chore</span> (teal, height = item count); a
+    man-down <b>hole</b> keeps the chore color and carries a small conflict
+    triangle (F23 — a symbol, <b>not</b> a hatch/fill); a project bar is
+    <span class="mono">--c-project</span> (slate, height = block
+    <b>duration</b>), solid when <span class="mono">planned</span> and a blue
+    cross-hatch (<span class="mono">HATCH_UNPLANNED</span>, the F11/F26 shared
+    util) when unplanned. <b>No per-bar item counts</b> (F23); the optional
+    summary read sits beside the spine. Bars clamp to the track +
+    <span class="mono">overflow-hidden</span> (B2). Kept separate from the Rounds
+    progress bar. Now in <span class="mono">ui.jsx</span>.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
       <div class="x-eyebrow" style="margin-bottom:6px">Day load
         <span class="x-num" style="color:var(--c-text-faint);font-weight:400;
-          letter-spacing:0">· 22 items · 5 blocks</span></div>
+          letter-spacing:0">· 22 items · 5 blocks · 3 projects</span></div>
       <div style="display:flex;align-items:flex-end;gap:6px;height:56px">
-        <div style="flex:1;height:40%;background:var(--c-resolved)"></div>
-        <div style="flex:1;height:70%;background:var(--c-accent-deep)"></div>
-        <div style="flex:1;height:30%;background:var(--c-text-faint)"></div>
-        <div style="flex:1;height:22%;background:var(--c-text-faint)"></div>
-        <div style="flex:1;height:48%;background:var(--c-text-faint)"></div>
+        <!-- chore bars = teal chore color -->
+        <div style="flex:1;height:70%;background:var(--c-chore)"></div>
+        <!-- man-down hole: chore color + conflict triangle -->
+        <div style="position:relative;flex:1;height:48%;background:var(--c-chore)">
+          <span style="position:absolute;top:-2px;left:50%;transform:translateX(-50%);
+            color:var(--c-warn);font-size:10px;line-height:1">⚠</span></div>
+        <!-- planned project = solid slate, height by duration -->
+        <div style="flex:1;height:30%;background:var(--c-project)"></div>
+        <div style="flex:1;height:55%;background:var(--c-chore)"></div>
+        <!-- unplanned project = blue cross-hatch -->
+        <div style="flex:1;height:22%;
+          background-image:repeating-linear-gradient(45deg,
+            color-mix(in srgb,var(--c-project) 60%,transparent) 0 4px,
+            transparent 4px 8px);
+          box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c-project) 45%,transparent)"></div>
       </div>
     </div>
-    <div class="ds-example-meta">done=resolved · now=accent-deep · future=faint ·
-      over-cap=warn</div>
+    <div class="ds-example-meta">chore=teal · hole=teal + ⚠ conflict symbol ·
+      project=slate (height ∝ duration) · unplanned=blue cross-hatch</div>
   </div>
 
-  <h3 class="ds-h3">WeekStrip <span class="ds-status converging">Converging</span></h3>
+  <h3 class="ds-h3">WarmingBadge <span class="ds-status converging">Converging</span></h3>
   <p>
-    The week drawn <b>once</b>, in the sidebar list — each day row carries an
-    inline mini-spine + a single should-heat tick. Resolves the duplicate week
-    views (center <span class="mono">WeekSpines</span> + sidebar
-    <span class="mono">WeekList</span> today render the same data twice).
+    The binary warn/due signal (slice D, F24/F25) that <b>replaced</b> the old
+    continuous should-heat gradient. A Lucide <span class="mono">ClockAlert</span>,
+    reading a <span class="mono">farmLoad.warming</span> bucket
+    <span class="mono">{ warn:[…], due:[…] }</span>: any <b>due-today</b> chore →
+    red (<span class="mono">--c-cat-processing</span>, the deadline red); else
+    <b>warn</b> amber (<span class="mono">--c-warn</span>).
+    <span class="mono">×N</span> when more than one chore is warm; the hover
+    names each chore + when it's due. <b>Inline — no background fill or
+    padding</b>, just the colored glyph, so it reads as part of the line it's
+    on: the day-load summary (after a "·"), the affected
+    <span class="mono">DayRailSpine</span> row, and the week pane (per warming
+    day, count hidden).
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage" style="display:flex;gap:18px;align-items:center">
+      <span style="display:inline-flex;align-items:center;gap:2px;
+        color:var(--c-warn);font-family:var(--font-ui);font-size:11px"
+        title="Wash eggs — 3 days left">⏰ <b style="font-size:10px">×3</b></span>
+      <span style="display:inline-flex;align-items:center;
+        color:var(--c-cat-processing)" title="Clean brooder — due today">⏰</span>
+    </div>
+    <div class="ds-example-meta">left: warn (amber, ×N) · right: due (deadline
+      red, single). No background. ⏰ stands in for Lucide ClockAlert here.</div>
+  </div>
+
+  <h3 class="ds-h3">WeekStrip <span class="ds-status stable">Stable</span></h3>
+  <p>
+    The week drawn <b>once</b> off <span class="mono">farmLoad.week</span>,
+    desktop sidebar only (the phone <span class="mono">layout="header"</span>
+    variant + its should-heat tick were <b>deleted</b> in slice D, NO-LEGACY). A
+    row per day · inline mini-spine · identity symbols (F15–F17): the per-day
+    number + heat box are dropped for a teal <span class="mono">Moon</span> when
+    an overnight chore touches the day (<span class="mono">overnightByISO</span>,
+    both days a night spans), a periwinkle <span class="mono">E</span>
+    <span class="mono">KindBadge</span> when the day has an event, a warn/due
+    <span class="mono">WarmingBadge</span> (ClockAlert) when it has a warming
+    chore (<span class="mono">warmingByISO</span>), and an amber conflict
+    triangle when it has man-down conflicts (each hovers to its detail, fed by
+    <span class="mono">conflictsByISO</span>). The symbol cell is a fixed width,
+    left-aligned, so spines stay equal-width and badges align in a column. Bars
+    scaled to
+    <span class="mono">week.max</span>, clamped + <span class="mono">overflow-hidden</span>
+    (B1). Now in <span class="mono">ui.jsx</span>; Step 3 deleted the center
+    <span class="mono">WeekSpines</span> + the sidebar
+    <span class="mono">WeekList</span> it folds in.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -446,31 +622,29 @@
         <div class="x-eyebrow" style="margin-bottom:8px">This week</div>
         <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
           <span style="width:42px;font-size:13px">Thu 26</span>
-          <span class="x-num" style="width:22px;color:var(--c-text-muted);
-            font-size:13px">12</span>
-          <span style="display:flex;align-items:flex-end;gap:2px;height:16px">
-            <i style="width:4px;height:60%;background:var(--c-accent-deep)"></i>
-            <i style="width:4px;height:100%;background:var(--c-accent-deep)"></i>
-            <i style="width:4px;height:40%;background:var(--c-accent-deep)"></i>
+          <span style="flex:1;display:flex;align-items:flex-end;gap:2px;height:16px">
+            <i style="flex:1;height:60%;background:var(--c-accent)"></i>
+            <i style="flex:1;height:100%;background:var(--c-accent)"></i>
+            <i style="flex:1;height:40%;background:var(--c-accent)"></i>
           </span>
-          <span style="margin-left:auto;width:10px;height:10px;
-            background:var(--c-cat-processing)" title="processing deadline">
-          </span>
+          <span style="display:inline-flex;align-items:center;justify-content:center;
+            width:14px;height:14px;font-size:9px;font-family:var(--font-ui);
+            font-weight:600;border:1px solid var(--c-event);color:var(--c-event)"
+            title="Event today">E</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
           <span style="width:42px;font-size:13px">Fri 27</span>
-          <span class="x-num" style="width:22px;color:var(--c-text-muted);
-            font-size:13px">5</span>
-          <span style="display:flex;align-items:flex-end;gap:2px;height:16px">
-            <i style="width:4px;height:30%;background:var(--c-accent-deep)"></i>
-            <i style="width:4px;height:45%;background:var(--c-accent-deep)"></i>
-            <i style="width:4px;height:20%;background:var(--c-accent-deep)"></i>
+          <span style="flex:1;display:flex;align-items:flex-end;gap:2px;height:16px">
+            <i style="flex:1;height:30%;background:var(--c-accent)"></i>
+            <i style="flex:1;height:45%;background:var(--c-accent)"></i>
+            <i style="flex:1;height:20%;background:var(--c-accent)"></i>
           </span>
+          <span style="color:var(--c-warn);font-size:13px" title="2 conflicts">⚠</span>
         </div>
       </div>
     </div>
-    <div class="ds-example-meta">inline spine + count + should-heat tick
-      (amber→cat-processing)</div>
+    <div class="ds-example-meta">mini-spine + identity symbols: periwinkle E
+      (event) · amber ⚠ (conflict). Number + heat box dropped (F17).</div>
   </div>
 
   <!-- ============ NAV / OVERLAYS / STATUS ============ -->
@@ -519,8 +693,9 @@
   <table class="ds-table">
     <thead><tr><th>Today</th><th>Collapse to</th></tr></thead>
     <tbody>
-      <tr><td>Raised <span class="mono">Card</span> / StatTile / PlaceSection /
-        WeekList</td><td>flush <span class="mono">Pane</span></td></tr>
+      <tr><td>Raised <span class="mono">Card</span> / StatTile / PlaceSection
+        </td><td>flush <span class="mono">Pane</span> (Card done; WeekList folded
+        into <span class="mono">WeekStrip</span>)</td></tr>
       <tr><td>4 checkbox sizes (28/20/16/14px)</td>
         <td>one 28px <span class="mono">CheckTarget</span></td></tr>
       <tr><td><span class="mono">BTN_ACCENT</span> + 3 inline accent buttons</td>

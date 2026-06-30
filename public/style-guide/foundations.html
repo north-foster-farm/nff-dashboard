@@ -63,7 +63,18 @@
         <td>Links, active state, primary buttons, committed work</td></tr>
       <tr><td><span class="mono">project</span> (slate-blue)</td>
         <td>Calm planned time</td>
-        <td>Schedule "project time" — distinct from green chore work</td></tr>
+        <td>Schedule "project time"; the <span class="mono">KindBadge</span>
+          <b>P</b></td></tr>
+      <tr><td><span class="mono">chore</span> (teal)</td>
+        <td>Required farm work — the block identity</td>
+        <td>Schedule chore blocks + the <span class="mono">KindBadge</span>
+          <b>C</b>. Recolored amber-glow → <b>teal</b> (slice D): amber was
+          overloaded and collided with the <span class="mono">warn</span> UI.
+          Chores don't borrow accent green either (F9)</td></tr>
+      <tr><td><span class="mono">event</span> (periwinkle)</td>
+        <td>A scheduled event on a day</td>
+        <td>The week-pane event marker + the <span class="mono">KindBadge</span>
+          <b>E</b> (F8)</td></tr>
     </tbody>
   </table>
 
@@ -103,9 +114,10 @@
       Three ramps are byte-identical duplicates of others
       (<span class="mono">frozen-lake</span>=sky-aqua,
       <span class="mono">honey-bronze</span>=amber-glow,
-      <span class="mono">grapefruit-pink</span>=hot-fuchsia) and two
-      (<span class="mono">emerald</span>, <span class="mono">periwinkle</span>)
-      have no semantic mapping yet. Prefer the named-and-mapped ramp; the
+      <span class="mono">grapefruit-pink</span>=hot-fuchsia). Two new ramps —
+      <span class="mono">mulberry</span> + <span class="mono">terracotta</span> —
+      are in the palette but not yet mapped to a role (added alongside the
+      chore→teal recolor, slice D). Prefer a named-and-mapped ramp; the
       duplicates should collapse.
     </p>
   </div>
@@ -296,7 +308,10 @@
     ["honey-bronze → cat-deliveries",["#fff4e5","#ffeacc","#ffd599","#ffbf66","#ffaa33","#ff9500","#cc7700","#995900","#663c00","#331e00","#241500"]],
     ["hot-fuchsia → cat-farm-visits / cat-processing",["#ffe5e8","#ffccd1","#ff99a3","#ff6675","#ff3347","#ff001a","#cc0014","#99000f","#66000a","#330005","#240004"]],
     ["slate-blue → project",["#f1f5fa","#e3eaf4","#c6d3e7","#a2b9d9","#7d9ec9","#5c83b8","#3f6da3","#345a86","#284465","#1a2c41","#12202f"]],
-    ["periwinkle (unmapped)",["#f3f2fc","#e8e6f9","#d0ccf2","#b6afe9","#9a93e0","#7a71cf","#5b54a8","#494388","#363263","#221f3f","#17152c"]]
+    ["periwinkle → event",["#f3f2fc","#e8e6f9","#d0ccf2","#b6afe9","#9a93e0","#7a71cf","#5b54a8","#494388","#363263","#221f3f","#17152c"]],
+    ["teal → chore",["#ecfbf8","#cdf3ec","#9ee6da","#66d2c1","#2bb6a2","#109e89","#0c7e6e","#0a6358","#0a4d45","#08332e","#04211d"]],
+    ["mulberry (unmapped)",["#fbeef6","#f6d9ec","#ecb3d6","#df86bb","#cf5b9f","#b83d85","#9c2e6c","#7d2556","#5f1c41","#40132c","#2a0c1d"]],
+    ["terracotta (unmapped)",["#fbeee9","#f6d8cc","#ecb39e","#df8a6b","#cf6742","#b84e2c","#9c3f23","#7d331f","#5f281a","#401a11","#2a110b"]]
   ];
 
   function swatch(varName, name, hexes) {
