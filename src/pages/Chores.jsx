@@ -3,7 +3,7 @@ import {
   Plus, Search, Copy, Pencil, Trash2, ChevronDown, ChevronRight, CloudOff,
   Sparkles,
 } from "lucide-react";
-import { T } from "../theme.js";
+import { CheckTarget, BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
 import {
   getAllChoreDefinitions, getChoresForDay, describeFrequency,
   displayStartTime, displayDeadline, displayDeadlineConcrete,
@@ -71,7 +71,9 @@ export default function Chores({ data }) {
 
   return (
     <div>
-      <h2 style={{ fontFamily: T.heading, fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em", margin: 0, marginBottom: 14 }}>Chores</h2>
+      <h2 className="font-heading text-[32px] font-bold tracking-[-0.02em] m-0 mb-3.5">
+        Chores
+      </h2>
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       {tab === "today" && <TodayTab data={data} currentUser={currentUser} onChangeUser={setCurrentUser} />}
       {tab === "all" && <AllChoresTab data={data} />}
@@ -84,28 +86,21 @@ export default function Chores({ data }) {
 
 function TabBar({ tabs, active, onChange }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 0, borderBottom: `1px solid ${T.border}`, marginBottom: 24 }}>
+    <div className="flex flex-wrap border-b border-line mb-6">
       {tabs.map(t => {
         const isActive = t.id === active;
         return (
           <button
             key={t.id}
             onClick={() => onChange(t.id)}
-            style={{
-              background: "transparent",
-              border: "none",
-              borderBottom: `2px solid ${isActive ? T.accent : "transparent"}`,
-              padding: "10px 18px",
-              cursor: "pointer",
-              color: isActive ? T.text : T.textDim,
-              fontFamily: "inherit",
-              fontSize: 11,
-              fontWeight: isActive ? 600 : 500,
-              textTransform: "uppercase",
-              letterSpacing: "0.12em",
-              marginBottom: -1,
-              transition: "color 140ms ease, border-color 140ms ease"
-            }}
+            className={
+              "bg-transparent border-0 border-b-2 px-[18px] py-2.5 cursor-pointer " +
+              "font-[inherit] text-[11px] uppercase tracking-[0.12em] -mb-px " +
+              "transition-colors duration-150 " +
+              (isActive
+                ? "border-accent text-fg font-semibold"
+                : "border-transparent text-dim font-medium")
+            }
           >
             {t.label}
           </button>
@@ -130,29 +125,16 @@ function JumpNav({ items, onJump }) {
   if (!items || items.length < 2) return null;
   return (
     <nav
-      className="no-scrollbar"
-      style={{
-        position: "sticky", top: 0, zIndex: 20,
-        display: "flex", alignItems: "center", gap: 6,
-        overflowX: "auto",
-        padding: "10px 0",
-        marginBottom: 10,
-        background: T.bg,
-        borderBottom: `1px solid ${T.border}`,
-      }}
+      className="no-scrollbar sticky top-0 z-20 flex items-center gap-1.5
+        overflow-x-auto py-2.5 mb-2.5 bg-bg border-b border-line"
     >
       {items.map(it => (
         <button
           key={it.id}
           onClick={() => onJump(it.id)}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            background: T.surface, border: `1px solid ${T.border}`,
-            color: T.textDim, fontFamily: "inherit", fontSize: 11,
-            fontWeight: 600, padding: "5px 10px", cursor: "pointer",
-            textTransform: "uppercase", letterSpacing: "0.12em",
-            whiteSpace: "nowrap", flexShrink: 0,
-          }}
+          className="inline-flex items-center gap-1.5 bg-surface border border-line
+            text-dim font-[inherit] text-[11px] font-semibold px-2.5 py-[5px]
+            cursor-pointer uppercase tracking-[0.12em] whitespace-nowrap shrink-0"
           title={`Jump to ${it.label}`}
         >
           {it.icon}
@@ -276,9 +258,9 @@ function TodayTab({ data, currentUser, onChangeUser }) {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
-        <div style={{ fontSize: 13, color: T.textDim }}>{dateLabel}</div>
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <div className="flex justify-between items-center flex-wrap gap-3 mb-[18px]">
+        <div className="text-[13px] text-dim">{dateLabel}</div>
+        <div className="flex gap-1.5 items-center">
           <UserPicker value={currentUser} onChange={onChangeUser} />
           <Toggle active={scope === "mine"} onClick={() => setScope("mine")}>Mine</Toggle>
           <Toggle active={scope === "all"} onClick={() => setScope("all")}>All</Toggle>
@@ -300,7 +282,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
           return {
             id: blockKey || "anytime",
             label: block ? block.name : "Anytime",
-            icon: <Icon size={12} style={{ flexShrink: 0 }} />,
+            icon: <Icon size={12} className="shrink-0" />,
           };
         })}
         onJump={(id) => {
@@ -363,32 +345,23 @@ function BlockGroup({
   return (
     <div
       id={domId}
-      style={{
-        marginBottom: collapsed ? 16 : 32,
-        scrollMarginTop: JUMP_NAV_OFFSET,
-      }}
+      className={collapsed ? "mb-4" : "mb-8"}
+      style={{ scrollMarginTop: JUMP_NAV_OFFSET }}
     >
       <button
         onClick={onToggleCollapsed}
         aria-expanded={!collapsed}
-        style={{
-          display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8,
-          width: "100%", background: "transparent", border: "none",
-          padding: 0, cursor: "pointer", fontFamily: "inherit",
-          textAlign: "left",
-        }}
+        className="flex items-baseline gap-3 mb-2 w-full bg-transparent border-0
+          p-0 cursor-pointer font-[inherit] text-left"
       >
         {collapsed
-          ? <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />
-          : <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />}
-        <div style={{
-          fontFamily: T.uiLabel, fontSize: 14, color: T.text,
-          textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700
-        }}>
+          ? <ChevronRight size={14} className="text-muted shrink-0 self-center" />
+          : <ChevronDown size={14} className="text-muted shrink-0 self-center" />}
+        <div className="font-ui text-[14px] text-fg uppercase tracking-[0.14em] font-bold">
           {headerLabel}
         </div>
-        {timeLabel && <div style={{ fontSize: 12, color: T.textDim }}>{timeLabel}</div>}
-        <div style={{ fontSize: 11, color: T.textMuted, marginLeft: "auto" }}>
+        {timeLabel && <div className="text-[12px] text-dim">{timeLabel}</div>}
+        <div className="text-[11px] text-muted ml-auto">
           {instances.length} {instances.length === 1 ? "chore" : "chores"}
         </div>
       </button>
@@ -396,7 +369,7 @@ function BlockGroup({
         // F136 — inset the place tree under the block header so the
         // block -> place -> chore hierarchy steps inward instead of all
         // sharing the left edge.
-        <div style={{ paddingLeft: 18 }}>
+        <div className="pl-[18px]">
           <TodayPlaceTree
             instances={instances}
             roots={roots}
@@ -489,7 +462,7 @@ function TodayPlaceTree({
   const keyOf = ({ inst, placeId }) => `${inst.choreId}|${placeId ?? "farm"}`;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <div className="flex flex-col gap-0.5">
       {/* hideEmpty: places with nothing to do today don't render a
           header at all — only the All chores tab keeps empty places
           visible. */}
@@ -563,33 +536,40 @@ function TodayObligationRow({
       : displayDeadlineConcrete(chore)
   );
 
+  // Completion writes through the shared CheckTarget -> outbox path, with a
+  // local pending guard (matches ChoreCheckRow) so a double-tap can't
+  // double-fire the toggle.
+  const [pending, setPending] = useState(false);
+  const onToggle = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await completions.toggle(chore.id, placeId, isDone);
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
-    <div style={{ background: T.surface, opacity: effects.skipped ? 0.6 : 1 }}>
-      <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button
-          onClick={() => completions.toggle(chore.id, placeId, isDone)}
-          aria-label={isDone ? "Mark incomplete" : "Mark complete"}
-          style={{
-            width: 20, height: 20, flexShrink: 0,
-            background: isDone ? T.accent : "transparent",
-            border: `1.5px solid ${isDone ? T.accent : T.border}`,
-            cursor: "pointer",
-            padding: 0,
-            transition: "background-color 120ms ease, border-color 120ms ease"
-          }}
+    <div className={"bg-surface" + (effects.skipped ? " opacity-60" : "")}>
+      <div className="px-3.5 py-2.5 flex items-center gap-3">
+        <CheckTarget
+          done={isDone}
+          queued={queued}
+          pending={pending}
+          onToggle={onToggle}
         />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontSize: 13, fontWeight: 500,
-            color: isDone ? T.textFaint : T.text,
-            textDecoration: isDone || effects.skipped ? "line-through" : "none",
-            display: "flex", alignItems: "center", gap: 8
-          }}>
+        <div className="flex-1 min-w-0">
+          <div className={
+            "text-[13px] font-medium flex items-center gap-2 " +
+            (isDone ? "text-faint" : "text-fg") +
+            (isDone || effects.skipped ? " line-through" : "")
+          }>
             <span>{effects.replaceText ?? chore.title}</span>
             {(chore.automationEmissionId || chore.processExpansionId) && (
               <Sparkles
                 size={12}
-                style={{ color: T.accentDeep, flexShrink: 0 }}
+                className="text-accent-deep shrink-0"
                 aria-label="Created by an automation"
               />
             )}
@@ -597,28 +577,24 @@ function TodayObligationRow({
             {queued && (
               <CloudOff
                 size={12}
-                style={{ color: T.warn, flexShrink: 0 }}
+                className="text-warn shrink-0"
                 aria-label="Saved on this device — not synced yet"
               />
             )}
           </div>
           {metaLine && (
-            <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>
-              {metaLine}
-            </div>
+            <div className="text-[12px] text-dim mt-0.5">{metaLine}</div>
           )}
           {effects.prependText && (
-            <div style={{
-              fontSize: 12, color: T.accentDeep, fontWeight: 500, marginTop: 2,
-            }}>
+            <div className="text-[12px] text-accent-deep font-medium mt-0.5">
               {effects.prependText}
             </div>
           )}
           {chore.description && (
-            <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{chore.description}</div>
+            <div className="text-[12px] text-dim mt-0.5">{chore.description}</div>
           )}
         </div>
-        <div style={{ fontSize: 12, color: T.textFaint, display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+        <div className="text-[12px] text-faint flex items-center gap-1.5 shrink-0">
           <ChoreRemainingPill chore={chore} blocks={blocks} />
           <span>{metaParts.join(" · ")}</span>
         </div>
@@ -637,11 +613,8 @@ function UserPicker({ value, onChange }) {
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      style={{
-        background: T.surface, border: `1px solid ${T.border}`, color: T.text,
-        fontFamily: "inherit", fontSize: 11, padding: "5px 8px", cursor: "pointer",
-        textTransform: "uppercase", letterSpacing: "0.12em"
-      }}
+      className="bg-surface border border-line text-fg font-[inherit] text-[11px]
+        px-2 py-[5px] cursor-pointer uppercase tracking-[0.12em]"
       title="Viewing as"
     >
       {USERS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -651,14 +624,16 @@ function UserPicker({ value, onChange }) {
 
 function Toggle({ active, onClick, children }) {
   return (
-    <button onClick={onClick} style={{
-      background: active ? T.surface : "transparent",
-      border: `1px solid ${active ? T.accent : T.border}`,
-      color: active ? T.text : T.textDim,
-      fontFamily: "inherit", fontSize: 11, fontWeight: 600,
-      padding: "5px 9px", cursor: "pointer",
-      textTransform: "uppercase", letterSpacing: "0.12em"
-    }}>{children}</button>
+    <button
+      onClick={onClick}
+      className={
+        "font-[inherit] text-[11px] font-semibold px-[9px] py-[5px] cursor-pointer " +
+        "uppercase tracking-[0.12em] border " +
+        (active
+          ? "bg-surface border-accent text-fg"
+          : "bg-transparent border-line text-dim")
+      }
+    >{children}</button>
   );
 }
 
@@ -779,7 +754,7 @@ function AllChoresTab({ data }) {
         <SearchInput value={query} onChange={setQuery} placeholder="Search chores" />
         <ControlsActions>
           <SortPicker value={sort} onChange={setSort} />
-          <button style={primaryButtonStyle} onClick={() => alert("Add new chore — not implemented in the prototype.")}>
+          <button className={BTN_ACCENT} onClick={() => alert("Add new chore — not implemented in the prototype.")}>
             <Plus size={14} /> Add chore
           </button>
         </ControlsActions>
@@ -1011,18 +986,18 @@ function SortPicker({ value, onChange }) {
     { id: "time", label: "Time of day" }
   ];
   return (
-    <div style={{ display: "flex", border: `1px solid ${T.border}`, background: T.surface }}>
+    <div className="flex border border-line bg-surface">
       {options.map(o => (
         <button
           key={o.id}
           onClick={() => onChange(o.id)}
-          style={{
-            background: value === o.id ? T.surfaceAlt : "transparent",
-            border: "none", color: value === o.id ? T.text : T.textDim,
-            fontFamily: "inherit", fontSize: 11, fontWeight: 600,
-            padding: "6px 10px", cursor: "pointer",
-            textTransform: "uppercase", letterSpacing: "0.12em"
-          }}
+          className={
+            "border-0 font-[inherit] text-[11px] font-semibold px-2.5 py-1.5 " +
+            "cursor-pointer uppercase tracking-[0.12em] " +
+            (value === o.id
+              ? "bg-surface-alt text-fg"
+              : "bg-transparent text-dim")
+          }
         >{o.label}</button>
       ))}
     </div>
@@ -1036,27 +1011,27 @@ function ChoreDefinitionRow({
   places, blocks, blockById, groups, speciesById, choreCtx,
 }) {
   return (
-    <div style={{ background: T.surface }}>
-      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+    <div className="bg-surface">
+      <div className="px-4 py-3 flex items-center gap-3">
         <button
           onClick={onToggle}
           aria-label={expanded ? "Collapse" : "Expand"}
-          style={{ background: "transparent", border: "none", cursor: "pointer", padding: 2, display: "flex", color: T.textMuted }}
+          className="bg-transparent border-0 cursor-pointer p-0.5 flex text-muted"
         >
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: T.text, display: "flex", alignItems: "baseline", gap: 8 }}>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] font-medium text-fg flex items-baseline gap-2">
             <span>{chore.title}</span>
             {(chore.automationEmissionId || chore.processExpansionId) && (
               <Sparkles
                 size={12}
-                style={{ color: T.accentDeep, flexShrink: 0, alignSelf: "center" }}
+                className="text-accent-deep shrink-0 self-center"
                 aria-label="Created by an automation"
               />
             )}
             {fannedCount > 1 && (
-              <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 400 }}>
+              <span className="text-[11px] text-muted font-normal">
                 1 of {fannedCount} places
               </span>
             )}
@@ -1075,9 +1050,7 @@ function ChoreDefinitionRow({
             message / edit / delete icons space + align uniformly
             instead of inheriting the row's wider gap between the
             first two. */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
-        }}>
+        <div className="flex items-center gap-1 shrink-0">
           <ChoreMessageButton
             choreId={chore.id}
             choreTitle={chore.title}
@@ -1128,12 +1101,7 @@ function SecondaryRow({
   };
 
   return (
-    <div
-      style={{
-        fontSize: 12, color: T.textDim, marginTop: 2,
-        display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
-      }}
-    >
+    <div className="text-[12px] text-dim mt-0.5 flex items-center flex-wrap gap-1.5">
       <Chip
         onDoubleClick={onStartEdit}
         title="Double-click to edit what this chore belongs to"
@@ -1176,15 +1144,8 @@ function Chip({ onDoubleClick, title, children }) {
       onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick?.(); }}
       onClick={(e) => e.stopPropagation()}
       title={title}
-      style={{
-        background: "transparent",
-        border: "none",
-        color: "inherit",
-        font: "inherit",
-        padding: 0,
-        cursor: "default",
-        textAlign: "left",
-      }}
+      className="bg-transparent border-0 text-inherit font-[inherit] p-0
+        cursor-default text-left"
     >
       {children}
     </button>
@@ -1192,7 +1153,7 @@ function Chip({ onDoubleClick, title, children }) {
 }
 
 function ChipSep() {
-  return <span aria-hidden style={{ color: T.textFaint, userSelect: "none" }}>·</span>;
+  return <span aria-hidden className="text-faint select-none">·</span>;
 }
 
 // ── Schedule (block) quick-edit ────────────────────────────────────
@@ -1214,7 +1175,7 @@ function ScheduleQuickEdit({ chore, blocks, onSave, onCancel }) {
       onBlur={() => submit(val)}
       onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
       onClick={(e) => e.stopPropagation()}
-      style={editChipInputStyle}
+      className={EDIT_CHIP_INPUT}
     >
       <option value="">— anytime —</option>
       {activeBlocks.map(b => (
@@ -1288,7 +1249,7 @@ function FrequencyQuickEdit({ chore, onSave, onCancel }) {
   };
 
   const dayButtons = (selected, onPick, multi) => (
-    <span style={{ display: "inline-flex", gap: 2 }}>
+    <span className="inline-flex gap-0.5">
       {FREQ_DOW.map((label, idx) => {
         const on = multi ? selected.includes(idx) : selected === idx;
         return (
@@ -1296,14 +1257,11 @@ function FrequencyQuickEdit({ chore, onSave, onCancel }) {
             key={idx}
             onClick={() => onPick(idx)}
             aria-pressed={on}
-            style={{
-              border: `1px solid ${T.border}`,
-              background: on ? T.rowActive : "transparent",
-              color: on ? T.text : T.textDim,
-              font: "inherit", fontSize: 11, fontWeight: 600,
-              padding: "2px 6px", cursor: "pointer",
-              textTransform: "uppercase", letterSpacing: "0.06em",
-            }}
+            className={
+              "border border-line font-[inherit] text-[11px] font-semibold " +
+              "px-1.5 py-0.5 cursor-pointer uppercase tracking-[0.06em] " +
+              (on ? "bg-row-active text-fg" : "bg-transparent text-dim")
+            }
             title={`${on ? "Remove" : "Add"} ${label}`}
           >
             {label}
@@ -1316,14 +1274,14 @@ function FrequencyQuickEdit({ chore, onSave, onCancel }) {
   return (
     <span
       onClick={(e) => e.stopPropagation()}
-      style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}
+      className="inline-flex items-center gap-1.5 flex-wrap"
     >
       <select
         autoFocus
         value={type}
         onChange={(e) => onTypeChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
-        style={editChipInputStyle}
+        className={EDIT_CHIP_INPUT}
       >
         <option value="daily">Every day</option>
         <option value="weekly">Weekly (days)</option>
@@ -1339,12 +1297,12 @@ function FrequencyQuickEdit({ chore, onSave, onCancel }) {
           <input
             type="number" min="1" value={n}
             onChange={(e) => changeN(e.target.value)}
-            style={{ ...editChipInputStyle, width: 48 }}
+            className={EDIT_CHIP_INPUT + " w-12"}
           />
           <select
             value={unit}
             onChange={(e) => changeUnit(e.target.value)}
-            style={editChipInputStyle}
+            className={EDIT_CHIP_INPUT}
           >
             <option value="days">days</option>
             <option value="weeks">weeks</option>
@@ -1355,17 +1313,15 @@ function FrequencyQuickEdit({ chore, onSave, onCancel }) {
         </>
       )}
       {type === "event" && (
-        <span style={{ color: T.textMuted, fontSize: 11 }}>
+        <span className="text-muted text-[11px]">
           materialized by the process engine
         </span>
       )}
 
       <button
         onClick={onCancel}
-        style={{
-          background: "transparent", border: "none", color: T.textMuted,
-          cursor: "pointer", font: "inherit", fontSize: 11, padding: "2px 6px",
-        }}
+        className="bg-transparent border-0 text-muted cursor-pointer
+          font-[inherit] text-[11px] px-1.5 py-0.5"
         title="Done editing"
       >
         Done
@@ -1374,22 +1330,19 @@ function FrequencyQuickEdit({ chore, onSave, onCancel }) {
   );
 }
 
-const editChipInputStyle = {
-  background: T.surface,
-  border: `1px solid ${T.border}`,
-  color: T.text,
-  fontSize: 12,
-  padding: "2px 6px",
-  fontFamily: "inherit",
-};
+const EDIT_CHIP_INPUT =
+  "bg-surface border border-line text-fg text-[12px] px-1.5 py-0.5 font-[inherit]";
 
 function ExpandedChoreDetail({ chore, blockById }) {
   return (
-    <div style={{ padding: "8px 16px 16px 42px", borderTop: `1px solid ${T.border}`, background: T.surfaceAlt }}>
+    <div className="pt-2 pb-4 px-4 pl-[42px] border-t border-line bg-surface-alt">
       {chore.description && (
-        <div style={{ fontSize: 12, color: T.textDim, marginBottom: 10, lineHeight: 1.6 }}>{chore.description}</div>
+        <div className="text-[12px] text-dim mb-2.5 leading-relaxed">{chore.description}</div>
       )}
-      <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, margin: 0 }}>
+      <dl
+        className="grid gap-2.5 m-0"
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}
+      >
         <Field label="Frequency" value={describeFrequency(chore)} />
         <Field
           label="Block"
@@ -1400,7 +1353,7 @@ function ExpandedChoreDetail({ chore, blockById }) {
         <Field label="Deadline" value={displayDeadline(chore)} />
         <Field label="Assignment" value={describeAssignment(chore.assignment)} />
       </dl>
-      <div style={{ marginTop: 12, fontSize: 11, color: T.textFaint, fontStyle: "italic" }}>
+      <div className="mt-3 text-[11px] text-faint italic">
         Activity for this chore will appear here once completion logging is wired up.
       </div>
     </div>
@@ -1423,8 +1376,8 @@ function describeAssignment(a) {
 function Field({ label, value }) {
   return (
     <div>
-      <dt style={{ fontSize: 9, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 3 }}>{label}</dt>
-      <dd style={{ fontSize: 12, color: T.text, margin: 0 }}>{value}</dd>
+      <dt className="text-[9px] text-faint uppercase tracking-[0.12em] mb-[3px]">{label}</dt>
+      <dd className="text-[12px] text-fg m-0">{value}</dd>
     </div>
   );
 }
@@ -1506,14 +1459,8 @@ function ChoreInlineEditor({
   };
 
   return (
-    <div style={{
-      padding: "12px 16px 16px 42px",
-      borderTop: `1px solid ${T.border}`,
-      background: T.surfaceAlt,
-      display: "flex",
-      flexDirection: "column",
-      gap: 12,
-    }}>
+    <div className="pt-3 pb-4 px-4 pl-[42px] border-t border-line bg-surface-alt
+      flex flex-col gap-3">
       <ChoreFieldsEditor
         value={draft}
         onChange={patch}
@@ -1545,31 +1492,13 @@ function ChoreInlineEditor({
         <div className="text-[11px] text-warn">{errorMsg}</div>
       )}
 
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button
-          onClick={onCancel}
-          disabled={saving}
-          style={{
-            background: "transparent",
-            border: `1px solid ${T.border}`,
-            color: T.textDim,
-            padding: "6px 12px",
-            fontSize: 11,
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            cursor: saving ? "default" : "pointer",
-          }}
-        >Cancel</button>
-        <button
-          onClick={submit}
-          disabled={saving}
-          style={{
-            ...primaryButtonStyle,
-            opacity: saving ? 0.5 : 1,
-            cursor: saving ? "default" : "pointer",
-          }}
-        >{saving ? "Saving…" : "Save"}</button>
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} disabled={saving} className={BTN_GHOST}>
+          Cancel
+        </button>
+        <button onClick={submit} disabled={saving} className={BTN_ACCENT}>
+          {saving ? "Saving…" : "Save"}
+        </button>
       </div>
     </div>
   );
@@ -1580,14 +1509,11 @@ function IconAction({ title, onClick, active, children }) {
     <button
       onClick={onClick}
       title={title}
-      style={{
-        background: "transparent", border: "none",
-        color: active ? T.accent : T.textMuted,
-        padding: 4, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "color 120ms ease"
-      }}
-      onMouseEnter={e => { if (!active) e.currentTarget.style.color = T.text; }}
-      onMouseLeave={e => { if (!active) e.currentTarget.style.color = T.textMuted; }}
+      className={
+        "bg-transparent border-0 p-1 cursor-pointer flex items-center " +
+        "justify-center transition-colors duration-100 " +
+        (active ? "text-accent" : "text-muted hover:text-fg")
+      }
     >{children}</button>
   );
 }
@@ -1685,10 +1611,7 @@ function renderChoreActivityTime(logTime) {
 // unit instead of being individually squeezed.
 function ControlsBar({ children }) {
   return (
-    <div style={{
-      display: "flex", gap: 12, alignItems: "center",
-      justifyContent: "space-between", flexWrap: "wrap", marginBottom: 18
-    }}>
+    <div className="flex gap-3 items-center justify-between flex-wrap mb-[18px]">
       {children}
     </div>
   );
@@ -1696,7 +1619,7 @@ function ControlsBar({ children }) {
 
 function ControlsActions({ children }) {
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+    <div className="flex gap-2 items-center flex-wrap">
       {children}
     </div>
   );
@@ -1704,18 +1627,17 @@ function ControlsActions({ children }) {
 
 function SearchInput({ value, onChange, placeholder }) {
   return (
-    <div style={{ position: "relative", flex: "0 1 360px", minWidth: 220 }}>
-      <Search size={13} color={T.textMuted} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+    <div className="relative basis-[360px] grow-0 shrink min-w-[220px]">
+      <Search
+        size={13}
+        className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted"
+      />
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        style={{
-          width: "100%",
-          background: T.surface, border: `1px solid ${T.border}`, color: T.text,
-          fontFamily: "inherit", fontSize: 12,
-          padding: "7px 10px 7px 30px", outline: "none"
-        }}
+        className="w-full bg-surface border border-line text-fg font-[inherit]
+          text-[12px] py-[7px] pr-2.5 pl-[30px] outline-none focus:border-accent"
       />
     </div>
   );
@@ -1759,13 +1681,12 @@ function splitIntoColumns(items, cols) {
 function ColumnList({ items, cols, renderItem, keyFor }) {
   const columns = splitIntoColumns(items, cols);
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-      columnGap: 1, background: T.border
-    }}>
+    <div
+      className="grid gap-px bg-line"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
       {columns.map((colItems, i) => (
-        <div key={i} style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
+        <div key={i} className="flex flex-col gap-px bg-line">
           {colItems.map(item => (
             <div key={keyFor(item)}>{renderItem(item)}</div>
           ))}
@@ -1779,31 +1700,20 @@ function FilterButton({ children }) {
   return (
     <button
       onClick={() => alert(`${children} filter — not implemented in the prototype.`)}
-      style={{
-        background: "transparent", border: `1px solid ${T.border}`,
-        color: T.textDim, fontFamily: "inherit", fontSize: 11, fontWeight: 600,
-        padding: "6px 10px", cursor: "pointer",
-        textTransform: "uppercase", letterSpacing: "0.12em"
-      }}
+      className={BTN_GHOST}
     >{children}</button>
   );
 }
 
 // ─── Shared ──────────────────────────────────────────────────────────────────
 
+// Flush empty/loading notice (DESIGN principle 1 — a hairline border on the
+// page bg, not a raised surface card).
 function EmptyCard({ title, children }) {
   return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}`, padding: "32px 24px", textAlign: "center" }}>
-      <div style={{ fontSize: 13, color: T.textMuted, marginBottom: 6, fontWeight: 500 }}>{title}</div>
-      <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.6 }}>{children}</div>
+    <div className="border border-line py-8 px-6 text-center">
+      <div className="text-[13px] text-muted mb-1.5 font-medium">{title}</div>
+      <div className="text-[11px] text-faint leading-relaxed">{children}</div>
     </div>
   );
 }
-
-const primaryButtonStyle = {
-  display: "inline-flex", alignItems: "center", gap: 6,
-  background: T.accent, border: `1px solid ${T.accent}`, color: T.onAccent,
-  fontFamily: "inherit", fontSize: 11, fontWeight: 600,
-  padding: "6px 12px", cursor: "pointer",
-  textTransform: "uppercase", letterSpacing: "0.12em"
-};

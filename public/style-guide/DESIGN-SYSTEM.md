@@ -246,10 +246,14 @@ Each: STATUS · what · use/not · canonical source.
 
 Collapse, don't re-litigate: raised Card/StatTile/PlaceSection →
 flush Pane (Card done; WeekList folded into WeekStrip, not Pane); 4 checkbox
-sizes → one 28px CheckTarget; BTN_* + 3 inline →
+sizes → one 28px CheckTarget (Chores Today now adopts it — the page's last
+hand-rolled 20px box is gone); BTN_* + 3 inline →
 one Button; 15 overlays → one Sheet/Modal; 3 result-row impls → one ResultRow;
 StatusPill + other pill bases → one base; 2 now-markers → one NowRule;
-2 event-bars → one EventRow; inline `T.*` idiom (Chores.jsx) → token classes;
+2 event-bars → one EventRow; inline `T.*` idiom (Chores.jsx) → token classes
+(✓ DONE — the whole page is on token Tailwind classes + the shared
+CheckTarget / BTN_ACCENT / BTN_GHOST; `ChoreFieldsEditor`'s `editInputStyle`
+is the remaining inline-style holdout, a separate follow-up);
 delete the `/rethinker` scratch after promotion.
 
 Migration order (cheapest-first): Step 1 — Card→Pane flush flip, ChoreCheckRow
