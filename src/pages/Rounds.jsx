@@ -347,7 +347,7 @@ function ColdOpen({
                     onClick={() => onStartBlock(b.id)}
                     className={
                       "flex items-center gap-3 w-full px-3 py-2.5 " +
-                      "bg-surface border border-line cursor-pointer " +
+                      "border border-line cursor-pointer " +
                       "text-left hover:border-fg transition-colors duration-100"
                     }
                   >
@@ -407,7 +407,7 @@ function RecentRuns({ runs, blocks, onResumeRun, onDeleteRun }) {
           return (
             <li
               key={r.id}
-              className="flex items-center gap-2 px-3 py-2 bg-surface border border-line"
+              className="flex items-center gap-2 px-3 py-2 border border-line"
             >
               <span className="text-[12px] font-semibold text-fg flex-1">
                 {b?.name ?? "Block"}
@@ -1113,7 +1113,7 @@ function AllPlacesView({
 }) {
   if (obligations.length === 0) {
     return (
-      <div className="bg-surface border border-line py-10 px-6 text-center max-w-[520px] mx-auto">
+      <div className="border border-line py-10 px-6 text-center max-w-[520px] mx-auto">
         <div className="text-[13px] text-muted font-medium mb-1">
           No chores in this block
         </div>
@@ -1159,7 +1159,7 @@ function PlaceSection({
     completions.isDone(o.chore.id, o.placeId)
   ).length;
   return (
-    <section className="bg-surface border border-line">
+    <section className="border border-line">
       {/* items-baseline: the name (14px) and count (10px) align on
           their text baselines instead of box centers, so the count
           doesn't read as sunken next to the place name. */}
@@ -1220,7 +1220,7 @@ function KindView({
   const tags = [...obligationsByKind.keys()].sort();
   if (tags.length === 0) {
     return (
-      <div className="bg-surface border border-line py-10 px-6 text-center max-w-[520px] mx-auto">
+      <div className="border border-line py-10 px-6 text-center max-w-[520px] mx-auto">
         <div className="text-[13px] text-muted font-medium mb-1">
           No chores in this block
         </div>
@@ -1385,7 +1385,7 @@ function SelectedPlaceView({
       )}
 
       {grouped?.anywhere?.length > 0 && selectedChildId === null && (
-        <section className="bg-surface border border-line">
+        <section className="border border-line">
           <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
             <span className="text-[12px] font-semibold text-fg uppercase tracking-[0.12em]">
               Anywhere in {place?.name?.toLowerCase()}
@@ -1424,7 +1424,7 @@ function SelectedPlaceView({
             completions.isDone(o.chore.id, o.placeId)
           ).length;
           return (
-            <section key={c.id} className="bg-surface border border-line">
+            <section key={c.id} className="border border-line">
               <header className="flex items-center gap-3 px-4 py-2.5 border-b border-line">
                 <span className="text-[14px] font-semibold text-fg">{c.name}</span>
                 <span className="ml-auto text-[10px] uppercase tracking-[0.12em] text-muted font-semibold">
