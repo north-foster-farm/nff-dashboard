@@ -8,6 +8,7 @@ import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useSites } from "../lib/data/useSites.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import ChoreFieldsEditor from "../components/ChoreFieldsEditor.jsx";
+import { Pane, StatusPill, BTN_ACCENT } from "../components/ui.jsx";
 import { describeOffset } from "../lib/processes.js";
 import { MODIFIER_ACTION_LABEL } from "../lib/modifiers.js";
 import { formatDate } from "../lib/dates.js";
@@ -50,7 +51,7 @@ export default function Processes({ data }) {
             }
           }}
           disabled={creating}
-          className="shrink-0 inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50"
+          className={"shrink-0 " + BTN_ACCENT}
         >
           <Plus size={13} /> New process
         </button>
@@ -59,7 +60,7 @@ export default function Processes({ data }) {
       {proc.loading ? (
         <div className="text-[12px] text-dim italic">Loading…</div>
       ) : proc.processes.length === 0 ? (
-        <div className="bg-surface border border-line px-6 py-10 text-center">
+        <div className="border border-line px-6 py-10 text-center">
           <Workflow size={20} className="text-faint mx-auto mb-3" />
           <div className="text-[13px] text-muted leading-relaxed max-w-[420px] mx-auto">
             No processes yet. Create one and tie it to an event kind —
@@ -96,7 +97,7 @@ function ProcessCard({ process, kinds, proc, open, onToggle }) {
     .map(id => kinds.find(k => k.id === id)?.label ?? id);
 
   return (
-    <section className="bg-surface border border-line">
+    <section className="border border-line">
       {/* summary row */}
       <button
         onClick={onToggle}
@@ -123,16 +124,9 @@ function ProcessCard({ process, kinds, proc, open, onToggle }) {
             )}
           </div>
         </div>
-        <span
-          className={
-            "shrink-0 text-[10px] uppercase tracking-[0.12em] font-semibold border px-2 py-0.5 " +
-            (process.isActive
-              ? "text-accent border-accent"
-              : "text-dim border-line")
-          }
-        >
+        <StatusPill tone={process.isActive ? "live" : "muted"}>
           {process.isActive ? "Active" : "Off"}
-        </span>
+        </StatusPill>
       </button>
 
       {/* editor */}
@@ -455,10 +449,7 @@ function ExpansionLog({ proc }) {
   );
 
   return (
-    <section className="bg-surface border border-line p-4">
-      <div className="font-ui text-[11px] uppercase tracking-[0.14em] font-bold text-fg mb-3">
-        Expansions
-      </div>
+    <Pane title="Expansions">
       <ol className="m-0 p-0 list-none flex flex-col gap-1.5">
         {proc.expansions.map(exp => (
           <li
@@ -553,6 +544,6 @@ function ExpansionLog({ proc }) {
           </li>
         ))}
       </ol>
-    </section>
+    </Pane>
   );
 }
