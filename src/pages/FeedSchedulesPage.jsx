@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { useFeedSchedules } from "../lib/data/useFeedSchedules.js";
 import { describeConsumption } from "../lib/feedConsumption.js";
+import { BTN_ACCENT } from "../components/ui.jsx";
 
 // The feed schedule editor (Batch 25.2) — replaces the "Manage feed"
 // coming-soon placeholder. Every batch of animals is on a feed
@@ -62,7 +63,7 @@ export default function FeedSchedulesPage({ data }) {
             )}
 
             {schedules.length === 0 && creatingFor !== sp.id ? (
-              <div className="bg-surface border border-line px-5 py-6 text-center">
+              <div className="border border-line px-5 py-6 text-center">
                 <Wheat size={18} className="text-faint mx-auto mb-2" />
                 <div className="text-[12px] text-muted">
                   No feed schedule for {sp.name.toLowerCase()} yet.
@@ -91,7 +92,7 @@ function ScheduleCard({ schedule, species, feeds, db }) {
   const [addingStage, setAddingStage] = useState(false);
 
   return (
-    <section className="bg-surface border border-line">
+    <section className="border border-line">
       <ScheduleHeader schedule={schedule} species={species} db={db} />
 
       {/* stages */}
@@ -485,7 +486,7 @@ function StageEditor({ stage = null, feeds, onSave, onCancel, onDelete }) {
         <button
           onClick={submit}
           disabled={pending || !valid}
-          className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className={BTN_ACCENT + " disabled:cursor-not-allowed"}
         >
           <Check size={12} /> {pending ? "Saving…" : "Save stage"}
         </button>
@@ -538,7 +539,7 @@ function NewScheduleForm({ species, db, onDone }) {
   };
 
   return (
-    <div className="bg-surface border border-line px-4 py-4 flex items-end gap-4 flex-wrap">
+    <div className="border border-line px-4 py-4 flex items-end gap-4 flex-wrap">
       <Field label="Schedule name">
         <input
           autoFocus
@@ -560,7 +561,7 @@ function NewScheduleForm({ species, db, onDone }) {
         <button
           onClick={submit}
           disabled={pending || !name.trim()}
-          className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50"
+          className={BTN_ACCENT}
         >
           {pending ? "Creating…" : "Create"}
         </button>

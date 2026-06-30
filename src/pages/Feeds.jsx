@@ -17,6 +17,7 @@ import {
 } from "../lib/feedConsumption.js";
 import { formatDate } from "../lib/dates.js";
 import AutomationsPanel from "../components/AutomationsPanel.jsx";
+import { BTN_ACCENT } from "../components/ui.jsx";
 
 // The Feed page (Batch 25.1) — group-cards layout.
 //
@@ -120,7 +121,7 @@ export default function Feeds({ data }) {
           ))}
 
           {db.feeds.length === 0 && (
-            <div className="bg-surface border border-line px-6 py-10 text-center">
+            <div className="border border-line px-6 py-10 text-center">
               <div className="text-[13px] text-muted">
                 No feed types recorded yet.
               </div>
@@ -161,7 +162,7 @@ function ConsolidationBanner({ rows }) {
   const rest = rows.filter(r => !urgent.includes(r));
 
   return (
-    <section className="border border-warn bg-surface">
+    <section className="border border-warn">
       <header className="flex items-center gap-2.5 px-4 py-3 border-b border-warn/40">
         <Truck size={16} className="text-warn shrink-0" />
         <div className="min-w-0">
@@ -300,7 +301,7 @@ function FeedCard({ feed, db, ctx, suppliers, dragHandleProps }) {
   return (
     <div
       className={
-        "bg-surface border group " +
+        "border group " +
         (needsOrder ? "border-warn" : "border-line")
       }
     >
@@ -351,7 +352,7 @@ function FeedCard({ feed, db, ctx, suppliers, dragHandleProps }) {
         <div className="hidden sm:block text-right">
           <button
             onClick={() => setRecording(r => !r)}
-            className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
+            className={BTN_ACCENT}
           >
             <PackagePlus size={13} /> Record order
           </button>
@@ -383,7 +384,7 @@ function FeedCard({ feed, db, ctx, suppliers, dragHandleProps }) {
         <div className="sm:hidden mt-1">
           <button
             onClick={() => setRecording(r => !r)}
-            className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
+            className={BTN_ACCENT}
           >
             <PackagePlus size={13} /> Record order
           </button>
@@ -717,7 +718,7 @@ function RecordOrderForm({ feed, db, suppliers, onDone }) {
         <button
           onClick={submit}
           disabled={pending || !Number(amount)}
-          className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`${BTN_ACCENT} disabled:cursor-not-allowed`}
         >
           {pending ? "Recording…" : "Record order"}
         </button>

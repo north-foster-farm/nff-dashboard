@@ -8,7 +8,9 @@ import { useInventory } from "../lib/data/useInventory.js";
 import PricingGrid from "../components/PricingGrid.jsx";
 import SalesTab from "../components/SalesTab.jsx";
 import SellTab from "../components/SellTab.jsx";
-import { LABEL_CLS } from "../components/ui.jsx";
+import {
+  LABEL_CLS, Pane, StatusPill, BTN_ACCENT, BTN_GHOST,
+} from "../components/ui.jsx";
 import {
   CONTENT_SLOTS, bundleCostFloor, currentPriceMap, fmtCents,
   groupProductsByAnimal, skuCostFloor, skuKey,
@@ -103,7 +105,7 @@ export default function Products({ data, initialTab = "catalog" }) {
             </button>
             <button
               onClick={() => setCreating(c => !c)}
-              className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 mb-2 cursor-pointer"
+              className={"mb-2 " + BTN_ACCENT}
             >
               <Plus size={13} /> New product
             </button>
@@ -144,7 +146,7 @@ export default function Products({ data, initialTab = "catalog" }) {
           )}
 
           {visible.length === 0 ? (
-            <div className="bg-surface border border-line px-6 py-10 text-center">
+            <div className="border border-line px-6 py-10 text-center">
               <Tag size={20} className="text-faint mx-auto mb-3" />
               <div className="text-[13px] text-muted">
                 {showArchived
@@ -247,7 +249,7 @@ function ProductCard({
     .find(text => text && text.trim());
 
   return (
-    <section className="bg-surface border border-line">
+    <section className="border border-line">
       <button
         onClick={onToggle}
         className="w-full flex items-center gap-3 px-4 py-3 bg-transparent border-0 cursor-pointer font-[inherit] text-left"
@@ -270,14 +272,10 @@ function ProductCard({
               {p.name}
             </span>
             {p.soldOut && (
-              <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-warn border border-warn px-1.5 py-0.5">
-                Sold out
-              </span>
+              <StatusPill tone="warn">Sold out</StatusPill>
             )}
             {p.isBundle && (
-              <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-dim border border-line px-1.5 py-0.5">
-                Bundle
-              </span>
+              <StatusPill tone="muted">Bundle</StatusPill>
             )}
           </div>
           <div className="text-[11px] text-dim mt-0.5 truncate">
@@ -323,14 +321,8 @@ const inputCls =
   "bg-bg border border-line text-fg text-[13px] px-2.5 py-2 outline-none " +
   "focus:border-accent font-[inherit] w-full";
 const labelCls = LABEL_CLS;
-const btnGhostCls =
-  "bg-transparent border border-line text-dim font-[inherit] text-[11px] " +
-  "font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer " +
-  "hover:text-fg";
-const btnAccentCls =
-  "bg-accent text-on-accent border border-accent font-[inherit] " +
-  "text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 " +
-  "cursor-pointer disabled:opacity-50";
+const btnGhostCls = BTN_GHOST;
+const btnAccentCls = BTN_ACCENT;
 
 function ProductEditor({ product: p, db, species, priceMap, perBird, cutCtx }) {
   const [name, setName] = useState(p.name ?? "");
@@ -832,7 +824,7 @@ function NewProductForm({ species, onSave, onCancel }) {
   };
 
   return (
-    <div className="bg-surface border border-line p-4 flex flex-col gap-3">
+    <div className="border border-line p-4 flex flex-col gap-3">
       <div className="text-[10px] text-dim uppercase tracking-[0.12em]">
         New product
       </div>
@@ -884,10 +876,7 @@ function NewProductForm({ species, onSave, onCancel }) {
 
 function CostFloorReference({ perBird, cutCtx }) {
   return (
-    <section className="bg-surface border border-line px-5 py-4">
-      <div className="text-[10px] text-dim uppercase tracking-[0.12em] mb-2">
-        Cost floor reference — broilers
-      </div>
+    <Pane title="Cost floor reference — broilers">
       <div className="flex items-baseline justify-between flex-wrap gap-2">
         <div className="text-[11px] text-dim">
           Known cost per bird (whole, batch of {perBird.batchSize})
@@ -914,6 +903,6 @@ function CostFloorReference({ perBird, cutCtx }) {
           {perBird.missing.join(", ")} — floors shown are partial.
         </div>
       )}
-    </section>
+    </Pane>
   );
 }

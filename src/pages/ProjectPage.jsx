@@ -22,6 +22,7 @@ import Markdown from "../components/Markdown.jsx";
 import {
   AssigneeChips, AttachmentsBlock, EditableText,
 } from "../components/ProjectBits.jsx";
+import { BTN_ACCENT } from "../components/ui.jsx";
 
 // The project detail page (Batch 22) — one project's full hierarchy:
 //
@@ -53,7 +54,7 @@ export default function ProjectPage({ projectId, data, onOpenEvent }) {
     return (
       <div className="max-w-[860px]">
         <BackToProjects />
-        <div className="bg-surface border border-line px-6 py-10 text-center mt-4">
+        <div className="border border-line px-6 py-10 text-center mt-4">
           <div className="text-[13px] text-muted">
             This project doesn't exist (it may have been deleted).
           </div>
@@ -137,7 +138,7 @@ export default function ProjectPage({ projectId, data, onOpenEvent }) {
       </div>
 
       {/* ── progress + dates ── */}
-      <section className="bg-surface border border-line p-4 flex flex-col gap-3">
+      <section className="border border-line p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="font-heading text-[20px] font-semibold">
             {project.progress
@@ -168,7 +169,7 @@ export default function ProjectPage({ projectId, data, onOpenEvent }) {
       </section>
 
       {/* ── markdown body ── */}
-      <section className="bg-surface border border-line p-4">
+      <section className="border border-line p-4">
         <SectionLabel
           icon={Pencil}
           title="Notes"
@@ -221,7 +222,7 @@ export default function ProjectPage({ projectId, data, onOpenEvent }) {
       />
 
       {/* ── project-level files ── */}
-      <section className="bg-surface border border-line p-4">
+      <section className="border border-line p-4">
         <SectionLabel icon={Paperclip} title="Files" />
         <AttachmentsBlock
           attachments={proj.attachments}
@@ -366,7 +367,7 @@ function BodyEditor({ initial, onSave, onCancel }) {
             finally { setPending(false); }
           }}
           disabled={pending}
-          className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50"
+          className={BTN_ACCENT}
         >
           {pending ? "Saving…" : "Save"}
         </button>
@@ -410,7 +411,7 @@ function PhaseSection({ phase, phaseCount, proj, onOpenStep }) {
   };
 
   return (
-    <section className="bg-surface border border-line">
+    <section className="border border-line">
       {/* phase header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-line">
         {/* Milestone toggle — only meaningful when milestones drive the
@@ -629,7 +630,7 @@ function AddRow({ label, onAdd, placeholder, inline = false }) {
       />
       <button
         onClick={submit}
-        className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
+        className={BTN_ACCENT}
       >
         Add
       </button>
@@ -755,7 +756,7 @@ function LinksSection({ proj, data, onOpenEvent }) {
           <button
             onClick={() => add().catch(() => {})}
             disabled={!targetId}
-            className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50"
+            className={BTN_ACCENT}
           >
             Link
           </button>

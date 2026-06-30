@@ -13,6 +13,7 @@ import {
   DayView, WeekView, MonthView, AgendaView,
 } from "../components/CalendarViews.jsx";
 import DateTyperPopover from "../components/DateTyperPopover.jsx";
+import { BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
 import { usePersistedState } from "../lib/router.js";
 
 // Schedule (Batch 14.1). Single page hosting the four-up Day / Week
@@ -209,7 +210,7 @@ export default function Calendar({
     <div className="flex flex-col gap-4">
       {/* Place-timeline context chip (Batch 27.6). */}
       {forPlace && (
-        <div className="flex items-center gap-2 text-[11px] text-dim bg-surface border border-line px-3 py-2 self-start">
+        <div className="flex items-center gap-2 text-[11px] text-dim border border-line px-3 py-2 self-start">
           <MapPin size={12} className="shrink-0 text-accent-deep" />
           <span>
             Showing events for the batches placed at{" "}
@@ -318,7 +319,7 @@ function Controls({
         </div>
         <button
           onClick={onNewEvent}
-          className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
+          className={BTN_ACCENT}
         >
           <Plus size={13} className="shrink-0" /> New event
         </button>
@@ -461,7 +462,7 @@ function FilterChips({
     <div className="flex flex-col gap-2">
       <button
         onClick={() => setOpen(o => !o)}
-        className="self-start inline-flex items-center gap-1.5 bg-transparent border border-line text-dim hover:text-fg font-[inherit] text-[10px] font-semibold uppercase tracking-[0.12em] px-2.5 py-1.5 cursor-pointer"
+        className={"self-start inline-flex items-center gap-1.5 " + BTN_GHOST}
         aria-expanded={open}
       >
         <ChevronRight
@@ -480,7 +481,7 @@ function FilterChips({
       </button>
 
       {open && (
-        <div className="bg-surface border border-line p-3 flex flex-col gap-1">
+        <div className="border border-line p-3 flex flex-col gap-1">
           <button
             onClick={() => setAll(!allOn)}
             className="self-start bg-transparent border-0 text-dim hover:text-fg font-[inherit] text-[10px] font-semibold uppercase tracking-[0.12em] p-0 pb-1.5 cursor-pointer"

@@ -13,7 +13,7 @@ export default function Activity() {
 
   if (loading) {
     return (
-      <div className="bg-surface border border-line py-9 px-6 text-center">
+      <div className="border border-line py-9 px-6 text-center">
         <div className="text-xs text-muted uppercase tracking-[0.18em]">
           Loading activity…
         </div>
@@ -23,7 +23,7 @@ export default function Activity() {
 
   if (entries.length === 0) {
     return (
-      <div className="bg-surface border border-line py-9 px-6 text-center">
+      <div className="border border-line py-9 px-6 text-center">
         <div className="text-[13px] text-muted mb-2 font-medium">No activity logged yet</div>
         <div className="text-[12px] text-faint leading-relaxed max-w-[520px] mx-auto">
           Once chores start being checked off, every completion (and the person who did it) will land here, alongside other log entries — temperature readings, weight logs, sales, and more.

@@ -117,7 +117,7 @@ function Tab({ active, onClick, label }) {
 
 function EmptyState({ children }) {
   return (
-    <div className="bg-surface border border-line px-6 py-10 text-center">
+    <div className="border border-line px-6 py-10 text-center">
       <div className="text-[13px] text-muted leading-relaxed max-w-[420px] mx-auto">
         {children}
       </div>
@@ -245,7 +245,7 @@ function ItemRow({
   return (
     <div
       className={
-        "bg-surface border border-line px-4 py-3 flex items-start gap-3 " +
+        "border border-line px-4 py-3 flex items-start gap-3 " +
         (read ? "" : "border-l-2 border-l-accent")
       }
     >

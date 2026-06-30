@@ -64,7 +64,7 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
 
   if (!series) {
     return (
-      <div className="bg-surface border border-line p-8 text-center">
+      <div className="border border-line p-8 text-center">
         <div className="text-[12px] text-faint uppercase tracking-[0.16em] mb-2">
           Processing day
         </div>
@@ -284,7 +284,7 @@ function BatchAssignSection({ seriesId, data }) {
 
 function Section({ title, subtitle, children }) {
   return (
-    <section className="bg-surface border border-line p-4 flex flex-col gap-3">
+    <section className="border border-line p-4 flex flex-col gap-3">
       <header>
         <div className="font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-bold">
           {title}

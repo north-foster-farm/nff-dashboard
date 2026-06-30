@@ -20,6 +20,7 @@ import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 import AutomationsPanel from "../components/AutomationsPanel.jsx";
+import { BTN_ACCENT } from "../components/ui.jsx";
 
 // One species' record page (Batch 25.2 rewrite — Tailwind, placements,
 // real activity log). Five tabs:
@@ -152,7 +153,7 @@ function GroupsTab({ species }) {
     <div className="flex flex-col gap-4">
       <AddBatchForm species={species} />
       {species.groups.length === 0 ? (
-        <div className="bg-surface border border-line px-6 py-10 text-center">
+        <div className="border border-line px-6 py-10 text-center">
           <div className="text-[13px] text-muted">
             No groups recorded yet.
           </div>
@@ -250,7 +251,7 @@ function AddBatchForm({ species }) {
       <div>
         <button
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3.5 py-1.5 cursor-pointer"
+          className={BTN_ACCENT}
         >
           <Plus size={13} /> Add {noun}
         </button>
@@ -259,7 +260,7 @@ function AddBatchForm({ species }) {
   }
 
   return (
-    <div className="bg-surface border border-line px-4 py-4">
+    <div className="border border-line px-4 py-4">
       <div className="flex items-end gap-4 flex-wrap">
         <Field label="Name">
           <input
@@ -295,7 +296,7 @@ function AddBatchForm({ species }) {
           <button
             onClick={submit}
             disabled={saving || !label.trim()}
-            className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3.5 py-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className={BTN_ACCENT + " disabled:cursor-not-allowed"}
           >
             {saving ? "Adding…" : "Add"}
           </button>
@@ -378,7 +379,7 @@ function GroupCard({
           open();
         }
       }}
-      className="bg-surface border border-line px-4 py-3.5 cursor-pointer hover:border-accent transition-colors"
+      className="border border-line px-4 py-3.5 cursor-pointer hover:border-accent transition-colors"
     >
       <div className="flex items-baseline justify-between gap-2 mb-2.5">
         <div className="min-w-0">
@@ -471,7 +472,7 @@ function FeedScheduleTab({ species, schedules, feeds }) {
       </div>
 
       {schedules.length === 0 ? (
-        <div className="bg-surface border border-line px-6 py-8 text-center">
+        <div className="border border-line px-6 py-8 text-center">
           <div className="text-[12px] text-muted">
             No feed schedule defined for {species.name.toLowerCase()} —
             create one under Animals → Manage feed.
@@ -507,7 +508,7 @@ function FeedSchedulePanel({ schedule, feeds, species }) {
     species.groups.find(g => g.id === gid)?.label || gid);
 
   return (
-    <section className="bg-surface border border-line">
+    <section className="border border-line">
       <header className="px-5 py-4 border-b border-line">
         <h3 className="font-heading text-[18px] font-semibold m-0 text-fg">
           {schedule.name}
@@ -618,7 +619,7 @@ function SpeciesChoresTab({ species, chores }) {
   const { blockById } = useChoreBlocks();
   if (chores.length === 0) {
     return (
-      <div className="bg-surface border border-line px-6 py-8 text-center">
+      <div className="border border-line px-6 py-8 text-center">
         <div className="text-[12px] text-muted">
           No chores tagged for {species.name.toLowerCase()}.
         </div>
@@ -728,7 +729,7 @@ function ActivityLogTab({ species, chores }) {
 
   if (loading || filtered === null) {
     return (
-      <div className="bg-surface border border-line px-6 py-8 text-center">
+      <div className="border border-line px-6 py-8 text-center">
         <div className="text-[11px] text-muted uppercase tracking-[0.16em]">
           Loading activity…
         </div>
@@ -738,7 +739,7 @@ function ActivityLogTab({ species, chores }) {
 
   if (filtered.length === 0) {
     return (
-      <div className="bg-surface border border-line px-6 py-9 text-center">
+      <div className="border border-line px-6 py-9 text-center">
         <div className="text-[13px] text-muted mb-2 font-medium">
           Nothing logged for {species.name.toLowerCase()} yet
         </div>
@@ -790,7 +791,7 @@ function renderTimeStacked(logTime) {
 function MoreInfoTab({ species }) {
   return (
     <div className="flex flex-col gap-5 max-w-[760px]">
-      <div className="bg-surface border border-line">
+      <div className="border border-line">
         <InfoRow label="Acquisition" value={species.acquisition} />
         <InfoRow
           label="Feed regimen"
@@ -813,7 +814,7 @@ function MoreInfoTab({ species }) {
             {species.lifecycle.map((stage, idx) => (
               <div
                 key={idx}
-                className="bg-surface border border-line px-4 py-3"
+                className="border border-line px-4 py-3"
               >
                 <div className="flex items-baseline justify-between mb-1.5">
                   <div className="font-heading text-[14px] font-semibold text-fg">

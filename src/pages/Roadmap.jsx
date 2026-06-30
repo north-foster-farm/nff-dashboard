@@ -130,7 +130,7 @@ export default function Roadmap() {
         {ITEMS.map((item) => (
           <li
             key={item.title}
-            className="bg-surface border border-line p-5 flex flex-col gap-2"
+            className="border border-line p-5 flex flex-col gap-2"
           >
             <h3 className="font-heading text-[17px] font-semibold m-0 text-fg">
               {item.title}
