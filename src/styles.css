@@ -45,6 +45,10 @@
   --color-warn:         var(--c-warn);
   --color-resolved:     var(--c-resolved);
   --color-project:      var(--c-project);
+  --color-chore:        var(--c-chore);
+  --color-event:        var(--c-event);
+  --color-mulberry:     var(--c-mulberry);
+  --color-terracotta:   var(--c-terracotta);
   --color-on-accent:    var(--c-on-accent);
   --color-on-cat:       var(--c-on-cat);
   --color-row-active:     var(--c-row-active);

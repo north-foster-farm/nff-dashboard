@@ -40,6 +40,10 @@ html[data-theme="dark"] {
   --c-warn: #e6b85a;
   --c-resolved: #4cba85;
   --c-project: #7d9ec9;
+  --c-chore: #2bb6a2;
+  --c-event: #b6afe9;
+  --c-mulberry: #cf5b9f;
+  --c-terracotta: #cf6742;
   --c-on-accent: #0d1410;
   --c-cat-fm: #5dd585;
   --c-cat-popup: #ffaa33;
@@ -65,6 +69,10 @@ html[data-theme="light"] {
   --c-warn: #a06d10;
   --c-resolved: #297d5a;
   --c-project: #3f6da3;
+  --c-chore: #0c7e6e;
+  --c-event: #5b54a8;
+  --c-mulberry: #9c2e6c;
+  --c-terracotta: #9c3f23;
   --c-on-accent: #ffffff;
   --c-cat-fm: #2aa252;
   --c-cat-popup: #cc7700;

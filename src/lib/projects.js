@@ -44,19 +44,30 @@ export function nextProjectStep(projects, todayISO) {
     .filter((p) => isActiveProject(p, todayISO))
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   for (const p of active) {
-    const next = (p.steps ?? [])
-      .filter((s) => !s.completedAt)
-      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
-    if (next) {
-      return {
-        projectId: p.id,
-        projectTitle: p.title,
-        stepId: next.id,
-        title: next.title,
-      };
-    }
+    const node = nextProjectStepFor(p);
+    if (node) return node;
   }
   return null;
+}
+
+// The next incomplete step of ONE specific project, skipping any step ids
+// already placed or auto-shown earlier today — the substrate for "Continue
+// project above" (F32), which copies the same project's next step down into a
+// later Project block. Same node shape as nextProjectStep; null when the
+// project has no remaining (unexcluded) step.
+export function nextProjectStepFor(project, excludeStepIds = new Set()) {
+  if (!project) return null;
+  const next = (project.steps ?? [])
+    .filter((s) => !s.completedAt && !excludeStepIds.has(s.id))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+  return next
+    ? {
+      projectId: project.id,
+      projectTitle: project.title,
+      stepId: next.id,
+      title: next.title,
+    }
+    : null;
 }
 
 // ── Completion predicates ─────────────────────────────────────────────
