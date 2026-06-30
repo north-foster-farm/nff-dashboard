@@ -244,8 +244,29 @@ Each: STATUS · what · use/not · canonical source.
 
 ## Consolidation backlog (the bounded-options payoff)
 
+**App-wide flush-flip propagation (2026-06-30) — DONE for the page layer.**
+The "Schedule first, then app-wide" plan ([[project_rethinker_design_arc]])
+shipped across ~20 page surfaces in 6 commits (`9290268`→`897e1ce`): Chores,
+Processes, Projects, Inventory, Customers, Observations, Settings, PlacePage,
+Products, SpeciesPage, ProjectPage, Feeds, FeedSchedulesPage, Processing,
+Calendar, Activity, Roadmap, Inbox, Now, Orders. The sweep = (1) raised
+`bg-surface border` in-page content sections → flush `border` on `--c-bg`
+(principle 1); (2) hand-rolled accent/ghost buttons → `BTN_ACCENT`/`BTN_GHOST`;
+(3) clean-mapping status chips → `StatusPill`; (4) `bg-surface`+eyebrow sections
+→ `Pane`; (5) Chores' whole inline-`T.*` idiom → token classes + `CheckTarget`.
+**Deliberately LEFT raised** (the bounded "don't touch" set): `bg-surface` row
+fills inside `gap-px bg-line` hairline-divider grids (load-bearing), form-control
+surfaces (inputs/selects/search fields), floating overlays/modals/trays, dynamic
+per-entity colors, and danger/neutral-toggle/icon-only/odd-sized buttons.
+**Remaining page holdouts (follow-ups):** `Rounds` (the full-screen takeover —
+its own raised pattern, left for a focused pass) and `ChoreFieldsEditor`'s
+`editInputStyle` (the last inline-style object, used by Chores + Processes
+editors). Component-layer surfaces (SitesAdmin, PricingGrid, CalendarViews, the
+sheets/editors) were not in this page-layer pass.
+
 Collapse, don't re-litigate: raised Card/StatTile/PlaceSection →
-flush Pane (Card done; WeekList folded into WeekStrip, not Pane); 4 checkbox
+flush Pane (Card done; WeekList folded into WeekStrip, not Pane; the page-layer
+flush-flip is now propagated app-wide — see above); 4 checkbox
 sizes → one 28px CheckTarget (Chores Today now adopts it — the page's last
 hand-rolled 20px box is gone); BTN_* + 3 inline →
 one Button; 15 overlays → one Sheet/Modal; 3 result-row impls → one ResultRow;
