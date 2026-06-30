@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { T } from "../theme.js";
 import { childrenOf } from "../lib/places.js";
 
 // Shared place-tree list components. Extracted from Chores.jsx so the
@@ -111,45 +110,36 @@ export function PlaceTreeNode({
           dark-gray fill that reads as "disabled" (cf. F46/F83). */}
       <button
         onClick={() => setUserOpen(o => (o == null ? !(subtreeCount > 0) : !o))}
-        style={{
-          display: "flex", alignItems: "baseline", gap: 8, width: "100%",
-          background: T.surfaceAlt,
-          border: "none",
-          borderLeft: `2px solid ${depth === 0 ? T.accent : T.border}`,
-          cursor: "pointer",
-          padding: "7px 10px", fontFamily: "inherit", textAlign: "left",
-        }}
+        className={
+          "flex items-baseline gap-2 w-full bg-surface-alt border-l-2 " +
+          "cursor-pointer py-[7px] px-[10px] font-[inherit] text-left " +
+          (depth === 0 ? "border-accent" : "border-line")
+        }
         aria-expanded={open}
       >
         {open
-          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />
-          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />}
-        <span style={{
-          fontFamily: T.uiLabel, fontSize: depth === 0 ? 13 : 12,
-          color: subtreeCount > 0 ? T.text : T.textDim,
-          textTransform: "uppercase", letterSpacing: "0.12em",
-          fontWeight: depth === 0 ? 700 : 600,
-          lineHeight: 1.2,
-        }}>
+          ? <ChevronDown size={14} className="text-muted shrink-0 self-center" />
+          : <ChevronRight size={14} className="text-muted shrink-0 self-center" />}
+        <span className={
+          "font-ui uppercase tracking-[0.12em] leading-[1.2] " +
+          (depth === 0 ? "text-[13px] font-bold " : "text-[12px] font-semibold ") +
+          (subtreeCount > 0 ? "text-fg" : "text-dim")
+        }>
           {place.name}
         </span>
-        <span style={{
-          fontSize: 11, color: T.textMuted,
-          whiteSpace: "nowrap", flexShrink: 0, lineHeight: 1.2,
-        }}>
+        <span className="text-[11px] text-muted whitespace-nowrap shrink-0 leading-[1.2]">
           {subtreeCount > 0
             ? `${subtreeCount} ${subtreeCount === 1 ? countNoun : countNoun + "s"}`
             : `no ${countNoun}s`}
         </span>
       </button>
       {open && (
-        <div style={{
-          borderLeft: `1px solid ${T.border}`,
-          marginLeft: 6, paddingLeft: "var(--tree-rail, 12px)",
-          display: "flex", flexDirection: "column", gap: 2,
-        }}>
+        <div
+          className="border-l border-line ml-1.5 flex flex-col gap-0.5"
+          style={{ paddingLeft: "var(--tree-rail, 12px)" }}
+        >
           {ownEntries.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
+            <div className="flex flex-col gap-px bg-line">
               {ownEntries.map(entry => (
                 <div key={keyOf(entry, place.id)}>
                   {renderEntry(entry, place.id)}
@@ -188,44 +178,39 @@ export function PlaceTreeSection({
       {/* Baseline alignment — same rationale as PlaceTreeNode. */}
       <button
         onClick={() => setOpen(o => !o)}
-        style={{
-          display: "flex", alignItems: "baseline", gap: 8, width: "100%",
-          background: T.surfaceAlt,
-          border: "none",
-          borderLeft: `2px solid ${dimmed ? T.border : T.accent}`,
-          cursor: "pointer",
-          padding: "7px 10px", fontFamily: "inherit", textAlign: "left",
-        }}
+        className={
+          "flex items-baseline gap-2 w-full bg-surface-alt border-l-2 " +
+          "cursor-pointer py-[7px] px-[10px] font-[inherit] text-left " +
+          (dimmed ? "border-line" : "border-accent")
+        }
         aria-expanded={open}
       >
         {open
-          ? <ChevronDown size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />
-          : <ChevronRight size={14} style={{ color: T.textMuted, flexShrink: 0, alignSelf: "center" }} />}
-        <span style={{
-          fontFamily: T.uiLabel, fontSize: 13,
-          color: dimmed ? T.textDim : T.text,
-          textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700,
-          lineHeight: 1.2,
-        }}>
+          ? <ChevronDown size={14} className="text-muted shrink-0 self-center" />
+          : <ChevronRight size={14} className="text-muted shrink-0 self-center" />}
+        <span className={
+          "font-ui text-[13px] uppercase tracking-[0.12em] font-bold " +
+          "leading-[1.2] " +
+          (dimmed ? "text-dim" : "text-fg")
+        }>
           {title}
         </span>
         {subtitle && (
-          <span style={{ fontSize: 11, color: T.textMuted, lineHeight: 1.2 }}>{subtitle}</span>
+          <span className="text-[11px] text-muted leading-[1.2]">{subtitle}</span>
         )}
-        <span style={{
-          fontSize: 11, color: T.textMuted, marginLeft: "auto",
-          whiteSpace: "nowrap", flexShrink: 0, lineHeight: 1.2,
-        }}>
+        <span className="text-[11px] text-muted ml-auto whitespace-nowrap shrink-0 leading-[1.2]">
           {entries.length} {entries.length === 1 ? countNoun : countNoun + "s"}
         </span>
       </button>
       {open && (
-        <div style={{
-          borderLeft: `1px solid ${T.border}`,
-          marginLeft: 6, paddingLeft: "var(--tree-rail, 12px)",
-          opacity: dimmed ? 0.7 : 1,
-        }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1, background: T.border }}>
+        <div
+          className={
+            "border-l border-line ml-1.5 " +
+            (dimmed ? "opacity-70" : "opacity-100")
+          }
+          style={{ paddingLeft: "var(--tree-rail, 12px)" }}
+        >
+          <div className="flex flex-col gap-px bg-line">
             {entries.map(entry => (
               <div key={keyOf(entry, null)}>
                 {renderEntry(entry, null)}

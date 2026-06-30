@@ -67,7 +67,7 @@ export default function ChoresBlocksTab() {
       )}
 
       {active.length === 0 && !creating ? (
-        <div className="bg-surface border border-line py-10 px-6 text-center">
+        <div className="border border-line py-10 px-6 text-center">
           <div className="text-[13px] text-muted font-medium mb-1">No time blocks yet</div>
           <div className="text-[12px] text-faint leading-relaxed max-w-[420px] mx-auto">
             Create a block to group chores by time of day. Once created,

@@ -52,7 +52,7 @@ export default function AutomationsPanel({ triggerKind, speciesId = null }) {
   }
   if (rules.length === 0) {
     return (
-      <div className="bg-surface border border-line px-6 py-10 text-center">
+      <div className="border border-line px-6 py-10 text-center">
         <Sparkles size={20} className="text-faint mx-auto mb-3" />
         <div className="text-[13px] text-muted">
           No automation rules apply here.

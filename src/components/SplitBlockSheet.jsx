@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BTN_ACCENT, BTN_GHOST } from "./ui.jsx";
 
 // Split a chore block for one day (S72) — divide a block's work into a second
 // sitting at a later time. You pick which rows move and the time they move to;
@@ -82,13 +83,12 @@ export default function SplitBlockSheet({ blockName, items, onApply, onClose }) 
         </div>
 
         <div className="flex justify-end gap-2 mt-1">
-          <button onClick={onClose}
-            className="bg-transparent border border-line text-dim text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5">
+          <button onClick={onClose} className={BTN_GHOST}>
             Cancel
           </button>
           <button onClick={() => valid && onApply([...picked], time)}
             disabled={!valid}
-            className="bg-accent text-on-accent text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 disabled:opacity-40">
+            className={BTN_ACCENT}>
             {picked.size > 0 ? `Move ${picked.size}` : "Move"}
           </button>
         </div>

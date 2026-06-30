@@ -84,7 +84,7 @@ export default function SitesAdmin({ data }) {
   return (
     <div className="flex flex-col gap-3">
       {activeRoots.length === 0 && !creatingRoot && (
-        <div className="bg-surface border border-line py-10 px-6 text-center">
+        <div className="border border-line py-10 px-6 text-center">
           <div className="text-[13px] text-muted font-medium mb-1">No places yet</div>
           <div className="text-[12px] text-faint leading-relaxed max-w-[420px] mx-auto">
             Add the farm, then build out zones, pastures, and structures

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { T } from "../theme.js";
 import { supabase } from "../lib/supabase.js";
 
 // LoginGate wraps the entire app and enforces three possible states:
@@ -176,27 +175,25 @@ function SignInView() {
 
   return (
     <Centered>
-      <div style={{ fontFamily: T.heading, fontSize: 28, fontWeight: 700, color: T.text, marginBottom: 8 }}>
+      <div className="font-heading text-[28px] font-bold text-fg mb-2">
         North Foster Farm
       </div>
-      <div style={{ fontSize: 13, color: T.textDim, marginBottom: 32 }}>
+      <div className="text-[13px] text-dim mb-8">
         Admin dashboard
       </div>
       <button
         onClick={handleSignIn}
         disabled={signingIn}
+        className="bg-accent text-on-accent border-none font-[inherit] font-semibold text-[13px] py-[10px] px-[18px] inline-flex items-center gap-2.5"
         style={{
-          background: T.accent, color: T.onAccent,
-          border: "none", fontFamily: "inherit", fontWeight: 600, fontSize: 13,
-          padding: "10px 18px", cursor: signingIn ? "default" : "pointer",
+          cursor: signingIn ? "default" : "pointer",
           opacity: signingIn ? 0.7 : 1,
-          display: "inline-flex", alignItems: "center", gap: 10
         }}
       >
         <GoogleGlyph /> {signingIn ? "Redirecting…" : "Sign in with Google"}
       </button>
       {err && (
-        <div style={{ marginTop: 16, fontSize: 12, color: T.warn, maxWidth: 360, textAlign: "center" }}>
+        <div className="mt-4 text-[12px] text-warn max-w-[360px] text-center">
           {err}
         </div>
       )}
@@ -211,21 +208,16 @@ function NotAuthorizedView({ session }) {
   const handleSignOut = () => supabase.auth.signOut();
   return (
     <Centered>
-      <div style={{ fontFamily: T.heading, fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 12 }}>
+      <div className="font-heading text-[22px] font-bold text-fg mb-3">
         Not authorized
       </div>
-      <div style={{ fontSize: 13, color: T.textDim, maxWidth: 380, textAlign: "center", marginBottom: 24 }}>
-        You're signed in as <strong style={{ color: T.text }}>{email}</strong>, but
+      <div className="text-[13px] text-dim max-w-[380px] text-center mb-6">
+        You're signed in as <strong className="text-fg">{email}</strong>, but
         that address isn't on the admin allowlist for this dashboard.
       </div>
       <button
         onClick={handleSignOut}
-        style={{
-          background: "transparent", color: T.textDim,
-          border: `1px solid ${T.border}`, fontFamily: "inherit",
-          fontSize: 12, fontWeight: 600, padding: "8px 14px", cursor: "pointer",
-          textTransform: "uppercase", letterSpacing: "0.12em"
-        }}
+        className="bg-transparent text-dim border border-line font-[inherit] text-[12px] font-semibold py-2 px-[14px] cursor-pointer uppercase tracking-[0.12em]"
       >
         Sign out
       </button>
@@ -238,7 +230,7 @@ function NotAuthorizedView({ session }) {
 function Splash({ label }) {
   return (
     <Centered>
-      <div style={{ fontSize: 12, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.18em" }}>
+      <div className="text-[12px] text-muted uppercase tracking-[0.18em]">
         {label}
       </div>
     </Centered>
@@ -247,12 +239,7 @@ function Splash({ label }) {
 
 function Centered({ children }) {
   return (
-    <div style={{
-      background: T.bg, color: T.text, minHeight: "100vh",
-      display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
-      fontFamily: T.body, padding: 24
-    }}>
+    <div className="bg-bg text-fg min-h-screen flex flex-col items-center justify-center font-body p-6">
       {children}
     </div>
   );
