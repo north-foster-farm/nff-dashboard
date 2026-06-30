@@ -4233,6 +4233,17 @@ scheduled/surfaced. Feeds the schedule-reflow + conflicts work
 below.
 
 ### Projects rework — forced-ranked priority (major rework of Batch 22)
+**Status (2026-06-30):** structural-core foundation SHIPPED on `main`
+(commit `c911ea4`, NOT pushed) — migration `0041` (additive: `queue_state`,
+`timing_note`, `locked_date`; **authored, NOT applied to prod**), the
+`useProjects` data layer (forced-rank reorder, queue-state moves, lock,
+timing note), and the rewritten `Projects.jsx` (ranked list w/ dnd-kit +
+Focus emphasis, Unprioritized bucket, lock-to-date, timing note). Build
+green; NOT runtime-verified (blocked on the `0041` push). Still deferred:
+the schedule reflow engine + stale indicator + Today integration,
+lock-to-date UI at phase/step/item level, clone-from-stub, and retiring
+the vestigial `status` column + the ProjectPage status select.
+
 The big one. A reframe of how projects drive the schedule:
 - **Single forced-ranked list.** Every queued project ranked
   against every other — no plural "high priority" flags. The top is
