@@ -7,7 +7,9 @@ import { useInventory } from "../lib/data/useInventory.js";
 import { useSites } from "../lib/data/useSites.js";
 import { expandSkus, skuLabel } from "../lib/productCatalog.js";
 import { formatDate } from "../lib/dates.js";
-import { BTN_GHOST, INPUT_CLS, LABEL_CLS } from "../components/ui.jsx";
+import {
+  BTN_ACCENT, BTN_GHOST, INPUT_CLS, LABEL_CLS,
+} from "../components/ui.jsx";
 
 // The Inventory page (Batch 28.1) — the real, DB-backed inventory
 // replacing the Batch-4 static stub.
@@ -63,7 +65,7 @@ export default function Inventory({ startCreating = false }) {
         <SummaryStrip groups={groups} />
         <button
           onClick={() => setCreating(c => !c)}
-          className="inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
+          className={BTN_ACCENT}
         >
           <Plus size={13} /> New lot
         </button>
@@ -84,7 +86,7 @@ export default function Inventory({ startCreating = false }) {
       {loading ? (
         <div className="text-[12px] text-dim italic">Loading…</div>
       ) : groups.length === 0 ? (
-        <div className="bg-surface border border-line px-6 py-10 text-center">
+        <div className="border border-line px-6 py-10 text-center">
           <Boxes size={20} className="text-faint mx-auto mb-3" />
           <div className="text-[13px] text-muted">
             No inventory lots yet.
@@ -127,7 +129,7 @@ function SummaryStrip({ groups }) {
       {tiles.map(t => (
         <div
           key={t.product.id}
-          className="bg-surface border border-line px-4 py-3 min-w-[140px]"
+          className="border border-line px-4 py-3 min-w-[140px]"
         >
           <div className="flex items-baseline gap-1.5">
             <span className="font-heading text-[26px] font-semibold leading-none text-fg">
@@ -464,7 +466,7 @@ function NewLotForm({ products, places, onSave, onCancel }) {
   };
 
   return (
-    <div className="bg-surface border border-accent p-4 flex flex-col gap-3">
+    <div className="border border-accent p-4 flex flex-col gap-3">
       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg">
         New lot
       </div>
@@ -539,7 +541,7 @@ function NewLotForm({ products, places, onSave, onCancel }) {
         <button
           onClick={submit}
           disabled={pending}
-          className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50"
+          className={BTN_ACCENT}
         >
           {pending ? "Saving…" : "Add lot"}
         </button>

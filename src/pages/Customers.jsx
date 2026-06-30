@@ -4,6 +4,7 @@ import {
   Phone, Plus, Search, Trash2, Users, X,
 } from "lucide-react";
 import { useCustomers } from "../lib/data/useCustomers.js";
+import { BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
 
 // The Customers page (Batch 24): the directory + named lists.
 //
@@ -52,7 +53,7 @@ export default function Customers({ initialTab = "directory", startCreating = fa
         {tab === "directory" && (
           <button
             onClick={() => setCreating(c => !c)}
-            className="ml-auto inline-flex items-center gap-1.5 bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 mb-2 cursor-pointer"
+            className={"ml-auto mb-2 " + BTN_ACCENT}
           >
             <Plus size={13} /> New customer
           </button>
@@ -106,7 +107,7 @@ export default function Customers({ initialTab = "directory", startCreating = fa
           </div>
 
           {visible.length === 0 ? (
-            <div className="bg-surface border border-line px-6 py-10 text-center">
+            <div className="border border-line px-6 py-10 text-center">
               <Users size={20} className="text-faint mx-auto mb-3" />
               <div className="text-[13px] text-muted">
                 {query
@@ -268,7 +269,7 @@ function CustomerForm({ initial = null, onSave, onCancel }) {
   };
 
   return (
-    <div className="bg-surface border border-line p-4 flex flex-col gap-3">
+    <div className="border border-line p-4 flex flex-col gap-3">
       <div className="grid sm:grid-cols-2 gap-3">
         <input value={name} onChange={(e) => setName(e.target.value)}
           className={inputCls} placeholder="Name" autoFocus />
@@ -285,14 +286,14 @@ function CustomerForm({ initial = null, onSave, onCancel }) {
         <button
           onClick={onCancel}
           disabled={pending}
-          className="bg-transparent border border-line text-dim font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
+          className={BTN_GHOST}
         >
           Cancel
         </button>
         <button
           onClick={submit}
           disabled={pending}
-          className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50"
+          className={BTN_ACCENT}
         >
           {pending ? "Saving…" : initial ? "Save" : "Add customer"}
         </button>
@@ -310,7 +311,7 @@ function ListsTab({ db }) {
   return (
     <div className="flex flex-col gap-3">
       {db.lists.length === 0 && !creating && (
-        <div className="bg-surface border border-line px-6 py-10 text-center">
+        <div className="border border-line px-6 py-10 text-center">
           <div className="text-[13px] text-muted">
             No lists yet. A list is a named group of customers — a
             mailing list, the egg-drop regulars, wholesale accounts…
@@ -355,7 +356,7 @@ function ListForm({ onSave, onCancel }) {
   const [pending, setPending] = useState(false);
 
   return (
-    <div className="bg-surface border border-line p-4 flex flex-col gap-3">
+    <div className="border border-line p-4 flex flex-col gap-3">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -373,7 +374,7 @@ function ListForm({ onSave, onCancel }) {
         <button
           onClick={onCancel}
           disabled={pending}
-          className="bg-transparent border border-line text-dim font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer"
+          className={BTN_GHOST}
         >
           Cancel
         </button>
@@ -385,7 +386,7 @@ function ListForm({ onSave, onCancel }) {
             catch { setPending(false); }
           }}
           disabled={pending}
-          className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50"
+          className={BTN_ACCENT}
         >
           Create list
         </button>
@@ -407,7 +408,7 @@ function ListCard({ list, db, open, onToggle }) {
   );
 
   return (
-    <section className="bg-surface border border-line">
+    <section className="border border-line">
       <button
         onClick={onToggle}
         className="w-full flex items-center gap-3 px-4 py-3 bg-transparent border-0 cursor-pointer font-[inherit] text-left"
@@ -449,7 +450,7 @@ function ListCard({ list, db, open, onToggle }) {
                 setAdding("");
               }}
               disabled={!adding}
-              className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50"
+              className={BTN_ACCENT}
             >
               Add
             </button>

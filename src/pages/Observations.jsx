@@ -123,7 +123,7 @@ function FilterBar({
   places, authors,
 }) {
   return (
-    <div className="bg-surface border border-line p-3 flex flex-wrap gap-3 items-center">
+    <div className="border border-line p-3 flex flex-wrap gap-3 items-center">
       <KindChips value={kindFilter} onChange={onKindChange} />
 
       <div className="h-5 w-px bg-line" />
@@ -222,7 +222,7 @@ function PickerSelect({ label, value, onChange, options }) {
 function ObservationList({ loading, entries, userEmail, onEdit, onDelete }) {
   if (loading) {
     return (
-      <div className="bg-surface border border-line py-9 px-6 text-center">
+      <div className="border border-line py-9 px-6 text-center">
         <div className="text-xs text-muted uppercase tracking-[0.18em]">
           Loading observations…
         </div>
@@ -231,7 +231,7 @@ function ObservationList({ loading, entries, userEmail, onEdit, onDelete }) {
   }
   if (!entries || entries.length === 0) {
     return (
-      <div className="bg-surface border border-line py-9 px-6 text-center">
+      <div className="border border-line py-9 px-6 text-center">
         <div className="text-[13px] text-muted mb-2 font-medium">
           No observations match these filters
         </div>

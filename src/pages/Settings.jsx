@@ -203,7 +203,7 @@ function describeStatus({
 
 function Section({ title, subtitle, children }) {
   return (
-    <section className="bg-surface border border-line p-5 flex flex-col gap-5">
+    <section className="border border-line p-5 flex flex-col gap-5">
       <header className="flex items-baseline gap-3">
         <div className="font-ui text-xs text-fg uppercase tracking-[0.14em] font-bold">
           {title}

@@ -98,7 +98,7 @@ export default function PlacePage({
   }
   if (!place) {
     return (
-      <div className="bg-surface border border-line px-5 py-8 text-center">
+      <div className="border border-line px-5 py-8 text-center">
         <div className="text-[13px] text-muted">
           This place no longer exists.
         </div>
@@ -215,7 +215,7 @@ export default function PlacePage({
         {occupants.length === 0 ? (
           <EmptyLine>Nothing currently lives or is parked here.</EmptyLine>
         ) : (
-          <ul className="m-0 p-0 list-none bg-surface border border-line">
+          <ul className="m-0 p-0 list-none border border-line">
             {occupants.map((o) => (
               <OccupantRow
                 key={o.id}
@@ -240,7 +240,7 @@ export default function PlacePage({
         {obligationsHere.length === 0 ? (
           <EmptyLine>No chores land here today.</EmptyLine>
         ) : (
-          <ul className="m-0 p-0 list-none bg-surface border border-line">
+          <ul className="m-0 p-0 list-none border border-line">
             {obligationsHere.map((o) => (
               <ChoreHereRow
                 key={`${o.chore.id}|${o.placeId}`}
@@ -339,7 +339,7 @@ function Section({ title, count, children }) {
 
 function EmptyLine({ children }) {
   return (
-    <div className="bg-surface border border-line px-4 py-5 text-[12px] text-muted">
+    <div className="border border-line px-4 py-5 text-[12px] text-muted">
       {children}
     </div>
   );
