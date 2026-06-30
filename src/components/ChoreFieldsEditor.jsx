@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { T } from "../theme.js";
 import { buildPlaceTree } from "../lib/places.js";
 import { displayBlockSide } from "../lib/sunTimes.js";
 import { ASSIGNEES } from "./AssignmentRulesEditor.jsx";
@@ -53,14 +52,14 @@ export default function ChoreFieldsEditor({
   const startTimeValue = (value.startTime ?? "").slice(0, 5);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="flex flex-col gap-3">
       {showTitle && (
         <EditField label="Title">
           <TextField
             value={value.title ?? ""}
             mode={commitMode}
             onCommit={(v) => onChange({ title: v })}
-            style={editInputStyle}
+            className={EDIT_INPUT_CLS}
             placeholder="Chore title"
           />
         </EditField>
@@ -73,7 +72,7 @@ export default function ChoreFieldsEditor({
             onCommit={(v) => onChange({ description: v })}
             multiline
             rows={2}
-            style={{ ...editInputStyle, resize: "vertical", fontFamily: "inherit" }}
+            className={EDIT_INPUT_CLS + " resize-y"}
             placeholder="Details (optional)"
           />
         </EditField>
@@ -97,7 +96,7 @@ export default function ChoreFieldsEditor({
         <select
           value={value.blockId ?? ""}
           onChange={(e) => onChange({ blockId: e.target.value || null })}
-          style={editInputStyle}
+          className={EDIT_INPUT_CLS}
         >
           {!value.blockId && <option value="">— pick a block —</option>}
           {activeBlocks.map(b => (
@@ -109,28 +108,25 @@ export default function ChoreFieldsEditor({
       </EditField>
 
       <EditField label="Start time">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="flex items-center gap-2">
           <input
             type="time"
             value={startTimeValue}
             onChange={(e) =>
               onChange({ startTime: e.target.value || null })}
-            style={{ ...editInputStyle, width: 120 }}
+            className={EDIT_INPUT_CLS + " w-[120px]"}
           />
           {startTimeValue && (
             <button
               type="button"
               onClick={() => onChange({ startTime: null })}
-              style={{
-                fontSize: 11, color: T.textDim, background: "none",
-                border: "none", cursor: "pointer", padding: 0,
-              }}
+              className="text-[11px] text-dim bg-transparent border-none cursor-pointer p-0"
             >
               clear
             </button>
           )}
         </div>
-        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
+        <div className="text-[11px] text-faint mt-1 leading-normal">
           Overrides the block's default start for ordering and the day
           strip. Empty = inherit the block's time.
         </div>
@@ -141,7 +137,7 @@ export default function ChoreFieldsEditor({
           value={value.lastChanceBlockId ?? ""}
           onChange={(e) =>
             onChange({ lastChanceBlockId: e.target.value || null })}
-          style={editInputStyle}
+          className={EDIT_INPUT_CLS}
         >
           <option value="">— no specific deadline —</option>
           {activeBlocks.map(b => (
@@ -150,7 +146,7 @@ export default function ChoreFieldsEditor({
             </option>
           ))}
         </select>
-        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
+        <div className="text-[11px] text-faint mt-1 leading-normal">
           The last block on the deadline day before the chore counts as
           overrun. Drives the "(N days remaining)" pill on multi-day
           chores.
@@ -165,14 +161,14 @@ export default function ChoreFieldsEditor({
               const who = e.target.value;
               onChange({ assignment: who ? { default: who } : null });
             }}
-            style={editInputStyle}
+            className={EDIT_INPUT_CLS}
           >
             <option value="">Unassigned</option>
             {ASSIGNEES.map(name => (
               <option key={name} value={name}>{name}</option>
             ))}
           </select>
-          <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4, lineHeight: 1.5 }}>
+          <div className="text-[11px] text-faint mt-1 leading-normal">
             Who the generated chores default to. Per-day rules can refine
             this later on the chore itself.
           </div>
@@ -258,7 +254,7 @@ function AnchorEditor({
   const prettyTag = (tag) => tag.replaceAll("_", " ");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div className="flex flex-col gap-2">
       <AnchorModeRadio
         value={anchor.mode}
         onChange={(mode) => update({ mode })}
@@ -276,12 +272,12 @@ function AnchorEditor({
       />
 
       {anchor.mode === "animals" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 22 }}>
+        <div className="flex flex-col gap-2 pl-[22px]">
           {concreteAnimals ? (
             <select
               value={anchor.animalKey}
               onChange={(e) => update({ animalKey: e.target.value })}
-              style={editInputStyle}
+              className={EDIT_INPUT_CLS}
             >
               <option value="">— pick animals —</option>
               <optgroup label="A species (every batch)">
@@ -306,18 +302,18 @@ function AnchorEditor({
             <select
               value={anchor.animalScope}
               onChange={(e) => update({ animalScope: e.target.value })}
-              style={editInputStyle}
+              className={EDIT_INPUT_CLS}
               title="The bound event supplies the concrete batch/species"
             >
               <option value="batch">The event's batch</option>
               <option value="species">The event's species (every batch)</option>
             </select>
           )}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="flex gap-2 flex-wrap">
             <select
               value={anchor.housedTag}
               onChange={(e) => update({ housedTag: e.target.value })}
-              style={editInputStyle}
+              className={EDIT_INPUT_CLS}
               title="Only count these animals where they're housed in this kind of place"
             >
               <option value="">housed anywhere</option>
@@ -330,7 +326,7 @@ function AnchorEditor({
             <select
               value={anchor.atPlaceId}
               onChange={(e) => update({ atPlaceId: e.target.value })}
-              style={editInputStyle}
+              className={EDIT_INPUT_CLS}
               title="Where the work physically happens"
             >
               <option value="">work happens where they live</option>
@@ -345,19 +341,19 @@ function AnchorEditor({
             (concreteAnimals
               ? anchor.animalKey.startsWith("batch:")
               : anchor.animalScope === "batch") && (
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: T.textDim, cursor: "pointer" }}>
+            <label className="flex items-start gap-1.5 text-[12px] text-dim cursor-pointer">
               <input
                 type="checkbox"
                 checked={anchor.formerOccupancy}
                 onChange={(e) => update({ formerOccupancy: e.target.checked })}
-                style={{ marginTop: 2 }}
+                className="mt-0.5"
               />
               Cleanup after they leave — anchor to the{" "}
               {prettyTag(anchor.housedTag)}s this batch used, even once
               it has moved on (brooder cleanout).
             </label>
           )}
-          <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
+          <div className="text-[11px] text-faint leading-normal">
             {anchor.formerOccupancy
               ? `The chore stays on the ${prettyTag(anchor.housedTag)}s `
                 + `this batch occupied — resolved from its placement `
@@ -372,18 +368,18 @@ function AnchorEditor({
       )}
 
       {anchor.mode === "place" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 22 }}>
+        <div className="flex flex-col gap-2 pl-[22px]">
           <select
             value={anchor.placeId}
             onChange={(e) => update({ placeId: e.target.value })}
-            style={editInputStyle}
+            className={EDIT_INPUT_CLS}
           >
             <option value="">— pick a place —</option>
             {placeOptions.map(o => (
               <option key={o.id} value={o.id}>{o.label}</option>
             ))}
           </select>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: T.textDim, cursor: "pointer" }}>
+          <label className="flex items-center gap-1.5 text-[12px] text-dim cursor-pointer">
             <input
               type="checkbox"
               checked={anchor.occupiedOnly}
@@ -392,7 +388,7 @@ function AnchorEditor({
             Only where animals currently live (fans into occupied
             places beneath it)
           </label>
-          <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
+          <div className="text-[11px] text-faint leading-normal">
             Unchecked: the chore sticks to this exact place whether or
             not anything lives there ("mow Pasture B").
           </div>
@@ -400,11 +396,11 @@ function AnchorEditor({
       )}
 
       {anchor.mode === "place_kind" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 22 }}>
+        <div className="flex flex-col gap-2 pl-[22px]">
           <select
             value={anchor.kindTag}
             onChange={(e) => update({ kindTag: e.target.value })}
-            style={editInputStyle}
+            className={EDIT_INPUT_CLS}
           >
             <option value="">— pick a kind —</option>
             {kindTags.map(tag => (
@@ -413,7 +409,7 @@ function AnchorEditor({
               </option>
             ))}
           </select>
-          <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
+          <div className="text-[11px] text-faint leading-normal">
             One obligation per active place of this kind, occupied or
             not ("power-wash nest boxes" → every coop).
           </div>
@@ -540,15 +536,14 @@ function TextField({
 // Radio row for the anchor mode.
 function AnchorModeRadio({ value, onChange, options }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px" }}>
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
       {options.map(o => (
         <label
           key={o.id}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            fontSize: 12, color: value === o.id ? T.text : T.textDim,
-            cursor: "pointer",
-          }}
+          className={
+            "flex items-center gap-1.5 text-[12px] cursor-pointer " +
+            (value === o.id ? "text-fg" : "text-dim")
+          }
         >
           <input
             type="radio"
@@ -583,23 +578,20 @@ export function placeSelectOptions(places) {
 
 export function EditField({ label, children }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{
-        fontSize: 9,
-        color: T.textFaint,
-        textTransform: "uppercase",
-        letterSpacing: "0.12em",
-      }}>{label}</label>
+    <div className="flex flex-col gap-1">
+      <label className="text-[9px] text-faint uppercase tracking-[0.12em]">
+        {label}
+      </label>
       {children}
     </div>
   );
 }
 
-export const editInputStyle = {
-  background: T.surface,
-  border: `1px solid ${T.border}`,
-  color: T.text,
-  fontSize: 12,
-  padding: "6px 8px",
-  fontFamily: "inherit",
-};
+// The shared field look for both editors (Chores inline + Processes step).
+// Form controls stay raised by design — `bg-surface` on a hairline border —
+// but expressed as token Tailwind classes, not the old inline `T.*` object.
+// Geometry matches the former editInputStyle (12px text, 6/8 padding); the
+// focus treatment now matches every other input in the kit (INPUT_CLS).
+export const EDIT_INPUT_CLS =
+  "bg-surface border border-line text-fg text-[12px] px-2 py-1.5 " +
+  "outline-none focus:border-accent font-[inherit]";

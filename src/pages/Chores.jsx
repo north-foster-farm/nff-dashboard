@@ -33,7 +33,7 @@ import ChoreMessageButton from "../components/ChoreMessageButton.jsx";
 import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 import AssignmentRulesEditor from "../components/AssignmentRulesEditor.jsx";
 import ChoreFieldsEditor, {
-  EditField, editInputStyle,
+  EditField, EDIT_INPUT_CLS,
 } from "../components/ChoreFieldsEditor.jsx";
 import {
   PlaceTreeNode, PlaceTreeSection,
@@ -1476,7 +1476,7 @@ function ChoreInlineEditor({
           type="number"
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value)}
-          style={{ ...editInputStyle, width: 90 }}
+          className={EDIT_INPUT_CLS + " w-[90px]"}
         />
       </EditField>
 
