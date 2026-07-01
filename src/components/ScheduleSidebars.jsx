@@ -268,7 +268,7 @@ export function DayStrip({
             "inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 "
             + "border cursor-pointer transition-colors "
             + (overview
-              ? "border-accent-deep bg-[color:var(--row-active)] text-accent"
+              ? "border-accent-deep bg-[color:var(--color-row-active)] text-accent"
               : "border-line text-muted hover:text-dim")
           }
         >
@@ -334,9 +334,9 @@ export function DayStrip({
                     <span
                       className="w-full h-[20px]"
                       style={{
-                        background: "var(--accent-deep)", opacity: 0.55,
-                        boxShadow: isNow ? "0 0 0 2px var(--resolved)"
-                          : isFocus ? "inset 0 0 0 1px var(--accent-deep)" : "none",
+                        background: "var(--color-accent-deep)", opacity: 0.55,
+                        boxShadow: isNow ? "0 0 0 2px var(--color-resolved)"
+                          : isFocus ? "inset 0 0 0 1px var(--color-accent-deep)" : "none",
                       }}
                     />
                   </span>
@@ -374,22 +374,22 @@ export function DayStrip({
                 <span className="relative w-full h-[56px] flex items-end justify-center">
                   {b.hasManDown && (
                     <span className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-warn"
-                      style={{ boxShadow: "0 0 0 2px var(--bg)" }} />
+                      style={{ boxShadow: "0 0 0 2px var(--color-bg)" }} />
                   )}
                   <span
                     className="relative w-full flex flex-col-reverse"
                     style={{
                       height: h + "px",
-                      background: "var(--surface-alt)",
+                      background: "var(--color-surface-alt)",
                       boxShadow: isNow
-                        ? "0 0 0 2px var(--resolved)"
+                        ? "0 0 0 2px var(--color-resolved)"
                         : isFocus
-                          ? "inset 0 0 0 1px var(--accent)"
-                          : "inset 0 0 0 1px var(--line)",
+                          ? "inset 0 0 0 1px var(--color-accent)"
+                          : "inset 0 0 0 1px var(--color-line)",
                     }}
                   >
-                    <span style={{ height: fillH + "px", background: "var(--resolved)" }} />
-                    <span style={{ height: remH + "px", background: "var(--accent-deep)", opacity: 0.85 }} />
+                    <span style={{ height: fillH + "px", background: "var(--color-resolved)" }} />
+                    <span style={{ height: remH + "px", background: "var(--color-accent-deep)", opacity: 0.85 }} />
                   </span>
                 </span>
                 <Icon size={14}

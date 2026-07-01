@@ -172,7 +172,7 @@ export function MonthView({
                 <span className="mt-auto flex items-center gap-1.5">
                   <span className="flex-1 h-1.5"
                     style={{
-                      background: `color-mix(in srgb, var(--accent) ${Math.round(
+                      background: `color-mix(in srgb, var(--color-accent) ${Math.round(
                         intensity * 100)}%, transparent)`,
                     }} />
                   <span className="text-[10.5px] text-faint [font-variant-numeric:tabular-nums]">
