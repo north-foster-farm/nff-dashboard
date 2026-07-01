@@ -118,6 +118,11 @@ export function reflowPlan({
   for (const day of gapsByDate ?? []) {
     const dayPins = [...(pinnedByDate.get(day.dateISO) ?? [])];
     for (const gap of day.gaps ?? []) {
+      // Conflict-awareness (Slice 7): flow around a gap where NOBODY is
+      // free (both admins reserved) — don't schedule project work into a
+      // window no one can work it. `who.freeCount` is projectGaps()'s
+      // availability read; a missing `who` is treated as available.
+      if (gap.who && gap.who.freeCount === 0) continue;
       let node = dayPins.shift();
       if (!node && ui < unlocked.length) { node = unlocked[ui]; ui += 1; }
       if (!node) continue; // no step for this gap — leave it free
