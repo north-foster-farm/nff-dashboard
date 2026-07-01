@@ -16,8 +16,8 @@
 //      status/[startedAt,targetDate] window (`isActiveProject`).
 //   2. Dates are light-touch metadata, NEVER scheduled on. Only the rank
 //      places work; `locked_date` is the sole date-driven escape hatch
-//      (pins an item to a day; the plan flows around it — layered on in a
-//      later slice, see LOCKS below).
+//      (pins an item to a day; the plan flows around it — see LOCKS on
+//      reflowPlan).
 //
 // STALENESS IS DERIVED, NOT STORED. The live-derived schedule never
 // persists (only deltas do), so we never store a "reflowed_at". The
@@ -45,7 +45,10 @@ export function rankedActiveProjects(projects) {
 // the gaps until it runs dry, then the next one. (Tandem work is the
 // accommodated exception, handled by manual placement, not here.)
 // Requires each project to carry its `steps` (id, title, sortOrder,
-// completedAt); the loader hydrates them.
+// completedAt, lockedDate); the loader hydrates them. Each node carries its
+// effective `lockedDate` — the step's own lock, else the project's (a
+// phase-level lock would slot between; deferred until phases are hydrated
+// + a phase lock UI exists). reflowPlan uses it to pin/skip.
 export function rankedStepQueue(rankedProjects, excludeStepIds = new Set()) {
   const queue = [];
   for (const p of rankedProjects ?? []) {
@@ -58,6 +61,7 @@ export function rankedStepQueue(rankedProjects, excludeStepIds = new Set()) {
         projectTitle: p.title,
         stepId: s.id,
         title: s.title,
+        lockedDate: s.lockedDate ?? p.lockedDate ?? null,
       });
     }
   }
@@ -84,21 +88,39 @@ export function rankedStepQueue(rankedProjects, excludeStepIds = new Set()) {
 // `excludeStepIds`: steps already spoken for (completed elsewhere today,
 // or manually placed/swapped — those overrides win over the auto-plan).
 //
-// LOCKS (deferred to a later slice): a project/phase/step with a
-// `locked_date` should pin to that day and jump the queue, with the plan
-// flowing around it. The signature below is lock-ready (excludeStepIds +
-// pre-seeded placements), but this first cut is pure rank-fill.
+// LOCKS (the escape hatch): a step whose effective `lockedDate` falls on a
+// horizon day is PINNED to that day — it jumps that day's queue, ahead of
+// rank. A step locked to a day OUTSIDE the horizon is spoken for elsewhere
+// (dropped here). Unlocked steps flow around the pins in rank order,
+// sharing one cursor across the horizon. (If a day has more pins than gaps,
+// the overflow pins are dropped for that day — a rare over-lock.)
 export function reflowPlan({
   rankedProjects, gapsByDate, excludeStepIds = new Set(),
 }) {
   const queue = rankedStepQueue(rankedProjects, excludeStepIds);
+  const horizonDates = new Set((gapsByDate ?? []).map((d) => d.dateISO));
+
+  const pinnedByDate = new Map();
+  const unlocked = [];
+  for (const node of queue) {
+    if (node.lockedDate) {
+      if (!horizonDates.has(node.lockedDate)) continue; // another day
+      const list = pinnedByDate.get(node.lockedDate) ?? [];
+      list.push(node);
+      pinnedByDate.set(node.lockedDate, list);
+    } else {
+      unlocked.push(node);
+    }
+  }
+
   const placements = [];
-  let qi = 0;
+  let ui = 0; // shared cursor into the unlocked queue, across days
   for (const day of gapsByDate ?? []) {
+    const dayPins = [...(pinnedByDate.get(day.dateISO) ?? [])];
     for (const gap of day.gaps ?? []) {
-      if (qi >= queue.length) return placements;
-      const node = queue[qi];
-      qi += 1;
+      let node = dayPins.shift();
+      if (!node && ui < unlocked.length) { node = unlocked[ui]; ui += 1; }
+      if (!node) continue; // no step for this gap — leave it free
       placements.push({
         dateISO: day.dateISO,
         gapStartMin: gap.startMin,
