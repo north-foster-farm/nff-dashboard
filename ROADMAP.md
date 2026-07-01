@@ -4240,10 +4240,19 @@ lossless** (existing 3 projects defaulted to `ranked`); the `useProjects`
 data layer (forced-rank reorder, queue-state moves, lock, timing note);
 and the rewritten `Projects.jsx` (ranked list w/ dnd-kit + Focus emphasis,
 Unprioritized bucket, lock-to-date, timing note). Build green and
-**runtime-verified light+dark** against prod. Still deferred:
-the schedule reflow engine + stale indicator + Today integration,
-lock-to-date UI at phase/step/item level, clone-from-stub, and retiring
-the vestigial `status` column + the ProjectPage status select.
+**runtime-verified light+dark** against prod.
+
+**Scheduling engine (2026-06-30):** Slice 1 SHIPPED — the pure planner
+`src/lib/schedule/reflow.js` (ranked-step gap-fill + DERIVED staleness;
+key insight: no schema needed — stale = committed placements differ from
+what a reflow of the current ranking would produce, which fits the live-
+derived `deriveDay` model). 9/9 smoke tests; not yet wired in. Full slice
+plan + 3 OPEN decisions (horizon, override scope, auto-reflow default) in
+`.ignored/scheduling-engine-design.md`. Still deferred: Slices 2–7 (reflow
+action reconciling deltas, stale-indicator UI, debounced auto-reflow, Now
+integration, locks, conflict-awareness), lock-to-date UI at phase/step/
+item level, clone-from-stub, and retiring the vestigial `status` column +
+the ProjectPage status select.
 
 The big one. A reframe of how projects drive the schedule:
 - **Single forced-ranked list.** Every queued project ranked
