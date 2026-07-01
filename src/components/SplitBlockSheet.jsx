@@ -35,7 +35,7 @@ export default function SplitBlockSheet({ blockName, items, onApply, onClose }) 
       onClick={onClose}
     >
       <div
-        className="bg-bg border border-line w-full max-w-[420px] p-5 flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
+        className="bg-bg border border-line w-full max-w-[420px] p-5 flex flex-col gap-4 max-h-full overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="Split block"

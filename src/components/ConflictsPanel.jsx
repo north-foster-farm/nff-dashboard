@@ -59,7 +59,7 @@ export default function ConflictsPanel({ conflicts, onJump, onClose }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-surface border border-line shadow-xl flex flex-col max-h-[80vh]"
+        className="w-full max-w-md bg-surface border border-line shadow-xl flex flex-col max-h-full"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="Conflicts"

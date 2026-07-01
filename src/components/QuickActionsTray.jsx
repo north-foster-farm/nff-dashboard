@@ -172,21 +172,35 @@ function TrayButton({ icon: Icon, label, onClick }) {
 
 // ── Sheet shell ───────────────────────────────────────────────────────
 function Sheet({ title, onClose, children, footer }) {
-  // Lock body scroll while open.
+  // Lock body scroll while open; Escape closes like every other sheet.
   useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+  // The card caps at max-h-full, NOT a vh unit: the app zooms `body`
+  // for text density, and vh resolves against the unzoomed viewport —
+  // a 90vh card renders at 108–135% of the screen and ejects the
+  // header (and its close X) past the top edge (F57). The fixed
+  // inset-0 overlay spans the real viewport under any zoom, so its
+  // padding is the backdrop strip and the card can never outgrow it.
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
+      className={
+        "fixed inset-0 z-50 flex items-end sm:items-center " +
+        "justify-center bg-black/60 pt-12 sm:py-8"
+      }
       onClick={onClose}
     >
       <div
         className={
           "bg-bg border border-line w-full sm:max-w-[480px] " +
-          "max-h-[90vh] flex flex-col font-body"
+          "max-h-full flex flex-col font-body"
         }
         onClick={(e) => e.stopPropagation()}
       >
