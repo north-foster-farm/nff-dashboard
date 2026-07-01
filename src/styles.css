@@ -44,6 +44,7 @@
   --color-accent-deep:  var(--c-accent-deep);
   --color-warn:         var(--c-warn);
   --color-resolved:     var(--c-resolved);
+  --color-now:          var(--c-now);
   --color-project:      var(--c-project);
   --color-chore:        var(--c-chore);
   --color-event:        var(--c-event);

@@ -334,8 +334,11 @@ export function DayStrip({
                     <span
                       className="w-full h-[20px]"
                       style={{
-                        background: "var(--color-accent-deep)", opacity: 0.55,
-                        boxShadow: isNow ? "0 0 0 2px var(--color-resolved)"
+                        // alpha lives in the fill, not the element — an
+                        // element-level opacity would fade the ring too
+                        background:
+                          "color-mix(in srgb, var(--color-chore) 55%, transparent)",
+                        boxShadow: isNow ? "inset 0 0 0 2px var(--color-now)"
                           : isFocus ? "inset 0 0 0 1px var(--color-accent-deep)" : "none",
                       }}
                     />
@@ -381,15 +384,28 @@ export function DayStrip({
                     style={{
                       height: h + "px",
                       background: "var(--color-surface-alt)",
-                      boxShadow: isNow
-                        ? "0 0 0 2px var(--color-resolved)"
-                        : isFocus
-                          ? "inset 0 0 0 1px var(--color-accent)"
-                          : "inset 0 0 0 1px var(--color-line)",
+                      boxShadow: "inset 0 0 0 1px var(--color-line)",
                     }}
                   >
                     <span style={{ height: fillH + "px", background: "var(--color-resolved)" }} />
-                    <span style={{ height: remH + "px", background: "var(--color-accent-deep)", opacity: 0.85 }} />
+                    {/* remainder in the chore identity teal (F9 — chores
+                        don't borrow accent green), matching the desktop
+                        rail */}
+                    <span style={{ height: remH + "px", background: "var(--color-chore)", opacity: 0.85 }} />
+                    {/* now/focus ring as an INSET overlay painted ABOVE the
+                        fills — a box-shadow on the bar itself sits under
+                        its children, and an outset ring falsifies the bar's
+                        height against its neighbours */}
+                    {(isNow || isFocus) && (
+                      <span
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          boxShadow: isNow
+                            ? "inset 0 0 0 2px var(--color-now)"
+                            : "inset 0 0 0 1px var(--color-accent)",
+                        }}
+                      />
+                    )}
                   </span>
                 </span>
                 <Icon size={14}
