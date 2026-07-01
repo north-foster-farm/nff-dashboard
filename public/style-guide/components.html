@@ -289,6 +289,34 @@
       (shown flush)</div>
   </div>
 
+  <h3 class="ds-h3">ProposalCard <span class="ds-status converging">Converging</span></h3>
+  <p>
+    The review card for an <em>agent proposal</em> — an action a Claude chat
+    queued through the MCP server, waiting on approval. A flush bordered card
+    with a 2px accent left rule while pending: a kind glyph + Lora title, an
+    Inter "proposed · time" eyebrow, a payload preview (description, numbered
+    steps, an italic "why"), then one accent <span class="mono">Approve &amp;
+    create</span> — which runs the app's real create path — beside a ghost
+    <span class="mono">Reject</span>. Approving never differs from building the
+    thing by hand. Source: <span class="mono">src/pages/Proposals.jsx</span>.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div class="x-pane" style="border-left:2px solid var(--c-accent);max-width:420px">
+        <div style="font-family:var(--font-heading);font-size:15px;font-weight:600">Build a second brooder</div>
+        <div class="x-eyebrow" style="margin-top:4px">Bot · Project · proposed 3m ago</div>
+        <ol style="margin:10px 0 0;padding-left:18px;color:var(--c-text-dim);font-size:12.5px">
+          <li>Frame the box</li><li>Wire the heat plate</li><li>Test the thermostat</li>
+        </ol>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="x-btn x-btn-accent">Approve &amp; create</button>
+          <button class="x-btn x-btn-ghost">Reject</button>
+        </div>
+      </div>
+    </div>
+    <div class="ds-example-meta">Flush card · accent left rule while pending · accent + ghost actions</div>
+  </div>
+
   <!-- ============ ROWS ============ -->
   <h2 class="ds-h2" id="rows">Rows &amp; lists</h2>
 

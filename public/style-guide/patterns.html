@@ -183,6 +183,20 @@
     </tbody>
   </table>
 
+  <!-- APPROVAL QUEUE -->
+  <h2 class="ds-h2" id="approval">Approval queue (Proposals)</h2>
+  <p>
+    Where actions an external Claude chat proposes land for human sign-off.
+    Pending / History tabs over a stack of flush ProposalCards; Approve runs the
+    app's real create path, Reject discards. Nothing an agent proposes mutates
+    data until it's approved here — surface + prompt, never silent mutation.
+    Backed by <span class="mono">agent_proposals</span> +
+    <span class="mono">useAgentProposals</span>; proposals arrive live via
+    realtime, so one queued from a phone shows up instantly. The agent's write
+    tools are propose-only, which keeps a future public (phone / claude.ai)
+    endpoint low-risk — it can only enqueue, never corrupt.
+  </p>
+
   <!-- EMPTY -->
   <h2 class="ds-h2" id="empty">Empty &amp; first-run</h2>
   <p>

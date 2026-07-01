@@ -215,6 +215,19 @@ Each: STATUS · what · use/not · canonical source.
   TopBar + Rounds (`src/components/OutboxIndicator.jsx`).
 - **EmptyState** · Converging · dashed box + a line that says what to do;
   consolidate the several shapes. An empty screen invites an action.
+- **ProposalCard** · Converging · the review card for an *agent proposal* — an
+  action a Claude chat queued via the MCP server (`mcp/`), awaiting approval.
+  Flush bordered card (principle 1) with a 2px accent left rule while pending:
+  head = kind glyph (FolderKanban/CalendarRange/ListChecks in accent) + Lora
+  title + an Inter "Bot · Project · proposed <time>" eyebrow; body previews the
+  payload (description, numbered steps, an italic "why"); actions = one accent
+  "Approve & create" beside a ghost "Reject". Approve runs the app's REAL create
+  path (`useProjects().createProjectTree`), so an approved proposal is
+  indistinguishable from a hand-built one; reject discards. The history variant
+  swaps actions for a StatusPill (applied/rejected/failed) + an "Open project"
+  deep link or a Retry. NO-LEGACY debt: locally reimplements Tab / EmptyState /
+  StatusPill (same as Inbox.jsx) — fold onto the canonical primitives when the
+  pill/tab consolidation lands. Source: `src/pages/Proposals.jsx`.
 
 ## Patterns (page-level — see patterns.html)
 
@@ -241,6 +254,15 @@ Each: STATUS · what · use/not · canonical source.
   overdue=AttentionCard.Row (Hole.row) in the row; page notices=AlertStrip;
   offline=OutboxIndicator; now=`NowTag` on the block row (Schedule) /
   `NowRule` divider (phone glance), today only.
+- **Approval queue** (Proposals) — the surface where actions an external Claude
+  chat proposes land for human sign-off. Pending / History tabs over a stack of
+  flush `ProposalCard`s; Approve runs the app's real create path, Reject
+  discards — nothing an agent proposes mutates data until James approves it here
+  (principle 8: surface + prompt, never silent mutation). Backed by the
+  `agent_proposals` table + `useAgentProposals`; proposals arrive live via
+  realtime, so one queued from a phone shows up instantly. The agent's write
+  tools (`mcp/`) are propose-only, which also keeps a future public endpoint
+  low-risk — it can only enqueue, never corrupt.
 
 ## Consolidation backlog (the bounded-options payoff)
 

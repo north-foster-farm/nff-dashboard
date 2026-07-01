@@ -23,6 +23,7 @@ import Roadmap from "../pages/Roadmap.jsx";
 import StyleGuide from "../pages/StyleGuide.jsx";
 import SitesPage from "../pages/SitesPage.jsx";
 import Inbox from "../pages/Inbox.jsx";
+import Proposals from "../pages/Proposals.jsx";
 import Projects from "../pages/Projects.jsx";
 import ProjectPage from "../pages/ProjectPage.jsx";
 import Processes from "../pages/Processes.jsx";
@@ -137,6 +138,7 @@ export default function SectionContent({
     case "add_new_customer":
       return <Customers startCreating key="new-customer" />;
     case "inbox": return <Inbox onOpenEvent={onOpenEvent} />;
+    case "proposals": return <Proposals />;
     case "activity": return <Activity />;
     case "observations": return <Observations />;
     case "threads": return <Threads data={data} />;

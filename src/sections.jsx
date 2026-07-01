@@ -5,7 +5,7 @@ import {
   Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
   CalendarRange, Store, Cog, Sunrise, Telescope,
   UserPlus, ClipboardList, CalendarDays, Newspaper, Map, MapPin, Eye,
-  Lightbulb, ChartLine, Palette
+  Lightbulb, ChartLine, Palette, Bot
 } from "lucide-react";
 import { isActiveProject } from "./lib/projects.js";
 
@@ -123,6 +123,7 @@ export const SECTIONS = [
 
   // ── Other — kept last in the menu (2026-06 chore-ux fixes) ──────────
   { id: "inbox", group: "Other", label: "Inbox", icon: Lightbulb, description: "Just-a-thought capture — ideas that aren't yet projects or chores. Pin, archive, or promote them to events.", getCount: () => null },
+  { id: "proposals", group: "Other", label: "Proposals", icon: Bot, description: "Actions a Claude chat has proposed for the farm — new projects and more. Approve one and the app creates it for real; reject to discard. Nothing changes your data until you approve it.", getCount: () => null },
   { id: "roadmap", group: "Other", label: "What's coming", icon: Telescope, description: "Features on deck for upcoming releases.", getCount: () => null },
   { id: "style_guide", group: "Other", label: "Style guide", icon: Palette, description: "The design system, component library, patterns, and tone & voice — the bounded source of truth for how the app looks and reads.", getCount: () => null },
   { id: "activity", group: "Other", label: "Activity", icon: Activity, description: "Every action logged across the farm — chore completions, temperature readings, weight logs, sales, and more.", getCount: () => null },

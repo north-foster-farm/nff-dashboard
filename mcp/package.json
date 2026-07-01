@@ -1,0 +1,17 @@
+{
+  "name": "nff-dashboard-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server that lets a Claude chat propose actions (create projects, etc.) into the North Foster Farm dashboard, gated behind in-app approval.",
+  "bin": {
+    "nff-dashboard-mcp": "./server.mjs"
+  },
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.19.1",
+    "zod": "^3.25.76"
+  }
+}

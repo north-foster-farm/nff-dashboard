@@ -367,6 +367,46 @@ export function useProjects() {
     return data.id;
   }, [userEmail, rankedTailSort, fetchAll]);
 
+  // Create a whole project in one shot from an approved agent proposal:
+  // the project (tail of the ranked queue), and — if steps were proposed
+  // — a single phase to hold them plus the steps in order. Reuses the
+  // same rank/sort invariants as the piecemeal in-app creates, so an
+  // approved proposal is indistinguishable from one built by hand.
+  const createProjectTree = useCallback(async ({
+    title, description, steps = [],
+  }) => {
+    const trimmed = (title ?? "").trim();
+    if (!trimmed) throw new Error("Title required.");
+    const project = await dbInsert("projects", {
+      title: trimmed,
+      description: (description ?? "").trim() || null,
+      created_by: userEmail,
+      queue_state: "ranked",
+      sort_order: rankedTailSort(),
+    }, PROJECT_COLS);
+    const cleanSteps = (steps ?? [])
+      .map(s => (typeof s === "string" ? s : s?.title) ?? "")
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (cleanSteps.length) {
+      const phase = await dbInsert("project_phases", {
+        project_id: project.id,
+        title: "Steps",
+        sort_order: 0,
+      }, PHASE_COLS);
+      for (let i = 0; i < cleanSteps.length; i += 1) {
+        await dbInsert("project_steps", {
+          project_id: project.id,
+          phase_id: phase.id,
+          title: cleanSteps[i],
+          sort_order: i,
+        }, STEP_COLS);
+      }
+    }
+    await fetchAll();
+    return project.id;
+  }, [userEmail, rankedTailSort, fetchAll]);
+
   const updateProject = useCallback(async (id, patch) => {
     await dbUpdate("projects", id, projectPatch(patch));
     await fetchAll();
@@ -421,6 +461,7 @@ export function useProjects() {
     loading: tables === null,
     error,
     createProject,
+    createProjectTree,
     updateProject,
     reorderProjects,
     setQueueState,
