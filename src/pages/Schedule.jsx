@@ -54,7 +54,7 @@ import { monthFullness } from "../lib/schedule/monthView.js";
 import { blockStartDrift, dayReviews } from "../lib/schedule/lookBack.js";
 import { useRunHistory } from "../lib/data/useRunHistory.js";
 import {
-  isActiveProject, nextProjectStep, nextProjectStepFor,
+  isActiveProject, nextProjectStepFor,
 } from "../lib/projects.js";
 import { segmentForStart, buildDaySegments } from "../lib/schedule/placement.js";
 import {
@@ -827,8 +827,8 @@ export default function Schedule({ data }) {
 
   // Write a project step's completion straight through to project_steps (P14 —
   // one source of truth). The reference-data realtime channel on project_steps
-  // refreshes data.projects, so the occupant re-derives. Online-only for v1
-  // (offline outbox for steps is deferred).
+  // refreshes data.projects, so the ranking + any reflow re-derive.
+  // Online-only for v1 (offline outbox for steps is deferred).
   const completeProjectStep = (stepId, done) => {
     if (!stepId) return;
     supabase.from("project_steps")
@@ -955,9 +955,8 @@ export default function Schedule({ data }) {
 
   // Project blocks (the derived gaps) as timeline + navigator entries (batch
   // 2 — now with contents). Each carries its placed `items` (project_node /
-  // ad_hoc deltas routed here by time) and, for the FIRST gap only when it has
-  // no items, the auto-pulled `occupant` (the top project's next step —
-  // display-only, swappable). `startMin` sorts them into the agenda/spine.
+  // ad_hoc deltas routed here by time, written by the scheduling engine's
+  // reflow or a manual add). `startMin` sorts them into the agenda/spine.
   const projectEntries = useMemo(() => {
     const projectsById = new Map(
       (data.projects ?? []).map((p) => [p.id, p]));
@@ -970,34 +969,26 @@ export default function Schedule({ data }) {
     return (derived.projectSegments ?? []).map((seg, idx) => {
       const bucket = "project:" + seg.startMin;
       const items = projectPlacements.byBucket.get(bucket) ?? [];
-      // Auto-pull the top project's next step into the first gap, and keep
-      // pulling the NEXT one once placed steps are done — appended below the
-      // completed rows, never overwriting them (F69). A manual swap places an
-      // INCOMPLETE project step, which suppresses the auto-pull (the swap
-      // "overrides" the default). Already-placed steps aren't re-pulled.
+      // Placed project steps (from the scheduling engine's reflow, or a
+      // manual add) drive the block — there is no live first-gap auto-pull
+      // preview (retired: the engine now fills every gap across the day).
       const placedStepIds = new Set(
         items.map((d) => d.source_ref?.step_id).filter(Boolean));
       const placedProjId = items
         .map((d) => d.source_ref?.project_id).filter(Boolean).at(-1) ?? null;
-      const hasIncompleteProj = items.some(
-        (d) => d.source_type === "project_node" && d.state !== "done");
-      let occupant = (idx === 0 && !hasIncompleteProj)
-        ? nextProjectStep(data.projects, dateISO) : null;
-      if (occupant && placedStepIds.has(occupant.stepId)) occupant = null;
 
       // "Continue project above" (F32): an empty later block can copy the
       // carried project's next undone step down. Only offered when nothing is
-      // placed or auto-shown in this block and a project is being carried.
+      // placed in this block and a project is being carried from above.
       let continueFrom = null;
-      if (idx > 0 && items.length === 0 && !occupant && carryProjectId) {
+      if (idx > 0 && items.length === 0 && carryProjectId) {
         continueFrom = nextProjectStepFor(
           projectsById.get(carryProjectId), seenStepIds);
       }
 
       // Advance the carry/seen state for the blocks below.
       for (const sid of placedStepIds) seenStepIds.add(sid);
-      if (occupant) seenStepIds.add(occupant.stepId);
-      const blockProjId = placedProjId ?? (occupant?.projectId ?? null);
+      const blockProjId = placedProjId;
       if (blockProjId) carryProjectId = blockProjId;
 
       const doneCount = items.filter((d) => d.state === "done").length;
@@ -1010,7 +1001,6 @@ export default function Schedule({ data }) {
         durationMin: seg.durationMin,
         who: seg.who,
         items,
-        occupant,
         continueFrom,
         count: items.length,
         done: doneCount,
@@ -2444,14 +2434,12 @@ export default function Schedule({ data }) {
               const range = formatMinutesOfDay(entry.startMin)
                 + "–" + formatMinutesOfDay(entry.endMin);
               // The sub-line names what's planned: placed items (with a done
-              // tally), else the auto-pulled occupant, else the passive note.
+              // tally), else the passive "nothing planned" note.
               const sub = entry.items.length
                 ? (entry.items[0].source_ref?.title ?? "1 item")
                   + (entry.items.length > 1
                     ? ` +${entry.items.length - 1} more` : "")
-                : entry.occupant
-                  ? entry.occupant.title
-                  : null;
+                : null;
               return (
                 <li key={entry.bucket}>
                   <button
@@ -2676,14 +2664,6 @@ export default function Schedule({ data }) {
                 completeProjectStep(stepId, done);
               }
             };
-            // Ticking the auto-pulled occupant materialises it as a placed,
-            // done row so it persists; the next step then auto-pulls and
-            // appends below it (F69) instead of swapping it out.
-            const completeOccupant = (occ) => {
-              const id = addProject(occ, null, null, minToHM(b.startMin));
-              setDone(id, true);
-              completeProjectStep(occ.stepId, true);
-            };
             return (
               <>
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
@@ -2721,42 +2701,7 @@ export default function Schedule({ data }) {
                     ))}
                   </ul>
                 )}
-                {b.occupant ? (
-                  /* The auto-pulled occupant (display-only; not yet a row),
-                     appended below any placed items. Checking it persists it as
-                     a done row and pulls the next step (F69); "Swap" places a
-                     different one, which overrides the auto-pull. */
-                  <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
-                    <button
-                      type="button"
-                      onClick={() => completeOccupant(b.occupant)}
-                      className="shrink-0 w-7 h-7 border-2 bg-bg border-line text-transparent hover:border-fg inline-flex items-center justify-center cursor-pointer"
-                      aria-label="Mark done"
-                    >
-                      <Check size={16} strokeWidth={3} />
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[14px] font-medium text-fg flex items-center gap-2">
-                        <span className="truncate">{b.occupant.title}</span>
-                        <span className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1">
-                          auto
-                        </span>
-                      </div>
-                      {b.occupant.projectTitle && (
-                        <div className="text-[12px] text-faint italic mt-0.5 truncate">
-                          {b.occupant.projectTitle}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setProjectAddFor(b)}
-                      className="shrink-0 text-[12px] font-medium text-accent hover:underline cursor-pointer"
-                    >
-                      Swap
-                    </button>
-                  </div>
-                ) : b.items.length === 0 ? (
+                {b.items.length === 0 ? (
                   b.continueFrom ? (
                     /* Copy the project carried from the block above down into
                        this gap — its next undone step (F32). One quick tap to
@@ -2951,8 +2896,7 @@ export default function Schedule({ data }) {
 
       {projectAddFor && (
         /* Add into a Project block — same search, but every add carries the
-           segment's start time so segmentForStart routes it back here. A
-           placed step overrides the auto-pulled occupant (the "swap"). */
+           segment's start time so segmentForStart routes it back here. */
         <AddToScheduleSearch
           chores={choreDefs}
           choreCtx={choreCtx}
