@@ -158,6 +158,11 @@ export function useScheduleDeltas(dateISO) {
         project_id: node.projectId, step_id: node.stepId ?? null,
         title: node.title, project_title: node.projectTitle ?? null,
         block_id: blockId ?? null,
+        // `origin: "auto"` marks a placement written by the scheduling
+        // engine's reflow, so a later reflow can replace only its own
+        // placements and leave manual (origin absent) ones untouched.
+        // Rides source_ref jsonb — no schema/outbox change.
+        origin: node.origin ?? null,
       },
       clockTime: clockTime ?? null,
     }));

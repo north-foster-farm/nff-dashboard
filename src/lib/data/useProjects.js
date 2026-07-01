@@ -317,6 +317,9 @@ export function useProjects() {
       progress: progressOf(phases, steps),
       phaseCount: phases.length,
       stepCount: steps.length,
+      // The scheduling engine (reflow.js) ranks a project's incomplete
+      // steps into the day's gaps, so the list level hydrates them too.
+      steps,
     };
   }, [tables]);
 
