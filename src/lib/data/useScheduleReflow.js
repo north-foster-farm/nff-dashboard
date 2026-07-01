@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useChoreBlocks } from "./useChoreBlocks.js";
 import { useScheduleDeltas } from "./useScheduleDeltas.js";
 import { projectGaps } from "../schedule/partition.js";
@@ -17,19 +17,29 @@ import { parseISODate } from "../dates.js";
 // forced-ranked projects' next incomplete steps, written as `origin:"auto"`
 // schedule deltas. Exposes the DERIVED staleness + a manual `syncNow()`.
 //
-//   useScheduleReflow({ dateISO, projects }) →
+//   useScheduleReflow({ dateISO, projects, autoReflow }) →
 //     { stale, planned, committedAuto, plannedCount, syncNow }
 //
 // `projects` is passed in (the caller — Projects page — already loads them
 // with hydrated steps), so we don't double-subscribe useProjects.
 //
 // SCOPE (this slice): today-only horizon (the planner takes a multi-day
-// horizon; widening is a later slice) and manual-sync only (the ~30s auto-
-// reflow fallback is Slice 4). STALE = the committed auto-placements differ
-// from what a fresh reflow of the current ranking would produce — so
-// reordering the list flips `stale` true WITHOUT moving anything (never
-// silently rearrange); `syncNow()` writes the minimal diff to reconcile.
-export function useScheduleReflow({ dateISO, projects }) {
+// horizon; widening is a later slice). STALE = the committed auto-
+// placements differ from what a fresh reflow of the current ranking would
+// produce — so reordering the list flips `stale` true WITHOUT moving
+// anything (never silently rearrange); `syncNow()` writes the minimal diff.
+//
+// AUTO-REFLOW (Slice 4): when `autoReflow` is on (the default), a stale
+// schedule auto-syncs after AUTO_REFLOW_MS of quiet — the "automatic
+// fallback." The timer resets on every ranking change (the effect re-runs
+// when `syncNow`'s identity changes), so rapid planning debounces to a
+// single reflow rather than one per change. The manual Sync is always
+// instant; turning `autoReflow` off leaves staleness for the user to
+// resolve deliberately. Fires only while this hook is mounted (the
+// Projects page today); an app-wide mount is a later refinement.
+const AUTO_REFLOW_MS = 30_000;
+
+export function useScheduleReflow({ dateISO, projects, autoReflow = true }) {
   const { blocks } = useChoreBlocks();
   const { deltas, addProject, removeDelta } = useScheduleDeltas(dateISO);
 
@@ -65,6 +75,16 @@ export function useScheduleReflow({ dateISO, projects }) {
     for (const p of toPlace) addProject(...placementToAddArgs(p));
     return { placed: toPlace.length, removed: toRemove.length };
   }, [planned, committedAuto, addProject, removeDelta]);
+
+  // The automatic fallback: while stale + enabled, sync after a quiet
+  // window. `syncNow` changes identity on every ranking change (its deps
+  // include `planned`), so this effect re-runs and RESETS the timer —
+  // that's the debounce. Clears on unmount / sync / toggle-off.
+  useEffect(() => {
+    if (!autoReflow || !stale) return undefined;
+    const t = setTimeout(() => { syncNow(); }, AUTO_REFLOW_MS);
+    return () => clearTimeout(t);
+  }, [autoReflow, stale, syncNow]);
 
   return {
     stale,
