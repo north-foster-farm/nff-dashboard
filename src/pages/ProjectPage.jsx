@@ -8,8 +8,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  ArrowLeft, Archive, ArchiveRestore, CalendarRange, Check, Circle,
-  CircleCheck, FolderKanban, GripVertical, Link2, Lock, Paperclip,
+  ArrowLeft, Archive, ArchiveRestore, CalendarClock, CalendarRange, Check,
+  Circle, CircleCheck, FolderKanban, GripVertical, Link2, Lock, Paperclip,
   Pencil, Plus, Trash2, X,
 } from "lucide-react";
 import { useProject } from "../lib/data/useProjects.js";
@@ -581,9 +581,68 @@ function StepRow({ step, proj, onOpen, dragHandleProps }) {
           </span>
         )}
         <AssigneeChips value={step.assignees} readonly />
+        <StepLockControl step={step} proj={proj} />
         {dates && <span>{dates}</span>}
       </div>
     </div>
+  );
+}
+
+// Lock-to-date for one step — the escape hatch the scheduling engine
+// honors (a locked step pins to its day and jumps the reflow queue). A
+// CalendarClock toggle (distinct from the prereq `Lock`); opens a compact
+// native date input. Writes step.locked_date via proj.updateStep.
+function StepLockControl({ step, proj }) {
+  const [open, setOpen] = useState(false);
+  const locked = step.lockedDate;
+  const set = (v) =>
+    proj.updateStep(step.id, { lockedDate: v || null }).catch(() => {});
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title={locked ? `Locked to ${locked}` : "Lock to a date"}
+        className={
+          "shrink-0 inline-flex items-center gap-1 bg-transparent border-0 "
+          + "cursor-pointer p-0 "
+          + (locked ? "text-accent-deep" : "text-faint hover:text-dim")
+        }
+      >
+        <CalendarClock size={12} />
+        {locked && <span className="text-[10px]">{locked}</span>}
+      </button>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        type="date"
+        value={locked ?? ""}
+        autoFocus
+        onChange={(e) => set(e.target.value)}
+        className="bg-surface border border-line text-fg text-[10px] px-1 py-0.5 outline-none focus:border-accent font-[inherit]"
+      />
+      {locked && (
+        <button
+          type="button"
+          onClick={() => { set(null); setOpen(false); }}
+          className="text-[9px] text-dim hover:text-warn bg-transparent border-0 cursor-pointer uppercase tracking-[0.1em]"
+        >
+          clear
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-[9px] text-dim hover:text-fg bg-transparent border-0 cursor-pointer uppercase tracking-[0.1em]"
+      >
+        ok
+      </button>
+    </span>
   );
 }
 
