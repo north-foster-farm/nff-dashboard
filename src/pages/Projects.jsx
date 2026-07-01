@@ -8,11 +8,14 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   FolderKanban, Plus, GripVertical, Lock, ArrowDownToLine, ArrowUp,
+  CalendarSync,
 } from "lucide-react";
-import { BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
+import { BTN_ACCENT, BTN_GHOST, AlertStrip } from "../components/ui.jsx";
 import { useProjects } from "../lib/data/useProjects.js";
+import { useScheduleReflow } from "../lib/data/useScheduleReflow.js";
 import { navigate, pathForProject } from "../lib/router.js";
 import { formatDateRange } from "../lib/projects.js";
+import { formatISODate, todayUTC } from "../lib/dates.js";
 
 // The Projects list page — forced-ranked rework (Batch: projects rework,
 // structural core). Priority is a SINGLE total order, not plural flags:
@@ -36,6 +39,11 @@ export default function Projects() {
   } = useProjects();
   const [tab, setTab] = useState("active");
   const [creating, setCreating] = useState(false);
+  // Scheduling engine (Slice 2): today's reflow of the ranked list into the
+  // day's project gaps. Surfaces a "stale" nudge here (the ranking lives on
+  // this page) with a manual Sync; nothing rearranges until the user syncs.
+  const todayISO = useMemo(() => formatISODate(todayUTC()), []);
+  const reflow = useScheduleReflow({ dateISO: todayISO, projects });
 
   // Active (non-archived, non-done) split by queue placement; done +
   // archived live in their own tabs.
@@ -104,6 +112,7 @@ export default function Projects() {
           reorderProjects={reorderProjects}
           actions={actions}
           setTimingNote={setTimingNote}
+          reflow={reflow}
         />
       ) : tab === "completed" ? (
         <FlatList list={completed} empty={<EmptyState tab="completed" />} />
@@ -117,7 +126,7 @@ export default function Projects() {
 // ── Active view: ranked list + Unprioritized bucket ────────────────────
 
 function ActiveView({
-  ranked, unprioritized, reorderProjects, actions, setTimingNote,
+  ranked, unprioritized, reorderProjects, actions, setTimingNote, reflow,
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -134,6 +143,16 @@ function ActiveView({
 
   return (
     <div className="flex flex-col gap-6">
+      {reflow?.stale && (
+        <AlertStrip
+          tone="info"
+          icon={CalendarSync}
+          action="Sync today"
+          onAct={() => reflow.syncNow()}
+        >
+          Today's schedule doesn't reflect this ranking yet.
+        </AlertStrip>
+      )}
       <section className="flex flex-col gap-2">
         <SectionLabel>
           The ranked list — top is the focus
