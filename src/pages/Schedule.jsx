@@ -1681,17 +1681,29 @@ export default function Schedule({ data }) {
   // Split a block for one day (S72): bulk-apply a second-sitting clock time to
   // the chosen rows, reusing the per-row write (derived chores → override,
   // commitment rows → updateDelta). The global block is untouched.
+  // The time routes through the day's segments (the one placement rule): a
+  // second sitting that lands inside another chore block's window re-homes
+  // the rows into THAT block (F52) — a bare clock-time override would leave
+  // them stranded in the source block while the user looks for them at the
+  // block that owns the chosen time.
   const [splitting, setSplitting] = useState(null);
   const doSplit = (keys, time) => {
     const b = splitting;
     if (!b) return;
     const set = new Set(keys);
+    const target = segmentForStart(hmToMin(time), daySegments);
+    const rehome = isRealBlock(target) && target !== b.bucket;
     const entry = {
       at: new Date().toISOString(), by: email ?? null,
-      summary: `Split — moved to ${time}`,
+      summary: rehome
+        ? `Split — moved to ${bucketName(target)} at ${time}`
+        : `Split — moved to ${time}`,
     };
+    const change = rehome
+      ? { toBlockId: target, clockTime: time }
+      : { clockTime: time };
     for (const row of b.rows) {
-      if (set.has(row.key)) writeRow(row, b.bucket, { clockTime: time }, entry);
+      if (set.has(row.key)) writeRow(row, b.bucket, change, entry);
     }
     setSplitting(null);
   };
