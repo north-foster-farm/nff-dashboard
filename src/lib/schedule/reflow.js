@@ -129,3 +129,25 @@ export function isStale(plannedPlacements, committedPlacements) {
   return planSignature(plannedPlacements)
     !== planSignature(committedPlacements);
 }
+
+// ── Reconciliation (pure) ─────────────────────────────────────────────
+// The idempotent diff that turns a fresh plan into a MINIMAL set of
+// writes. `committedAuto` = the currently-committed AUTO placements (the
+// reflow-managed ones). Manual placements + completed steps are excluded
+// from BOTH the plan (via reflowPlan's excludeStepIds) and from
+// committedAuto, so this never touches them — reflow flows around manual
+// work, it doesn't clobber it. Anything present in both plan and committed
+// is left as-is, so reflowing an unchanged schedule writes nothing.
+//
+//   reconcilePlan({ planned, committedAuto }) → { toPlace, toRemove }
+//
+// `toPlace`: planned placements not yet committed (insert these deltas).
+// `toRemove`: committed auto placements no longer in the plan (delete).
+export function reconcilePlan({ planned = [], committedAuto = [] }) {
+  const plannedKeys = new Set(planned.map(placementKey));
+  const committedKeys = new Set(committedAuto.map(placementKey));
+  return {
+    toPlace: planned.filter((p) => !committedKeys.has(placementKey(p))),
+    toRemove: committedAuto.filter((p) => !plannedKeys.has(placementKey(p))),
+  };
+}
