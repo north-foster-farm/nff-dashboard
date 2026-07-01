@@ -15,6 +15,12 @@ import { describeChoreAnchor, describeFrequency } from "../lib/chores.js";
 import {
   PlaceTreeNode, PlaceTreeSection, groupByPlaceTree,
 } from "../components/PlaceTree.jsx";
+import { KindBadge } from "../components/ui.jsx";
+import { useProjects } from "../lib/data/useProjects.js";
+import {
+  rankedActiveProjects, rankedStepQueue,
+} from "../lib/schedule/reflow.js";
+import { navigate, pathForProject } from "../lib/router.js";
 
 // The Now surface (Batch 17) — the phone landing. Time-anchored: the
 // active-or-next round as one fat primary button, then a farm-wide
@@ -43,6 +49,7 @@ export default function Now({ onOpenRounds }) {
   const {
     activeRun, nextBlock, loading: runsLoading, cancelRun,
   } = useChoreRuns({ blocks });
+  const { projects } = useProjects();
 
   const today = useMemo(() => new Date(), []);
   const completions = useChoreCompletions(today);
@@ -132,6 +139,14 @@ export default function Now({ onOpenRounds }) {
     ? blocks.find(b => b.id === activeRun.blockId) ?? null
     : null;
 
+  // Slice 5 — the single most important project action: the next
+  // incomplete step of the top-ranked project (the forced ranking's #1
+  // focus). Same rank order the scheduling engine fills gaps in.
+  const nextProject = useMemo(() => {
+    const queue = rankedStepQueue(rankedActiveProjects(projects ?? []));
+    return queue[0] ?? null;
+  }, [projects]);
+
   return (
     <div className="max-w-[640px] mx-auto flex flex-col gap-6">
       {/* Header — the date is part of the heading itself */}
@@ -182,6 +197,15 @@ export default function Now({ onOpenRounds }) {
                   : "No time blocks configured yet — add one in Chores → Blocks."}
               </div>
             </div>
+          )}
+
+          {/* The top project's next step — what to work on in the gaps
+              once the round's done (the forced-ranking focus). */}
+          {nextProject && (
+            <NextProjectCard
+              node={nextProject}
+              onOpen={() => navigate(pathForProject(nextProject.projectId))}
+            />
           )}
 
           {/* Farm-wide overdue list, grouped by place */}
@@ -315,6 +339,32 @@ function formatBlockDuration(minutes) {
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
+}
+
+// ── Next project step ─────────────────────────────────────────────────
+// A calm flush card under the round CTA: the top-ranked project's next
+// step, carrying the slate "P" identity. Taps through to the project.
+function NextProjectCard({ node, onOpen }) {
+  return (
+    <button
+      onClick={onOpen}
+      className={
+        "w-full flex items-center gap-3 border border-line px-4 py-3 " +
+        "text-left cursor-pointer hover:border-project font-[inherit]"
+      }
+    >
+      <KindBadge kind="project" size={22} />
+      <span className="flex flex-col flex-1 min-w-0 gap-0.5">
+        <span className="font-ui text-[10px] uppercase tracking-[0.16em] font-semibold text-project truncate">
+          Next project · {node.projectTitle}
+        </span>
+        <span className="font-heading text-[16px] font-semibold text-fg leading-snug truncate">
+          {node.title}
+        </span>
+      </span>
+      <ChevronRight size={16} className="shrink-0 text-faint" />
+    </button>
+  );
 }
 
 // ── Overdue / done list ───────────────────────────────────────────────
