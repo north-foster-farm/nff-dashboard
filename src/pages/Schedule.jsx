@@ -2294,7 +2294,10 @@ export default function Schedule({ data }) {
           </button>
         )}
         <OutboxIndicator />
-        <div className="ml-auto flex items-center gap-3">
+        {/* On phones this trio wraps onto its own line; full-width +
+            justify-between reads as a deliberate toolbar row there (F36)
+            instead of a right-shoved cluster with a dead left gap. */}
+        <div className="w-full justify-between sm:w-auto sm:justify-start sm:ml-auto flex items-center gap-3">
           <button
             type="button"
             onClick={() => setShowConflicts(true)}
