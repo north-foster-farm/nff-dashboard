@@ -3,7 +3,7 @@ import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
   GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
   Repeat, StickyNote, Timer, Scissors, CalendarX, FolderKanban,
-  ClockArrowRight, ClockArrowLeft, CornerDownRight,
+  ClockArrowRight, ClockArrowLeft, CornerDownRight, CalendarSync,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -63,7 +63,8 @@ import {
 import { useNeighborDeltas } from "../lib/data/useNeighborDeltas.js";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PageHeader from "../components/PageHeader.jsx";
-import { navigate } from "../lib/router.js";
+import { navigate, usePersistedState } from "../lib/router.js";
+import { useScheduleReflow } from "../lib/data/useScheduleReflow.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { recordCapture, readCaptures } from "../lib/capture/capture.js";
 import { supabase, realtimeChannel } from "../lib/supabase.js";
@@ -633,6 +634,16 @@ export default function Schedule({ data }) {
   // The real calendar today (the week pane's "today" ring + the jump-to-now
   // target), distinct from `dateISO`, the day being viewed.
   const realTodayISO = useMemo(() => ymdLocal(new Date()), []);
+
+  // Projects reflow engine, mounted HERE as well as on the Projects page
+  // (F59/F60): the schedule is where a stale ranking is actually felt —
+  // "nothing planned" project blocks — so it surfaces staleness with a
+  // Sync now, and the same debounced auto-fallback fires while you're
+  // looking at the schedule. Always plans the REAL today (the engine's
+  // today-only horizon), whatever day is being viewed.
+  const [autoReflow] = usePersistedState("nff-schedule-autoreflow", true);
+  const projectReflow = useScheduleReflow({
+    dateISO: realTodayISO, projects: data.projects, autoReflow });
 
   // Yesterday's unfinished musts (S12) — when building today, surface the
   // must-do chores that fell due yesterday and weren't completed, so a missed
@@ -2335,6 +2346,23 @@ export default function Schedule({ data }) {
           </button>
         </div>
       </div>
+
+      {/* Stale projects ranking (F59/F60) — the reflow engine's staleness,
+          surfaced where it's felt. Gated on live projects having loaded so
+          a transient empty slice can't invite a destructive sync. */}
+      {viewMode === "day" && viewingToday && projectReflow.stale
+        && (data.projects?.length ?? 0) > 0 && (
+        <AlertStrip
+          className="mb-3"
+          tone="info"
+          icon={CalendarSync}
+          action="Sync now"
+          onAct={() => projectReflow.syncNow()}
+        >
+          Today's project blocks don't reflect the projects ranking yet.
+          {autoReflow ? " They'll auto-sync shortly." : " Auto-sync is off."}
+        </AlertStrip>
+      )}
 
       {/* Yesterday's unfinished musts (S12) — only when building today. A
           passive count strip (F28), no per-item names. */}

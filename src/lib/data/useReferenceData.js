@@ -671,7 +671,7 @@ async function loadProjects() {
   const [projRes, phaseRes, stepRes] = await Promise.all([
     supabase
       .from("projects")
-      .select("id, title, description, status, owner_email, started_at, target_date, completed_at, notes, created_at, archived_at, sort_order")
+      .select("id, title, description, status, owner_email, started_at, target_date, completed_at, notes, created_at, archived_at, sort_order, queue_state, locked_date")
       .is("archived_at", null)
       .order("created_at", { ascending: false }),
     supabase
@@ -679,7 +679,7 @@ async function loadProjects() {
       .select("id, project_id, completed_at"),
     supabase
       .from("project_steps")
-      .select("id, project_id, phase_id, title, sort_order, completed_at")
+      .select("id, project_id, phase_id, title, sort_order, completed_at, locked_date")
   ]);
   if (projRes.error) { console.error("loadProjects:", projRes.error); return null; }
   const phases = phaseRes.error ? [] : (phaseRes.data ?? []);
@@ -696,6 +696,7 @@ async function loadProjects() {
         title: st.title,
         sortOrder: st.sort_order ?? 0,
         completedAt: st.completed_at,
+        lockedDate: st.locked_date,
       }));
     return {
       id: p.id,
@@ -709,6 +710,11 @@ async function loadProjects() {
       notes: p.notes,
       createdAt: p.created_at,
       sortOrder: p.sort_order ?? 0,
+      // Queue fields ride along so the Schedule can run the reflow
+      // engine (staleness + sync-now + auto-fallback) off this
+      // app-wide slice (F59/F60).
+      queueState: p.queue_state ?? "ranked",
+      lockedDate: p.locked_date,
       steps: mySteps,
       progress: progressOf(
         phases
