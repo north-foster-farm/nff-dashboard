@@ -44,7 +44,6 @@
   --color-accent-deep:  var(--c-accent-deep);
   --color-warn:         var(--c-warn);
   --color-resolved:     var(--c-resolved);
-  --color-now:          var(--c-now);
   --color-project:      var(--c-project);
   --color-chore:        var(--c-chore);
   --color-event:        var(--c-event);
@@ -268,6 +267,15 @@ html[data-density="spacious"]    body { zoom: 1.50; }
 .density-exempt { zoom: 0.8333333; }
 html[data-density="comfortable"] .density-exempt { zoom: 0.7407407; }
 html[data-density="spacious"]    .density-exempt { zoom: 0.6666667; }
+
+/* Inverse-zoom LENGTH for hairline work: zoom multiplies every px, so
+   a 2px ring rasterizes at 2.4px and antialiases a mud pixel onto one
+   flank. Author such widths as calc(Npx * var(--inv-zoom)) and they
+   land on true device pixels at any density. Don't use inside
+   .density-exempt — the wrapper already cancels the zoom. */
+:root { --inv-zoom: 0.8333333; }
+html[data-density="comfortable"] { --inv-zoom: 0.7407407; }
+html[data-density="spacious"]    { --inv-zoom: 0.6666667; }
 
 /* Markdown bodies (project descriptions / step bodies — Batch 22).
    The markup comes from marked, so it can't carry Tailwind classes;

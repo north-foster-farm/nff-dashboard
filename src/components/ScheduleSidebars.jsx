@@ -338,8 +338,12 @@ export function DayStrip({
                         // element-level opacity would fade the ring too
                         background:
                           "color-mix(in srgb, var(--color-chore) 55%, transparent)",
-                        boxShadow: isNow ? "inset 0 0 0 2px var(--color-now)"
-                          : isFocus ? "inset 0 0 0 1px var(--color-accent-deep)" : "none",
+                        boxShadow: isNow
+                          ? "inset 0 0 0 calc(2px * var(--inv-zoom)) var(--color-accent-deep), "
+                            + "inset 0 0 0 calc(3px * var(--inv-zoom)) var(--color-bg)"
+                          : isFocus
+                            ? "inset 0 0 0 calc(1px * var(--inv-zoom)) var(--color-accent-deep)"
+                            : "none",
                       }}
                     />
                   </span>
@@ -395,14 +399,24 @@ export function DayStrip({
                     {/* now/focus ring as an INSET overlay painted ABOVE the
                         fills — a box-shadow on the bar itself sits under
                         its children, and an outset ring falsifies the bar's
-                        height against its neighbours */}
+                        height against its neighbours. Accent is the active-
+                        state color, and green-on-teal has no hue contrast,
+                        so the ring is OFFSET: a bg-colored separation line
+                        between ring and fill does the contrast work
+                        (luminance, not saturation) on any fill, any theme.
+                        Widths are inverse-zoom-compensated (--inv-zoom) so
+                        the ring rasterizes at a true 2px at any density —
+                        raw px would paint 2.4px+ and antialias a mud pixel
+                        onto one flank. */}
                     {(isNow || isFocus) && (
                       <span
                         className="absolute inset-0 pointer-events-none"
                         style={{
                           boxShadow: isNow
-                            ? "inset 0 0 0 2px var(--color-now)"
-                            : "inset 0 0 0 1px var(--color-accent)",
+                            ? "inset 0 0 0 calc(2px * var(--inv-zoom)) var(--color-accent-deep), "
+                              + "inset 0 0 0 calc(3px * var(--inv-zoom)) var(--color-bg)"
+                            : "inset 0 0 0 calc(1px * var(--inv-zoom)) var(--color-accent), "
+                              + "inset 0 0 0 calc(2px * var(--inv-zoom)) var(--color-bg)",
                         }}
                       />
                     )}

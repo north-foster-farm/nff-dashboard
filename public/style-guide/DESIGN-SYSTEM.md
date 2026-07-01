@@ -43,12 +43,17 @@ Surfaces: `bg` #f6f6f6/#101614 · `surface` #fff/#151a15 · `surface-alt`
 Text ramp (loud→faint): `fg` #14180f/#f2efe4 · `dim` #2f3329/#c4bfad ·
 `muted` #4d4a3e/#8e8877 · `faint` #6f6b5d/#6a6658.
 State: `accent` #297d5a/#adc8ad · `accent-deep` #1d5a40/#297d5a ·
-`warn` #a06d10/#e6b85a · `resolved` #297d5a/#4cba85 ·
-`now` #34cb66/#5dd585 (celadon ramp mapped semantic — the now-marker
-RING on Schedule strip bars only; exists because `resolved` vanishes
-against a chore-teal fill. Now-rings are always INSET and painted
-above the bar's fill layers — an outset ring falsifies the bar's
-height relative to its neighbours). On-fill text:
+`warn` #a06d10/#e6b85a · `resolved` #297d5a/#4cba85.
+Now/focus rings on Schedule strip bars: an INSET `accent-deep` ring
+(2px now / 1px `accent` focus) with a 1px `bg`-colored separation gap
+between ring and fill, painted above the bar's fill layers. Accent IS
+the active-state color — don't swap the hue for contrast; the gap does
+the contrast work (luminance, not saturation) on any fill, any theme.
+An outset ring falsifies the bar's height relative to its neighbours;
+there is no dedicated `now` token. Ring widths are authored as
+`calc(Npx * var(--inv-zoom))` (styles.css) so they rasterize at true
+device pixels under the density zoom — raw px would paint 2.4px+ and
+antialias a mud pixel onto one flank. On-fill text:
 `on-accent` #fff/#0d1410, `on-cat` #fff/#0d1410. No `white` token.
 Block-identity trio (Schedule, F8/F9 — the `KindBadge` letters + bars):
 `chore` #0c7e6e/#2bb6a2 (teal, letter **C**) · `project` #3f6da3/#7d9ec9

@@ -55,14 +55,20 @@
       <tr><td><span class="mono">resolved</span> (green)</td>
         <td>Done / success / sealed</td>
         <td>Completed checks, the now-rule, sealed blocks</td></tr>
-      <tr><td><span class="mono">now</span> (bright green)</td>
-        <td>The live moment — "this is happening now"</td>
-        <td>The now-marker <b>ring</b> on Schedule strip bars (celadon
-          ramp). Exists because <span class="mono">resolved</span>
-          disappears against a chore-teal fill; use it only for
-          now-markers drawn ON a filled bar, never as a done/success
-          color. Rings are <b>inset</b> — an outset ring falsifies the
-          bar's height</td></tr>
+      <tr><td><span class="mono">accent-deep</span> offset ring</td>
+        <td>The active element in a series (the "now" block)</td>
+        <td>Marking the current bar in the Schedule strip: an
+          <b>inset</b> 2px <span class="mono">accent-deep</span> ring
+          with a 1px <span class="mono">bg</span>-colored separation
+          gap between ring and fill. Accent IS the active-state color
+          — don't swap the hue for contrast; the gap does the contrast
+          work (luminance, not saturation) on any fill, any theme.
+          Rings are inset — an outset ring falsifies the bar's
+          height. Widths are authored as
+          <span class="mono">calc(Npx&nbsp;*&nbsp;var(--inv-zoom))</span>
+          so they rasterize at true pixels under the density zoom — a
+          raw 2px paints 2.4px+ and antialiases a mud pixel onto one
+          flank</td></tr>
       <tr><td><span class="mono">warn</span> (amber)</td>
         <td>Caution / needs attention</td>
         <td>Overrun, needs-cover, escalation, attention banners</td></tr>
@@ -298,7 +304,6 @@
     ["muted","#4d4a3e","#8e8877"],["faint","#6f6b5d","#6a6658"],
     ["accent","#297d5a","#adc8ad"],["accent-deep","#1d5a40","#297d5a"],
     ["warn","#a06d10","#e6b85a"],["resolved","#297d5a","#4cba85"],
-    ["now","#34cb66","#5dd585"],
     ["project","#3f6da3","#7d9ec9"],["on-accent","#ffffff","#0d1410"]
   ];
   var CAT = [
