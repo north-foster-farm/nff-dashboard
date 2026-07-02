@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:partition": "node scripts/test-schedule-partition.mjs"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "@tailwindcss/vite": "^4.2.4",
     "@vitejs/plugin-react": "^4.3.4",
     "tailwindcss": "^4.2.4",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "^4.1.9"
   }
 }

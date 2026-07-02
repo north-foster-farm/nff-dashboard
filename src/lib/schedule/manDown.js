@@ -73,8 +73,10 @@ export function computeManDown(rows, windows) {
 }
 
 // Who can cover an activity the assignee can't: the other admin, flagged
-// `free` when they have no overlapping reservation of their own.
+// `free` when they have no overlapping reservation of their own. Only
+// admins have an "other" — for anyone else there is nobody to suggest.
 export function pickCoverPerson(assignee, windows, blockStart, blockEnd) {
+  if (!ADMINS.includes(assignee)) return null;
   const other = ADMINS.find((a) => a !== assignee);
   if (!other) return null;
   const busy = windows.some(
