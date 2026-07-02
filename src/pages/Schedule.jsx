@@ -71,7 +71,7 @@ import { supabase, realtimeChannel } from "../lib/supabase.js";
 import { formatMinutesOfDay, resolveBlockMinutes } from "../lib/sunTimes.js";
 import {
   NowTag, KindBadge, AttentionCard, LoadSpine, WeekStrip, WarmingBadge,
-  AlertStrip,
+  AlertStrip, INPUT_CLS,
 } from "../components/ui.jsx";
 import { farmLoad, dayConflictCount, dayWarming }
   from "../lib/load/farmLoad.js";
@@ -563,35 +563,27 @@ function DraggableRow({
   );
 }
 
-// The inline "add a one-off task" input at the foot of a block.
-function AddTaskRow({ onAdd }) {
-  // Collapsed to a button by default (F61) — it reads as an action, not a raw
-  // input sitting open; clicking expands the field.
-  const [open, setOpen] = useState(false);
+// The toolbar "add a one-off task" bar (F58): single-line entry + a block
+// selector pulling the current day's blocks (incl. Overnight). Defaults to
+// the NOW block (falling back to the day's first); "Anytime" — the app's
+// documented no-block landing spot (the edit sheet offers the same) — sits
+// LAST, a deliberate choice rather than the default. Replaces the
+// per-block foot inputs — a bottom inline input implied the task joined
+// the block above it. A specific-time one-off is deferred (James, triage
+// 2026-07-01).
+function AddTaskBar({ targets, defaultTarget, onAdd, onClose }) {
   const [text, setText] = useState("");
+  const [target, setTarget] = useState(defaultTarget ?? "anytime");
   const inputRef = useRef(null);
-  useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
+  useEffect(() => { inputRef.current?.focus(); }, []);
   const submit = () => {
     const t = text.trim();
     if (!t) return;
-    onAdd(t);
-    setText("");
-    setOpen(false);
+    onAdd(t, target === "anytime" ? null : target);
+    onClose();
   };
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="w-full flex items-center gap-2 px-4 py-2 border-t border-line text-[13px] text-dim hover:bg-row-hover hover:text-fg cursor-pointer"
-      >
-        <Plus size={15} className="shrink-0 text-faint" />
-        Add a one-off task
-      </button>
-    );
-  }
   return (
-    <div className="flex items-center gap-2 px-4 py-2 border-t border-line">
+    <div className="w-full flex flex-wrap items-center gap-2 border border-line bg-surface px-3 py-2 mb-3">
       <Plus size={15} className="shrink-0 text-faint" />
       <input
         ref={inputRef}
@@ -599,22 +591,36 @@ function AddTaskRow({ onAdd }) {
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") submit();
-          else if (e.key === "Escape") { setText(""); setOpen(false); }
+          else if (e.key === "Escape") onClose();
         }}
         placeholder="Add a one-off task…"
-        className="flex-1 bg-transparent text-[14px] text-fg placeholder:text-faint outline-none py-1"
+        className="flex-1 min-w-[140px] bg-transparent text-[13px] text-fg placeholder:text-faint outline-none py-1"
       />
-      <button type="button"
-        onClick={() => { setText(""); setOpen(false); }}
-        className="shrink-0 text-[12px] text-faint hover:text-fg">
+      <select
+        value={target}
+        onChange={(e) => setTarget(e.target.value)}
+        className={INPUT_CLS + " shrink-0 max-w-[180px]"}
+      >
+        {targets.map((t) => (
+          <option key={t.bucket} value={t.bucket}>{t.label}</option>
+        ))}
+        <option value="anytime">Anytime</option>
+      </select>
+      <button
+        type="button"
+        onClick={onClose}
+        className="shrink-0 text-[12px] text-faint hover:text-fg cursor-pointer"
+      >
         Cancel
       </button>
-      {text.trim() && (
-        <button type="button" onClick={submit}
-          className="shrink-0 text-[12px] font-medium text-accent">
-          Add
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!text.trim()}
+        className="shrink-0 text-[12px] font-medium text-accent disabled:opacity-40 cursor-pointer"
+      >
+        Add
+      </button>
     </div>
   );
 }
@@ -1102,6 +1108,19 @@ export default function Schedule({ data }) {
     }
     return out.sort((a, b) => startKey(a) - startKey(b));
   }, [rawBlockRows, overrideDeltas, blocksById, startMinByBucket]);
+
+  // F58 — the toolbar one-off entry's block choices: the day's real blocks
+  // (incl. Overnight), labelled name · start time; "Anytime" is the null
+  // option the control adds itself.
+  const oneOffTargets = useMemo(() => blockRows
+    .filter((b) => b.block)
+    .map((b) => ({
+      bucket: b.bucket,
+      label: (b.block.name ?? "Block")
+        + (b.startMin != null
+          ? " · " + formatMinutesOfDay(b.startMin) : ""),
+    })), [blockRows]);
+  const [addingTask, setAddingTask] = useState(false);
 
   // Non-work time (S7) + man-down (S8). Reservations are person/time windows;
   // an assigned row whose block overlaps its assignee's window needs cover.
@@ -2202,7 +2221,6 @@ export default function Schedule({ data }) {
           nowBucket={nowBucket}
           nowMin={viewingToday ? nowMin : null}
           onPick={pickBlock}
-          onWholeDay={showOverview}
         />
       )}
 
@@ -2320,11 +2338,14 @@ export default function Schedule({ data }) {
         {/* On phones this trio wraps onto its own line; full-width +
             justify-between reads as a deliberate toolbar row there (F36)
             instead of a right-shoved cluster with a dead left gap. */}
-        <div className="w-full justify-between sm:w-auto sm:justify-start sm:ml-auto flex items-center gap-3">
+        {/* flex-wrap: four nowrap actions can exceed the center column on
+            narrow desktops (the F16 width swap tightened it) — they flow
+            onto extra lines instead of sliding under the This Week aside. */}
+        <div className="w-full justify-between sm:w-auto sm:justify-start sm:ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
           <button
             type="button"
             onClick={() => setShowConflicts(true)}
-            className={"text-[12px] font-medium inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer "
+            className={"text-[12px] font-medium whitespace-nowrap inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer "
               + (todayConflicts.length > 0 ? "text-warn" : "text-faint")}
           >
             <AlertTriangle size={14} />
@@ -2333,19 +2354,42 @@ export default function Schedule({ data }) {
           <button
             type="button"
             onClick={() => setAddingTimeOff(true)}
-            className="text-[12px] font-medium text-dim inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
+            className="text-[12px] font-medium whitespace-nowrap text-dim inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
           >
             <Ban size={14} /> Time off
           </button>
           <button
             type="button"
             onClick={() => setPicking(true)}
-            className="text-[12px] font-medium text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
+            className="text-[12px] font-medium whitespace-nowrap text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
           >
             <Plus size={14} /> Add chore
           </button>
+          <button
+            type="button"
+            onClick={() => setAddingTask(true)}
+            className="text-[12px] font-medium whitespace-nowrap text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
+          >
+            <Plus size={14} /> Add task
+          </button>
         </div>
       </div>
+
+      {/* F58 — the one-off task entry, at the top with a block selector
+          defaulting to the now block (today) or the day's first. */}
+      {addingTask && (
+        <AddTaskBar
+          targets={oneOffTargets}
+          defaultTarget={
+            (viewingToday
+              && oneOffTargets.some((t) => t.bucket === nowBucket)
+              ? nowBucket : null)
+            ?? oneOffTargets[0]?.bucket ?? null
+          }
+          onAdd={(title, bucket) => addTask(title, bucket)}
+          onClose={() => setAddingTask(false)}
+        />
+      )}
 
       {/* Stale projects ranking (F59/F60) — the reflow engine's staleness,
           surfaced where it's felt. Gated on live projects having loaded so
@@ -2441,9 +2485,9 @@ export default function Schedule({ data }) {
       ) : timeline.length === 0 ? (
         <div className="border border-dashed border-line mt-3">
           <div className="px-4 py-8 text-center text-dim text-sm">
-            Nothing on the schedule today.
+            Nothing on the schedule today. Add a chore or a one-off task
+            from the toolbar above.
           </div>
-          <AddTaskRow onAdd={(title) => addTask(title, null)} />
         </div>
       ) : focus == null ? (
         /* ── Whole-day overview agenda (collapse-all / nothing focused) ── */
@@ -2766,10 +2810,6 @@ export default function Schedule({ data }) {
                     </div>
                   )
                 ) : null}
-                <AddTaskRow
-                  onAdd={(title) =>
-                    addTask(title, null, null, null, minToHM(b.startMin))}
-                />
                 <button
                   type="button"
                   onClick={() => setProjectAddFor(b)}
@@ -2869,9 +2909,6 @@ export default function Schedule({ data }) {
                     </ul>
                   </SortableContext>
                 </DndContext>
-                <AddTaskRow
-                  onAdd={(title) => addTask(title, b.block ? b.bucket : null)}
-                />
                 {b.block && b.rows.length >= 2 && (
                   <button
                     type="button"
@@ -2901,9 +2938,11 @@ export default function Schedule({ data }) {
 
       {/* Desktop week — the one WeekStrip (folds the old center WeekSpines +
           sidebar WeekList): a row per day · count mini-spine · E/conflict
-          symbols. Hidden in the wider zooms (the centre is the navigator). */}
+          symbols. Hidden in the wider zooms (the centre is the navigator).
+          180px per the settled column widths (F16) — the center pane gets
+          the reclaimed space; WeekStrip compresses to match. */}
       {viewMode === "day" && (
-        <aside className="hidden lg:block border-l border-line py-5 px-4 w-[240px]">
+        <aside className="hidden lg:block border-l border-line py-5 px-3 w-[180px]">
           <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.16em] text-faint mb-4">
             This week
           </div>

@@ -731,6 +731,15 @@
           <span class="mono">fixed inset-0</span>. QuickActionsTray's internal
           <span class="mono">Sheet</span> is the extraction target: bottom-sheet
           on phone, centered on desktop, raised over <span class="mono">bg-black/60</span>.</td></tr>
+      <tr><td class="mono">AddTaskBar</td>
+        <td><span class="ds-status stable">Stable</span></td>
+        <td>The Schedule's one-off task entry, in the top toolbar: one
+          line of text + a block selector (the day's blocks incl.
+          Overnight), defaulting to the <b>now</b> block; "Anytime" —
+          the documented no-block landing spot — is the deliberate
+          LAST option, never the default. Replaced the per-block foot
+          inputs — a bottom inline input implied the task joined the
+          block above it. Specific-time one-offs deferred.</td></tr>
       <tr><td class="mono">OutboxIndicator</td>
         <td><span class="ds-status stable">Stable</span></td>
         <td>Offline/queued/failed sync state. Bounded: failed (warn + retry) ·

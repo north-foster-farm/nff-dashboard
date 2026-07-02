@@ -213,6 +213,16 @@ Each: STATUS · what · use/not · canonical source.
   and the week pane (per warming day, count hidden — fed by `warmingByISO`).
   Backed by exported `dayWarming(...)` in `farmLoad` (the focal day-load and the
   week scan share it). Source: `src/components/ui.jsx` (`WarmingBadge`).
+- **AddTaskBar** · Stable · the Schedule's one-off task entry (batch 42.2,
+  F58): lives in the TOP toolbar (an "Add task" button beside Add chore
+  expands it) — one line of text + a block selector pulling the day's real
+  blocks incl. Overnight. Defaults to the NOW block (today) or the day's
+  first; "Anytime" — the app's documented no-block landing spot (the edit
+  sheet's block picker offers the same) — sits LAST, a deliberate choice,
+  never the default. Replaced the per-block foot inputs (NO-LEGACY): a
+  bottom inline input implied the task joined the block above it.
+  Specific-time one-offs deferred (triage 2026-07-01). Enter adds, Escape
+  closes. Source: `src/pages/Schedule.jsx` (`AddTaskBar`).
 - **WeekStrip** · Stable · the week drawn ONCE off `farmLoad.week`, desktop
   sidebar only (the phone `layout="header"` variant + its should-heat tick were
   DELETED — slice D, NO-LEGACY). A row per day · count mini-spine · identity

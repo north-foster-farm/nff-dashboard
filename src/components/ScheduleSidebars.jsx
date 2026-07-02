@@ -79,9 +79,8 @@ function StripTime({ min, className }) {
 // the list. Block names collapse to "Chores" (F12) — the C badge + time
 // carry the identity, like every project reads "Project".
 export function DayRailSpine({
-  blocks, focus, nowBucket, nowMin, onPick, onWholeDay,
+  blocks, focus, nowBucket, nowMin, onPick,
 }) {
-  const overview = focus == null;
   const nowTime = nowMin != null ? compactTime(nowMin) : null;
 
   // One row shell (F1/F2/F3): a border that stays transparent until the row
@@ -97,23 +96,11 @@ export function DayRailSpine({
     + (allDone ? "opacity-55" : "");
 
   return (
-    <div className="hidden lg:flex flex-col gap-1 w-[180px] shrink-0 border-r border-line bg-bg relative px-2 pt-2">
-      {/* Whole-day overview affordance (F4 — no "overview · N items" subtext;
-          F5 — icon normalized to the row rhythm, neutral until active). */}
-      <button
-        type="button"
-        onClick={onWholeDay}
-        title="Show the whole day (overview)"
-        className={rowCls(overview, false)}
-      >
-        <span className="w-1 shrink-0" />
-        <LayoutList size={16}
-          className={"shrink-0 " + (overview ? "text-fg" : "text-faint")} />
-        <span className="flex-1 min-w-0 text-[13px] font-medium leading-tight">
-          Whole day
-        </span>
-      </button>
-
+    /* F28 — no "Whole day" row on desktop: the spine's rows ARE the day
+       nav, and re-picking the open block collapses back to the overview
+       (pickBlock toggles). 240px per the settled column widths (F16);
+       the mobile strip keeps its Whole-day toggle. */
+    <div className="hidden lg:flex flex-col gap-1 w-[240px] shrink-0 border-r border-line bg-bg relative px-2 pt-2">
       {blocks.map((b) => {
         const isFocus = b.bucket === focus;
         const isNow = nowTime != null && b.bucket === nowBucket;

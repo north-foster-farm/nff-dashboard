@@ -686,14 +686,14 @@ export function WeekStrip({
             type="button"
             onClick={() => onPickDay?.(day.date)}
             className={
-              "w-full flex items-center gap-3 px-2 py-2 text-left border cursor-pointer " +
+              "w-full flex items-center gap-2 px-1.5 py-2 text-left border cursor-pointer " +
               (isSel ? "bg-row-active " : "hover:bg-row-hover ") +
               (isToday ? "border-resolved" : "border-transparent")
             }
           >
             <span
               className={
-                "w-12 shrink-0 text-[12px] [font-variant-numeric:tabular-nums] " +
+                "w-11 shrink-0 text-[12px] [font-variant-numeric:tabular-nums] " +
                 (isSel ? "font-semibold text-fg" : "text-dim")
               }
             >
@@ -718,11 +718,12 @@ export function WeekStrip({
                 width and the badges line up in a column down the page (the
                 busiest row — up to warming + event + conflict — sets it).
                 Left-aligned so the FIRST badge of every row shares one column
-                (an E under an E), not pinned to the right edge. */}
+                (an E under an E), not pinned to the right edge. w-14 fits 3
+                14px badges at the 180px panel width (F16). */}
             {/* F41 — each symbol carries a real Tooltip (instant, formatted)
                 instead of the laggy native `title`. Event names / richer
                 detail land with the This Week deepening slice. */}
-            <span className="w-20 shrink-0 flex items-center justify-start gap-1.5">
+            <span className="w-14 shrink-0 flex items-center justify-start gap-1">
               {overnight && (
                 <Tooltip tip="Overnight chores">
                   <Moon size={14} className="text-chore" />

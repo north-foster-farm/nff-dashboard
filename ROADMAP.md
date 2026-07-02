@@ -4013,6 +4013,28 @@ color; clock-arrow overnight icons). Build refs in
   entry, DESIGN-SYSTEM.md principle 10 + component entry). Deeper
   tooltip content (event names, block details) rides slices 4–5.
 
+- **42.2 — Schedule chrome & toolbar. `v0.10.79-alpha` (2026-07-01);
+  pure frontend, NO migration.** The chrome cleanup slice of the
+  Schedule-redesign batch.
+  - F28: the desktop "Whole day" spine row is deleted — the spine's
+    rows ARE the day nav, and re-picking the open block already
+    collapses to the overview. Mobile keeps its Whole-day toggle. F3
+    dies with the row.
+  - F16 (settled widths): left spine 180→240px, This Week 240→180px,
+    the center pane gets the reclaimed space. WeekStrip compressed to
+    fit (day cell w-11, symbol cell w-14, tighter gaps).
+  - F58: new `AddTaskBar` — the one-off task entry moves to the top
+    toolbar ("Add task" beside Add chore): single-line text + a block
+    selector pulling the day's real blocks incl. Overnight, defaulting
+    to the now block (today) or the day's first; "Anytime" (the
+    documented no-block landing spot) is the deliberate last option.
+    All three per-block foot inputs removed (NO-LEGACY);
+    specific-time one-offs stay deferred per triage.
+  - F25 closes: the toolbar row already carried the hover pattern;
+    Add task completes the set. F27/F4/F12 verified already fixed on
+    main (annotated in the findings file); no code needed.
+  - Design library: AddTaskBar documented in both faces.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 
