@@ -3,7 +3,7 @@ import { CloudOff, X, GripVertical, MoreHorizontal } from "lucide-react";
 import { CheckTarget } from "./ui.jsx";
 import ChoreRemainingPill from "./ChoreRemainingPill.jsx";
 import ModifierBadges from "./ModifierBadge.jsx";
-import EditedHistory from "./EditedHistory.jsx";
+import EditedHistory, { EditedTag, fmtClock12 } from "./EditedHistory.jsx";
 import { useChoreModifiers } from "../lib/data/useChoreModifiers.js";
 import { resolveModifiers, applyModifier } from "../lib/modifiers.js";
 import { formatISODate, todayUTC } from "../lib/dates.js";
@@ -116,19 +116,19 @@ export default function ChoreCheckRow({
             </span>
           )}
           <ModifierBadges resolved={resolved} compact />
+          {/* Rescheduled treatment (round 4) — the time · tag line the
+              spine project rows wear: 12-hour time in 10px tabular faint,
+              the edited tag colored semibold with its open-state chevron. */}
           {edit?.clockTime && (
-            <span className="shrink-0 text-[11px] font-medium text-accent [font-variant-numeric:tabular-nums]">
-              {edit.clockTime}
+            <span className="shrink-0 text-[10px] leading-tight text-faint [font-variant-numeric:tabular-nums]">
+              {fmtClock12(edit.clockTime)}
             </span>
           )}
           {edit?.history?.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowHist((s) => !s)}
-              className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1 hover:text-fg cursor-pointer"
-            >
-              edited
-            </button>
+            <EditedTag
+              open={showHist}
+              onToggle={() => setShowHist((s) => !s)}
+            />
           )}
           {queued && (
             <CloudOff

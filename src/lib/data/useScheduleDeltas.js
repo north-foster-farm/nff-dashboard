@@ -3,6 +3,7 @@ import { realtimeChannel, supabase } from "../supabase.js";
 import {
   enqueueOp, initOutbox, subscribeOutbox, outboxOps,
 } from "../outbox.js";
+import { hmToMin } from "../schedule/reflowBridge.js";
 
 // Schedule placement deltas (S6) — the authored, schedule-local
 // commitments that aren't chore-block runs: ad-hoc one-off tasks, notes,
@@ -65,7 +66,7 @@ export function useScheduleDeltas(dateISO) {
     return () => { cancelled = true; unsub(); };
   }, []);
 
-  const deltas = useMemo(() => {
+  const allDeltas = useMemo(() => {
     const byId = new Map((serverRows ?? []).map((r) => [r.id, r]));
     for (const op of outboxOps()) {
       if (op.status === "done") continue;
@@ -101,6 +102,29 @@ export function useScheduleDeltas(dateISO) {
     }
     return [...byId.values()];
   }, [serverRows, outboxTick, dateISO]);
+
+  // A removed placed project step is a TOMBSTONE, not a deletion (see
+  // removeDelta): the row survives with source_ref.origin:'removed' so the
+  // reflow engine knows the step was deliberately taken off the day and
+  // never re-places it. Tombstones are invisible to every surface — the
+  // `deltas` this hook returns filters them out — and reach the engine only
+  // as `removedStepIds` + `removedGapStarts` (a removal frees its GAP for
+  // the day too: the engine must not slide the next queued step into the
+  // slot the user just cleared).
+  const isTombstone = (d) =>
+    d.source_type === "project_node" && d.source_ref?.origin === "removed";
+  const deltas = useMemo(
+    () => allDeltas.filter((d) => !isTombstone(d)), [allDeltas]);
+  const removedStepIds = useMemo(() => new Set(
+    allDeltas.filter(isTombstone)
+      .map((d) => d.source_ref?.step_id)
+      .filter(Boolean)), [allDeltas]);
+  // The tombstoned placements' gap starts (minutes of day, from the
+  // clock_time the tombstone keeps) — reflowPlan skips these gaps today.
+  const removedGapStarts = useMemo(() => new Set(
+    allDeltas.filter(isTombstone)
+      .map((d) => hmToMin(d.clock_time))
+      .filter((m) => m != null)), [allDeltas]);
 
   // The day(s) an add targets. Defaults to the viewed day; a non-empty
   // `dates` array (S34 — add the same item to several days at once) fans the
@@ -166,7 +190,33 @@ export function useScheduleDeltas(dateISO) {
       },
       clockTime: clockTime ?? null,
     }));
-  const removeDelta = (id) => enqueueOp("commitment_delete", { id });
+  // Removing a placed project step must STICK: a plain delete just frees
+  // the step for the reflow engine, which re-places it after its quiet
+  // window (the plan can't tell "removed" from "never placed"). So a
+  // project_node delta is tombstoned in place — origin:'removed' — which
+  // hides it everywhere and excludes its step + its gap from the day's
+  // plan. Everything else really deletes. USER removals only — the reflow
+  // engine reconciles its own stale placements through `hardRemove`
+  // below (an engine move must NOT tombstone, or the moved step would be
+  // excluded from the very plan that is moving it).
+  const removeDelta = (id) => {
+    const d = allDeltas.find((x) => x.id === id);
+    if (d?.source_type === "project_node") {
+      enqueueOp("commitment_update", {
+        id,
+        fields: {
+          sourceRef: { ...(d.source_ref ?? {}), origin: "removed" },
+        },
+      });
+      return;
+    }
+    enqueueOp("commitment_delete", { id });
+  };
+
+  // A real delete, no tombstone — the reflow engine's reconciliation path
+  // (dropping a stale auto-placement so its step can land in a new gap, or
+  // clearing a duplicate). Never wired to a user-facing remove control.
+  const hardRemove = (id) => enqueueOp("commitment_delete", { id });
 
   // Remove a whole recurring reservation series (S46 follow-up) — every
   // materialised day that shares the `series` id, across the horizon. Looks up
@@ -299,8 +349,8 @@ export function useScheduleDeltas(dateISO) {
   };
 
   return {
-    deltas, loading: serverRows === null,
-    addTask, addNote, addChore, addProject, removeDelta, setDone,
+    deltas, removedStepIds, removedGapStarts, loading: serverRows === null,
+    addTask, addNote, addChore, addProject, removeDelta, hardRemove, setDone,
     upsertOverride, updateDelta, addReservation, removeSeries,
     addBuffer, toggleBufferItem,
   };

@@ -1,10 +1,11 @@
-import { Fragment } from "react";
+import { useState } from "react";
 import {
-  LayoutList, AlertTriangle, FolderKanban,
-  ClockArrowRight, ClockArrowLeft, Moon,
+  LayoutList, AlertTriangle, ChevronLeft, ChevronRight, Moon,
 } from "lucide-react";
-import { blockIcon } from "./BlockBadge.jsx";
-import { KindBadge, NowTag, WarmingBadge } from "./ui.jsx";
+import {
+  BadgeHint, KindBadge, NowEdgeLine, NowRule, WarmingBadge,
+  hatchUnplanned, kindTint,
+} from "./ui.jsx";
 import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
 // Schedule navigators (Design Bracket 2 — the day-spine + accordion rework).
@@ -72,6 +73,16 @@ function StripTime({ min, className }) {
   );
 }
 
+// F11 (settled 2026-07-01) — spine block names stay in the body sans at
+// 12px, matching the This Week day labels (the one inconsistency was
+// SIZE, and the smaller size won). One weight for active AND inactive:
+// the row fill/border carries the state, the type never jumps.
+const SPINE_TITLE_CLS =
+  "block text-[12px] truncate leading-tight text-fg font-medium";
+
+// (BadgeHint moved to ui.jsx — round 4: This Week wears it too, so the
+// cue is a kit primitive now, imported above.)
+
 // ── Desktop load-spine (the primary navigator) ──────────────────────────
 // Restyled to the WeekStrip visual language (findings slice B): no dividers,
 // an outlined active row (the border IS the indicator), lighter-on-hover,
@@ -79,14 +90,22 @@ function StripTime({ min, className }) {
 // the list. Block names collapse to "Chores" (F12) — the C badge + time
 // carry the identity, like every project reads "Project".
 export function DayRailSpine({
-  blocks, focus, nowBucket, nowMin, onPick,
+  blocks, focus, nowBucket, nowMin, nowEdge, onPick,
 }) {
   const nowTime = nowMin != null ? compactTime(nowMin) : null;
+  // Now outside the day's blocks (nowEdge): no row is current — the
+  // horizontal NowRule sits full-width above the first block (now is
+  // earlier) or below the last (now is later).
+  const edgeRule = nowTime != null && (
+    <NowRule time={nowTime} className="px-2 py-1" />
+  );
 
   // One row shell (F1/F2/F3): a border that stays transparent until the row
   // is the focus (the active bounding box); equal heights — the load rail
   // self-stretches now, so item count no longer drives the row height. The
-  // CURRENT block reads as a green-accent fill + a "Now" tag (no divider rule).
+  // CURRENT block reads as a green-accent fill + the NowRule as its time
+  // line (F5) — the marker rides IN the row, never a rule above it (a rule
+  // above a row read as belonging to the gap).
   const rowCls = (isFocus, allDone, isNow) =>
     "relative z-[1] w-full flex items-center gap-2 px-2 py-2 text-left "
     + "min-h-[46px] border cursor-pointer transition-colors "
@@ -96,46 +115,84 @@ export function DayRailSpine({
     + (allDone ? "opacity-55" : "");
 
   return (
-    /* F28 — no "Whole day" row on desktop: the spine's rows ARE the day
-       nav, and re-picking the open block collapses back to the overview
-       (pickBlock toggles). 240px per the settled column widths (F16);
-       the mobile strip keeps its Whole-day toggle. */
-    <div className="hidden lg:flex flex-col gap-1 w-[240px] shrink-0 border-r border-line bg-bg relative px-2 pt-2">
+    /* F28 + round-2 feedback — the desktop whole-day overview is GONE:
+       the spine's rows ARE the day nav, one block is always open, and
+       the row tooltips carry what the overview listed (real block name,
+       done count, alerts). 200px FIXED — narrower than the old 240, and
+       deliberately not content-sized (a shifting center pane on day
+       clicks is worse than any width). Mobile keeps its Whole-day
+       toggle. */
+    <div className="hidden lg:flex flex-col gap-1 w-[200px] shrink-0 border-r border-line bg-bg relative px-2 pt-2">
+      {nowEdge === "before" && edgeRule}
       {blocks.map((b) => {
         const isFocus = b.bucket === focus;
         const isNow = nowTime != null && b.bucket === nowBucket;
 
         if (b.isProject) {
           const free = freeShort(b.who);
+          // F9 — the row's fill says planned vs free: the kind tint (the
+          // list-group wash every spine row wears) when a step occupies
+          // the gap, the blue cross-hatch when it's unbooked. Both are
+          // alpha background-IMAGES so the shell's hover/active/now
+          // background-color tints still show through.
+          // Hatch at 10 (was 16) — round 4: the 12px row text sat on the
+          // heavier diagonals and got hard to read in light mode; the
+          // rail + badge + "both free" tag carry the free signal, so the
+          // row hatch only needs to whisper.
+          const projFill = b.planned
+            ? kindTint("--c-project")
+            : hatchUnplanned(10);
           return (
-            <Fragment key={b.bucket}>
-              <button
-                type="button"
-                onClick={() => onPick(b.bucket)}
-                title={`Project${free ? " · " + free + " free" : ""}`}
-                className={rowCls(isFocus, b.allDone, isNow)}
+            <button
+              key={b.bucket}
+              type="button"
+              onClick={() => onPick(b.bucket)}
+              className={rowCls(isFocus, b.allDone, isNow)}
+              style={{ backgroundImage: projFill }}
+            >
+              {/* slate gap rail — full height, saturated like the chore
+                  rail; the P badge carries the identity now, so the
+                  title is plain text (F10). */}
+              <span
+                className="w-[5px] self-stretch shrink-0 ring-1 ring-inset ring-project"
+                style={{ background: "var(--c-project)", opacity: 0.9 }}
+              />
+              <BadgeHint
+                tip={<>
+                  <b className="text-fg">Project</b>
+                  {"\n"}
+                  {b.planned
+                    ? "planned" + (free ? ` · ${free} free` : "")
+                    : free ? `${free} free` : "free"}
+                </>}
               >
-                {/* thin slate gap rail — full height; the P badge carries the
-                    identity now, so the title is plain text (F10). */}
-                <span className="w-1 self-stretch shrink-0 bg-project/25 ring-1 ring-inset ring-project/40" />
-                <KindBadge kind="project" size={16} title="Project" />
+                <KindBadge kind="project" size={16} />
+              </BadgeHint>
                 <span className="flex-1 min-w-0">
-                  <span className={
-                    "block text-[13px] truncate leading-tight text-fg "
-                    + (isFocus ? "font-semibold" : "font-medium")
-                  }>
+                  <span className={SPINE_TITLE_CLS}>
                     Project
                   </span>
-                  <span className="block text-[10px] [font-variant-numeric:tabular-nums] leading-tight">
-                    {isNow && <><NowTag /><span className="text-faint"> · </span></>}
-                    <span className="text-faint">{compactTime(b.startMin)}</span>
-                    {free && (
-                      <span className="text-project font-semibold"> · {free} free</span>
-                    )}
-                  </span>
+                  {/* F5 — the CURRENT block's time line IS the NowRule
+                      (dot + "Now · time" + hairline); who's-free rides
+                      after the rule as its trailing annotation. */}
+                  {isNow ? (
+                    <NowRule time={nowTime} size="sm" className="pr-1">
+                      {free && (
+                        <span className="shrink-0 text-[10px] text-project font-semibold">
+                          {free} free
+                        </span>
+                      )}
+                    </NowRule>
+                  ) : (
+                    <span className="block text-[10px] [font-variant-numeric:tabular-nums] leading-tight">
+                      <span className="text-faint">{compactTime(b.startMin)}</span>
+                      {free && (
+                        <span className="text-project font-semibold"> · {free} free</span>
+                      )}
+                    </span>
+                  )}
                 </span>
-              </button>
-            </Fragment>
+            </button>
           );
         }
 
@@ -144,38 +201,49 @@ export function DayRailSpine({
         if (b.kind === "event") {
           const occ = b.occ;
           return (
-            <Fragment key={b.bucket}>
               <button
+                key={b.bucket}
                 type="button"
                 onClick={() => onPick(b.bucket)}
-                title={occ?.instanceLabel ?? "Event"}
                 className={rowCls(isFocus, false, isNow)}
+                style={{ backgroundImage: kindTint("--c-event") }}
               >
-                <span className="w-1 self-stretch shrink-0 bg-event/25 ring-1 ring-inset ring-event/40" />
-                <KindBadge kind="event" size={16} title="Event" />
+                <span
+                  className="w-[5px] self-stretch shrink-0 ring-1 ring-inset ring-event"
+                  style={{ background: "var(--c-event)", opacity: 0.9 }}
+                />
+                <BadgeHint
+                  tip={<>
+                    <b className="text-fg">{occ?.instanceLabel ?? "Event"}</b>
+                    {"\n"}
+                    {b.startMin != null ? compactTime(b.startMin) : "All day"}
+                  </>}
+                >
+                  <KindBadge kind="event" size={16} />
+                </BadgeHint>
                 <span className="flex-1 min-w-0">
-                  <span className={
-                    "block text-[13px] truncate leading-tight text-fg "
-                    + (isFocus ? "font-semibold" : "font-medium")
-                  }>
+                  <span className={SPINE_TITLE_CLS}>
                     {occ?.instanceLabel ?? "Event"}
                   </span>
-                  <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint leading-tight truncate">
-                    {isNow && <><NowTag /><span> · </span></>}
-                    {b.startMin != null ? compactTime(b.startMin) : "All day"}
-                  </span>
+                  {isNow ? (
+                    <NowRule time={nowTime} size="sm" className="pr-1" />
+                  ) : (
+                    <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint leading-tight truncate">
+                      {b.startMin != null ? compactTime(b.startMin) : "All day"}
+                    </span>
+                  )}
                 </span>
               </button>
-            </Fragment>
           );
         }
 
         // Every remaining block is a chore block. Regular blocks read "Chores"
         // (F12); the overnight wrap reads "Overnight" + a Moon badge on the
         // right edge (teal). The C badge + time carry the identity (F6: no
-        // done/count suffix in the title).
+        // done/count suffix in the title). The tooltip carries what the
+        // retired whole-day overview listed: the block's REAL name, the
+        // done count, and its alerts.
         const count = b.count ?? 0;
-        const doneFrac = count ? (b.done ?? 0) / count : 0;
         // F14 — overnight reads "Until <end>" (lead, rode in from yesterday)
         // or "After <start>" (trail, runs into tomorrow); else the start time.
         const timeText = b.isOvernight
@@ -184,88 +252,156 @@ export function DayRailSpine({
             : "After " + compactTime(b.winStart))
           : compactTime(b.startMin);
         return (
-          <Fragment key={b.bucket}>
             <button
+              key={b.bucket}
               type="button"
               onClick={() => onPick(b.bucket)}
-              title={`${b.isOvernight ? "Overnight" : "Chores"} · ${b.done ?? 0}/${count}`}
               className={rowCls(isFocus, b.allDone, isNow)}
+              style={{ backgroundImage: kindTint("--c-chore") }}
             >
-              {/* load rail: done (resolved green) rises from the bottom over the
-                  committed remainder in the chore identity color (teal); full
-                  row height (F3). */}
-              <span className="w-1 self-stretch shrink-0 flex flex-col-reverse bg-surface-alt ring-1 ring-inset ring-line">
-                <span style={{
-                  height: (count ? Math.round(doneFrac * 100) : 0) + "%",
-                  background: "var(--c-resolved)",
-                }} />
-                <span style={{
-                  height: (count ? Math.round((1 - doneFrac) * 100) : 0) + "%",
-                  background: "var(--c-chore)", opacity: 0.9,
-                }} />
-              </span>
-              <KindBadge kind="chore" size={16} title="Chores" />
+              {/* identity rail — solid teal, same weight as every kind's
+                  rail (the old done-fraction meter is retired; the tooltip
+                  carries the count). */}
+              <span
+                className="w-[5px] self-stretch shrink-0 ring-1 ring-inset ring-chore"
+                style={{ background: "var(--c-chore)", opacity: 0.9 }}
+              />
+              <BadgeHint
+                tip={<>
+                  <b className="text-fg">
+                    {b.isOvernight ? "Overnight" : (b.name ?? "Chores")}
+                  </b>
+                  {"\n"}{b.done ?? 0} of {count} done · {timeText}
+                  {b.hasManDown && (
+                    <span className="block text-warn">needs cover</span>
+                  )}
+                </>}
+              >
+                <KindBadge kind="chore" size={16} />
+              </BadgeHint>
               <span className="flex-1 min-w-0">
-                <span className={
-                  "block text-[13px] truncate leading-tight text-fg "
-                  + (isFocus ? "font-semibold" : "font-medium")
-                }>
+                <span className={SPINE_TITLE_CLS}>
                   {b.isOvernight ? "Overnight" : "Chores"}
                 </span>
-                <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint leading-tight truncate">
-                  {isNow && <><NowTag /><span> · </span></>}
-                  {timeText}
-                </span>
+                {isNow ? (
+                  <NowRule time={nowTime} size="sm" className="pr-1" />
+                ) : (
+                  <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint leading-tight truncate">
+                    {timeText}
+                  </span>
+                )}
               </span>
+              {/* Round 4 — the row-edge glyphs wear the affordance
+                  standard too (BadgeHint / cue), not bare icons. */}
               {b.hasManDown && (
-                <AlertTriangle size={13} className="shrink-0 text-warn" />
+                <BadgeHint
+                  tip={<>
+                    <b className="text-fg">Needs cover</b>
+                    {"\n"}someone on this block is unavailable
+                  </>}
+                >
+                  <AlertTriangle size={13} className="shrink-0 text-warn" />
+                </BadgeHint>
               )}
               {/* F24b — the day-load's warn/due ClockAlert repeats on the
                   block that owns the warming chore (count hidden; the row is
                   one block, so the hover detail carries the names). */}
               <WarmingBadge
-                warn={b.warn} due={b.due} size={13} showCount={false}
+                warn={b.warn} due={b.due} size={13} showCount={false} cue
               />
               {/* Overnight wrap: a teal Moon on the right edge of the block. */}
               {b.isOvernight && (
-                <Moon size={14} className="shrink-0 text-chore" title="Overnight" />
+                <BadgeHint tip="Overnight — wraps past midnight">
+                  <Moon size={14} className="shrink-0 text-chore" />
+                </BadgeHint>
               )}
             </button>
-          </Fragment>
         );
       })}
+      {nowEdge === "after" && edgeRule}
     </div>
   );
 }
 
 // ── Phone day-strip (the navigable time axis — James's tweak) ───────────
-// F29 — tappable affordance for the strip's time columns: a faint "key"
-// fill at rest (row-active-dim) so each column reads as a control, the
-// row-hover tint on desktop hover, and the row-active tint while pressed
-// on touch. The UI itself says "tap me" — the old instructional caption
-// was the wrong fix. Shared across the chore / project / overnight
-// column variants.
+// The columns carry no rest-state fill (the F29 gray "key" fill was
+// dropped in 42.3 round 3 — it read as a backdrop, not an affordance);
+// the bars themselves + the press tint say "tap me". Shared across the
+// chore / project / overnight column variants.
 const STRIP_COL_CLS =
   "flex-1 min-w-0 flex flex-col items-center cursor-pointer " +
-  "transition-colors bg-row-active-dim hover:bg-row-hover " +
-  "active:bg-row-active pt-1 ";
+  "transition-colors hover:bg-row-hover active:bg-row-active pt-1 ";
+
+// A pager slot button (42.3 round 3): the strip shows at most 4 rails at
+// a time; arrows page the group with a directional slide.
+function StripPagerArrow({ dir, onClick }) {
+  const Icon = dir > 0 ? ChevronRight : ChevronLeft;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={dir > 0 ? "Later blocks" : "Earlier blocks"}
+      className={
+        "shrink-0 w-9 self-stretch flex items-center justify-center "
+        + "border border-line text-dim cursor-pointer transition-colors "
+        + "hover:bg-row-hover active:bg-row-active"
+      }
+    >
+      <Icon size={16} />
+    </button>
+  );
+}
 
 export function DayStrip({
-  blocks, focus, nowBucket, onPick, onWholeDay,
+  blocks, focus, nowBucket, nowEdge, summary, onPick, onWholeDay,
 }) {
   const max = maxLoad(blocks);
   const overview = focus == null;
+
+  // Pager (42.3 round 3): at most 4 rails at a time. 5 slots total —
+  // ≤5 rails shows everything; more pages: one arrow leaves 4 rails, two
+  // arrows leave 3. The default page starts at the NOW rail (or the last
+  // page when now is past the day). Key the component by day at the call
+  // site so a day change resets the page.
+  const total = blocks.length;
+  const [pageStart, setPageStart] = useState(null); // null = follow now
+  const [dir, setDir] = useState(0);
+  const nowIdx = blocks.findIndex((b) => b.bucket === nowBucket);
+  let s = pageStart
+    ?? (nowEdge === "after" ? total - 1 : Math.max(0, nowIdx));
+  let winSize = total;
+  let hasLeft = false;
+  let hasRight = false;
+  if (total > 5) {
+    s = Math.min(Math.max(s, 0), total - 1);
+    hasLeft = s > 0;
+    winSize = hasLeft ? (s + 4 >= total ? 4 : 3) : 4;
+    if (hasLeft && winSize === 4) s = total - 4;
+    hasRight = s + winSize < total;
+  } else {
+    s = 0;
+  }
+  const visible = blocks.slice(s, s + winSize);
+  const page = (d) => {
+    setDir(d);
+    setPageStart(Math.max(0, s + d * winSize));
+  };
+
   return (
-    <div className="lg:hidden border-b border-line bg-surface">
-      <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        {/* F29 — the "tap a time" instruction is gone: the columns
-            themselves now read as controls (key fill + press tint). */}
-        <span className="eyebrow text-[10px] text-faint">Day</span>
+    <div className="lg:hidden border-b border-line bg-bg">
+      {/* Header matches the desktop day-load pane: the same eyebrow + the
+          same count line (one shared `summary` node — they can't drift).
+          The counts take their own line — the eyebrow + Whole-day toggle
+          fill the first, and a phone column can't fit all three. */}
+      <div className="flex items-center justify-between gap-2 pt-3">
+        <span className="shrink-0 font-ui text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
+          Day load
+        </span>
         <button
           type="button"
           onClick={onWholeDay}
           className={
-            "inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 "
+            "shrink-0 inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 "
             + "border cursor-pointer transition-colors "
             + (overview
               ? "border-accent-deep bg-[color:var(--color-row-active)] text-accent"
@@ -276,9 +412,31 @@ export function DayStrip({
           <LayoutList size={12} /> Whole day
         </button>
       </div>
-      <div className="px-4 pb-2">
-        <div className="flex items-end gap-1.5 border-b border-line">
-          {blocks.map((b) => {
+      <div className="pb-1 flex font-ui text-[10px] text-faint [font-variant-numeric:tabular-nums]">
+        {summary}
+      </div>
+      <div className="pb-2">
+        {/* No baseline border — the day load is chromeless (round 4). */}
+        {/* overflow-x-clip: the pager track slides in from ±16px
+            (nff-page-from-*), and iOS Safari counts that transformed
+            excursion toward the PAGE's scroll bounds — the whole page
+            went sideways-scrollable during/after a page (round 4 BUG).
+            Clip the strip's own row; horizontal only, so the
+            NowEdgeLine's glow dot stays unclipped vertically. */}
+        <div className="flex items-stretch gap-1.5 overflow-x-clip">
+          {nowEdge === "before" && s === 0 && (
+            <NowEdgeLine className="my-1" />
+          )}
+          {hasLeft && <StripPagerArrow dir={-1} onClick={() => page(-1)} />}
+          <div
+            key={s}
+            className="nff-anim-page flex-1 min-w-0 flex items-end gap-1.5"
+            style={dir !== 0 ? {
+              animation:
+                `nff-page-from-${dir > 0 ? "right" : "left"} 140ms ease`,
+            } : undefined}
+          >
+          {visible.map((b) => {
             if (b.isProject) {
               const free = freeShort(b.who);
               const h = projSize(b.durationMin, 14, 40);
@@ -292,15 +450,27 @@ export function DayStrip({
                   className={STRIP_COL_CLS + (b.allDone ? "opacity-60" : "")}
                 >
                   <span className="relative w-full h-[56px] flex items-end justify-center">
+                    {/* F9 — same planned/unplanned fill as the desktop rows
+                        and the LoadSpine bars: solid project wash when a
+                        step occupies the gap, blue cross-hatch when free. */}
                     <span
                       className={
-                        "w-full bg-project/25 ring-1 ring-inset "
+                        "w-full ring-1 ring-inset "
                         + (isFocus ? "ring-project" : "ring-project/40")
                       }
-                      style={{ height: h + "px" }}
+                      style={{
+                        height: h + "px",
+                        ...(b.planned
+                          ? {
+                            background:
+                              "color-mix(in srgb, var(--c-project) 45%, transparent)",
+                          }
+                          : { backgroundImage: hatchUnplanned(45) }),
+                      }}
                     />
                   </span>
-                  <FolderKanban size={14} className="mt-1.5 text-project" />
+                  {/* No glyph above the time (round 4) — the kind color
+                      on the time + bar carries the identity. */}
                   <StripTime
                     min={b.startMin}
                     className={
@@ -316,7 +486,6 @@ export function DayStrip({
             if (b.isOvernight) {
               const isFocus = b.bucket === focus;
               const isNow = b.bucket === nowBucket;
-              const Icon = b.side === "lead" ? ClockArrowLeft : ClockArrowRight;
               return (
                 <button
                   key={b.bucket}
@@ -342,8 +511,6 @@ export function DayStrip({
                       }}
                     />
                   </span>
-                  <Icon size={14}
-                    className={"mt-1.5 " + (isNow ? "text-resolved" : "text-accent-deep")} />
                   <span className={
                     "mt-0.5 pb-0.5 text-[10.5px] [font-variant-numeric:tabular-nums] "
                     + "border-b-2 truncate max-w-full "
@@ -358,7 +525,6 @@ export function DayStrip({
             }
             const isNow = b.bucket === nowBucket;
             const isFocus = b.bucket === focus;
-            const Icon = blockIcon(b.block);
             const h = barSize(b.count, max, 14, 40);
             const fillH = b.count ? Math.round(h * (b.done / b.count)) : 0;
             const remH = b.count ? h - fillH : 0;
@@ -414,8 +580,6 @@ export function DayStrip({
                     )}
                   </span>
                 </span>
-                <Icon size={14}
-                  className={"mt-1.5 " + (isNow ? "text-resolved" : "text-faint")} />
                 <StripTime
                   min={b.startMin}
                   className={
@@ -432,6 +596,11 @@ export function DayStrip({
               </button>
             );
           })}
+          </div>
+          {hasRight && <StripPagerArrow dir={1} onClick={() => page(1)} />}
+          {nowEdge === "after" && !hasRight && (
+            <NowEdgeLine className="my-1" />
+          )}
         </div>
       </div>
     </div>

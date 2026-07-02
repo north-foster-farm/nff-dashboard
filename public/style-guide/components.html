@@ -474,13 +474,25 @@
 
   <h3 class="ds-h3">NowRule <span class="ds-status stable">Stable</span></h3>
   <p>
-    The "now" divider: a 7px dot with a glow ring + a "Now · time" eyebrow
+    The "now" marker: a 7px dot with a glow ring + a "Now · time" eyebrow
     sitting INLINE at the left, with the green hairline filling the rest of the
     row to the right (the rule is broken by the text). Today-views only (gate at
-    the call site). Used by the <b>phone Today glance</b> (a divider, since the
-    glance has no block row to highlight). The desktop Schedule no longer uses a
-    rule — it marks the current block on the row itself (see
-    <span class="mono">NowTag</span>).
+    the call site). Two carriers: the <b>phone Today glance</b> (a divider,
+    since the glance has no block row to highlight) and the <b>desktop
+    day-spine</b> (F5), where the rule IS the current block's time line —
+    riding IN the filled row, never above it (a rule above a row read as
+    belonging to the gap). Spacing belongs to the caller (no baked padding);
+    children land after the hairline as a trailing annotation (the spine's
+    who's-free tag). <span class="mono">size="sm"</span> is the in-list
+    variant the spine uses: 8px/0.1em text, 6px dot with a 2px glow — scaled
+    to sit under a 12px row title. <span class="mono">NowTag</span> remains
+    the inline word for center-pane rows; the day-load echoes the marker as
+    the now-ring on the current block's bar (see LoadSpine). When now falls
+    OUTSIDE the day's blocks (before the first starts / after the last
+    ends), no block is marked: the spine draws the full-width horizontal
+    rule above/below its rows, and bar groups (day-load, phone strip) draw
+    <span class="mono">NowEdgeLine</span> — the same marker turned vertical
+    (2px green line + glow dot) at the group's start/end.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -502,12 +514,12 @@
 
   <h3 class="ds-h3">NowTag <span class="ds-status converging">Converging</span></h3>
   <p>
-    The desktop Schedule marks the current block <b>on the row</b>, not with a
-    divider rule: the row gets a faint green-accent fill
-    (<span class="mono">bg-accent/[0.08]</span>) and this small "Now" word in
-    primary green sits in the row (block-list sidebar, whole-day list, and the
-    master-detail header). Clearer than a rule above the row, which read as
-    belonging to the gap rather than the block.
+    The inline "Now" word for <b>center-pane</b> rows (whole-day list + the
+    master-detail header): the row gets a faint green-accent fill
+    (<span class="mono">bg-accent/[0.08]</span>) and this small word in
+    primary green sits in it. The day-spine graduated to the full
+    <span class="mono">NowRule</span> as its time line (F5); the tag stays
+    where a rule has no room to breathe.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -563,10 +575,22 @@
     triangle (F23 — a symbol, <b>not</b> a hatch/fill); a project bar is
     <span class="mono">--c-project</span> (slate, height = block
     <b>duration</b>), solid when <span class="mono">planned</span> and a blue
-    cross-hatch (<span class="mono">HATCH_UNPLANNED</span>, the F11/F26 shared
-    util) when unplanned. <b>No per-bar item counts</b> (F23); the optional
-    summary read sits beside the spine. Bars clamp to the track +
-    <span class="mono">overflow-hidden</span> (B2). Kept separate from the Rounds
+    cross-hatch (<span class="mono">hatchUnplanned()</span>, the shared
+    exported util — see the <b>planned vs unplanned</b> pattern) when
+    unplanned. <span class="mono">nowId</span> (today only) rings the
+    current bar with the <b>bg | accent | bg sandwich</b> now-ring (42.3
+    round 4: a bg line on both flanks of the 2px accent-deep ring —
+    accent-deep and the project slate share luminance, so one inner
+    separation line wasn't enough on project fills;
+    <span class="mono">--inv-zoom</span> compensated). The current bar is
+    resolved by <b>window</b> across kinds (round 4): when now sits inside
+    a project gap, the project bar rings — not the chore block before it.
+    <b>No per-bar item counts</b> (F23); the optional
+    summary read sits beside the spine. Bars clamp to the track (the
+    frame's <span class="mono">overflow-hidden</span> was dropped in round
+    4 — it clipped the NowEdgeLine's glow dot); the whole day load is
+    chromeless (bg-bg, full width, closed by the page hairline). Kept
+    separate from the Rounds
     progress bar. Now in <span class="mono">ui.jsx</span>.
   </p>
   <div class="ds-example">
@@ -609,7 +633,9 @@
     padding</b>, just the colored glyph, so it reads as part of the line it's
     on: the day-load summary (after a "·"), the affected
     <span class="mono">DayRailSpine</span> row, and the week pane (per warming
-    day, count hidden).
+    day, count hidden). <span class="mono">cue</span> (42.3 round 4,
+    sidebars only) adds the BadgeHint dotted underline + pointer — the
+    affordance standard's hover-detail cue.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage" style="display:flex;gap:18px;align-items:center">
@@ -637,7 +663,15 @@
     chore (<span class="mono">warmingByISO</span>), and an amber conflict
     triangle when it has man-down conflicts (each hovers to its detail, fed by
     <span class="mono">conflictsByISO</span>). The symbol cell is a fixed width,
-    left-aligned, so spines stay equal-width and badges align in a column. Bars
+    left-aligned, so spines stay equal-width and badges align in a column;
+    every symbol wears <span class="mono">BadgeHint</span> (42.3 round 4 —
+    the full affordance standard, not a bare Tooltip). <b>One baseline
+    grid</b> (round 4, F37 re-open): the row is
+    <span class="mono">items-end</span> — the day label's baseline, the bar
+    bottoms, and the symbol column share the track's bottom edge. The
+    overnight Moon is fed by a <b>week-wide night scan</b> (round 4): every
+    night touching the viewed week is tested from one range read of timed
+    commitments, so the Moon shows without first selecting the day. Bars
     scaled to
     <span class="mono">week.max</span>, clamped + <span class="mono">overflow-hidden</span>
     (B1). Now in <span class="mono">ui.jsx</span>; Step 3 deleted the center
@@ -688,7 +722,9 @@
     Surface + hairline + shadow; body text in <span class="mono">dim</span>,
     lead-ins bold in <span class="mono">fg</span>. In
     <span class="mono">ui.jsx</span>; carriers: WarmingBadge, the This Week
-    day symbols (E badge, conflict triangle, overnight moon).
+    day symbols (E badge, conflict triangle, overnight moon), the day-spine
+    row badges (via <span class="mono">BadgeHint</span>), the Confirmed
+    chip ("tap to revert").
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -708,6 +744,79 @@
     </div>
     <div class="ds-example-meta">instant on hover · formatted lines · tap to
       toggle on touch (ui.jsx <span class="mono">Tooltip</span>)</div>
+  </div>
+
+  <h3 class="ds-h3">BadgeHint <span class="ds-status stable">Stable</span></h3>
+  <p>
+    The sidebar glyph's hover-detail cue (42.3; a kit primitive since round
+    4): <span class="mono">Tooltip</span> + a <b>dotted underline</b>
+    beneath the glyph — the <span class="mono">abbr</span> convention,
+    "details on hover" without a word of instruction — plus
+    <span class="mono">cursor-pointer</span>. The badge, not the whole row,
+    owns the tip; a badge click still falls through to its row.
+    <b>Sidebars only</b> (day-spine + This Week): center-pane badges are
+    labels, not hover targets. Wraps the C/P/E KindBadges, the conflict
+    triangle, the overnight Moon, and the event count;
+    <span class="mono">WarmingBadge cue</span> is the same treatment built
+    in. In <span class="mono">ui.jsx</span>.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage" style="display:flex;gap:18px;align-items:center">
+      <span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer">
+        <span style="display:inline-flex;align-items:center;justify-content:center;
+          width:16px;height:16px;font-size:10px;font-family:var(--font-ui);
+          font-weight:600;border:1px solid var(--c-chore);color:var(--c-chore);
+          background:color-mix(in srgb,var(--c-chore) 16%,transparent)">C</span>
+        <span style="width:100%;border-bottom:1px dotted var(--c-text-faint)"></span>
+      </span>
+      <span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer">
+        <span style="color:var(--c-warn);font-size:13px;line-height:1">⚠</span>
+        <span style="width:100%;border-bottom:1px dotted var(--c-text-faint)"></span>
+      </span>
+      <span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer">
+        <span style="color:var(--c-chore);font-size:13px;line-height:1">☾</span>
+        <span style="width:100%;border-bottom:1px dotted var(--c-text-faint)"></span>
+      </span>
+    </div>
+    <div class="ds-example-meta">dotted cue + pointer + Tooltip, on every
+      sidebar glyph (badge, conflict, moon, warming)</div>
+  </div>
+
+  <h3 class="ds-h3">EditedTag <span class="ds-status stable">Stable</span></h3>
+  <p>
+    The "edited" affordance on a rescheduled row (42.3 round 4): a 10px
+    semibold uppercase <span class="mono">accent</span> tag + a trailing
+    chevron that points right closed and <b>rotates to point down</b> while
+    the row's <span class="mono">EditedHistory</span> is open (140ms ease);
+    hover/press tint <span class="mono">row-active</span>. Rides beside the
+    row's 12-hour set time — the "time · tag" line the spine project rows
+    wear (time 10px tabular <span class="mono">faint</span>, tag colored
+    semibold). Shared by <span class="mono">ChoreCheckRow</span> and
+    <span class="mono">AdHocRow</span>. History copy: <b>"Rescheduled from
+    X to Y"</b> — never "Moved"/"Split" — + datetime + the actor's
+    capitalized first name. In <span class="mono">EditedHistory.jsx</span>
+    (<span class="mono">EditedTag</span>, <span class="mono">fmtClock12</span>).
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:flex;align-items:center;gap:8px;font-size:14px">
+        <span>Wash eggs</span>
+        <span style="color:var(--c-text-faint);font-size:10px;
+          font-variant-numeric:tabular-nums">3:30 PM</span>
+        <span style="display:inline-flex;align-items:center;gap:2px;
+          color:var(--c-accent);font-family:var(--font-ui);font-size:10px;
+          font-weight:600;text-transform:uppercase;letter-spacing:.03em;
+          padding:2px 4px;cursor:pointer">edited <span
+          style="display:inline-block;transform:rotate(90deg)">›</span></span>
+      </div>
+      <div style="margin:6px 0 0 24px;border-left:1px solid var(--c-border);
+        padding-left:10px;font-size:11px;color:var(--c-text-dim)">
+        Rescheduled from Sunrise to 3:30 PM
+        <span style="color:var(--c-text-faint)"> — Jul 2, 6:41 AM · James</span>
+      </div>
+    </div>
+    <div class="ds-example-meta">time 10px tabular faint · accent tag ·
+      chevron rotates open · history verb = "Rescheduled"</div>
   </div>
 
   <table class="ds-table">

@@ -41,7 +41,8 @@ const AUTO_REFLOW_MS = 30_000;
 
 export function useScheduleReflow({ dateISO, projects, autoReflow = true }) {
   const { blocks } = useChoreBlocks();
-  const { deltas, addProject, removeDelta } = useScheduleDeltas(dateISO);
+  const { deltas, removedStepIds, removedGapStarts, addProject, hardRemove } =
+    useScheduleDeltas(dateISO);
 
   const planned = useMemo(() => {
     if (!dateISO) return [];
@@ -53,12 +54,22 @@ export function useScheduleReflow({ dateISO, projects, autoReflow = true }) {
       buffers: (deltas ?? []).filter(
         (d) => d.source_type === "buffer" && d.source_ref?.scope !== "all"),
     });
+    // Excluded from the plan: manually placed steps (they're spoken for)
+    // AND steps the user REMOVED from the day (tombstones — a removal must
+    // stick; re-placing what was just taken off is the bug, not a sync).
+    // A removal also frees its GAP for the day (removedGapStarts): the
+    // engine must not slide the next queued step into the cleared slot.
+    const exclude = new Set([
+      ...manualPlacedStepIds(deltas, dateISO),
+      ...(removedStepIds ?? []),
+    ]);
     return reflowPlan({
       rankedProjects: rankedActiveProjects(projects),
       gapsByDate: [{ dateISO, gaps }],
-      excludeStepIds: manualPlacedStepIds(deltas, dateISO),
+      excludeStepIds: exclude,
+      excludeGapStarts: removedGapStarts ?? new Set(),
     });
-  }, [dateISO, blocks, projects, deltas]);
+  }, [dateISO, blocks, projects, deltas, removedStepIds, removedGapStarts]);
 
   const committedAuto = useMemo(
     () => committedAutoPlacements(deltas, dateISO), [deltas, dateISO]);
@@ -69,12 +80,17 @@ export function useScheduleReflow({ dateISO, projects, autoReflow = true }) {
   // Write the minimal diff: drop stale auto-placements, add the new ones.
   // Manual placements + completed steps are never in either set, so they
   // are untouched. Returns a small summary for a confirmation line.
+  // `hardRemove`, NOT removeDelta: the user's remove tombstones (so the
+  // removal sticks against future reflows), but the engine reconciling its
+  // own stale placement is a MOVE — tombstoning here would exclude the
+  // step from the very plan that's moving it, and the step would drop off
+  // the day entirely on the next sync.
   const syncNow = useCallback(() => {
     const { toPlace, toRemove } = reconcilePlan({ planned, committedAuto });
-    for (const p of toRemove) removeDelta(p.id);
+    for (const p of toRemove) hardRemove(p.id);
     for (const p of toPlace) addProject(...placementToAddArgs(p));
     return { placed: toPlace.length, removed: toRemove.length };
-  }, [planned, committedAuto, addProject, removeDelta]);
+  }, [planned, committedAuto, addProject, hardRemove]);
 
   // The automatic fallback: while stale + enabled, sync after a quiet
   // window. `syncNow` changes identity on every ranking change (its deps

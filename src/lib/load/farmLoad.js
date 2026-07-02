@@ -28,7 +28,6 @@ import {
   resolveAssignee,
   choreDaysRemaining,
 } from "../chores.js";
-import { isActiveProject } from "../projects.js";
 import { projectGaps } from "../schedule/partition.js";
 import { resolveBlockMinutes } from "../sunTimes.js";
 
@@ -81,7 +80,8 @@ function rowsForRollup(rollup, date, choreCtx, ruleOpts, completions) {
 //   week: the folded weekFullness output (+ per-day `events`)
 //   warming: { warn:[…], due:[…], byBucket } — binary warn/due per day (F24)
 //     entries: { choreId, title, level:'warn'|'due', daysLeft }
-//   totals: { items, blocks, done, uncovered }
+//   totals: { items, chores, blocks, blocksAll, projects, projectsDistinct,
+//             done, uncovered }
 export function farmLoad({
   data,
   date,
@@ -158,12 +158,9 @@ export function farmLoad({
   // interstitial bars on the SAME model — not just the Schedule rail. Lifted
   // from deriveDay's `projectGaps` walk. `who.freeCount` is the simplified MVP
   // availability annotation. `planned` (F11/F26): a gap reads PLANNED when a
-  // real project step occupies it (a project_node delta whose clock_time lands
-  // in the window) or, for the FIRST gap, when an active project auto-pulls in
-  // (mirrors Schedule's `occupant`); else UNPLANNED → blue cross-hatch.
+  // real project step occupies it (a project_node delta whose clock_time
+  // lands in the window); else UNPLANNED → blue cross-hatch.
   const dayISO = ymdLocal(date);
-  const activeProjects = (data.projects ?? [])
-    .filter((p) => isActiveProject(p, dayISO));
   const projNodeMins = deltas
     .filter((d) => d.source_type === "project_node")
     .map((d) => hmToMin(d.clock_time))
@@ -178,7 +175,11 @@ export function farmLoad({
   const projects = segments.map((seg, i) => {
     const placed = projNodeMins.some(
       (t) => seg.startMin != null && t >= seg.startMin && t < seg.endMin);
-    const planned = placed || (i === 0 && activeProjects.length > 0);
+    // Round 4: `placed` alone decides — the old "first gap counts as
+    // planned whenever any project is active" clause (an auto-pull
+    // mirror, long retired) painted the first bar solid on days with
+    // nothing placed, disagreeing with the spine.
+    const planned = placed;
     // The bar's hover label describes the GAP, not a borrowed project name
     // (labelling every gap with `activeProjects[0].title` was wrong — it leaked
     // an unrelated project's name onto free time). Planned reads "Project";
@@ -229,6 +230,15 @@ export function farmLoad({
   const items = blocks.reduce((s, b) => s + b.total, 0);
   const doneCount = blocks.reduce((s, b) => s + b.done, 0);
   const uncovered = new Set([...manDown.keys()]).size;
+  // Counter fix (42.3 round 3): "chores" counts CHORE obligations only —
+  // one-off tasks and placed project steps aren't chores; and the project
+  // count is DISTINCT projects worked on the day, not project gaps.
+  const chores = perBlock.reduce((s, b) => s + b.rows.length, 0);
+  const projectsDistinct = new Set(
+    deltas
+      .filter((d) => d.source_type === "project_node")
+      .map((d) => d.source_ref?.project_id)
+      .filter(Boolean)).size;
 
   // The drawable day-load spine (G2/G3): chore-block bars + the day's project
   // segments as `kind:"project"` bars, interleaved in time order. This is what
@@ -263,8 +273,13 @@ export function farmLoad({
     warming,
     totals: {
       items,
+      chores,
       blocks: blocks.filter((b) => b.total > 0).length,
+      // Blocks as the user sees them: chore blocks + project gaps (events
+      // join this count when they enter the day-load model — slice 5).
+      blocksAll: blocks.filter((b) => b.total > 0).length + projects.length,
       projects: projects.length,
+      projectsDistinct,
       done: doneCount,
       uncovered,
     },

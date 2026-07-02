@@ -88,6 +88,11 @@ export function rankedStepQueue(rankedProjects, excludeStepIds = new Set()) {
 // `excludeStepIds`: steps already spoken for (completed elsewhere today,
 // or manually placed/swapped — those overrides win over the auto-plan).
 //
+// `excludeGapStarts`: gap start-minutes the plan must leave EMPTY — the
+// gaps a user removed a placed step from (the removal tombstone keeps the
+// gap's clock_time). Removing a step means "leave this window free," not
+// "backfill it with the next queued step."
+//
 // LOCKS (the escape hatch): a step whose effective `lockedDate` falls on a
 // horizon day is PINNED to that day — it jumps that day's queue, ahead of
 // rank. A step locked to a day OUTSIDE the horizon is spoken for elsewhere
@@ -96,6 +101,7 @@ export function rankedStepQueue(rankedProjects, excludeStepIds = new Set()) {
 // the overflow pins are dropped for that day — a rare over-lock.)
 export function reflowPlan({
   rankedProjects, gapsByDate, excludeStepIds = new Set(),
+  excludeGapStarts = new Set(),
 }) {
   const queue = rankedStepQueue(rankedProjects, excludeStepIds);
   const horizonDates = new Set((gapsByDate ?? []).map((d) => d.dateISO));
@@ -123,6 +129,8 @@ export function reflowPlan({
       // window no one can work it. `who.freeCount` is projectGaps()'s
       // availability read; a missing `who` is treated as available.
       if (gap.who && gap.who.freeCount === 0) continue;
+      // A gap the user cleared (removal tombstone) stays free today.
+      if (excludeGapStarts.has(gap.startMin)) continue;
       let node = dayPins.shift();
       if (!node && ui < unlocked.length) { node = unlocked[ui]; ui += 1; }
       if (!node) continue; // no step for this gap — leave it free
@@ -169,12 +177,36 @@ export function isStale(plannedPlacements, committedPlacements) {
 //   reconcilePlan({ planned, committedAuto }) → { toPlace, toRemove }
 //
 // `toPlace`: planned placements not yet committed (insert these deltas).
-// `toRemove`: committed auto placements no longer in the plan (delete).
+// `toRemove`: committed auto placements no longer in the plan (delete) —
+// including DUPLICATE copies of a placement that IS in the plan. Two
+// devices can race the same auto-sync (their debounce timers reset on the
+// same realtime events, so they fire in the same instant) and insert the
+// same (step, gap) twice under different ids; without the dedupe the pair
+// reads as permanently stale ("key" vs "key\nkey" signatures) while both
+// toPlace and toRemove stay empty — the duplicate never heals. Keeping
+// the LOWEST id is deliberate: every device computes the same survivor,
+// so concurrent healers delete the same extra row, never both copies.
 export function reconcilePlan({ planned = [], committedAuto = [] }) {
   const plannedKeys = new Set(planned.map(placementKey));
-  const committedKeys = new Set(committedAuto.map(placementKey));
+  const keepByKey = new Map(); // placementKey -> the surviving committed row
+  const toRemove = [];
+  for (const p of committedAuto) {
+    const k = placementKey(p);
+    const kept = keepByKey.get(k);
+    if (!kept) { keepByKey.set(k, p); continue; }
+    // Duplicate key — keep the lexically-smallest id, drop the other.
+    if (String(p.id) < String(kept.id)) {
+      keepByKey.set(k, p);
+      toRemove.push(kept);
+    } else {
+      toRemove.push(p);
+    }
+  }
+  for (const [k, p] of keepByKey) {
+    if (!plannedKeys.has(k)) toRemove.push(p);
+  }
   return {
-    toPlace: planned.filter((p) => !committedKeys.has(placementKey(p))),
-    toRemove: committedAuto.filter((p) => !plannedKeys.has(placementKey(p))),
+    toPlace: planned.filter((p) => !keepByKey.has(placementKey(p))),
+    toRemove,
   };
 }

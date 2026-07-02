@@ -62,9 +62,10 @@ export default function Sidebar({ current, onSelect, onOpenRounds, data }) {
   let lastGroup = undefined;
   return (
     <>
+      {/* Width capped at spacing*50 (200px) — James's call, round 3. */}
       <nav
         ref={navRef}
-        className="w-60 border-r border-line shrink-0 bg-surface flex flex-col"
+        className="w-50 max-w-50 border-r border-line shrink-0 bg-surface flex flex-col"
       >
         <div className="py-5 flex-1 overflow-y-auto no-scrollbar">
         {SECTIONS.map((s, idx) => {

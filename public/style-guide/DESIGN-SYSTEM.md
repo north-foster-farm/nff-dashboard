@@ -57,6 +57,10 @@ Now/focus rings on Schedule strip bars: an INSET `accent-deep` ring
 between ring and fill, painted above the bar's fill layers. Accent IS
 the active-state color — don't swap the hue for contrast; the gap does
 the contrast work (luminance, not saturation) on any fill, any theme.
+The day-load (LoadSpine) now-ring is the **bg | accent | bg sandwich**
+(42.3 round 4): a bg line on BOTH flanks of the 2px ring —
+`accent-deep` and the project slate share luminance, so the single
+inner gap wasn't enough on project fills.
 An outset ring falsifies the bar's height relative to its neighbours;
 there is no dedicated `now` token. Ring widths are authored as
 `calc(Npx * var(--inv-zoom))` (styles.css) so they rasterize at true
@@ -88,7 +92,11 @@ scaled by `body { zoom: 1.20 }` (comfortable 1.35 / spacious 1.50).
 
 Scale by role: page title `font-heading 32px/700/-0.02em`; hero number
 `font-heading 26–44px/600`; section/card title `font-heading 17–22px/600/
--0.01em`; eyebrow `font-ui 10–11px/600–700/uppercase/0.12–0.16em`; body
+-0.01em`; ROW title `font-body 12px/500` (day-spine block names + This
+Week day labels — one size, one weight for active AND inactive, state
+speaks through fill/border/color; F11 settled 2026-07-01: SANS, the Lora
+heading stays a header treatment and does not reach list rows);
+eyebrow `font-ui 10–11px/600–700/uppercase/0.12–0.16em`; body
 `font-body 12–13px/leading-relaxed`; caption `9–10px text-faint`.
 Data/numbers: ALWAYS `[font-variant-numeric:tabular-nums]` + fixed-width
 container so digits align (times, durations, counts, metric columns).
@@ -162,19 +170,30 @@ Each: STATUS · what · use/not · canonical source.
   open fraction, color warms amber → `--c-cat-processing` as it narrows.
   Replaces `ChoreRemainingPill`'s should/must text. Shared-curve aggregation
   feeding it lands in Step 4. Source: `src/components/ui.jsx` (`WindowBar`).
-- **NowRule** · Stable · the "now" divider — a 7px dot + glow + "Now · time"
+- **NowRule** · Stable · the "now" marker — a 7px dot + glow + "Now · time"
   eyebrow INLINE at the left, the green hairline filling the rest of the row to
   the right (the rule is broken by the text — matches the style guide). Takes a
-  preformatted `time` (or a `label` override); today-views only. Used by the
-  **phone Today glance** (a divider, no block row to highlight). The desktop
-  Schedule no longer uses it — it marks the current block on the row via
-  `NowTag` (slice D refinement). Source: `src/components/ui.jsx` (`NowRule`).
-- **NowTag** · Converging · the desktop Schedule's now-marker: the current
-  block's row gets a faint green-accent fill (`bg-accent/[0.08]`) + this small
-  "Now" word in primary green, in the block-list sidebar, the whole-day list,
-  and the master-detail header. Replaces a divider rule above the row (which
-  read as belonging to the gap, not the block). Source: `src/components/ui.jsx`
-  (`NowTag`).
+  preformatted `time` (or a `label` override); `children` land AFTER the
+  hairline as a trailing annotation; spacing is the caller's (no baked
+  padding); root is a span so it can sit inside a row button. Today-views
+  only. `size="sm"` = the in-list variant (8px/0.1em text, 6px dot, 2px
+  glow — scaled to sit under a 13px row title). Two carriers: the **phone
+  Today glance** (a divider, no block row to highlight, default size) and
+  the **desktop DayRailSpine** (batch 42.3, F5, `sm`), where the rule IS
+  the current block's time line — riding IN the accent-filled row, never
+  above it (a rule above a row read as belonging to the gap). EDGE form
+  (round 3): when now falls outside the day's blocks (`nowEdge`
+  before/after), no block is marked — the spine draws the full-width
+  horizontal rule above/below its rows, and bar groups (LoadSpine, phone
+  strip) draw `NowEdgeLine` (the marker turned vertical: 2px green line +
+  glow dot) at the group's start/end. Source: `src/components/ui.jsx`
+  (`NowRule`, `NowEdgeLine`).
+- **NowTag** · Converging · the inline "Now" word for CENTER-PANE rows (the
+  whole-day list + the master-detail header): the current block's row gets a
+  faint green-accent fill (`bg-accent/[0.08]`) + this small word in primary
+  green. The day-spine graduated to the full `NowRule` as its time line
+  (42.3, F5); the tag stays where a rule has no room. Source:
+  `src/components/ui.jsx` (`NowTag`).
 - **Tooltip** · Stable · the real hover tip (batch 42.1, F41) — replaces the
   native `title` attribute wherever the tip should be INSTANT or FORMATTED
   (multi-line, bold lead-ins). Hover shows it; a tap toggles it (touch has no
@@ -183,9 +202,32 @@ Each: STATUS · what · use/not · canonical source.
   `whitespace-pre-line` so string tips break on `\n`; `pointer-events-none` on
   the tip and NO stopPropagation on the wrapper (a badge inside a clickable
   row must not eat the row's click). `side="top"|"bottom"`. Carriers:
-  `WarmingBadge`, the `WeekStrip` day symbols. Richer per-surface content
+  `WarmingBadge`, the `WeekStrip` day symbols, the day-spine rows (via
+  `BadgeHint`), the Confirmed chip. Richer per-surface content
   (event names, block details) lands with the This Week / day-load slices.
   Source: `src/components/ui.jsx` (`Tooltip`).
+- **BadgeHint** · Stable · the sidebar glyph's hover-detail cue (42.3; a
+  kit primitive since round 4): `Tooltip` + a dotted `border-faint`
+  underline beneath the glyph (the `abbr` convention — "details on hover"
+  without a word of instruction) + `cursor-pointer`. The badge, not the
+  whole row, owns the tip; a badge click still falls through to its row.
+  SIDEBARS ONLY (day-spine + This Week) — center-pane badges are labels,
+  not hover targets. Wraps every sidebar glyph: C/P/E KindBadges, the
+  conflict `AlertTriangle`, the overnight `Moon`, the event count;
+  `WarmingBadge cue` is the same treatment built in. Source:
+  `src/components/ui.jsx` (`BadgeHint`).
+- **EditedTag** · Stable · the "edited" affordance on a rescheduled row
+  (42.3 round 4): a 10px semibold uppercase `accent` tag + a trailing
+  chevron that points right closed and rotates to point down while the
+  row's `EditedHistory` is open (140ms ease, the app's motion beat);
+  hover/press tint is `row-active` (row-hover's 9% is imperceptible on
+  white). Rides beside the row's 12-hour set time — the "time · tag" line
+  the spine project rows wear: time in 10px tabular `faint`, tag colored
+  semibold. Shared by `ChoreCheckRow` and `AdHocRow`. History entries read
+  **"Rescheduled from X to Y"** (from = the source block or previous set
+  time, times 12-hour via `fmtClock12`) — never "Moved"/"Split" — with the
+  datetime and the actor's capitalized first name. Source:
+  `src/components/EditedHistory.jsx` (`EditedTag`, `fmtClock12`).
 - **FinishStamp** · Stable · celadon ✓ in a square + "Finished · who · window
   · N/N" (C5 — the word "Sealed" is killed). Whole-run, never a sub-bucket;
   anchors the Rounds wrap. Block completion auto-derives (no submit gate); the
@@ -198,9 +240,26 @@ Each: STATUS · what · use/not · canonical source.
   color and carries a small conflict `AlertTriangle` (F23 — a symbol, NOT a
   hatch/fill, replaces the old warn treatment); a project bar is `--c-project`
   (slate, height ∝ block DURATION), solid when `planned` and a blue cross-hatch
-  (`HATCH_UNPLANNED`, the F11/F26 shared util) when unplanned. **No per-bar item
-  counts** (F23). Bars clamped to the track + `overflow-hidden` (B2); the
-  optional `summary` read sits beside it. Kept distinct from the Rounds
+  when unplanned — see **planned vs unplanned** below. **No per-bar item
+  counts** (F23). `nowId` (today only, gate at the call site) rings the
+  current block's bar with the day-strip's offset inset now-ring (2px
+  `accent-deep` + a bg separation line, `--inv-zoom`-compensated) — chore
+  buckets are farmLoad blockIds, so the Schedule passes `nowBucket`
+  straight through; `nowEdge` draws the vertical `NowEdgeLine` at the
+  group's start/end instead when now is outside the blocks. The header
+  counters (both surfaces, one shared node): `N chores` (chore
+  obligations only — one-off tasks and project steps aren't chores) ·
+  `N blocks` (everything the spine shows: chore blocks + project gaps +
+  events + overnight) · `N projects` (DISTINCT projects placed, not
+  gaps) — each pluralized. Bars clamped to the track (B2 — the frame's
+  `overflow-hidden` was dropped in 42.3 round 4: it clipped the
+  NowEdgeLine's glow dot); the optional `summary` read sits beside it.
+  Round 4: `nowId` is resolved by WINDOW across kinds (the bar whose
+  [start, end) contains now — a project gap rings its own bar, not the
+  chore block before it), and the ring is the **bg | accent | bg
+  sandwich** (see the now-ring note below). The day load itself is
+  CHROMELESS: bg-bg, no border/padding chrome, full column width, closed
+  by the page hairline (both surfaces). Kept distinct from the Rounds
   completion-fraction bar. Source: `src/components/ui.jsx` (`LoadSpine`).
 - **WarmingBadge** · Converging · the binary warn/due signal (slice D, F24/F25)
   that REPLACED the continuous should-heat gradient. A Lucide `ClockAlert`,
@@ -211,18 +270,25 @@ Each: STATUS · what · use/not · canonical source.
   colored glyph, so it reads as part of its line. Three surfaces: the day-load
   summary (after a `·`), the affected `DayRailSpine` block row (count hidden),
   and the week pane (per warming day, count hidden — fed by `warmingByISO`).
-  Backed by exported `dayWarming(...)` in `farmLoad` (the focal day-load and the
-  week scan share it). Source: `src/components/ui.jsx` (`WarmingBadge`).
+  `cue` (42.3 round 4, sidebars only): adds the BadgeHint dotted underline
+  + pointer so the glyph advertises its hover detail like every other
+  sidebar badge. Backed by exported `dayWarming(...)` in `farmLoad` (the
+  focal day-load and the week scan share it). Source:
+  `src/components/ui.jsx` (`WarmingBadge`).
 - **AddTaskBar** · Stable · the Schedule's one-off task entry (batch 42.2,
   F58): lives in the TOP toolbar (an "Add task" button beside Add chore
-  expands it) — one line of text + a block selector pulling the day's real
-  blocks incl. Overnight. Defaults to the NOW block (today) or the day's
-  first; "Anytime" — the app's documented no-block landing spot (the edit
-  sheet's block picker offers the same) — sits LAST, a deliberate choice,
-  never the default. Replaced the per-block foot inputs (NO-LEGACY): a
-  bottom inline input implied the task joined the block above it.
-  Specific-time one-offs deferred (triage 2026-07-01). Enter adds, Escape
-  closes. Source: `src/pages/Schedule.jsx` (`AddTaskBar`).
+  expands it) — one line of text + a target selector pulling the day's
+  real chore blocks AND its project gaps ("Project · 3 PM" — 42.3 round
+  4), merged in time order; Overnight is excluded (O7, not pickable for
+  adds). A project-gap choice routes by `clockTime` (the gap's start), a
+  chore block by its block id. Defaults to the NOW block (today) or the
+  day's first; "Anytime" — the app's documented no-block landing spot
+  (the edit sheet's block picker offers the same) — sits LAST, a
+  deliberate choice, never the default. Replaced the per-block foot
+  inputs (NO-LEGACY): a bottom inline input implied the task joined the
+  block above it. Specific-time one-offs deferred (triage 2026-07-01).
+  Enter adds, Escape closes. Source: `src/pages/Schedule.jsx`
+  (`AddTaskBar`).
 - **WeekStrip** · Stable · the week drawn ONCE off `farmLoad.week`, desktop
   sidebar only (the phone `layout="header"` variant + its should-heat tick were
   DELETED — slice D, NO-LEGACY). A row per day · count mini-spine · identity
@@ -233,9 +299,21 @@ Each: STATUS · what · use/not · canonical source.
   has a warming chore (`warmingByISO`), and an amber conflict `AlertTriangle`
   when it has man-down conflicts (hover → count, fed by `conflictsByISO`). The
   symbol cell is a FIXED width, LEFT-aligned, so every day's mini-spine is the
-  same width and the badges line up in a column. Bars scaled to `week.max`,
-  clamped +
-  `overflow-hidden` (B1 — no silent overflow). **Folded in + deleted (Step 3):**
+  same width and the badges line up in a column; every symbol wears
+  `BadgeHint` (round 4 — the full affordance standard, not a bare
+  Tooltip). ONE BASELINE GRID (round 4, F37 re-open): the row is
+  `items-end`, so the day label's baseline, the bar bottoms, and the
+  symbol column all sit on the track's bottom edge — never three center
+  lines. The overnight Moon is fed by a WEEK-WIDE night scan (round 4):
+  every night touching the viewed week is tested from one range read of
+  timed commitments, not just the focal day's loaded entries (the Moon
+  used to appear only once an overnight day was selected). Bar HEIGHTS
+  scale to `week.max` and clamp to the track (B1); bar WIDTHS never clip
+  — bars are ≥5px and the widest day's bar count sets one fixed track
+  width for every row, which in turn sizes the whole This Week sidebar
+  (the F16 fixed 180px gave way to this content rule, 42.3 feedback).
+  Day label = the row-title type at 12px (F11).
+  **Folded in + deleted (Step 3):**
   the center `WeekSpines` (`schedule/WeekSpines.jsx`, removed) + the sidebar
   `WeekList` (removed from `ScheduleSidebars.jsx`); the Schedule renders this
   once in the right sidebar. Source: `src/components/ui.jsx` (`WeekStrip`).
@@ -273,18 +351,70 @@ Each: STATUS · what · use/not · canonical source.
 - **Page shell** — header (Lora title + uppercase back-link + bottom hairline)
   over flush eyebrow-titled sections.
 - **Master–detail** (Schedule desktop) — left load rail · center detail ·
-  right week sidebar (→ one WeekStrip). The left rail speaks the WeekStrip
+  right week sidebar (→ one WeekStrip). PAGE HEADER (42.3 round 4): the
+  "Schedule" Lora h1 and the Day/Week/Month/Review tabs share ONE
+  full-width row above the whole workbench (spine included), closed by
+  the page hairline; the DATE ("Thursday, Jul 2") is the center column's
+  Lora h2, with the day's events on its sub-line (F15). The left rail
+  speaks the WeekStrip
   visual language (F1–F3): no dividers, an outlined active row (the border is
   the indicator, **green `border-resolved`** like the week pane), lighter-on-
   hover, equal heights; each row is a `KindBadge` (C/P/E) + label
-  ("Chores"/"Project"/event title) + time, with the current block marked by a
-  green-accent fill + a `NowTag` "Now" (not a divider rule). The chore load rail
-  fills in the chore identity color (teal). The **overnight** wrap reads
-  "Overnight" + a teal `Moon` on the row's right edge; **events** appear here
-  too (periwinkle **E** + title) where present. Phone collapses to day-strip +
-  column; the strip's chore bars fill in the same chore teal (done rises in
-  `resolved`), and the current block's bar carries an **inset 2px `now`
-  ring** painted above the fills (see the `now` token note).
+  ("Chores"/"Project"/event title, the ROW-TITLE type: body sans 12px
+  medium, one weight active AND inactive — 42.3, F11 settled; This Week
+  day labels wear the same) + time, with the current block marked by a
+  green-accent fill + the `NowRule` (`sm`) as its time line (42.3, F5); the
+  day-load's current bar carries the **now-ring** (the day-strip's offset
+  inset ring, `LoadSpine nowId`). Every row wears its **kind tint** (see
+  below) beside a **solid, saturated 5px rail** in the identity color (the
+  old done-fraction rail meter is retired — the tooltip carries the
+  count); **project rows** swap the tint for the cross-hatch when free
+  (planned vs unplanned). Row hover detail is a real `Tooltip` (REAL block
+  name · done count · time · needs-cover / planned · who's free), cued by
+  a dotted underline beneath the C/P/E badge (the `abbr` convention — see
+  the affordance standard). The spine is a **fixed 200px** — never
+  content-sized (a shifting center pane on day clicks is worse than any
+  width). The **overnight** wrap reads "Overnight" + a teal `Moon` on the
+  row's right edge; **events** appear here too (periwinkle **E** + title)
+  where present. The desktop whole-day overview is **ELIMINATED** (42.3
+  round 2): one block is always open — re-picking is a no-op, and opening
+  a day from This Week / Week / Month lands on its FIRST block (today:
+  follows now); its content lives in the spine tooltips. The overview
+  state survives only for the phone's Whole-day toggle. Phone collapses
+  to day-strip + column: the strip header is the day-load header (same
+  eyebrow + the SAME shared counter node as desktop), its columns carry
+  no rest fill (the bars are the affordance), and the strip PAGES at
+  more than 5 rails — max 4 visible, arrow slots page the group with a
+  directional slide (`nff-page-from-left/right`), the default page opens
+  on the now rail, one arrow leaves 4 rails / two leave 3, and the
+  NowEdgeLine rides outside the rail count. The phone toolbar is the
+  **primary + Add menu** pattern (see patterns.html). The
+  strip's chore bars fill in the same chore teal (done rises in
+  `resolved`), project bars fill by planned state, and the current block's
+  bar carries an **inset 2px `now` ring** painted above the fills (see the
+  `now` token note).
+- **Kind-tinted list rows** (42.3) — the list-group language for kinded
+  rows: a light wash of the row's identity color (chore teal / project
+  slate / event periwinkle) from `kindTint(cssVar, strength=11)`
+  (`src/components/ui.jsx`), beside a solid, saturated 5px rail in the
+  same color (uniform across kinds — no data encoded in the rail). The
+  wash is an alpha background-IMAGE (never background-color) so the
+  shell's hover/active/now background-color tints show through; the
+  KindBadge letter keys the color. Carrier: the day-spine; any future
+  kinded list should speak it.
+- **Planned vs unplanned time** (42.3, F9) — one fill language for project
+  time everywhere it's drawn: a gap with a real step in it is SOLID project
+  slate; a free/unbooked gap wears the 45° blue cross-hatch (the wash-eggs
+  ribbon pattern in `--c-project`) from the shared `hatchUnplanned(strength)`
+  util (`src/components/ui.jsx`). Bare bars take full strength (LoadSpine 60,
+  phone strip 45); row backgrounds with text on top take the light forms
+  (day-spine rows: hatch **10** — dropped from 16 in round 4, the 12px row
+  text sat on the heavier diagonals in light mode; the rail + badge +
+  "both free" tag carry the free signal / planned = the `kindTint` wash
+  11). Both fills
+  are alpha background-IMAGES so hover/active row background-colors show
+  through. `planned` = a step occupies the gap (`projectEntries` items /
+  `farmLoad`'s `projNodeMins` walk).
 - **Full-screen takeover** (Rounds) — Lora hero count + progress + NowRule +
   PlaceSwitcher + CheckTarget rows + tray + FinishStamp on wrap.
 - **Dashboard glance** — stack of flush panes; EventRow + LoadSpine + NowRule.
@@ -293,8 +423,8 @@ Each: STATUS · what · use/not · canonical source.
   to Rounds.
 - **Attention placement** — man-down=AttentionCard (everywhere it appears);
   overdue=AttentionCard.Row (Hole.row) in the row; page notices=AlertStrip;
-  offline=OutboxIndicator; now=`NowTag` on the block row (Schedule) /
-  `NowRule` divider (phone glance), today only.
+  offline=OutboxIndicator; now=`NowRule` (phone-glance divider + the
+  day-spine row's time line) / `NowTag` on center-pane rows, today only.
 - **Approval queue** (Proposals) — the surface where actions an external Claude
   chat proposes land for human sign-off. Pending / History tabs over a stack of
   flush `ProposalCard`s; Approve runs the app's real create path, Reject

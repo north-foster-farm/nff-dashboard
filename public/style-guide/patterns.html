@@ -178,8 +178,9 @@
         banner</td><td>Page-level, above the affected section</td></tr>
       <tr><td>Offline / unsynced</td><td>OutboxIndicator</td>
         <td>TopBar (global) + the Rounds status bar</td></tr>
-      <tr><td>Now</td><td>NowRule</td><td>Today-views only, threaded into the
-        timeline</td></tr>
+      <tr><td>Now</td><td>NowRule</td><td>Today-views only — a divider in the
+        phone glance, the current row's time line in the day-spine (F5);
+        NowTag for center-pane rows</td></tr>
     </tbody>
   </table>
 
@@ -196,7 +197,10 @@
       <tr><td>Rest, tappable in a dense strip</td>
         <td>A faint neutral "key" fill so the element reads as a control
           before any interaction — the rest-state signal where hover
-          doesn't exist (touch)</td>
+          doesn't exist (touch). Use only when the element has no visual
+          body of its own: the day-strip columns dropped it (42.3 round
+          3 — behind real bars it read as a backdrop, not an
+          affordance)</td>
         <td class="mono">bg-row-active-dim</td></tr>
       <tr><td>Hover</td>
         <td>A background tint that follows the cursor — a fill change,
@@ -211,15 +215,136 @@
         <td>The active fill while the finger is down — tap feedback on
           phones</td>
         <td class="mono">active:bg-row-active</td></tr>
+      <tr><td>Hover detail present</td>
+        <td>A dotted underline beneath the identity badge — the
+          <span class="mono">abbr</span> convention ("details on hover"),
+          no instructional text. <span class="mono">cursor: help</span>
+          normally rides along but yields when the element is also a
+          click target (the pointer wins).</td>
+        <td class="mono">border-b border-dotted border-faint</td></tr>
     </tbody>
   </table>
   <p>
     Carriers today: spine rows, the Day/Week/Month/Review tabs, This Week
     rows, ghost buttons (<span class="mono">BTN_GHOST</span>), and the
-    mobile day-strip time columns. Hover detail beyond a short label uses
-    the <span class="mono">Tooltip</span> primitive, never the native
-    <span class="mono">title</span> attribute.
+    mobile day-strip time columns (hover/press tints only). Hover detail
+    beyond a short label uses the <span class="mono">Tooltip</span>
+    primitive, never the native <span class="mono">title</span> attribute.
   </p>
+
+  <!-- MOBILE TOOLBAR -->
+  <h2 class="ds-h2" id="mobiletoolbar">Mobile toolbar (primary + Add menu)</h2>
+  <p>
+    The phone shape for a page's action row (42.3 round 3, Schedule first):
+    <b>one primary action</b> (Confirm, accent, flex-1) beside <b>one
+    consolidated "＋ Add" menu</b> holding the secondary adds (Add chore ·
+    Add task · Add project step · Add buffer · Time off — round 4 folded
+    the two context-anchored adds in and removed their in-card buttons) —
+    never a wrapping row of text buttons. A context-anchored entry
+    resolves its default target itself (the OPEN block when it fits, else
+    the day's first eligible gap/block) and hides when the day offers no
+    anchor. Both the primary action and the menu button are <b>one row,
+    equal height</b> (same <span class="mono">px-3 py-1.5 text-[12px]</span>
+    box); the Confirmed state occupies the same box and is a live control
+    — tap to revert the day to a draft (Tooltip-cued). Menu/button
+    hover+press go straight to <span class="mono">bg-row-active</span>
+    (row-hover's 9% tint is imperceptible on the white menu surface).
+    Status signals are not actions: the conflicts count disappears at
+    zero on the phone and shows as a warn chip only when real. Desktop
+    keeps the full toolbar row (it mirrors the two new entries as "Add
+    step" / "Add buffer" text buttons). The menu is a flush anchored
+    panel (border + shadow-md, sharp corners) over a transparent close
+    backdrop.
+  </p>
+
+  <!-- KIND-TINTED LIST ROWS -->
+  <h2 class="ds-h2" id="kindtint">Kind-tinted list rows</h2>
+  <p>
+    The list-group language for kinded rows (the day-spine): every row wears
+    a <b>light wash of its identity color</b> — chore teal, project slate,
+    event periwinkle — from the shared
+    <span class="mono">kindTint(cssVar, strength=11)</span> util
+    (<span class="mono">ui.jsx</span>), beside a <b>solid, saturated 5px
+    rail</b> in the same color (uniform across kinds — no data encoded in
+    the rail). The wash is an alpha background-IMAGE, never a
+    background-color, so the row shell's hover/active/now tints show
+    through; the kind badge (C/P/E) keys the color and wears the dotted
+    hover-detail underline (see the affordance standard).
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:flex;flex-direction:column;gap:6px;max-width:280px">
+        <div style="display:flex;align-items:stretch;gap:8px;
+          background-image:linear-gradient(
+            color-mix(in srgb,var(--c-chore) 11%,transparent),
+            color-mix(in srgb,var(--c-chore) 11%,transparent))">
+          <span style="width:5px;background:var(--c-chore);opacity:.9"></span>
+          <span style="padding:8px 2px;font-weight:500;font-size:12px">Chores
+            <span style="color:var(--c-text-faint);font-size:11px;
+              font-weight:400"> · 10 AM</span></span>
+        </div>
+        <div style="display:flex;align-items:stretch;gap:8px;
+          background-image:linear-gradient(
+            color-mix(in srgb,var(--c-project) 11%,transparent),
+            color-mix(in srgb,var(--c-project) 11%,transparent))">
+          <span style="width:5px;background:var(--c-project);opacity:.9"></span>
+          <span style="padding:8px 2px;font-weight:500;font-size:12px">Project
+            <span style="color:var(--c-text-faint);font-size:11px;
+              font-weight:400"> · 11 AM</span></span>
+        </div>
+        <div style="display:flex;align-items:stretch;gap:8px;
+          background-image:linear-gradient(
+            color-mix(in srgb,var(--c-event) 11%,transparent),
+            color-mix(in srgb,var(--c-event) 11%,transparent))">
+          <span style="width:5px;background:var(--c-event);opacity:.9"></span>
+          <span style="padding:8px 2px;font-weight:500;font-size:12px">Farmers market
+            <span style="color:var(--c-text-faint);font-size:11px;
+              font-weight:400"> · 9 AM</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="ds-example-meta">wash 11 + saturated 5px rail, both keyed by
+      kind · a free project gap swaps its wash for the cross-hatch (below)</div>
+  </div>
+
+  <!-- PLANNED VS UNPLANNED -->
+  <h2 class="ds-h2" id="planned">Planned vs unplanned time</h2>
+  <p>
+    One fill language for project time everywhere it's drawn (F9/F26): a gap
+    with a real step in it is <b>solid</b> project slate; a free/unbooked gap
+    wears the <b>45° blue cross-hatch</b> — the wash-eggs ribbon pattern in
+    <span class="mono">--c-project</span>, from the shared
+    <span class="mono">hatchUnplanned(strength)</span> util
+    (<span class="mono">ui.jsx</span>). Bare bars take full strength;
+    row backgrounds with text on top take a light wash, and both fills are
+    alpha images so hover/active row tints show through the gaps.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:flex;flex-direction:column;gap:6px;max-width:280px">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+          background-image:linear-gradient(
+            color-mix(in srgb,var(--c-project) 11%,transparent),
+            color-mix(in srgb,var(--c-project) 11%,transparent))">
+          <span style="font-weight:500;font-size:12px">Project</span>
+          <span style="color:var(--c-text-faint);font-size:11px">8 AM ·
+            planned</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+          background-image:repeating-linear-gradient(45deg,
+            color-mix(in srgb,var(--c-project) 10%,transparent) 0 4px,
+            transparent 4px 8px)">
+          <span style="font-weight:500;font-size:12px">Project</span>
+          <span style="color:var(--c-text-faint);font-size:11px">11 AM ·
+            free</span>
+        </div>
+      </div>
+    </div>
+    <div class="ds-example-meta">solid wash (= the kind tint) = planned ·
+      cross-hatch = free · carriers: LoadSpine bars (60), day-spine rows
+      (10 — dropped from 16 in 42.3 round 4 for 12px text legibility;
+      the rail + badge carry the free signal), phone strip bars (45)</div>
+  </div>
 
   <!-- APPROVAL QUEUE -->
   <h2 class="ds-h2" id="approval">Approval queue (Proposals)</h2>

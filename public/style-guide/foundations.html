@@ -63,6 +63,10 @@
           gap between ring and fill. Accent IS the active-state color
           — don't swap the hue for contrast; the gap does the contrast
           work (luminance, not saturation) on any fill, any theme.
+          The day-load (LoadSpine) ring is the <b>bg | accent | bg
+          sandwich</b> (42.3 round 4): a bg line on BOTH flanks of the
+          2px ring — accent-deep and the project slate share luminance,
+          so the single inner gap wasn't enough on project fills.
           Rings are inset — an outset ring falsifies the bar's
           height. Widths are authored as
           <span class="mono">calc(Npx&nbsp;*&nbsp;var(--inv-zoom))</span>
@@ -186,6 +190,13 @@
       <tr><td>Section / card heading</td>
         <td class="mono">font-heading 17–22px / 600 / -0.01em</td>
         <td>Sheets, card titles</td></tr>
+      <tr><td>Row title</td>
+        <td class="mono">font-body 12px / 500</td>
+        <td>Day-spine block names + This Week day labels — one size, one
+          weight for active AND inactive (F11, settled 2026-07-01);
+          state speaks through fill/border/color, never a weight jump.
+          (The Lora heading stays a HEADER treatment — focused-block
+          header at 15px — and does not reach list rows.)</td></tr>
       <tr><td>Eyebrow / label</td>
         <td class="mono">font-ui 10–11px / 600–700 / uppercase / 0.12–0.16em</td>
         <td>Card header, group labels — the signature label</td></tr>

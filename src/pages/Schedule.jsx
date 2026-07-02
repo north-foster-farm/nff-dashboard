@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
   GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
-  Repeat, StickyNote, Timer, Scissors, CalendarX, FolderKanban,
+  Repeat, StickyNote, Timer, CalendarX,
   ClockArrowRight, ClockArrowLeft, CornerDownRight, CalendarSync,
 } from "lucide-react";
 import {
@@ -41,11 +41,11 @@ import ScheduleEditSheet from "../components/ScheduleEditSheet.jsx";
 import ReservationSheet from "../components/ReservationSheet.jsx";
 import BufferSheet from "../components/BufferSheet.jsx";
 import EventTimeSheet from "../components/EventTimeSheet.jsx";
-import SplitBlockSheet from "../components/SplitBlockSheet.jsx";
 import EventScopePrompt from "../components/EventScopePrompt.jsx";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import CoverSheet from "../components/CoverSheet.jsx";
-import EditedHistory from "../components/EditedHistory.jsx";
+import EditedHistory, { EditedTag, fmtClock12 }
+  from "../components/EditedHistory.jsx";
 import { DayRailSpine, DayStrip } from "../components/ScheduleSidebars.jsx";
 import { WeekView, MonthView } from "../components/ScheduleZoom.jsx";
 import { ScheduleReview } from "../components/ScheduleReview.jsx";
@@ -62,7 +62,6 @@ import {
 } from "../lib/schedule/partition.js";
 import { useNeighborDeltas } from "../lib/data/useNeighborDeltas.js";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
-import PageHeader from "../components/PageHeader.jsx";
 import { navigate, usePersistedState } from "../lib/router.js";
 import { useScheduleReflow } from "../lib/data/useScheduleReflow.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
@@ -71,7 +70,7 @@ import { supabase, realtimeChannel } from "../lib/supabase.js";
 import { formatMinutesOfDay, resolveBlockMinutes } from "../lib/sunTimes.js";
 import {
   NowTag, KindBadge, AttentionCard, LoadSpine, WeekStrip, WarmingBadge,
-  AlertStrip, INPUT_CLS,
+  AlertStrip, Tooltip, INPUT_CLS,
 } from "../components/ui.jsx";
 import { farmLoad, dayConflictCount, dayWarming }
   from "../lib/load/farmLoad.js";
@@ -162,13 +161,13 @@ function minToHM(min) {
 // time-ordered, openable lines (NOT chore checklists). Marries the old
 // events surface (now Calendar) into the one agreed day. Tap to peek the
 // time/place; the body is informational, not a tick list.
-// The reserved time + setup/cleanup checklist a buffer carries (S53/S57), plus
-// the "Add buffer" affordance (the bufferable interface — BD23). Rendered
-// inside an activity's detail panel (an event, or a focused chore block).
-// `activity` = { target, label, startMin, endMin } — the anchor a new buffer
-// resolves its window from.
+// The reserved time + setup/cleanup checklist a buffer carries (S53/S57).
+// Rendered inside an activity's detail panel (an event, or a focused chore
+// block) — only when the activity HAS buffers. The "Add buffer" entry
+// point moved to the toolbar "+ Add" menu (round 4); the card carries no
+// add chrome of its own.
 function BufferSection({
-  buffers, activity, onToggleItem, onRemove, onAddBuffer, squeezedIds,
+  buffers, onToggleItem, onRemove, squeezedIds,
 }) {
   return (
     <div className="space-y-2">
@@ -225,17 +224,13 @@ function BufferSection({
           </div>
         );
       })}
-      <button type="button" onClick={() => onAddBuffer(activity)}
-        className="inline-flex items-center gap-1.5 text-[12px] font-medium text-accent cursor-pointer">
-        <Timer size={13} /> Add buffer
-      </button>
     </div>
   );
 }
 
 function EventEntry({
   occ, isOpen, onToggle,
-  buffers, onToggleBufferItem, onRemoveBuffer, onAddBuffer, onEditTime,
+  buffers, onToggleBufferItem, onRemoveBuffer, onEditTime,
   squeezedIds,
 }) {
   const color = T.cat[occ.kindId] || T.cat.default;
@@ -300,18 +295,11 @@ function EventEntry({
           {occ.subtitle && (
             <div className="text-[13px] text-dim">{occ.subtitle}</div>
           )}
-          {onAddBuffer && (
+          {(buffers?.length ?? 0) > 0 && (
             <BufferSection
-              buffers={buffers ?? []}
-              activity={{
-                target: { kind: "event", id: occ.instanceId, label: occ.instanceLabel },
-                label: occ.instanceLabel,
-                startMin: hmToMin(occ.startTime),
-                endMin: hmToMin(occ.endTime),
-              }}
+              buffers={buffers}
               onToggleItem={onToggleBufferItem}
               onRemove={onRemoveBuffer}
-              onAddBuffer={onAddBuffer}
               squeezedIds={squeezedIds}
             />
           )}
@@ -417,22 +405,25 @@ function AdHocRow({
           <span className="truncate">
             {commitment.source_ref?.title ?? (isProject ? "(project)" : "(task)")}
           </span>
-          <span className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1">
-            {isProject ? "project" : "task"}
-          </span>
+          {/* One-off tasks keep the chip; a project step's identity is
+              its block + the project sub-line — no chip (round 4). */}
+          {!isProject && (
+            <span className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1">
+              task
+            </span>
+          )}
+          {/* Rescheduled treatment (round 4) — matches ChoreCheckRow:
+              12-hour time in 10px tabular faint + the EditedTag. */}
           {edit?.clockTime && (
-            <span className="shrink-0 text-[11px] font-medium text-accent [font-variant-numeric:tabular-nums]">
-              {edit.clockTime}
+            <span className="shrink-0 text-[10px] leading-tight text-faint [font-variant-numeric:tabular-nums]">
+              {fmtClock12(edit.clockTime)}
             </span>
           )}
           {edit?.history?.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowHist((s) => !s)}
-              className="shrink-0 text-[10px] uppercase tracking-wide text-faint border border-line px-1 hover:text-fg cursor-pointer"
-            >
-              edited
-            </button>
+            <EditedTag
+              open={showHist}
+              onToggle={() => setShowHist((s) => !s)}
+            />
           )}
           {queued && (
             <CloudOff size={12} className="shrink-0 text-warn"
@@ -1017,6 +1008,10 @@ export default function Schedule({ data }) {
         endMin: seg.endMin,
         durationMin: seg.durationMin,
         who: seg.who,
+        // F9 — a gap is PLANNED when a real step occupies it (the engine's
+        // reflow or a manual add); unplanned/free gaps wear the cross-hatch
+        // on the spine + strip (same language as the LoadSpine bars).
+        planned: items.length > 0,
         items,
         continueFrom,
         count: items.length,
@@ -1109,18 +1104,35 @@ export default function Schedule({ data }) {
     return out.sort((a, b) => startKey(a) - startKey(b));
   }, [rawBlockRows, overrideDeltas, blocksById, startMinByBucket]);
 
-  // F58 — the toolbar one-off entry's block choices: the day's real blocks
-  // (incl. Overnight), labelled name · start time; "Anytime" is the null
-  // option the control adds itself.
-  const oneOffTargets = useMemo(() => blockRows
-    .filter((b) => b.block)
-    .map((b) => ({
-      bucket: b.bucket,
-      label: (b.block.name ?? "Block")
-        + (b.startMin != null
-          ? " · " + formatMinutesOfDay(b.startMin) : ""),
-    })), [blockRows]);
+  // F58 — the toolbar one-off entry's block choices: the day's real chore
+  // blocks AND its project gaps (round 4), merged in time order; "Anytime"
+  // is the null option the control adds itself. Overnight is excluded
+  // (O7 — not pickable for adds). A project-gap choice carries the gap's
+  // start as `clockTime` so the add routes by time (segmentForStart lands
+  // it back in the gap), not by block id.
+  const oneOffTargets = useMemo(() => [
+    ...blockRows
+      .filter((b) => b.block)
+      .map((b) => ({
+        bucket: b.bucket,
+        startMin: b.startMin,
+        label: (b.block.name ?? "Block")
+          + (b.startMin != null
+            ? " · " + formatMinutesOfDay(b.startMin) : ""),
+      })),
+    ...projectEntries.map((e) => ({
+      bucket: e.bucket,
+      startMin: e.startMin,
+      label: "Project · " + formatMinutesOfDay(e.startMin),
+      clockTime: minToHM(e.startMin),
+    })),
+  ].sort((a, b) => (a.startMin ?? 0) - (b.startMin ?? 0)),
+  [blockRows, projectEntries]);
   const [addingTask, setAddingTask] = useState(false);
+  // The phone toolbar's one "+ Add" menu (42.3 round 3) — the mobile
+  // pattern is primary action + a consolidated add menu, not four
+  // wrapping text buttons.
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   // Non-work time (S7) + man-down (S8). Reservations are person/time windows;
   // an assigned row whose block overlaps its assignee's window needs cover.
@@ -1234,13 +1246,35 @@ export default function Schedule({ data }) {
   // first chore block, the LEADING overnight is "now" (the pre-dawn hinge);
   // after tonight's last chore block, the TRAILING one is. Only when that
   // overnight segment actually renders (has items / is syncing).
+  // Now at the day's EDGES (42.3 round 3): when now falls before the first
+  // block starts or after the last block ends (and no overnight window owns
+  // it), NO block is marked "now" — the surfaces draw the now-rule at the
+  // edge instead (horizontal above/below the spine rows, a vertical line at
+  // the end of the day-load bars / phone strip). Uses farm.spine (it carries
+  // endMin for chore AND project bars).
+  const nowEdge = useMemo(() => {
+    if (dateISO !== realTodayISO) return null;
+    const lead = overnightEntries.find((e) => e.side === "lead");
+    const trail = overnightEntries.find((e) => e.side === "trail");
+    if (lead && nowMin < lead.winEnd) return null;
+    if (trail && nowMin >= trail.winStart) return null;
+    const bars = farm.spine.filter((b) => b.startMin != null);
+    if (!bars.length) return null;
+    const first = Math.min(...bars.map((b) => b.startMin));
+    const last = Math.max(...bars.map((b) => b.endMin ?? b.startMin));
+    if (nowMin < first) return "before";
+    if (nowMin >= last) return "after";
+    return null;
+  }, [dateISO, realTodayISO, overnightEntries, farm, nowMin]);
+
   const nowBucket = useMemo(() => {
+    if (nowEdge) return null;
     const lead = overnightEntries.find((e) => e.side === "lead");
     const trail = overnightEntries.find((e) => e.side === "trail");
     if (lead && nowMin < lead.winEnd) return OVERNIGHT_LEAD;
     if (trail && nowMin >= trail.winStart) return OVERNIGHT_TRAIL;
     return pickNowBucket(blockRows, nowMin);
-  }, [blockRows, nowMin, overnightEntries]);
+  }, [blockRows, nowMin, overnightEntries, nowEdge]);
 
   // The day-spine / phone-strip segments — one per chore block of the viewed
   // day, carrying the load (count), done, time, and the man-down flag so the
@@ -1271,6 +1305,41 @@ export default function Schedule({ data }) {
       ...eventEntries]
       .sort((a, b) => startKey(a) - startKey(b)),
     [spineBlocks, projectEntries, overnightEntries, eventEntries]);
+
+  // Day-load counters (42.3 round 3): CHORES (chore obligations only — a
+  // one-off task or a placed project step isn't a chore), BLOCKS as the
+  // spine shows them (chore blocks + project gaps + events + the overnight
+  // wrap = navSegments), and DISTINCT projects worked (not gaps).
+  const dayLoadCounts = useMemo(() => {
+    const chores = blockRows.reduce(
+      (s, b) => s + b.rows.filter((r) => r.kind === "chore").length, 0);
+    const projectIds = new Set();
+    for (const e of projectEntries) {
+      for (const d of e.items) {
+        const pid = d.source_ref?.project_id;
+        if (pid) projectIds.add(pid);
+      }
+    }
+    return {
+      chores,
+      blocks: navSegments.length,
+      projects: projectIds.size,
+    };
+  }, [blockRows, projectEntries, navSegments]);
+
+  // The one day-load count line, shared verbatim by the desktop header and
+  // the phone strip header (they must never disagree). Pluralized per word.
+  const nText = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const dayLoadSummary = (
+    <span className="flex items-center gap-1">
+      {nText(dayLoadCounts.chores, "chore")}
+      {" · "}{nText(dayLoadCounts.blocks, "block")}
+      {dayLoadCounts.projects > 0
+        ? ` · ${nText(dayLoadCounts.projects, "project")}` : ""}
+      {(farm.warming.warn.length + farm.warming.due.length) > 0 && " · "}
+      <WarmingBadge warn={farm.warming.warn} due={farm.warming.due} />
+    </span>
+  );
 
   // (Round-3 NO-LEGACY) The inline `week` (weekFullness) memo is GONE — it is
   // folded into the one `farm` model (`farm.week`) consumed by the sidebar
@@ -1367,24 +1436,34 @@ export default function Schedule({ data }) {
   // the agenda, or a bucket id. `focus` is the resolved open block (null =
   // overview) — this dissolves the "scroll past the open block" problem.
   const [focusSel, setFocusSel] = useState(null);
+  // `"first"` is the landing selector for a day opened from Week/Month/This
+  // Week: the day's first block, resolved once its rows exist (the desktop
+  // whole-day overview is a toggle state, not a landing — F28 follow-up).
+  // Follow-now with nothing current (now is past/before the day's blocks —
+  // `nowEdge`): land on the nearest block instead of the retired overview.
   const focus = focusSel === null
-    ? nowBucket
-    : focusSel === "overview" ? null : focusSel;
+    ? (nowBucket
+      ?? (nowEdge === "after"
+        ? blockRows[blockRows.length - 1]?.bucket
+        : blockRows[0]?.bucket)
+      ?? null)
+    : focusSel === "overview" ? null
+    : focusSel === "first" ? (blockRows[0]?.bucket ?? null)
+    : focusSel;
   const focusRef = useRef(null);
 
-  // Picking the already-open block collapses to the overview (closable);
-  // picking another opens it.
-  const pickBlock = (bucket) => setFocusSel((cur) => {
-    const resolved = cur === null ? nowBucket : cur === "overview" ? null : cur;
-    return resolved === bucket ? "overview" : bucket;
-  });
+  // Picking a block opens it; re-picking the open one is a no-op — the
+  // desktop whole-day overview is ELIMINATED (round-2 feedback): one block
+  // is always open, and the spine tooltips carry what the overview listed
+  // (real block name, done count, alerts). The overview state survives
+  // only for the phone's Whole-day toggle (and the event-detail close).
+  const pickBlock = (bucket) => setFocusSel(bucket);
   const showOverview = () => setFocusSel("overview");
 
   // Per-day focus memory (F45): remember the open block for each visited day
-  // and restore it on return; a day not opened this session defaults to the
-  // whole-day overview, so a block selected on one day never carries onto a
-  // day where it doesn't exist. `focusOverride` forces a specific target
-  // (e.g. opening straight to a block from Week/Month).
+  // and restore it on return; a day not opened this session lands on its
+  // FIRST block (today: follow now). `focusOverride` forces a specific
+  // target (e.g. opening straight to a block from Week/Month).
   const focusByDayRef = useRef(new Map());
   const goToDay = (date, focusOverride) => {
     focusByDayRef.current.set(dateISO, focusSel);
@@ -1392,7 +1471,8 @@ export default function Schedule({ data }) {
     const next = focusOverride !== undefined
       ? focusOverride
       : (focusByDayRef.current.has(nextISO)
-        ? focusByDayRef.current.get(nextISO) : "overview");
+        ? focusByDayRef.current.get(nextISO)
+        : nextISO === realTodayISO ? null : "first");
     setToday(date);
     setFocusSel(next);
   };
@@ -1601,6 +1681,31 @@ export default function Schedule({ data }) {
     }
   };
 
+  // Un-confirm (42.3 round 4): tapping the Confirmed chip reverts the day
+  // to a draft. Deletes EVERY confirmed_day capture for the date (a
+  // re-confirm stacks versions; reverting must clear them all). Online-
+  // only, like completeProjectStep — a draft revert must not sit silently
+  // in an offline queue while the other device still reads "confirmed".
+  // Rides migration 0043's scoped delete policy.
+  const unconfirmDay = async () => {
+    if (confirming) return;
+    if (typeof window !== "undefined"
+      && !window.confirm("Revert this day to a draft?")) return;
+    setConfirming(true);
+    try {
+      const { error } = await supabase.from("captures").delete()
+        .eq("schema_id", "schedule.confirmed_day")
+        .eq("subject_type", "schedule_day")
+        .eq("subject_id", dateISO);
+      if (error) throw error;
+      setConfirmedDoc(null);
+    } catch (e) {
+      console.error("[schedule] unconfirm failed", e);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   // Source-changed-after-confirm: today's items vs the confirmed snapshot.
   // Surfaced, never auto-applied.
   const changes = useMemo(() => {
@@ -1694,12 +1799,27 @@ export default function Schedule({ data }) {
 
   const applyEdit = (change) => {
     if (!editing) return;
+    // History copy (round 4): a move reads "Rescheduled from X to Y" —
+    // never "Moved"/"Split". X is what the user left (the source block, or
+    // the previous set time), Y where it landed; times are 12-hour.
     const parts = [];
-    if ("toBlockId" in change) parts.push(`Moved to ${bucketName(change.toBlockId)}`);
-    if ("clockTime" in change) {
-      parts.push(change.clockTime ? `Time set ${change.clockTime}` : "Time cleared");
+    const newTime = change.clockTime ? fmtClock12(change.clockTime) : null;
+    if ("toBlockId" in change) {
+      parts.push(`Rescheduled from ${editing.fromBlockName} to `
+        + bucketName(change.toBlockId)
+        + (newTime ? ` at ${newTime}` : ""));
+    } else if ("clockTime" in change && change.clockTime) {
+      const from = editing.currentClockTime
+        ? fmtClock12(editing.currentClockTime)
+        : editing.fromBlockName;
+      parts.push(`Rescheduled from ${from} to ${newTime}`);
     }
-    if ("toDate" in change) parts.push(`Moved to ${change.toDate}`);
+    if ("clockTime" in change && !change.clockTime) {
+      parts.push("Time cleared");
+    }
+    if ("toDate" in change) {
+      parts.push(`Rescheduled from ${dateISO} to ${change.toDate}`);
+    }
     const entry = {
       at: new Date().toISOString(), by: email ?? null,
       summary: parts.join(" · ") || "Edited",
@@ -1708,35 +1828,9 @@ export default function Schedule({ data }) {
     setEditing(null);
   };
 
-  // Split a block for one day (S72): bulk-apply a second-sitting clock time to
-  // the chosen rows, reusing the per-row write (derived chores → override,
-  // commitment rows → updateDelta). The global block is untouched.
-  // The time routes through the day's segments (the one placement rule): a
-  // second sitting that lands inside another chore block's window re-homes
-  // the rows into THAT block (F52) — a bare clock-time override would leave
-  // them stranded in the source block while the user looks for them at the
-  // block that owns the chosen time.
-  const [splitting, setSplitting] = useState(null);
-  const doSplit = (keys, time) => {
-    const b = splitting;
-    if (!b) return;
-    const set = new Set(keys);
-    const target = segmentForStart(hmToMin(time), daySegments);
-    const rehome = isRealBlock(target) && target !== b.bucket;
-    const entry = {
-      at: new Date().toISOString(), by: email ?? null,
-      summary: rehome
-        ? `Split — moved to ${bucketName(target)} at ${time}`
-        : `Split — moved to ${time}`,
-    };
-    const change = rehome
-      ? { toBlockId: target, clockTime: time }
-      : { clockTime: time };
-    for (const row of b.rows) {
-      if (set.has(row.key)) writeRow(row, b.bucket, change, entry);
-    }
-    setSplitting(null);
-  };
+  // (Split block is GONE — 42.3 round 4, NO-LEGACY: the per-block
+  // second-sitting bulk move + its sheet were dropped; a per-row Edit
+  // covers the rare move, and the history verb is "Rescheduled".)
 
   // Drag-reorder within a block (silent — no protection): rank the moved row
   // between its new neighbours so only one row is written.
@@ -2070,14 +2164,42 @@ export default function Schedule({ data }) {
     return m;
   }, [today, data, ruleOpts, choreCtx, completions]);
 
-  // Week-pane overnight marker (Moon): a night spans two calendar days, so the
-  // focal day's overnight entries mark BOTH days they touch — a `lead` block
-  // (last night → this morning) marks yesterday + today; a `trail` block
-  // (tonight → tomorrow) marks today + tomorrow. Derived from the loaded
-  // overnight entries (week-wide overnight detection would need each day's
-  // neighbor deltas, which aren't fetched — this reflects the overnight in view).
+  // Week-pane overnight marker (Moon): a night spans two calendar days, so
+  // an overnight marks BOTH days it touches. Round 4 — EVERY night touching
+  // the viewed week is scanned (the Moon used to derive from the focal
+  // day's loaded entries only, so it appeared once an overnight day was
+  // SELECTED, not before). One range read of the week's timed commitments
+  // (± a day for the wrap's edges), refreshed when the viewed day changes.
+  const [weekTimedDeltas, setWeekTimedDeltas] = useState(() => new Map());
+  useEffect(() => {
+    let cancelled = false;
+    const ds = weekDays(today);
+    const from = new Date(ds[0]);
+    from.setDate(from.getDate() - 1);
+    const to = new Date(ds[6]);
+    to.setDate(to.getDate() + 1);
+    supabase.from("commitments")
+      .select("id, source_type, source_ref, run_date, clock_time")
+      .in("source_type", ["ad_hoc", "project_node"])
+      .not("clock_time", "is", null)
+      .gte("run_date", ymdLocal(from)).lte("run_date", ymdLocal(to))
+      .then((res) => {
+        if (cancelled) return;
+        const m = new Map();
+        for (const r of res.data ?? []) {
+          if (r.source_ref?.origin === "removed") continue; // tombstones
+          if (!m.has(r.run_date)) m.set(r.run_date, []);
+          m.get(r.run_date).push(r);
+        }
+        setWeekTimedDeltas(m);
+      });
+    return () => { cancelled = true; };
+  }, [today]);
+
   const weekOvernightISOs = useMemo(() => {
     const s = new Set();
+    // The focal day's LIVE overnight entries — instant on edits (the week
+    // scan below lags its fetch by a day-change).
     for (const e of overnightEntries) {
       if (!e.count) continue;
       if (e.side === "lead") {
@@ -2088,8 +2210,30 @@ export default function Schedule({ data }) {
         s.add(ymdLocal(tomorrow));
       }
     }
+    // Each night (n → n+1) with a timed item in its overnight window Moons
+    // both days. (Approximation: a project-gap placement in the dawn band
+    // would count here — the focal day's exact overlap rule needs each
+    // day's gaps, which aren't derived week-wide. Gaps sit between chore
+    // blocks, outside the overnight bands, so in practice they don't hit.)
+    const ds = weekDays(today);
+    for (let i = -1; i <= 6; i++) {
+      const n = new Date(ds[0]);
+      n.setDate(n.getDate() + i);
+      const n1 = new Date(n);
+      n1.setDate(n1.getDate() + 1);
+      const win = overnightWindow(n, n1, blocks);
+      if (!win) continue;
+      const evening = (weekTimedDeltas.get(ymdLocal(n)) ?? []).some((d) =>
+        inOvernight(win, hmToMin(d.clock_time), "evening"));
+      const dawn = (weekTimedDeltas.get(ymdLocal(n1)) ?? []).some((d) =>
+        inOvernight(win, hmToMin(d.clock_time), "dawn"));
+      if (evening || dawn) {
+        s.add(ymdLocal(n));
+        s.add(ymdLocal(n1));
+      }
+    }
     return s;
-  }, [overnightEntries, yesterday, today, tomorrow]);
+  }, [overnightEntries, weekTimedDeltas, blocks, yesterday, today, tomorrow]);
 
   // Jump to a conflict (S56b): focus its block on the viewed day, or open the
   // day it falls on first. On phones the focused block renders below the
@@ -2116,18 +2260,10 @@ export default function Schedule({ data }) {
     weekday: "long", month: "short", day: "numeric",
   });
 
-  // The header subtitle tracks the zoom: a day, the week's range, or the month.
-  // Surface the day's events in the sub-line (F15) — e.g. a market day was
-  // happening but nothing in the header said so. Append up to three event
-  // labels after the date.
-  const daySubtitle = (() => {
-    if (!eventEntries.length) return dateLabel;
-    const labels = eventEntries.map((e) => e.occ.instanceLabel);
-    const shown = labels.slice(0, 3).join(" · ");
-    const more = labels.length > 3 ? ` +${labels.length - 3} more` : "";
-    return `${dateLabel} · ${shown}${more}`;
-  })();
-  const subtitle = viewMode === "day" ? daySubtitle
+  // The center column's h2 tracks the zoom: the day, the week's range, or
+  // the month (round 4 — the date IS the center heading now; "Schedule" +
+  // the zoom tabs live in the one page-header row above the workbench).
+  const centerHeading = viewMode === "day" ? dateLabel
     : viewMode === "review" ? "Looking back"
     : viewMode === "month"
       ? today.toLocaleDateString("en-US", { month: "long", year: "numeric" })
@@ -2140,10 +2276,51 @@ export default function Schedule({ data }) {
           + b.toLocaleDateString("en-US",
             sameMonth ? { day: "numeric" } : opt);
       })();
+  // The day's events surface in a sub-line under the date (F15) — e.g. a
+  // market day was happening but nothing in the header said so.
+  const eventsSub = (() => {
+    if (viewMode !== "day" || !eventEntries.length) return null;
+    const labels = eventEntries.map((e) => e.occ.instanceLabel);
+    const shown = labels.slice(0, 3).join(" · ");
+    const more = labels.length > 3 ? ` +${labels.length - 3} more` : "";
+    return shown + more;
+  })();
 
   // The focused timeline entry (a block or an event), or null = overview.
   const focusEntry = focus == null
     ? null : (timeline.find((e) => e.bucket === focus) ?? null);
+
+  // Round 4 — the "+ Add" menu (and the desktop toolbar) hold the two
+  // context-anchored adds too, so the block card / project block carry no
+  // add chrome of their own. Each resolves a default anchor — the OPEN
+  // block when it fits, else the day's first eligible — so the menu needs
+  // no target-picker step: a step needs a project gap; a buffer needs an
+  // activity anchor (a chore block or an event). null = no eligible
+  // target today, and the entry doesn't render.
+  const addStepTarget = focusEntry?.kind === "projectblock"
+    ? focusEntry : (projectEntries[0] ?? null);
+  const bufferTarget = (() => {
+    if (focusEntry?.kind === "event") {
+      const occ = focusEntry.occ;
+      return {
+        target: { kind: "event", id: occ.instanceId, label: occ.instanceLabel },
+        label: occ.instanceLabel,
+        startMin: hmToMin(occ.startTime),
+        endMin: hmToMin(occ.endTime),
+      };
+    }
+    const b = (focusEntry?.kind === "block" && focusEntry.block
+      && focusEntry.startMin != null)
+      ? focusEntry
+      : blockRows.find((x) => x.block && x.startMin != null);
+    if (!b) return null;
+    const w = blockWindow(b.bucket);
+    return {
+      target: { kind: "block", id: b.bucket, label: b.block.name },
+      label: b.block.name,
+      startMin: w.start, endMin: w.end,
+    };
+  })();
 
   // Man-down leak + awaiting-ack lines for a block entry — shared by the
   // overview rows and the open detail. `pad` sets the left indent.
@@ -2191,26 +2368,34 @@ export default function Schedule({ data }) {
 
   return (
     <div className="max-w-2xl lg:max-w-[1120px] mx-auto">
-     {/* Day/Week/Month/Review lives at the TOP LEVEL (above the spine+pane
-         split) so it stays put when the day-spine appears/disappears with the
-         view mode — it never shuffles under the cursor (F20). */}
-     <div className="hidden lg:flex items-center justify-end gap-1 font-ui text-[12px] mb-4">
-       {[["day", "Day"], ["week", "Week"], ["month", "Month"],
-         ["review", "Review"]].map(([m, label]) => (
-         <button
-           key={m}
-           type="button"
-           onClick={() => setViewMode(m)}
-           className={
-             "px-3 py-1 border border-transparent cursor-pointer transition-colors "
-             + (viewMode === m
-               ? "bg-row-active text-fg font-medium"
-               : "text-faint hover:bg-row-hover hover:text-dim")
-           }
-         >
-           {label}
-         </button>
-       ))}
+     {/* Page header (round 4): the Schedule h1 and the Day/Week/Month/
+         Review tabs share ONE full-width row — above the whole workbench,
+         spine included — closed by the page hairline (the PageHeader
+         decoration, inlined). Top-level so the tabs stay put when the
+         day-spine appears/disappears with the view mode (F20). The date
+         is the center column's h2 below. */}
+     <div className="flex items-end justify-between gap-3 mb-5 pb-3.5 border-b border-line">
+       <h1 className="font-heading text-[32px] font-bold -tracking-[0.02em] m-0 text-fg leading-none">
+         Schedule
+       </h1>
+       <div className="hidden lg:flex items-center gap-1 font-ui text-[12px]">
+         {[["day", "Day"], ["week", "Week"], ["month", "Month"],
+           ["review", "Review"]].map(([m, label]) => (
+           <button
+             key={m}
+             type="button"
+             onClick={() => setViewMode(m)}
+             className={
+               "px-3 py-1 border border-transparent cursor-pointer transition-colors "
+               + (viewMode === m
+                 ? "bg-row-active text-fg font-medium"
+                 : "text-faint hover:bg-row-hover hover:text-dim")
+             }
+           >
+             {label}
+           </button>
+         ))}
+       </div>
      </div>
      <div className="lg:flex lg:items-start">
       {/* Desktop load-spine — the day's shape AND the navigator (Day zoom). */}
@@ -2220,12 +2405,24 @@ export default function Schedule({ data }) {
           focus={focus}
           nowBucket={nowBucket}
           nowMin={viewingToday ? nowMin : null}
+          nowEdge={nowEdge}
           onPick={pickBlock}
         />
       )}
 
       <div className="flex-1 min-w-0 pb-24 lg:px-8">
-      <PageHeader title="Schedule" subtitle={subtitle} />
+      {/* The date IS the center heading (round 4) — h2 under the page's
+          Schedule h1; the day's events ride its sub-line (F15). */}
+      <div className="mb-5">
+        <h2 className="font-heading text-[22px] font-semibold -tracking-[0.01em] m-0 text-fg">
+          {centerHeading}
+        </h2>
+        {eventsSub && (
+          <div className="text-[13px] text-dim mt-1 leading-snug">
+            {eventsSub}
+          </div>
+        )}
+      </div>
 
       {viewMode === "week" ? (
         <WeekView
@@ -2253,7 +2450,10 @@ export default function Schedule({ data }) {
        <>
       {/* Day load — the count-driven silhouette, promoted to the shared
           LoadSpine reading farmLoad (Round-3 demote). lg-only. */}
-      <div className="hidden lg:block border border-line bg-bg mb-4 px-5 py-4">
+      {/* Chromeless day load (round 4): bg-bg, no horizontal padding (the
+          bars stretch the column's full width), separated from what
+          follows by the page's standard hairline divider. */}
+      <div className="hidden lg:block bg-bg mb-4 py-4 border-b border-line">
         <div className="flex items-center justify-between mb-2.5">
           <span className="font-ui text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
             Day load
@@ -2261,17 +2461,23 @@ export default function Schedule({ data }) {
           {/* F24/F25 — the binary warn/due ClockAlert sits INLINE in the
               count run, after a "·"; hover names each warming/due chore. */}
           <span className="flex items-center gap-1 font-ui text-[10px] text-faint [font-variant-numeric:tabular-nums]">
-            <span className="flex items-center gap-1">
-              {farm.totals.items} items · {farm.totals.blocks} blocks
-              {farm.projects.length > 0
-                ? ` · ${farm.projects.length} projects` : ""}
-              {(farm.warming.warn.length + farm.warming.due.length) > 0
-                && " · "}
-              <WarmingBadge warn={farm.warming.warn} due={farm.warming.due} />
-            </span>
+            {dayLoadSummary}
           </span>
         </div>
-        <LoadSpine blocks={farm.spine.filter((b) => b.startMin != null)} />
+        {/* The current bar carries the now-ring (the day-strip's offset
+            inset ring). Resolved by WINDOW across kinds (round 4): when
+            now sits inside a project gap the PROJECT bar rings —
+            nowBucket alone is chore-block-centric and pointed the ring
+            at the previous chore bar. */}
+        <LoadSpine
+          blocks={farm.spine.filter((b) => b.startMin != null)}
+          nowId={viewingToday
+            ? (farm.spine.find((b) =>
+              b.startMin != null && nowMin >= b.startMin
+              && nowMin < (b.endMin ?? b.startMin))?.blockId ?? nowBucket)
+            : null}
+          nowEdge={nowEdge}
+        />
       </div>
       {/* Source-changed-after-confirm strip — informs, never auto-applies. A
           passive AlertStrip leading with the count; the per-item names sit
@@ -2308,40 +2514,117 @@ export default function Schedule({ data }) {
       })()}
 
       <div className="px-1 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        {/* Round 4 — Confirm is ONE row, the same box as the adjacent
+            + Add button (equal height); the counts sub-line is gone (the
+            day-load summary carries those numbers). Confirmed occupies
+            the SAME box and is a live control: tap to revert to draft. */}
         {confirmedDoc ? (
-          <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-resolved border border-resolved px-2 py-0.5 inline-flex items-center gap-1">
-            <Check size={12} strokeWidth={3} /> Confirmed
-            {fmtStamp(confirmedDoc.confirmed_at) && (
-              <span className="normal-case tracking-normal font-medium opacity-80">
-                {fmtStamp(confirmedDoc.confirmed_at)}
-              </span>
-            )}
-          </span>
+          <Tooltip tip="Tap to revert this day to a draft"
+            className="flex-1 sm:flex-none">
+            <button
+              type="button"
+              onClick={unconfirmDay}
+              disabled={confirming}
+              className="w-full text-[12px] font-medium px-3 py-1.5 border border-resolved text-resolved inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:bg-row-active disabled:opacity-50"
+            >
+              <Check size={13} strokeWidth={3} /> Confirmed
+              {fmtStamp(confirmedDoc.confirmed_at) && (
+                <span className="font-normal opacity-80 [font-variant-numeric:tabular-nums]">
+                  {fmtStamp(confirmedDoc.confirmed_at)}
+                </span>
+              )}
+            </button>
+          </Tooltip>
         ) : (
           <button
             type="button"
             onClick={confirmDay}
             disabled={confirming || loading || timeline.length === 0}
-            className="text-[12px] font-medium px-3 py-1.5 bg-accent text-on-accent disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed text-left leading-tight"
+            className="flex-1 sm:flex-none text-[12px] font-medium px-3 py-1.5 bg-accent text-on-accent border border-accent disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           >
             {viewingToday ? "Confirm today" : `Confirm ${dateLabel}`}
-            {(totalRows > 0 || eventEntries.length > 0) && (
-              <span className="block text-[11px] font-normal opacity-80">
-                {blockRows.filter((b) => b.block).length} blocks · {totalRows} items
-                {eventEntries.length > 0
-                  && ` · ${eventEntries.length} event${eventEntries.length === 1 ? "" : "s"}`}
-              </span>
-            )}
           </button>
         )}
         <OutboxIndicator />
-        {/* On phones this trio wraps onto its own line; full-width +
-            justify-between reads as a deliberate toolbar row there (F36)
-            instead of a right-shoved cluster with a dead left gap. */}
-        {/* flex-wrap: four nowrap actions can exceed the center column on
-            narrow desktops (the F16 width swap tightened it) — they flow
-            onto extra lines instead of sliding under the This Week aside. */}
-        <div className="w-full justify-between sm:w-auto sm:justify-start sm:ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
+        {/* PHONE toolbar (42.3 round 3): the standard mobile shape —
+            ONE primary action (Confirm, above) + ONE consolidated
+            "+ Add" menu holding the secondary adds (chore / task / time
+            off). Conflicts are a STATUS, not an action: on the phone the
+            zero state disappears and a warn chip shows only when real. */}
+        <div className="sm:hidden ml-auto relative">
+          {/* Hover/press must actually READ (round 4): row-hover is a 9%
+              tint — imperceptible on the white menu surface — so both the
+              button and the items step straight to row-active (16%), and
+              the button's border warms to accent on hover. */}
+          <button
+            type="button"
+            onClick={() => setShowAddMenu((s) => !s)}
+            aria-expanded={showAddMenu}
+            className={
+              "text-[12px] font-medium inline-flex items-center gap-1 "
+              + "px-3 py-1.5 border cursor-pointer transition-colors "
+              + (showAddMenu
+                ? "border-accent-deep bg-row-active text-accent"
+                : "border-line text-accent hover:bg-row-active "
+                  + "hover:border-accent active:bg-row-active")
+            }
+          >
+            <Plus size={14} /> Add
+          </button>
+          {showAddMenu && (
+            <>
+              <button
+                type="button"
+                aria-label="Close menu"
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setShowAddMenu(false)}
+              />
+              <div className="absolute right-0 top-full mt-1 z-50 w-44 border border-line bg-surface shadow-md">
+                {[
+                  { label: "Add chore", icon: Plus,
+                    act: () => setPicking(true) },
+                  { label: "Add task", icon: Plus,
+                    act: () => setAddingTask(true) },
+                  // Round 4 — the context-anchored adds live here now
+                  // (their in-card buttons are gone); hidden when the
+                  // day offers no eligible anchor.
+                  ...(addStepTarget ? [{
+                    label: "Add project step", icon: Plus,
+                    act: () => setProjectAddFor(addStepTarget) }] : []),
+                  ...(bufferTarget ? [{
+                    label: "Add buffer", icon: Timer,
+                    act: () => setBufferFor(bufferTarget) }] : []),
+                  { label: "Time off", icon: Ban,
+                    act: () => setAddingTimeOff(true) },
+                ].map(({ label, icon: Icon, act }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => { setShowAddMenu(false); act(); }}
+                    className="w-full text-left text-[12px] font-medium text-fg inline-flex items-center gap-2 px-3 py-2.5 border-b border-line last:border-b-0 hover:bg-row-active active:bg-row-active cursor-pointer"
+                  >
+                    <Icon size={14} className="text-accent" /> {label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        {todayConflicts.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowConflicts(true)}
+            className="sm:hidden w-full text-[12px] font-medium text-warn inline-flex items-center gap-1.5 px-2 py-1 border border-warn/40 hover:bg-row-hover cursor-pointer"
+          >
+            <AlertTriangle size={14} />
+            {`${todayConflicts.length} conflict${todayConflicts.length === 1 ? "" : "s"}`}
+          </button>
+        )}
+        {/* DESKTOP toolbar — the shipped F25/F58 row, unchanged. flex-wrap:
+            four nowrap actions can exceed the center column on narrow
+            desktops; they flow onto extra lines instead of sliding under
+            the This Week aside. */}
+        <div className="hidden sm:flex sm:ml-auto flex-wrap items-center gap-x-3 gap-y-1">
           <button
             type="button"
             onClick={() => setShowConflicts(true)}
@@ -2372,6 +2655,27 @@ export default function Schedule({ data }) {
           >
             <Plus size={14} /> Add task
           </button>
+          {/* Round 4 — the context-anchored adds, mirroring the phone
+              menu (their in-card buttons are gone). Hidden when the day
+              offers no eligible anchor. */}
+          {addStepTarget && (
+            <button
+              type="button"
+              onClick={() => setProjectAddFor(addStepTarget)}
+              className="text-[12px] font-medium whitespace-nowrap text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
+            >
+              <Plus size={14} /> Add step
+            </button>
+          )}
+          {bufferTarget && (
+            <button
+              type="button"
+              onClick={() => setBufferFor(bufferTarget)}
+              className="text-[12px] font-medium whitespace-nowrap text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
+            >
+              <Timer size={14} /> Add buffer
+            </button>
+          )}
         </div>
       </div>
 
@@ -2386,7 +2690,13 @@ export default function Schedule({ data }) {
               ? nowBucket : null)
             ?? oneOffTargets[0]?.bucket ?? null
           }
-          onAdd={(title, bucket) => addTask(title, bucket)}
+          onAdd={(title, bucket) => {
+            // A project-gap target rides clockTime (time-routed into the
+            // gap); a chore block rides its block id (round 4).
+            const t = oneOffTargets.find((x) => x.bucket === bucket);
+            if (t?.clockTime) addTask(title, null, null, null, t.clockTime);
+            else addTask(title, bucket);
+          }}
           onClose={() => setAddingTask(false)}
         />
       )}
@@ -2414,7 +2724,7 @@ export default function Schedule({ data }) {
         <AlertStrip className="mb-3" onDismiss={dismissYesterday}>
           <span className="font-medium text-fg">
             Yesterday — {yesterdayMusts.count} must-do
-            {yesterdayMusts.count === 1 ? "" : "s"} unfinished.
+            {yesterdayMusts.count === 1 ? " chore" : " chores"} unfinished.
           </span>
         </AlertStrip>
       )}
@@ -2472,9 +2782,12 @@ export default function Schedule({ data }) {
       {/* Phone day-strip — the navigable time axis (lg:hidden). */}
       {!loading && timeline.length > 0 && (
         <DayStrip
+          key={dateISO}
           blocks={navSegments}
           focus={focus}
           nowBucket={nowBucket}
+          nowEdge={nowEdge}
+          summary={dayLoadSummary}
           onPick={pickBlock}
           onWholeDay={showOverview}
         />
@@ -2538,7 +2851,7 @@ export default function Schedule({ data }) {
                       + (entry.allDone ? "opacity-60" : "")
                     }
                   >
-                    <FolderKanban size={16} className="shrink-0 text-project" />
+                    <KindBadge kind="project" size={16} />
                     <span className="flex-1 min-w-0">
                       <span className="block text-[14px] text-fg truncate">
                         Project · {range}
@@ -2665,7 +2978,6 @@ export default function Schedule({ data }) {
             })}
             onToggleBufferItem={onBufferToggle}
             onRemoveBuffer={onBufferRemove}
-            onAddBuffer={setBufferFor}
             onEditTime={setEditingEvent}
             squeezedIds={squeezedBufferIds} />
         </ol>
@@ -2754,7 +3066,10 @@ export default function Schedule({ data }) {
             return (
               <>
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
-                  <FolderKanban size={18} className="shrink-0 text-project" />
+                  {/* P badge, not the folder glyph (round 4) — the same
+                      identity mark the sidebars wear; no hover detail in
+                      the center pane. */}
+                  <KindBadge kind="project" size={18} />
                   <span className="flex-1 min-w-0 truncate font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
                     Project · {range}
                   </span>
@@ -2810,14 +3125,8 @@ export default function Schedule({ data }) {
                     </div>
                   )
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => setProjectAddFor(b)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-accent hover:bg-row-hover border-t border-line cursor-pointer"
-                >
-                  <Plus size={15} />
-                  Add a project step
-                </button>
+                {/* "Add a project step" moved to the toolbar "+ Add"
+                    menu (round 4) — the block carries no add chrome. */}
               </>
             );
           })()}
@@ -2866,20 +3175,16 @@ export default function Schedule({ data }) {
                 {blockAlerts(b, "pl-4")}
                 {b.block && b.startMin != null && (() => {
                   const w = blockWindow(b.bucket);
+                  const bufs = buffersForActivity("block", b.bucket, {
+                    startMin: w.start, endMin: w.end,
+                  });
+                  if (!bufs.length) return null;
                   return (
                     <div className="px-4 py-2 border-b border-line">
                       <BufferSection
-                        buffers={buffersForActivity("block", b.bucket, {
-                          startMin: w.start, endMin: w.end,
-                        })}
-                        activity={{
-                          target: { kind: "block", id: b.bucket, label: b.block.name },
-                          label: b.block.name,
-                          startMin: w.start, endMin: w.end,
-                        }}
+                        buffers={bufs}
                         onToggleItem={onBufferToggle}
                         onRemove={onBufferRemove}
-                        onAddBuffer={setBufferFor}
                         squeezedIds={squeezedBufferIds}
                       />
                     </div>
@@ -2909,16 +3214,6 @@ export default function Schedule({ data }) {
                     </ul>
                   </SortableContext>
                 </DndContext>
-                {b.block && b.rows.length >= 2 && (
-                  <button
-                    type="button"
-                    onClick={() => setSplitting(b)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-dim hover:bg-row-hover hover:text-fg border-t border-line cursor-pointer"
-                  >
-                    <Scissors size={15} />
-                    Split block
-                  </button>
-                )}
               </>
             );
           })()}
@@ -2939,10 +3234,11 @@ export default function Schedule({ data }) {
       {/* Desktop week — the one WeekStrip (folds the old center WeekSpines +
           sidebar WeekList): a row per day · count mini-spine · E/conflict
           symbols. Hidden in the wider zooms (the centre is the navigator).
-          180px per the settled column widths (F16) — the center pane gets
-          the reclaimed space; WeekStrip compresses to match. */}
+          Width is CONTENT-sized: the widest day's bar group sets the strip
+          track (bars ≥5px, never clipped under the symbols), and the
+          sidebar wraps it — the F16 fixed 180px gave way to this rule. */}
       {viewMode === "day" && (
-        <aside className="hidden lg:block border-l border-line py-5 px-3 w-[180px]">
+        <aside className="hidden lg:block shrink-0 border-l border-line py-5 px-3">
           <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.16em] text-faint mb-4">
             This week
           </div>
@@ -3052,17 +3348,6 @@ export default function Schedule({ data }) {
         />
       )}
 
-      {splitting && (
-        <SplitBlockSheet
-          blockName={splitting.block?.name ?? "this block"}
-          items={splitting.rows.map((row) => ({
-            key: row.key, label: rowLabel(row),
-          }))}
-          onApply={doSplit}
-          onClose={() => setSplitting(null)}
-        />
-      )}
-
       {eventScope && (
         <EventScopePrompt
           verb="Save"
@@ -3094,11 +3379,19 @@ export default function Schedule({ data }) {
         onClick={jumpToNow}
         className={
           "fixed bottom-5 right-5 z-10 flex items-center gap-1.5 px-3 py-2 " +
-          "bg-accent text-on-accent text-[12px] font-medium shadow-lg " +
+          "bg-accent text-on-accent text-[12px] font-medium " +
           "transition-opacity duration-200 " +
           (showJump && viewMode === "day"
             ? "opacity-100" : "opacity-0 pointer-events-none")
         }
+        style={{
+          // A 2px bg separation ring under the drop shadow (round 4): the
+          // floating Now is the same green as the Confirm button it can
+          // overlap on a phone — the ring keeps a visible boundary.
+          boxShadow: "0 0 0 2px var(--color-bg), "
+            + "0 10px 15px -3px rgb(0 0 0 / 0.25), "
+            + "0 4px 6px -4px rgb(0 0 0 / 0.25)",
+        }}
         aria-hidden={!(showJump && viewMode === "day")}
       >
         <ArrowDownToLine size={14} />

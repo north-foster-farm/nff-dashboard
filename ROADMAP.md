@@ -4035,6 +4035,200 @@ color; clock-arrow overnight icons). Build refs in
     main (annotated in the findings file); no code needed.
   - Design library: AddTaskBar documented in both faces.
 
+- **42.3 — spine finish: NowRule, row-title type, planned/unplanned.
+  `v0.10.80-alpha` (2026-07-01/02); pure frontend, NO migration.** The
+  spine-polish slice of the Schedule-redesign batch, plus three of
+  James's feedback rounds.
+  - F5: the NowRule pattern reaches the spine — the current block's
+    time line IS the rule (dot + "Now · time" + green hairline),
+    riding IN the accent-filled row (never a rule above it, which read
+    as the gap's). `NowRule` generalized: span root, no baked padding
+    (spacing at call sites; the phone Dashboard glance repadded),
+    trailing-children slot (the project row's who's-free tag rides
+    after the hairline), and a `size="sm"` in-list variant (8px/0.1em
+    text, 6px dot + 2px glow — James's spec) that the spine uses.
+    `NowTag` stays on center-pane rows. The day-load (`LoadSpine`)
+    echoes the marker: `nowId` rings the current block's bar with the
+    day-strip's offset inset now-ring (round 2 — James expected the
+    strip's ring work to cover this surface).
+  - F11 (settled round 2): row titles are SANS — the one inconsistency
+    was SIZE. Spine block names 13→12px matching the This Week day
+    labels, `font-body`/500, ONE weight for active and inactive (state
+    speaks through fill/border/color). The Lora reading of "title
+    font" was built first and reversed; the Lora heading stays a
+    HEADER treatment (focused-block header 15px) and does not reach
+    list rows. Documented as the "row title" role in the type scale.
+  - Kind-tinted list rows (feedback): every spine row wears a light
+    wash of its identity color — chore teal / project slate / event
+    periwinkle — via the new exported `kindTint(cssVar, strength=11)`
+    (ui.jsx), beside a solid, saturated 5px rail in the same color.
+    The chore rail's done-fraction meter is RETIRED (round 2 — James
+    had forgotten it was a meter; the tooltip carries the count), so
+    rails are uniform across kinds. Documented as its own pattern in
+    both faces.
+  - Spine tooltips (feedback): row hover detail is the real `Tooltip`
+    primitive — native `title` attrs deleted, incl. the overnight
+    Moon's. Round 2: the tooltip absorbs the retired overview's
+    content (the block's REAL name, done count, time, needs-cover),
+    and the C/P/E badge wears a dotted underline (the `abbr`
+    convention) as the no-words "details on hover" cue — added to the
+    affordance standard.
+  - Whole-day overview ELIMINATED on desktop (round 2): one block is
+    always open — re-picking the open block is a no-op, day clicks
+    land on the day's first block (today: follows now). The overview
+    state survives only for the phone's Whole-day toggle. The left
+    spine narrowed 240→200px, deliberately FIXED (a content-sized
+    spine would shift the center pane on day clicks).
+  - This Week (feedback): bars ≥5px and the widest day's bar count
+    sets one fixed track width for every row — nothing clips under
+    the symbol column — and the sidebar is content-sized (the F16
+    fixed 180px gave way to this rule; its width is stable within a
+    week). Clicking a day lands on its first block. Project/event
+    bars in these mini-spines ride slice 4 (F40).
+  - F9: project rows say planned vs free by FILL — the kind tint when
+    a step occupies the gap, the 45° blue cross-hatch (wash-eggs
+    ribbon language) when unbooked. LoadSpine's private hatch became
+    the exported `hatchUnplanned(strength)` util: LoadSpine 60, phone
+    strip bars 45, spine rows 16; alpha background-images, so
+    hover/active row tints show through. `projectEntries` now carries
+    `planned = items.length > 0`. New "planned vs unplanned time"
+    pattern in both library faces.
+  - F66 spike (decision, not a build): gutter mockup delivered —
+    `.ignored/audit-v2/audits/2026-07-01/f66-gutter-mockup.html`,
+    options A numbered route stops / B route line / C drop it,
+    recommendation A (ties to F56; build rides slice 8's
+    order-preserve). Awaiting James's pick.
+  - Round 3 (2026-07-02):
+    * Day-load counters fixed BOTH surfaces (one shared node): `N
+      chores` (chore obligations only) · `N blocks` (chore blocks +
+      project gaps + events + overnight = navSegments) · `N projects`
+      (DISTINCT projects placed, not gaps), pluralized; the phone strip
+      header becomes the day-load header (was a bare "Day"); Overview
+      glance summary matches (farmLoad grew `chores` /
+      `projectsDistinct` / `blocksAll` totals).
+    * Now at the day's EDGES: before-first/after-last (overnight-aware,
+      `nowEdge`) marks NO block — the spine draws the horizontal
+      NowRule above/below its rows; the day-load and phone strip draw
+      the new vertical `NowEdgeLine` at the group's start/end;
+      follow-now lands on the nearest block.
+    * Phone strip pager: max 4 rails; >5 pages via arrow slots (one
+      arrow → 4 rails, two → 3), default page opens on the now rail,
+      directional slide animation (`nff-page-from-*`, reduced-motion
+      exempt), day-keyed reset; the gray rest fill behind the columns
+      removed (read as backdrop, not affordance).
+    * Phone toolbar → the primary + "+ Add" menu pattern (Confirm +
+      one menu holding Add chore / Add task / Time off); conflicts
+      show as a warn chip only when > 0. Desktop row unchanged.
+    * Spine tooltips trigger on the BADGE only (BadgeHint carries the
+      Tooltip), not the whole row.
+    * "Yesterday — N must-do chores unfinished." wording; top-level
+      nav capped at 200px (spacing*50).
+    * BUG: removing a placed project step no longer resurrects after
+      the reflow debounce — removal TOMBSTONES the delta
+      (source_ref.origin:'removed', hidden from every surface via the
+      deltas read) and the engine excludes tombstoned steps from the
+      plan (`removedStepIds` → excludeStepIds). NOTE: the freed gap
+      may still receive the project's NEXT step by rank — that's the
+      engine's fill contract, flagged for James. (Round 4 closed this
+      note: the gap is excluded too — below.)
+  - Round 4 (2026-07-02, the full feedback spec in
+    `.ignored/audit-v2/audits/2026-07-01/round4-feedback.md`):
+    * ENGINE BUG (duplicate project steps, root-caused): James runs
+      two devices, whose auto-reflow debounce timers reset on the SAME
+      realtime events and fire in the same instant — both inserted the
+      same (step, gap) under different uuids; and `reconcilePlan`
+      treated duplicate placement keys as in-plan (toPlace/toRemove
+      both empty), so a duplicate never healed while `stale` stayed
+      true forever. Fix: reconcilePlan DEDUPES committedAuto by
+      placement key, keeping the lexically-smallest id (every device
+      computes the same survivor — concurrent healers delete the same
+      extra row) and removing the rest.
+    * ENGINE BUG (worse, found under the first): syncNow used the
+      user's tombstoning removeDelta for its OWN stale placements — an
+      engine MOVE tombstoned the step, which excluded it from the very
+      plan that was moving it; on the next sync the step dropped off
+      the day entirely. The engine now reconciles through a new
+      `hardRemove` (plain delete, never tombstones); removeDelta stays
+      the user path.
+    * Removal frees the GAP (the round-3 flag, James confirmed): a
+      tombstone also excludes its gap for the day — `removedGapStarts`
+      (from the tombstone's kept clock_time) threads through
+      `useScheduleReflow` → `reflowPlan({ excludeGapStarts })`; the
+      engine no longer slides the next queued step into a slot the
+      user just cleared. VERIFIED live against prod: the two
+      previously-backfilled placements were auto-removed and the
+      tombstoned gaps stayed free.
+    * Split block ELIMINATED (NO-LEGACY, F53 resolved as drop):
+      per-block action, `SplitBlockSheet`, `doSplit` plumbing deleted;
+      a per-row Edit covers the rare move.
+    * Un-confirm: the Confirmed chip is a live control — tap →
+      confirm() → all `schedule.confirmed_day` captures for the date
+      are deleted and the day reverts to draft. Captures had NO delete
+      path (append-only by design), so migration `0043_unconfirm_day`
+      adds a DELETE policy scoped to that one schema_id. AUTHORED, NOT
+      PUSHED — un-confirm 404s until 0043 is applied (backup →
+      row-count → push, each step James-authorized).
+    * Toolbar: Confirm is ONE row, the same box as "+ Add" (the counts
+      sub-line dropped — the day-load counters carry those numbers);
+      the "+ Add" menu grows Add project step + Add buffer (context-
+      anchored: default to the open block, else the day's first
+      eligible; hidden when no anchor), and the in-card "Add a project
+      step" / BufferSection "Add buffer" buttons are GONE; the desktop
+      toolbar mirrors both as text buttons. Menu/button hover goes to
+      row-active (row-hover's 9% is imperceptible on white).
+    * One-off targets: AddTaskBar's selector now offers the day's
+      project gaps ("Project · 3 PM", clockTime-routed) merged in time
+      order with the chore blocks; Overnight excluded (O7).
+    * Rescheduled treatment: 12-hour set time (10px tabular faint) +
+      the new `EditedTag` (accent semibold tag, chevron rotates open,
+      row-active hover) shared by ChoreCheckRow/AdHocRow; history verb
+      is "Rescheduled from X to Y" (never "Moved"/"Split"), actor's
+      first name capitalized. `fmtClock12` exported alongside.
+    * Sidebar glyph affordances: BadgeHint promoted to the ui.jsx kit;
+      EVERY sidebar glyph (spine conflict triangle, overnight Moon,
+      WeekStrip Moon/E/conflict, WarmingBadge via new `cue` prop) wears
+      Tooltip + dotted cue + pointer.
+    * This Week: ONE baseline grid (F37 re-open) — items-end rows put
+      the day label's baseline, bar bottoms, and symbol column on the
+      track's bottom edge. Overnight Moon fed by a WEEK-WIDE night scan
+      (one range read of timed commitments ± a day) instead of the
+      focal day's entries — the Moon no longer waits for the day to be
+      selected.
+    * Day-load now-ring: resolved by WINDOW across kinds (a project
+      gap rings its own bar, not the chore block before it) and
+      upgraded to the bg|accent|bg sandwich (accent-deep and project
+      slate share luminance — one inner separation line wasn't enough).
+      LoadSpine's frame overflow-hidden dropped (clipped the
+      NowEdgeLine glow); the day load is fully chromeless on both
+      surfaces (bg-bg, full width, page-hairline close).
+    * Page header rearchitecture: the Schedule Lora h1 + the zoom tabs
+      share one full-width hairline-closed row above the workbench
+      (spine included); the date is the center column's h2 with the
+      events sub-line (F15). PageHeader import dropped.
+    * Mobile: whole-page horizontal scroll root-caused to the strip
+      pager's ±16px slide-in transform (iOS Safari counts transformed
+      excursions toward the page's scroll bounds) — clipped at the
+      strip row (`overflow-x-clip`, horizontal only so the NowEdgeLine
+      glow survives); the floating Now button gets a 2px bg separation
+      ring so it never melts into the same-green Confirm; the P
+      KindBadge replaces FolderKanban in center-pane project headers
+      (overview rows + detail, no tooltip there); project step rows
+      drop the gray "project" chip (the block + sub-line carry it;
+      one-off "task" chips stay).
+    * Hatch text contrast (light mode): spine-row hatch 16 → 10 — the
+      12px row text sat on the heavier diagonals; the rail + badge +
+      "both free" tag carry the free signal (picked by eye, docs
+      updated).
+    * Week overnight Moon BUG: was derived from the viewed day's
+      loaded overnight entries (appeared only once an overnight day
+      was SELECTED); now the week-wide scan above.
+    * FLAGGED, not built: the mobile project-header truncation from
+      the "both free" chip rides the availability slices (6–7 chip
+      refactor).
+    * Docs: EditedTag + BadgeHint entries and all touched patterns
+      updated in BOTH library faces; ROADMAP this entry. Version stays
+      `v0.10.80-alpha` (42.3 is one uncommitted batch).
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

@@ -178,10 +178,12 @@ function TodayGlance({ data, today, blocks, ruleOpts }) {
   );
 
   const uncovered = fl.totals.uncovered;
-  const projectCount = fl.projects.length;
+  // Counter language (42.3 round 3): chores (not "items"), blocks incl.
+  // project gaps, DISTINCT projects worked — matches the Schedule day-load.
+  const projectCount = fl.totals.projectsDistinct;
   const summary = [
-    `${fl.totals.items} ${fl.totals.items === 1 ? "item" : "items"}`,
-    `${fl.totals.blocks} ${fl.totals.blocks === 1 ? "block" : "blocks"}`,
+    `${fl.totals.chores} ${fl.totals.chores === 1 ? "chore" : "chores"}`,
+    `${fl.totals.blocksAll} ${fl.totals.blocksAll === 1 ? "block" : "blocks"}`,
     projectCount > 0
       ? `${projectCount} ${projectCount === 1 ? "project" : "projects"}`
       : null,
@@ -206,7 +208,7 @@ function TodayGlance({ data, today, blocks, ruleOpts }) {
       </div>
 
       <NowRule
-        className="!px-0"
+        className="pt-2"
         time={formatTime12h(minutesToHHMM(nowMin))}
       />
 

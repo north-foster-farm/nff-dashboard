@@ -124,28 +124,42 @@ export function Pane({
 }
 
 // ── NowRule: the now-marker (dot + "Now · time" + green hairline) ───────
-// One canonical now-divider, today-views only (gate at the call site). The
+// One canonical now-marker, today-views only (gate at the call site). The
 // label + dot sit INLINE at the left and the green hairline fills the rest of
 // the row to the right (the rule is "broken" by the text — matches the style
 // guide). Pass a preformatted `time` string (keeps this kit free of the
-// schedule time utils); `label` overrides the whole "Now · time" text.
-// Used by the phone Today glance (a divider, no block row to highlight); the
-// desktop Schedule marks now on the block row itself via `NowTag` instead.
-export function NowRule({ time, label, className = "" }) {
+// schedule time utils); `label` overrides the whole "Now · time" text;
+// `children` land AFTER the hairline as a trailing annotation. Spacing is
+// the caller's — no baked padding — and the root is a span (flex) so the
+// rule can sit inside the spine's row button. Used by the phone Today
+// glance (a divider between rows) and the desktop DayRailSpine, where it
+// IS the current block's time line (F5); `NowTag` remains the inline word
+// for center-pane rows.
+// `size="sm"` is the in-list variant (the day-spine rows): 8px/0.1em text,
+// 6px dot with a 2px glow — the rule scaled to sit under a 13px row title.
+export function NowRule({ time, label, size, children, className = "" }) {
+  const sm = size === "sm";
   return (
-    <div className={"flex items-center gap-2 px-4 pt-2 " + className}>
+    <span className={"flex items-center gap-2 " + className}>
       <span
-        className="shrink-0 w-[7px] h-[7px] rounded-full"
+        className={"shrink-0 rounded-full "
+          + (sm ? "w-[6px] h-[6px]" : "w-[7px] h-[7px]")}
         style={{
           background: "var(--c-resolved)",
-          boxShadow: "0 0 0 3px rgba(76,186,133,0.22)",
+          boxShadow: sm
+            ? "0 0 0 2px rgba(76,186,133,0.22)"
+            : "0 0 0 3px rgba(76,186,133,0.22)",
         }}
       />
-      <span className="shrink-0 text-[10px] font-ui font-semibold uppercase tracking-[0.14em] text-resolved">
+      <span className={
+        "shrink-0 font-ui font-semibold uppercase text-resolved "
+        + (sm ? "text-[8px] tracking-[0.1em]" : "text-[10px] tracking-[0.14em]")
+      }>
         {label ?? "Now" + (time != null ? " · " + time : "")}
       </span>
       <span className="flex-1 border-t border-resolved" />
-    </div>
+      {children}
+    </span>
   );
 }
 
@@ -207,6 +221,22 @@ export function Tooltip({ tip, side = "top", className = "", children }) {
     </span>
   );
 }
+
+// ── BadgeHint: the sidebar glyph's hover-detail cue ─────────────────────
+// The `abbr` convention (the affordance standard, 42.1/42.3): a dotted
+// underline beneath a glyph says "details on hover" without a word of
+// instruction, and the badge (not the whole row) owns the Tooltip. The
+// wrapper carries cursor-pointer; a badge click still falls through to
+// its row (Tooltip never eats it). Sidebars only (day-spine + This Week)
+// — center-pane badges are labels, not hover targets.
+export const BadgeHint = ({ tip, children }) => (
+  <Tooltip tip={tip} className="shrink-0 cursor-pointer">
+    <span className="flex flex-col items-center gap-[2px]">
+      {children}
+      <span className="w-full border-b border-dotted border-faint" />
+    </span>
+  </Tooltip>
+);
 
 // ── CheckTarget: the one 28px completion box, app-wide ──────────────────
 // Factored out of ChoreCheckRow so the Schedule accordion, the Rounds doing
@@ -377,8 +407,11 @@ export function FinishStamp({
 // sits INLINE — just the colored glyph, no background fill or padding — so it
 // reads as part of the line it's on (the day-load summary, a block row, the
 // week pane). Reused across all three surfaces.
+// `cue` (sidebars only): the BadgeHint dotted underline + pointer, so the
+// glyph advertises its hover detail like every other sidebar badge.
 export function WarmingBadge({
-  warn = [], due = [], size = 14, showCount = true, className = "",
+  warn = [], due = [], size = 14, showCount = true, cue = false,
+  className = "",
 }) {
   const total = warn.length + due.length;
   if (!total) return null;
@@ -401,22 +434,33 @@ export function WarmingBadge({
       ))}
     </>
   );
+  const glyph = (
+    <span
+      className={
+        "inline-flex items-center gap-0.5 shrink-0 " +
+        "[font-variant-numeric:tabular-nums]"
+      }
+      style={{ color }}
+    >
+      <ClockAlert size={size} />
+      {showCount && total > 1 && (
+        <span className="font-ui text-[10px] font-semibold leading-none">
+          ×{total}
+        </span>
+      )}
+    </span>
+  );
   return (
-    <Tooltip tip={tip} className={className}>
-      <span
-        className={
-          "inline-flex items-center gap-0.5 shrink-0 " +
-          "[font-variant-numeric:tabular-nums]"
-        }
-        style={{ color }}
-      >
-        <ClockAlert size={size} />
-        {showCount && total > 1 && (
-          <span className="font-ui text-[10px] font-semibold leading-none">
-            ×{total}
-          </span>
-        )}
-      </span>
+    <Tooltip
+      tip={tip}
+      className={(cue ? "cursor-pointer " : "") + className}
+    >
+      {cue ? (
+        <span className="flex flex-col items-center gap-[2px]">
+          {glyph}
+          <span className="w-full border-b border-dotted border-faint" />
+        </span>
+      ) : glyph}
     </Tooltip>
   );
 }
@@ -432,12 +476,51 @@ export function WarmingBadge({
 // cross-hatch when UNPLANNED (F26/F11). No per-bar counts (F23). The summary
 // read sits BESIDE the spine. Absorbs the DayRibbon silhouette + DaySilhouette.
 // Rounds keeps its own completion-fraction bar; this is the day-shape glance.
-const HATCH_UNPLANNED =
+// The planned/unplanned fill language (F9/F26), shared app-wide: a project
+// surface is SOLID when planned and this 45° blue cross-hatch (the
+// wash-eggs ribbon pattern in project slate) when unplanned. `strength`
+// scales the stripe ink — bare bars take the full-strength default; row
+// backgrounds with text on top take a light wash (the gaps stay
+// transparent, so hover/active row tints show through).
+export const hatchUnplanned = (strength = 60) =>
   "repeating-linear-gradient(45deg," +
-  "color-mix(in srgb, var(--c-project) 60%, transparent) 0 4px," +
+  `color-mix(in srgb, var(--c-project) ${strength}%, transparent) 0 4px,` +
   "transparent 4px 8px)";
 
-export function LoadSpine({ blocks = [], summary, className = "" }) {
+// The kind-tinted list row (the spine's group language): every row in a
+// kinded list wears a light wash of its identity color — chore teal,
+// project slate, event periwinkle. Authored as an alpha background-IMAGE
+// (a constant two-stop gradient), NOT a background-color, so the row
+// shell's hover/active/now background-color tints still show through.
+export const kindTint = (cssVar, strength = 11) => {
+  const c = `color-mix(in srgb, var(${cssVar}) ${strength}%, transparent)`;
+  return `linear-gradient(${c}, ${c})`;
+};
+
+// `nowId` (today-views only, gate at the call site): the bar whose block is
+// CURRENT carries the now-ring — the same offset inset ring as the phone
+// day-strip (2px accent-deep + a bg-colored separation line, inverse-zoom-
+// compensated so it rasterizes true at any density). `nowEdge`
+// ("before"|"after"): now falls outside the day's blocks, so no bar rings —
+// the now-marker is a VERTICAL green rule at the start/end of the group.
+export function NowEdgeLine({ className = "" }) {
+  return (
+    <span
+      className={"relative self-stretch shrink-0 w-[2px] " + className}
+      style={{ background: "var(--c-resolved)" }}
+    >
+      <span
+        className="absolute -top-[2px] left-1/2 -translate-x-1/2 w-[6px] h-[6px] rounded-full"
+        style={{
+          background: "var(--c-resolved)",
+          boxShadow: "0 0 0 2px rgba(76,186,133,0.22)",
+        }}
+      />
+    </span>
+  );
+}
+
+export function LoadSpine({ blocks = [], summary, nowId, nowEdge, className = "" }) {
   const bars = blocks.filter(
     (b) => (b.total ?? 0) > 0 || b.state === "hole" || b.kind === "project");
   // Chore bars scale to the heaviest count; project bars scale to the longest
@@ -449,7 +532,11 @@ export function LoadSpine({ blocks = [], summary, className = "" }) {
     1, ...bars.filter((b) => b.kind === "project").map(dur));
   return (
     <div className={"flex items-center gap-3 " + className}>
-      <div className="flex items-end gap-0.5 h-10 flex-1 min-w-0 border-b border-line overflow-hidden">
+      {/* No overflow-hidden: bar heights are already clamped (B2), and the
+          clip was cutting the NowEdgeLine's glow dot (round 4). No baseline
+          border either — the day load is fully chromeless. */}
+      <div className="flex items-end gap-0.5 h-10 flex-1 min-w-0">
+        {nowEdge === "before" && <NowEdgeLine className="mr-0.5" />}
         {bars.length === 0 ? (
           <span className="self-center text-[10px] text-faint">—</span>
         ) : (
@@ -464,7 +551,7 @@ export function LoadSpine({ blocks = [], summary, className = "" }) {
               if (b.planned) {
                 style.background = "var(--c-project)";
               } else {
-                style.backgroundImage = HATCH_UNPLANNED;
+                style.backgroundImage = hatchUnplanned();
                 style.boxShadow =
                   "inset 0 0 0 1px color-mix(in srgb," +
                   " var(--c-project) 45%, transparent)";
@@ -472,6 +559,7 @@ export function LoadSpine({ blocks = [], summary, className = "" }) {
             } else {
               style.background = "var(--c-chore)";
             }
+            const isNow = nowId != null && (b.blockId ?? b.id) === nowId;
             return (
               <div
                 key={b.blockId ?? b.id}
@@ -479,6 +567,22 @@ export function LoadSpine({ blocks = [], summary, className = "" }) {
                 title={b.name ?? b.label ?? ""}
                 style={style}
               >
+                {isNow && (
+                  // bg | accent | bg sandwich (round 4): accent-deep and
+                  // the project slate share luminance, so a single inner
+                  // separation line wasn't enough on project fills — a
+                  // bg-colored line on BOTH flanks of the 2px ring does
+                  // the contrast work on any fill, any theme.
+                  <span
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      boxShadow:
+                        "inset 0 0 0 calc(1px * var(--inv-zoom)) var(--color-bg), "
+                        + "inset 0 0 0 calc(3px * var(--inv-zoom)) var(--color-accent-deep), "
+                        + "inset 0 0 0 calc(4px * var(--inv-zoom)) var(--color-bg)",
+                    }}
+                  />
+                )}
                 {isHole && (
                   // A conflict triangle reads as the man-down signal (F23). It
                   // sits in a tiny `--c-bg` chip so the warn glyph stays legible
@@ -494,6 +598,7 @@ export function LoadSpine({ blocks = [], summary, className = "" }) {
             );
           })
         )}
+        {nowEdge === "after" && <NowEdgeLine className="ml-0.5" />}
       </div>
       {summary && (
         <div className="shrink-0 text-[11px] font-ui text-faint [font-variant-numeric:tabular-nums] whitespace-nowrap">
@@ -644,8 +749,9 @@ export function AlertStrip({
 // The desktop week sidebar: a row per day — day label · count mini-spine · the
 // per-day identity symbols (an "E" KindBadge when the day has an event, a
 // conflict triangle when it has man-down conflicts; F17). Collapses the old
-// WeekSpines (center) + WeekList (sidebar). Bars are capped + `overflow-hidden`;
-// an overbooked day clamps rather than overflowing (B1). The old should-heat
+// WeekSpines (center) + WeekList (sidebar). Bar HEIGHTS clamp to the track
+// (B1); bar WIDTHS never clip — the widest day sets one fixed track width
+// for every row (and thereby the sidebar's width). The old should-heat
 // tick is gone (F24 — warming is the day-load ClockAlert now). `ymd` is passed
 // in to keep this kit free of the date utils.
 // (Round-3 NO-LEGACY) The phone `layout="header"` variant + `weekHeatColor`
@@ -665,6 +771,14 @@ export function WeekStrip({
 }) {
   if (!week?.days?.length || !ymd) return null;
   const max = week.max || 1;
+
+  // The bar track is a FIXED width shared by every row — the widest day's
+  // bar count sets it (bars ≥5px + gap-1), so no day's bars ever clip
+  // under the symbol cell and the whole sidebar sizes to fit. A lighter
+  // day's bars flex a little wider inside the same track.
+  const maxBars = Math.max(
+    1, ...week.days.map((d) => (d.blocks ?? []).length));
+  const trackW = maxBars * 5 + (maxBars - 1) * 4;
 
   // Sidebar: a row per day.
   return (
@@ -686,20 +800,31 @@ export function WeekStrip({
             type="button"
             onClick={() => onPickDay?.(day.date)}
             className={
-              "w-full flex items-center gap-2 px-1.5 py-2 text-left border cursor-pointer " +
+              "w-full flex items-end gap-2 px-1.5 py-2 text-left border cursor-pointer " +
               (isSel ? "bg-row-active " : "hover:bg-row-hover ") +
               (isToday ? "border-resolved" : "border-transparent")
             }
           >
+            {/* F11 (settled) — the day label matches the spine block names:
+                body sans at 12px, one weight whether selected or not;
+                selection speaks through color + fill. */}
+            {/* Round 4 (F37 re-open) — ONE baseline grid: the row is
+                items-end, so the label's baseline, the bar bottoms, and
+                the symbol column all sit on the track's bottom edge
+                instead of three different center lines. */}
             <span
               className={
-                "w-11 shrink-0 text-[12px] [font-variant-numeric:tabular-nums] " +
-                (isSel ? "font-semibold text-fg" : "text-dim")
+                "w-11 shrink-0 text-[12px] font-medium leading-none " +
+                "[font-variant-numeric:tabular-nums] " +
+                (isSel ? "text-fg" : "text-dim")
               }
             >
               {WEEK_DOW[day.date.getDay()]} {day.date.getDate()}
             </span>
-            <span className="relative flex-1 flex items-end gap-1 h-7 overflow-hidden">
+            <span
+              className="relative shrink-0 flex items-end gap-1 h-7"
+              style={{ width: trackW + "px" }}
+            >
               {(day.blocks ?? []).map((b) => (
                 <span
                   key={b.bucket}
@@ -709,7 +834,7 @@ export function WeekStrip({
                       Math.min(100, Math.max(12, (b.count / max) * 100)) + "%",
                   }}
                   className={
-                    "flex-1 min-w-[3px] " + (b.count ? "bg-accent/70" : "bg-line")
+                    "flex-1 min-w-[5px] " + (b.count ? "bg-accent/70" : "bg-line")
                   }
                 />
               ))}
@@ -719,38 +844,43 @@ export function WeekStrip({
                 busiest row — up to warming + event + conflict — sets it).
                 Left-aligned so the FIRST badge of every row shares one column
                 (an E under an E), not pinned to the right edge. w-14 fits 3
-                14px badges at the 180px panel width (F16). */}
+                14px badges; the sidebar's total width follows the bar
+                track (widest day sets it), not a fixed panel px. */}
             {/* F41 — each symbol carries a real Tooltip (instant, formatted)
                 instead of the laggy native `title`. Event names / richer
                 detail land with the This Week deepening slice. */}
-            <span className="w-14 shrink-0 flex items-center justify-start gap-1">
+            {/* Round 4 — every symbol wears the full affordance standard
+                (BadgeHint: Tooltip + dotted hover cue + pointer), not a
+                bare Tooltip. */}
+            <span className="w-14 shrink-0 flex items-end justify-start gap-1">
               {overnight && (
-                <Tooltip tip="Overnight chores">
+                <BadgeHint tip="Overnight chores">
                   <Moon size={14} className="text-chore" />
-                </Tooltip>
+                </BadgeHint>
               )}
               {warm && (
                 <WarmingBadge
                   warn={warm.warn} due={warm.due} size={14} showCount={false}
+                  cue
                 />
               )}
               {day.events > 0 && (
-                <Tooltip
+                <BadgeHint
                   tip={day.events === 1
                     ? "Event today"
                     : day.events + " events"}
                 >
                   <KindBadge kind="event" size={14} />
-                </Tooltip>
+                </BadgeHint>
               )}
               {confCount > 0 && (
-                <Tooltip
+                <BadgeHint
                   tip={confCount === 1
                     ? "1 conflict"
                     : confCount + " conflicts"}
                 >
                   <AlertTriangle size={14} className="text-warn" />
-                </Tooltip>
+                </BadgeHint>
               )}
             </span>
           </button>

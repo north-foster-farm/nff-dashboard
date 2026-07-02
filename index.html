@@ -155,6 +155,19 @@
         from { transform: translateX(0);    opacity: 1; }
         to   { transform: translateX(-8px); opacity: 0; }
       }
+      /* Day-strip pager: the incoming rail group slides from the side the
+         motion came from, so the scroll direction is obvious. */
+      @keyframes nff-page-from-right {
+        from { transform: translateX(16px); opacity: 0.3; }
+        to   { transform: translateX(0);    opacity: 1; }
+      }
+      @keyframes nff-page-from-left {
+        from { transform: translateX(-16px); opacity: 0.3; }
+        to   { transform: translateX(0);     opacity: 1; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .nff-anim-page { animation: none !important; }
+      }
 
       html, body, #root { margin: 0; padding: 0; height: 100%; }
       body {
