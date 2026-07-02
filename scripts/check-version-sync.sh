@@ -24,7 +24,10 @@ case "$cmd" in
   *) exit 0 ;;
 esac
 
-root="$(git rev-parse --show-toplevel)"
+# Resolve the repo root from this script's own location, not the cwd —
+# the hook can fire while the session shell sits in a subdirectory (or
+# anywhere else), where a cwd-relative lookup breaks.
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 pkg="$(jq -r '.version' "$root/package.json")"
 ui="$(jq -r '.meta.version' "$root/src/data/nff-data.json")"
 
