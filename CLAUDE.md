@@ -3,6 +3,41 @@
 Project-specific conventions for this repo. These override default
 behavior; follow them exactly.
 
+## Test-driven development (core workflow, 2026-07-02)
+
+TDD is how code gets written in this repo. `npm test` runs the unit
+suite (vitest, pure `src/lib` layer); a green FULL run is a hard
+commit requirement, enforced by `.githooks/pre-commit` (installed
+per-clone via `scripts/setup-hooks.sh`; never bypass with
+`--no-verify`).
+
+The loop, exactly:
+
+1. **Step 0 is a failing test.** Write the test that asserts the
+   thing you're about to build already works. Run it; it must fail —
+   that failure sets up the loop.
+2. **Smallest possible steps, on both sides.** Whether adding to the
+   test or the solution, add as little code as possible — just enough
+   to move the failure toward success. Never leapfrog the test by
+   writing the whole feature and testing after the fact. If the test
+   isn't literally informing what and how you write every new line,
+   it isn't doing its job.
+3. **Test code is well-written code.** Extract concerns; descriptive
+   variables instead of magic numbers and hardcoded strings; failure
+   output must tell a story (`expected $toesCount = 10`, never
+   `expected $tC to = 10`). Tell a story in the test body too — it's
+   worth a whole line to reassign a variable to a better name if that
+   makes the subject of the test plain.
+4. **As few tests as possible.** Commit a test only when it adds
+   measurable value; a bad test is worse than no test. It's fine to
+   write a test that existed only to shape the design and delete it
+   before committing (redundant coverage, flimsy guarantees). Cull
+   tests that stop working, go obsolete, or duplicate coverage — all
+   the time.
+5. **Tests are living code.** Update and refactor them as the
+   codebase changes; a suite left to rot stops catching bugs and
+   stops feeling valuable.
+
 ## Commit style
 
 Every commit on this repo follows one consistent shape. Match it.
@@ -98,6 +133,9 @@ Production rules:
 
 Run through this before every commit:
 
+0. **The unit suite is green** (`npx vitest run`). The
+   `.githooks/pre-commit` hook enforces this; don't lean on it —
+   run the suite yourself first.
 1. The message follows **Commit style** above (including no
    `Co-Authored-By` trailer).
 2. **Version bump (batch commits only).** For a `feat: batch N` commit,

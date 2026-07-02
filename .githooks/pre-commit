@@ -1,0 +1,16 @@
+#!/bin/sh
+# Commit requirement: a green FULL run of the unit suite.
+# Installed via `git config core.hooksPath .githooks` (one-time,
+# per clone; scripts/setup-hooks.sh does it for you).
+echo "pre-commit: running unit suite (npx vitest run)..."
+npx vitest run --silent
+status=$?
+if [ $status -ne 0 ]; then
+  echo ""
+  echo "pre-commit: BLOCKED — the test suite is not green."
+  echo "Fix the failures (or cull tests that no longer earn their"
+  echo "keep) and commit again. Bypassing with --no-verify is not"
+  echo "the workflow."
+  exit $status
+fi
+echo "pre-commit: suite green."
