@@ -177,8 +177,8 @@ describe("runOverrunMinutes / runOverran", () => {
     expect(runOverrunMinutes(onDot, FIXED_BLOCK)).toBe(0);
   });
 
-  it("pinned: a run ending after midnight reads 0 overrun against a " +
-     "past-midnight block end (end wraps, nominal doesn't)", () => {
+  it("a past-midnight end unwraps against the run's start, so a run " +
+     "still inside its past-midnight block reads 0", () => {
     const lateBlock = {
       ...FIXED_BLOCK, startMinutes: 1430, durationMinutes: 60,
     };
@@ -186,8 +186,31 @@ describe("runOverrunMinutes / runOverran", () => {
       startedAt: new Date(2026, 5, 20, 23, 50),
       endedAt: new Date(2026, 5, 21, 0, 20),
     });
-    // endedAt wraps to 20 min-of-day; nominal end is 1490 unwrapped.
+    // endedAt wraps to 20, unwraps to 1460; nominal end is 1490.
     expect(runOverrunMinutes(r, lateBlock)).toBe(0);
+  });
+
+  it("a run crossing midnight overruns a past-midnight block end", () => {
+    const lateBlock = {
+      ...FIXED_BLOCK, startMinutes: 1430, durationMinutes: 60,
+    };
+    const r = run({
+      startedAt: new Date(2026, 5, 20, 23, 50),
+      endedAt: new Date(2026, 5, 21, 1, 0),
+    });
+    // end unwraps to 1500; nominal end 1490 -> 10 minutes over.
+    expect(runOverrunMinutes(r, lateBlock)).toBe(10);
+    expect(runOverran(r, lateBlock)).toBe(true);
+  });
+
+  it("a day run that ends after midnight reports the full overrun", () => {
+    // 6:00-7:00 block (nominal end 420); run ends 00:20 next day.
+    const r = run({
+      startedAt: new Date(2026, 5, 20, 18, 0),
+      endedAt: new Date(2026, 5, 21, 0, 20),
+    });
+    // end unwraps to 1460 -> 1040 minutes past the 7:00 nominal end.
+    expect(runOverrunMinutes(r, FIXED_BLOCK)).toBe(1040);
   });
 
   it("is null when the end stamp or the nominal is unknowable", () => {

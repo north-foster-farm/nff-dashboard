@@ -62,11 +62,16 @@ export function runIsLate(run, block) {
 }
 
 // Minutes the run ran past the nominal end, or 0 if it didn't. Uses
-// run_date-resolved nominal end for sun-event blocks.
+// run_date-resolved nominal end for sun-event blocks. A run that
+// crosses midnight wraps runEndMinutes into the small hours — unwrap
+// it past the start so it compares against the (also unwrapped)
+// nominal end instead of silently reading as "ended early".
 export function runOverrunMinutes(run, block) {
-  const endedMin = runEndMinutes(run);
+  let endedMin = runEndMinutes(run);
   const nominalEnd = nominalEndMinutes(block, run);
   if (endedMin === null || nominalEnd === null) return null;
+  const startedMin = runStartMinutes(run);
+  if (startedMin !== null && endedMin < startedMin) endedMin += 1440;
   if (endedMin <= nominalEnd) return 0;
   return endedMin - nominalEnd;
 }

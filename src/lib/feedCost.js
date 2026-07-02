@@ -1,9 +1,9 @@
 export function computeStageCost(stage, feed) {
-  if (!feed || !stage.consumption) return null;
+  if (!feed?.costPerUnit || !stage.consumption) return null;
   if (stage.consumption.type !== "metered") return null;
-  if (stage.endDay == null) return null;
+  if (stage.startDay == null || stage.endDay == null) return null;
   const days = stage.endDay - stage.startDay;
-  if (days <= 0) return null;
+  if (!(days > 0)) return null;
   if (stage.consumption.unit !== feed.costPerUnit.unit) return { unitMismatch: true };
   const totalAmount = stage.consumption.amount * days;
   const cost = totalAmount * feed.costPerUnit.amount;

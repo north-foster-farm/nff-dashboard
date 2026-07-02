@@ -6,7 +6,7 @@ import { computeStageCost } from "./feedCost.js";
 const BATCH_SIZE_DEFAULT = 275;
 
 export function bracketMidpointLb(bracket) {
-  if (bracket.minLb == null || bracket.maxLb == null) return null;
+  if (bracket?.minLb == null || bracket?.maxLb == null) return null;
   return (bracket.minLb + bracket.maxLb) / 2;
 }
 

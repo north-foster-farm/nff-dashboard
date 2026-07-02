@@ -262,6 +262,13 @@ describe("eventToBlock", () => {
     expect(block.endMin).toBe(660); // 10:00 + 60
   });
 
+  it("an end of '00:00' means midnight CLOSING the day (1440)", () => {
+    const block = eventToBlock(
+      { startTime: "22:00", endTime: "00:00" }, PX1
+    );
+    expect(block.endMin).toBe(1440);
+  });
+
   it("never renders shorter than 18px", () => {
     const block = eventToBlock(
       { startTime: "06:00", endTime: "06:05" }, PX1
@@ -376,6 +383,15 @@ describe("advanceDate", () => {
   it("steps whole calendar months for the month view", () => {
     const out = advanceDate(d(2026, 6, 15), "month", 1);
     expect(isSameDate(out, d(2026, 7, 15))).toBe(true);
+  });
+
+  it("clamps the day-of-month when the target month is shorter", () => {
+    // Jan 31 + 1 month = Feb 28, not Mar 3 (setMonth overflow).
+    const fwd = advanceDate(d(2026, 1, 31), "month", 1);
+    expect(isSameDate(fwd, d(2026, 2, 28))).toBe(true);
+    // Mar 31 - 1 month = Feb 28 going backward too.
+    const back = advanceDate(d(2026, 3, 31), "month", -1);
+    expect(isSameDate(back, d(2026, 2, 28))).toBe(true);
   });
 
   it("returns an untouched copy for an unknown unit", () => {

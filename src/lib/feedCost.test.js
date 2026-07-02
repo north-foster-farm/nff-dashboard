@@ -65,6 +65,18 @@ describe("computeStageCost", () => {
       .toBeNull();
   });
 
+  it("returns null (not NaN) when startDay is missing", () => {
+    expect(computeStageCost(meteredStage({ startDay: null }), FEED))
+      .toBeNull();
+    expect(computeStageCost(
+      meteredStage({ startDay: undefined }), FEED)).toBeNull();
+  });
+
+  it("returns null when the feed has no captured costPerUnit", () => {
+    const uncosted = { id: "grower", name: "Broiler grower" };
+    expect(computeStageCost(meteredStage(), uncosted)).toBeNull();
+  });
+
   it("returns null for zero-length or inverted day ranges", () => {
     expect(computeStageCost(
       meteredStage({ startDay: 14, endDay: 14 }), FEED)).toBeNull();

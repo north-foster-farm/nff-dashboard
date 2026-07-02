@@ -269,8 +269,10 @@ export function salesByMonth(sales, productsById) {
       (bucket.byGroup.get(group) ?? 0) + sale.totalCents);
   }
   // Fill the gap months between first and last so bars sit on a
-  // continuous timeline.
+  // continuous timeline. Every row can lack soldOn, so the map may
+  // be empty even though `sales` wasn't.
   const months = [...byMonth.keys()].sort();
+  if (months.length === 0) return [];
   const out = [];
   let [y, m] = months[0].split("-").map(Number);
   const last = months[months.length - 1];

@@ -103,6 +103,11 @@ describe("bracketMidpointLb", () => {
     expect(bracketMidpointLb(bracket(null, 4))).toBeNull();
     expect(bracketMidpointLb(bracket(3, null))).toBeNull();
   });
+
+  it("returns null (not a crash) for a missing bracket entirely", () => {
+    expect(bracketMidpointLb(null)).toBeNull();
+    expect(bracketMidpointLb(undefined)).toBeNull();
+  });
 });
 
 describe("computeKnownFeedCostPerBatch", () => {

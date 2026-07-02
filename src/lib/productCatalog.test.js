@@ -489,6 +489,14 @@ describe("salesByMonth", () => {
     expect(out[0].totalCents).toBe(250);
   });
 
+  it("returns [] when EVERY sale lacks a soldOn date", () => {
+    const out = salesByMonth([
+      sale(null, "wc", 100),
+      sale(undefined, "box", 200),
+    ], productsById);
+    expect(out).toEqual([]);
+  });
+
   it("returns [] for null / empty sales", () => {
     expect(salesByMonth(null, productsById)).toEqual([]);
     expect(salesByMonth([], productsById)).toEqual([]);

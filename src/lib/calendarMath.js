@@ -99,8 +99,11 @@ export function eventToBlock(occurrence, rail = DEFAULT_RAIL, opts = {}) {
       endMin: null,
     };
   }
-  const explicitEnd = hhmmToMinutes(occurrence.endTime);
-  const endMin = (explicitEnd && explicitEnd > startMin)
+  const parsedEnd = hhmmToMinutes(occurrence.endTime);
+  // "00:00" as an END time means midnight closing the day, not the
+  // day's first minute.
+  const explicitEnd = parsedEnd === 0 ? 24 * 60 : parsedEnd;
+  const endMin = (explicitEnd != null && explicitEnd > startMin)
     ? explicitEnd
     : startMin + defaultDurationMinutes;
   const railStart = rail.startHour * 60;
@@ -161,7 +164,14 @@ export function advanceDate(date, unit, delta) {
   } else if (unit === "week") {
     out.setDate(out.getDate() + delta * 7);
   } else if (unit === "month") {
+    // Step from the 1st, then clamp the day-of-month so Jan 31 +1
+    // lands on Feb 28, not Mar 3 (setMonth alone overflows).
+    const day = out.getDate();
+    out.setDate(1);
     out.setMonth(out.getMonth() + delta);
+    const lastDay =
+      new Date(out.getFullYear(), out.getMonth() + 1, 0).getDate();
+    out.setDate(Math.min(day, lastDay));
   }
   return out;
 }
