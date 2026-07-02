@@ -3,8 +3,8 @@ import {
   LayoutList, AlertTriangle, ChevronLeft, ChevronRight, Moon,
 } from "lucide-react";
 import {
-  BadgeHint, KindBadge, NowEdgeLine, NowRule, WarmingBadge,
-  hatchUnplanned, kindTint,
+  BadgeHint, CoveredBadge, KindBadge, NowEdgeLine, NowRule, WarmingBadge,
+  hatchCover, hatchUnplanned, kindTint,
 } from "./ui.jsx";
 import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
@@ -52,6 +52,27 @@ function compactTime(min) {
   if (min == null) return "";
   return formatMinutesOfDay(min).replace(":00", "");
 }
+
+// "6a–8:30a" — tooltips carry BOTH ends of the window (round 5).
+function compactRange(startMin, endMin) {
+  if (startMin == null) return "";
+  if (endMin == null || endMin === startMin) return compactTime(startMin);
+  return compactTime(startMin) + "–" + compactTime(endMin);
+}
+
+// The covered tooltip body: what was covered, who accepted, when.
+function coveredTip(covered) {
+  return (covered ?? []).map((c, i) => (
+    <span key={i} className="block">
+      <b className="text-fg font-semibold">{c.label}</b>
+      {c.by ? ` — ${c.by} covers` : " — covered"}
+    </span>
+  ));
+}
+
+// Needs-cover rows wear the project-hatch language in the WARN color
+// (round 5), layered over the kind tint so identity still reads.
+const coverWash = (base) => [hatchCover(12), base].join(", ");
 
 // Split a strip time into its numeric part and am/pm period so the phone
 // strip can stack them on two fixed lines. Without this the inline
@@ -139,9 +160,10 @@ export function DayRailSpine({
           // heavier diagonals and got hard to read in light mode; the
           // rail + badge + "both free" tag carry the free signal, so the
           // row hatch only needs to whisper.
-          const projFill = b.planned
+          let projFill = b.planned
             ? kindTint("--c-project")
             : hatchUnplanned(10);
+          if (b.needsCover) projFill = coverWash(projFill);
           return (
             <button
               key={b.bucket}
@@ -160,10 +182,14 @@ export function DayRailSpine({
               <BadgeHint
                 tip={<>
                   <b className="text-fg">Project</b>
+                  {"\n"}{compactRange(b.startMin, b.endMin)}
                   {"\n"}
                   {b.planned
                     ? "planned" + (free ? ` · ${free} free` : "")
                     : free ? `${free} free` : "free"}
+                  {b.needsCover && (
+                    <span className="block text-warn">needs cover</span>
+                  )}
                 </>}
               >
                 <KindBadge kind="project" size={16} />
@@ -206,7 +232,11 @@ export function DayRailSpine({
                 type="button"
                 onClick={() => onPick(b.bucket)}
                 className={rowCls(isFocus, false, isNow)}
-                style={{ backgroundImage: kindTint("--c-event") }}
+                style={{
+                  backgroundImage: b.needsCover
+                    ? coverWash(kindTint("--c-event"))
+                    : kindTint("--c-event"),
+                }}
               >
                 <span
                   className="w-[5px] self-stretch shrink-0 ring-1 ring-inset ring-event"
@@ -216,7 +246,8 @@ export function DayRailSpine({
                   tip={<>
                     <b className="text-fg">{occ?.instanceLabel ?? "Event"}</b>
                     {"\n"}
-                    {b.startMin != null ? compactTime(b.startMin) : "All day"}
+                    {b.startMin != null
+                      ? compactRange(b.startMin, b.endMin) : "All day"}
                   </>}
                 >
                   <KindBadge kind="event" size={16} />
@@ -251,13 +282,21 @@ export function DayRailSpine({
             ? "Until " + compactTime(b.winEnd)
             : "After " + compactTime(b.winStart))
           : compactTime(b.startMin);
+        // Tooltips carry the whole window (round 5).
+        const rangeText = b.isOvernight
+          ? compactRange(b.winStart, b.winEnd)
+          : compactRange(b.startMin, b.endMin);
         return (
             <button
               key={b.bucket}
               type="button"
               onClick={() => onPick(b.bucket)}
               className={rowCls(isFocus, b.allDone, isNow)}
-              style={{ backgroundImage: kindTint("--c-chore") }}
+              style={{
+                backgroundImage: b.needsCover
+                  ? coverWash(kindTint("--c-chore"))
+                  : kindTint("--c-chore"),
+              }}
             >
               {/* identity rail — solid teal, same weight as every kind's
                   rail (the old done-fraction meter is retired; the tooltip
@@ -271,8 +310,8 @@ export function DayRailSpine({
                   <b className="text-fg">
                     {b.isOvernight ? "Overnight" : (b.name ?? "Chores")}
                   </b>
-                  {"\n"}{b.done ?? 0} of {count} done · {timeText}
-                  {b.hasManDown && (
+                  {"\n"}{b.done ?? 0} of {count} done · {rangeText}
+                  {b.needsCover && (
                     <span className="block text-warn">needs cover</span>
                   )}
                 </>}
@@ -293,15 +332,20 @@ export function DayRailSpine({
               </span>
               {/* Round 4 — the row-edge glyphs wear the affordance
                   standard too (BadgeHint / cue), not bare icons. */}
-              {b.hasManDown && (
+              {b.needsCover && (
                 <BadgeHint
                   tip={<>
                     <b className="text-fg">Needs cover</b>
-                    {"\n"}someone on this block is unavailable
+                    {"\n"}a time off / event overlaps this block
                   </>}
                 >
                   <AlertTriangle size={13} className="shrink-0 text-warn" />
                 </BadgeHint>
+              )}
+              {/* Round 5 — accepted cover reads as the muted circle-
+                  alert; hover says what was covered and who accepted. */}
+              {!b.needsCover && (b.covered?.length ?? 0) > 0 && (
+                <CoveredBadge cue tip={coveredTip(b.covered)} />
               )}
               {/* F24b — the day-load's warn/due ClockAlert repeats on the
                   block that owns the warming chore (count hidden; the row is
@@ -311,7 +355,16 @@ export function DayRailSpine({
               />
               {/* Overnight wrap: a teal Moon on the right edge of the block. */}
               {b.isOvernight && (
-                <BadgeHint tip="Overnight — wraps past midnight">
+                <BadgeHint
+                  tip={<>
+                    <b className="text-fg">Overnight — wraps past midnight</b>
+                    {(b.items ?? []).map((d) => (
+                      <span key={d.id} className="block">
+                        {d.source_ref?.title ?? "task"}
+                      </span>
+                    ))}
+                  </>}
+                >
                   <Moon size={14} className="shrink-0 text-chore" />
                 </BadgeHint>
               )}
@@ -423,7 +476,7 @@ export function DayStrip({
             went sideways-scrollable during/after a page (round 4 BUG).
             Clip the strip's own row; horizontal only, so the
             NowEdgeLine's glow dot stays unclipped vertically. */}
-        <div className="flex items-stretch gap-1.5 overflow-x-clip">
+        <div className="flex items-stretch gap-1.5 overflow-x-clip px-1 -mx-1 pt-1 -mt-1">
           {nowEdge === "before" && s === 0 && (
             <NowEdgeLine className="my-1" />
           )}
@@ -441,6 +494,7 @@ export function DayStrip({
               const free = freeShort(b.who);
               const h = projSize(b.durationMin, 14, 40);
               const isFocus = b.bucket === focus;
+              const isNow = b.bucket === nowBucket;
               return (
                 <button
                   key={b.bucket}
@@ -452,14 +506,17 @@ export function DayStrip({
                   <span className="relative w-full h-[56px] flex items-end justify-center">
                     {/* F9 — same planned/unplanned fill as the desktop rows
                         and the LoadSpine bars: solid project wash when a
-                        step occupies the gap, blue cross-hatch when free. */}
+                        step occupies the gap, blue cross-hatch when free.
+                        Focus/now wear the SAME offset inset ring as the
+                        chore bars (round 5 — the ring-project recolor
+                        didn't read as the active marker). */}
                     <span
-                      className={
-                        "w-full ring-1 ring-inset "
-                        + (isFocus ? "ring-project" : "ring-project/40")
-                      }
+                      className="relative w-full"
                       style={{
                         height: h + "px",
+                        boxShadow:
+                          "inset 0 0 0 1px color-mix(in srgb,"
+                          + " var(--c-project) 40%, transparent)",
                         ...(b.planned
                           ? {
                             background:
@@ -467,7 +524,20 @@ export function DayStrip({
                           }
                           : { backgroundImage: hatchUnplanned(45) }),
                       }}
-                    />
+                    >
+                      {(isNow || isFocus) && (
+                        <span
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            boxShadow: isNow
+                              ? "inset 0 0 0 calc(2px * var(--inv-zoom)) var(--color-accent-deep), "
+                                + "inset 0 0 0 calc(3px * var(--inv-zoom)) var(--color-bg)"
+                              : "inset 0 0 0 calc(1px * var(--inv-zoom)) var(--color-accent), "
+                                + "inset 0 0 0 calc(2px * var(--inv-zoom)) var(--color-bg)",
+                          }}
+                        />
+                      )}
+                    </span>
                   </span>
                   {/* No glyph above the time (round 4) — the kind color
                       on the time + bar carries the identity. */}
@@ -478,6 +548,55 @@ export function DayStrip({
                       + "[font-variant-numeric:tabular-nums] "
                       + "border-b-2 text-project font-medium "
                       + (isFocus ? "border-project font-bold" : "border-transparent")
+                    }
+                  />
+                </button>
+              );
+            }
+            if (b.kind === "event") {
+              const isFocus = b.bucket === focus;
+              const isNow = b.bucket === nowBucket;
+              return (
+                <button
+                  key={b.bucket}
+                  type="button"
+                  onClick={() => onPick(b.bucket)}
+                  title={b.occ?.instanceLabel ?? "Event"}
+                  className={STRIP_COL_CLS}
+                >
+                  <span className="relative w-full h-[56px] flex items-end justify-center">
+                    <span
+                      className="relative w-full h-[28px]"
+                      style={{
+                        background:
+                          "color-mix(in srgb, var(--c-event) 45%, transparent)",
+                        boxShadow:
+                          "inset 0 0 0 1px color-mix(in srgb,"
+                          + " var(--c-event) 55%, transparent)",
+                      }}
+                    >
+                      {(isNow || isFocus) && (
+                        <span
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            boxShadow: isNow
+                              ? "inset 0 0 0 calc(2px * var(--inv-zoom)) var(--color-accent-deep), "
+                                + "inset 0 0 0 calc(3px * var(--inv-zoom)) var(--color-bg)"
+                              : "inset 0 0 0 calc(1px * var(--inv-zoom)) var(--color-accent), "
+                                + "inset 0 0 0 calc(2px * var(--inv-zoom)) var(--color-bg)",
+                          }}
+                        />
+                      )}
+                    </span>
+                  </span>
+                  <StripTime
+                    min={b.startMin}
+                    className={
+                      "mt-0.5 pb-0.5 text-center text-[10.5px] "
+                      + "[font-variant-numeric:tabular-nums] "
+                      + "border-b-2 text-event font-medium "
+                      + (isFocus
+                        ? "border-event font-bold" : "border-transparent")
                     }
                   />
                 </button>
@@ -537,7 +656,7 @@ export function DayStrip({
                 className={STRIP_COL_CLS + (b.allDone ? "opacity-60" : "")}
               >
                 <span className="relative w-full h-[56px] flex items-end justify-center">
-                  {b.hasManDown && (
+                  {b.needsCover && (
                     <span className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-warn"
                       style={{ boxShadow: "0 0 0 2px var(--color-bg)" }} />
                   )}

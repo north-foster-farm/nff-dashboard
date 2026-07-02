@@ -212,11 +212,16 @@ function TodayGlance({ data, today, blocks, ruleOpts }) {
         time={formatTime12h(minutesToHHMM(nowMin))}
       />
 
+      {/* Round 5 — uncovered counts UNITS (time offs needing cover),
+          not per-chore rows; the Schedule's needs-cover card resolves
+          each with one tap. */}
       {uncovered > 0 && (
         <AttentionCard
           kind="cover"
-          work={`${uncovered} ${uncovered === 1 ? "chore" : "chores"} need cover`}
-          reason="An assigned obligation has no one on it right now."
+          work={uncovered === 1
+            ? "A time off needs cover"
+            : `${uncovered} time offs need cover`}
+          reason="Someone is off while blocks still have work on them."
           action="Open Schedule"
           onAct={() => navigate(pathForSection("schedule"))}
         />

@@ -169,9 +169,15 @@
   <table class="ds-table">
     <thead><tr><th>State</th><th>Treatment</th><th>Placement</th></tr></thead>
     <tbody>
-      <tr><td>Man-down / needs cover</td><td>AttentionCard (flush amber + one
-        action)</td><td>Top of phone Today, inside the live round, and on the
-        schedule block</td></tr>
+      <tr><td>Needs cover (time off / event)</td><td>NeedsCoverCard — ONE
+        unit card per time off or man-down event, AttentionCard chrome +
+        a "N chores" dropdown; the button is the single confirmation
+        (round 5; replaced the per-chore leak + CoverSheet + acknowledge).
+        Overlapped blocks wear warn stripes (spine rows + day-load bars) +
+        the conflict triangle; accepted cover swaps both for the muted
+        CoveredBadge</td><td>Above the block header row, below the
+        confirm/+ Add row; icons on the day-load stat row, the spine, and
+        This Week</td></tr>
       <tr><td>Overdue / escalation</td><td>AttentionCard / Hole (not raised
         tint)</td><td>In the chore row's place, on every list surface</td></tr>
       <tr><td>Source changed / yesterday's musts</td><td>Flush attention
@@ -318,6 +324,11 @@
     (<span class="mono">ui.jsx</span>). Bare bars take full strength;
     row backgrounds with text on top take a light wash, and both fills are
     alpha images so hover/active row tints show through the gaps.
+    <b>Round 5:</b> the sibling <span class="mono">hatchCover(strength)</span>
+    speaks the same stripe language in <span class="mono">--c-warn</span> —
+    a block needing cover wears it (spine rows layer
+    <span class="mono">hatchCover(12)</span> over the kind tint; day-load
+    bars take bg-colored stripes + a warn border) until cover is accepted.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">

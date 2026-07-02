@@ -256,6 +256,7 @@ p { max-width: 70ch; }
   vertical-align: middle;
 }
 .ds-status.stable { color: var(--c-resolved); }
+.ds-status.new { color: var(--c-accent); }
 .ds-status.converging { color: var(--c-warn); }
 .ds-status.proposed { color: var(--c-project); }
 

@@ -8,14 +8,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   FolderKanban, Plus, GripVertical, Lock, ArrowDownToLine, ArrowUp,
-  CalendarSync,
 } from "lucide-react";
-import { BTN_ACCENT, BTN_GHOST, AlertStrip } from "../components/ui.jsx";
+import { BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
 import { useProjects } from "../lib/data/useProjects.js";
-import { useScheduleReflow } from "../lib/data/useScheduleReflow.js";
-import { navigate, pathForProject, usePersistedState } from "../lib/router.js";
+import { navigate, pathForProject } from "../lib/router.js";
 import { formatDateRange } from "../lib/projects.js";
-import { formatISODate, todayUTC } from "../lib/dates.js";
 
 // The Projects list page — forced-ranked rework (Batch: projects rework,
 // structural core). Priority is a SINGLE total order, not plural flags:
@@ -39,17 +36,9 @@ export default function Projects() {
   } = useProjects();
   const [tab, setTab] = useState("active");
   const [creating, setCreating] = useState(false);
-  // Scheduling engine: today's reflow of the ranked list into the day's
-  // project gaps. Surfaces a "stale" nudge here (the ranking lives on this
-  // page) with a manual Sync. Slice 4 — auto-reflow (the automatic
-  // fallback) is on by default; an easy per-device off switch lives by the
-  // list. Nothing rearranges silently: the nudge shows the instant it's
-  // stale, and auto only fires after a quiet window.
-  const [autoReflow, setAutoReflow] = usePersistedState(
-    "nff-schedule-autoreflow", true);
-  const todayISO = useMemo(() => formatISODate(todayUTC()), []);
-  const reflow = useScheduleReflow({
-    dateISO: todayISO, projects, autoReflow });
+  // (Round 5 — NO-LEGACY) The scheduling engine's stale-nudge + auto-
+  // reflow lived here; auto-seeding is retired — the ranked list now
+  // feeds the Schedule's manual "add next task" quick-add instead.
 
   // Active (non-archived, non-done) split by queue placement; done +
   // archived live in their own tabs.
@@ -118,9 +107,6 @@ export default function Projects() {
           reorderProjects={reorderProjects}
           actions={actions}
           setTimingNote={setTimingNote}
-          reflow={reflow}
-          autoReflow={autoReflow}
-          onToggleAuto={() => setAutoReflow(!autoReflow)}
         />
       ) : tab === "completed" ? (
         <FlatList list={completed} empty={<EmptyState tab="completed" />} />
@@ -134,8 +120,7 @@ export default function Projects() {
 // ── Active view: ranked list + Unprioritized bucket ────────────────────
 
 function ActiveView({
-  ranked, unprioritized, reorderProjects, actions, setTimingNote, reflow,
-  autoReflow, onToggleAuto,
+  ranked, unprioritized, reorderProjects, actions, setTimingNote,
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -152,24 +137,10 @@ function ActiveView({
 
   return (
     <div className="flex flex-col gap-6">
-      {reflow?.stale && (
-        <AlertStrip
-          tone="info"
-          icon={CalendarSync}
-          action="Sync now"
-          onAct={() => reflow.syncNow()}
-        >
-          Today's schedule doesn't reflect this ranking yet.
-          {autoReflow ? " It'll auto-sync shortly." : " Auto-sync is off."}
-        </AlertStrip>
-      )}
       <section className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <SectionLabel>
-            The ranked list — top is the focus
-          </SectionLabel>
-          <AutoSyncToggle enabled={autoReflow} onToggle={onToggleAuto} />
-        </div>
+        <SectionLabel>
+          The ranked list — top is the focus
+        </SectionLabel>
         {ranked.length === 0 ? (
           <EmptyState tab="active" />
         ) : (
@@ -240,30 +211,6 @@ function SectionLabel({ children }) {
     <div className="font-ui text-[11px] text-fg uppercase tracking-[0.14em] font-bold">
       {children}
     </div>
-  );
-}
-
-// The per-device off switch for the auto-reflow fallback. On (accent) =
-// the schedule reflows itself a moment after you re-rank; off (faint) =
-// you sync deliberately via the nudge's "Sync now".
-function AutoSyncToggle({ enabled, onToggle }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      title={enabled
-        ? "Auto-sync is on — the schedule reflows shortly after you re-rank"
-        : "Auto-sync is off — sync the schedule manually"}
-      className={
-        "shrink-0 inline-flex items-center gap-1.5 font-ui text-[10px] " +
-        "font-semibold uppercase tracking-[0.12em] cursor-pointer " +
-        "bg-transparent border-0 " +
-        (enabled ? "text-accent-deep" : "text-faint hover:text-dim")
-      }
-    >
-      <CalendarSync size={13} />
-      Auto-sync {enabled ? "on" : "off"}
-    </button>
   );
 }
 

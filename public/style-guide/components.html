@@ -388,9 +388,20 @@
     color-mix</span> warn body + 50%-warn border) with a ⚠ eyebrow, a Lora work
     line, a plain-language reason, and a single solid-amber action (C6). The
     compact <span class="mono">AttentionCard.Row</span> (Hole.row) is the
-    one-line inline variant. Flat fill only — a man-down reads as a conflict
-    triangle on the LoadSpine bar (slice D, F23), never behind prose (C4). Now in
-    <span class="mono">ui.jsx</span>; supersedes the raised escalation tint.
+    one-line inline variant. Flat fill only — a needs-cover block reads as
+    warn stripes + a warn border on the LoadSpine bar (round 5), never
+    behind prose (C4). Now in <span class="mono">ui.jsx</span>; supersedes
+    the raised escalation tint.
+    <b>Round 5 — the NeedsCoverCard variant:</b> ONE card per scheduled
+    time off (or per event putting the farm a man down), covering EVERY
+    block it overlaps — it replaced the per-chore leak + CoverSheet +
+    acknowledge step. Title = block name / window phrase + date /
+    "All day • Fri, Jul 3"; body = "[person] is [off-site…] [from X to
+    Y…]."; a "N chores" dropdown lists the affected work (per-block
+    mini-headings when several blocks are hit); the button
+    ("[person] covers") is the single confirmation — one write resolves
+    every overlapped block. Renders above the block header row, below the
+    confirm/+ Add row (<span class="mono">Schedule.jsx</span>).
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -572,7 +583,10 @@
     Color is <b>by kind</b>, not a load-state ramp (slice D, F23/F26): a chore
     bar is <span class="mono">--c-chore</span> (teal, height = item count); a
     man-down <b>hole</b> keeps the chore color and carries a small conflict
-    triangle (F23 — a symbol, <b>not</b> a hatch/fill); a project bar is
+    triangle (F23 — retired round 5: an uncovered time off / event now
+    stripes every overlapped bar — bg-colored diagonals over the kind fill
+    + a warn border — and the stat row carries the conflict badge); a
+    project bar is
     <span class="mono">--c-project</span> (slate, height = block
     <b>duration</b>), solid when <span class="mono">planned</span> and a blue
     cross-hatch (<span class="mono">hatchUnplanned()</span>, the shared
@@ -617,7 +631,10 @@
       </div>
     </div>
     <div class="ds-example-meta">chore=teal · hole=teal + ⚠ conflict symbol ·
-      project=slate (height ∝ duration) · unplanned=blue cross-hatch</div>
+      project=slate (height ∝ duration) · unplanned=blue cross-hatch ·
+      needs-cover bar = warn border + bg stripes · event rail below spans
+      first→last overlapped bar (E badge + periwinkle start—end timeline,
+      round 5)</div>
   </div>
 
   <h3 class="ds-h3">WarmingBadge <span class="ds-status converging">Converging</span></h3>
@@ -791,7 +808,10 @@
     hover/press tint <span class="mono">row-active</span>. Rides beside the
     row's 12-hour set time — the "time · tag" line the spine project rows
     wear (time 10px tabular <span class="mono">faint</span>, tag colored
-    semibold). Shared by <span class="mono">ChoreCheckRow</span> and
+    semibold). Round 5: in <span class="mono">ChoreCheckRow</span> the tag
+    rides the WHERE line (place · days-left · edited) beside the new
+    DaysLeftTag; <span class="mono">AdHocRow</span> keeps it inline.
+    Shared by <span class="mono">ChoreCheckRow</span> and
     <span class="mono">AdHocRow</span>. History copy: <b>"Rescheduled from
     X to Y"</b> — never "Moved"/"Split" — + datetime + the actor's
     capitalized first name. In <span class="mono">EditedHistory.jsx</span>
@@ -818,6 +838,51 @@
     <div class="ds-example-meta">time 10px tabular faint · accent tag ·
       chevron rotates open · history verb = "Rescheduled"</div>
   </div>
+
+  <h3 class="ds-h3">DaysLeftTag <span class="ds-status new">New</span></h3>
+  <p>
+    The quiet deadline-runway disclosure on a chore row (round 5). The old
+    "FRI JUL 3 · 1 DAY LEFT" pill + "optional today" were too much text:
+    they collapse into an <span class="mono">accent-deep</span> dropdown in
+    the EditedTag language — "N days left" + rotating chevron — on the
+    row's WHERE line; expanding shows the due date + time ("Due Fri, Jul 3,
+    5:00 PM", from <span class="mono">computeDeadline</span>). Due-today /
+    overran keep the loud inline pill. In
+    <span class="mono">ChoreCheckRow.jsx</span>.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="font-size:14px;font-weight:500">Fill minerals</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;
+        color:var(--c-text-faint);margin-top:2px">
+        <span>Sheep pasture</span><span>·</span>
+        <span style="display:inline-flex;align-items:center;gap:2px;
+          color:var(--c-accent-deep);font-family:var(--font-ui);
+          font-size:10px;font-weight:600;text-transform:uppercase;
+          letter-spacing:.03em;padding:2px 4px;cursor:pointer">1 day left
+          <span style="display:inline-block;transform:rotate(90deg)">›</span>
+        </span>
+      </div>
+      <div style="margin:6px 0 0 24px;border-left:1px solid var(--c-border);
+        padding-left:10px;font-size:11px;color:var(--c-text-dim)">
+        Due Fri, Jul 3, 5:00 PM
+      </div>
+    </div>
+    <div class="ds-example-meta">where line: place · days-left · edited —
+      name wraps, never truncates (round 5)</div>
+  </div>
+
+  <h3 class="ds-h3">CoveredBadge <span class="ds-status new">New</span></h3>
+  <p>
+    The muted "cover accepted" mark (round 5): a
+    <span class="mono">CircleAlert</span> in <span class="mono">
+    text-muted</span> that replaces the warn conflict triangle once a
+    needs-cover unit is accepted. Hover (BadgeHint cue) says what was
+    covered, who accepted, when. Surfaces: the day-load stat row, the
+    day-spine block rows, the This Week day symbols — a day with covered
+    + unresolved conflicts shows BOTH icons. In
+    <span class="mono">ui.jsx</span>.
+  </p>
 
   <table class="ds-table">
     <thead><tr><th>Component</th><th>Status</th><th>Job &amp; bounded form</th></tr></thead>

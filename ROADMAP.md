@@ -4228,6 +4228,103 @@ color; clock-arrow overnight icons). Build refs in
     * Docs: EditedTag + BadgeHint entries and all touched patterns
       updated in BOTH library faces; ROADMAP this entry. Version stays
       `v0.10.80-alpha` (42.3 is one uncommitted batch).
+- **42.4 — round 5: events land, needs-cover rework, auto-seed retired.
+  `v0.10.81-alpha` (2026-07-02); pure frontend, NO migration.** James's
+  round-5 feedback (`/next-prompt.md` → spec at
+  `.ignored/audit-v2/audits/2026-07-01/round5-feedback.md`, all HIGH),
+  including the event-day-load mockup build.
+  - EVENTS reach every surface (the two range bugs fixed):
+    * BUG: deriveDay expanded occurrences over a ZERO-WIDTH range
+      (dayUTC..dayUTC) — any event with a real start time (rrule dtstart
+      carrying 13:15) never reached the day page; only midnight/all-day
+      events ever showed. Now expands across the whole day and keeps the
+      day's own occurrences.
+    * BUG: farmLoad's week expansion ended AT Saturday 00:00, so
+      Saturday's timed events never got their This Week E badge. Range
+      runs through the day after; each week day now carries `eventList`
+      so the E badge's hover names the events + times (F-round5).
+    * Day-load event rail (the mockup): bars + rails share one CSS grid;
+      each event draws a rail below the bars spanning first→last
+      overlapped bar — E KindBadge (BadgeHint cue) + the NowRule language
+      as a periwinkle start—end timeline. Stat row grows `N events`.
+    * The spine event row pins directly BEFORE the first block it
+      overlaps (`sortMin` = block start − ε; display time unchanged);
+      the phone strip renders event columns (periwinkle, standard
+      focus/now inset rings).
+  - NEEDS-COVER rework (block-level UNITS, one write to resolve):
+    * A time off (or an event — it puts the farm a man down) that
+      overlaps blocks is ONE conflict unit, however many blocks it
+      crosses (all-day = every block marked, count still 1).
+    * NeedsCoverCard: ONE card per unit above the block header row
+      (below confirm/+ Add): title = block name / capitalized window
+      phrase + date / "All day • Fri, Jul 3"; body "[person] is
+      [off-site|on a break|out|off] [from X to Y|until X|after X|all
+      day]."; "N chores" EditedTag-language dropdown (per-block
+      mini-headings when several blocks); button "[coverer] covers" =
+      the single confirmation. Replaces the per-chore AttentionCard
+      leak + CoverSheet + acknowledge flow (NO-LEGACY: CoverSheet.jsx
+      deleted, computeManDown per-row path retired from the Schedule).
+    * Acceptance is ONE write: reservation `source_ref.cover={by,at}`
+      (acceptCover), or an event-keyed 'override' commitment
+      (addEventCover; applyOverrides ignores non-chore targets).
+    * Signals: uncovered → warn stripes (`hatchCover`) + triangle on
+      spine rows, bg-stripes + warn border on day-load bars
+      (`conflictIds`), a conflict badge ×N with hover-me dots in the
+      stat row (tip = who's off / which event, and when), the toolbar
+      conflicts chip; covered → the new muted `CoveredBadge`
+      (circle-alert) on the stat row, spine rows, and This Week
+      (`coveredByISO`; conflict + covered icons coexist).
+    * dayConflictCount now counts units (uncovered overlapping
+      reservations) + double-bookings; `dayCoveredUnits` feeds the week
+      pane; farmLoad's `hole`/`totals.uncovered` follow the unit model
+      (Overview copy updated).
+  - AUTO-SEEDING RETIRED (NO-LEGACY): the reflow engine no longer fills
+    project gaps — James: "auto seeding is actually not the right
+    thing." useScheduleReflow + reflowBridge deleted; reflow.js keeps
+    only the ranked queue (rankedActiveProjects/rankedStepQueue) + new
+    `nextRankedStep`; Projects page loses the stale strip + auto-sync
+    toggle; removeDelta is a plain delete again (legacy tombstones stay
+    filtered). The "Continue project above" carry is folded into:
+    * Quick-add (R5.16): every project block offers "Add next task —
+      <step>" (the next highest-priority ranked step not already on the
+      day); the "+ Add" menu's "Add project step" quick-adds the same
+      into the anchored gap. The search-into-gap flow (projectAddFor)
+      went with it.
+    * Project steps MOVE (R5.17): step rows in project blocks carry the
+      edit affordance; ScheduleEditSheet grew `gapTargets` — moving to
+      another gap time-routes via clockTime ("Rescheduled from X to
+      Project · 3 PM").
+  - Chore-row information: names WRAP (never truncate); the WHERE line
+    always renders — resolved place, else `describeChoreAnchor` (the
+    species/batch "animal" fallback); the "FRI JUL 3 · 1 DAY LEFT" pill
+    + "optional today" collapse into the new `DaysLeftTag` dropdown on
+    the where line (expanded = due date + time via computeDeadline);
+    due-today/overran keep the pill; the edited dropdown relocates
+    beside it.
+  - Toolbar/layout: desktop toolbar = the mobile pattern (Confirm left,
+    one "+ Add" menu right, space-between; the old six-button desktop
+    row deleted); the conflicts chip renders only when > 0 (F-"0
+    conflicts"); the phone strip moved ABOVE the confirm/+ Add row
+    (matches desktop order); day-load wrapper margin dropped; the
+    subheader date spells the month in full; This Week grew prev/next
+    week buttons; spine tooltips carry start AND end times; the
+    overnight Moon's hover lists the night's tasks; the day-load
+    ClockAlert wears the hover-me cue.
+  - Mobile: project/event strip bars use the standard offset inset
+    focus/now rings (the ring-recolor didn't read as active); the strip
+    clip row gained padding-box breathing room so the NowEdgeLine's glow
+    isn't cut (overflow:clip clips at the padding edge).
+  - F66 CLOSED as option C (drop the gutter — today's flush row IS
+    option C; revisit only if slice 8's order work needs an indicator).
+  - Docs: DaysLeftTag + CoveredBadge + NeedsCoverCard entries, LoadSpine
+    event rail + conflict stripes, WeekStrip covered icon + event-name
+    hovers, hatchCover in the planned/unplanned pattern — BOTH library
+    faces; `.ds-status.new` chip added to ds.css.
+  - Known follow-ups: event-driven conflicts mark only the FOCAL day in
+    This Week (non-focal days count reservation units + double-bookings
+    only); drag-reorder WITHIN a project gap still rides slice 8's
+    order-preserve; the week covered icon reads reservation covers only
+    (event covers are day-local).
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.

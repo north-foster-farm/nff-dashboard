@@ -9,7 +9,9 @@
 // copies were used.
 
 import { useState } from "react";
-import { Check, AlertTriangle, ClockAlert, Moon, X } from "lucide-react";
+import {
+  Check, AlertTriangle, CircleAlert, ClockAlert, Moon, X,
+} from "lucide-react";
 
 // ── form controls ──────────────────────────────────────────────────────
 // LABEL_CLS was byte-identical in 4 files. The two input roots differ
@@ -487,6 +489,36 @@ export const hatchUnplanned = (strength = 60) =>
   `color-mix(in srgb, var(--c-project) ${strength}%, transparent) 0 4px,` +
   "transparent 4px 8px)";
 
+// The needs-cover fill (round 5): the same diagonal-stripe language as the
+// open project blocks, in the WARN color — a block overlapped by an
+// uncovered time off / event wears it (spine rows at a light strength,
+// day-load bars at full). Accepting cover removes it.
+export const hatchCover = (strength = 60) =>
+  "repeating-linear-gradient(45deg," +
+  `color-mix(in srgb, var(--c-warn) ${strength}%, transparent) 0 4px,` +
+  "transparent 4px 8px)";
+
+// The muted "covered" mark (round 5): a conflict whose cover was accepted
+// turns from the warn triangle into this quiet circle-alert. `tip` carries
+// what was covered + who accepted and when; sidebars wrap it in the
+// BadgeHint cue via `cue`.
+export function CoveredBadge({ tip, size = 13, cue = false, className = "" }) {
+  const glyph = (
+    <CircleAlert size={size} className={"shrink-0 text-muted " + className} />
+  );
+  if (!tip) return glyph;
+  return (
+    <Tooltip tip={tip} className={cue ? "cursor-pointer" : ""}>
+      {cue ? (
+        <span className="flex flex-col items-center gap-[2px]">
+          {glyph}
+          <span className="w-full border-b border-dotted border-faint" />
+        </span>
+      ) : glyph}
+    </Tooltip>
+  );
+}
+
 // The kind-tinted list row (the spine's group language): every row in a
 // kinded list wears a light wash of its identity color — chore teal,
 // project slate, event periwinkle. Authored as an alpha background-IMAGE
@@ -520,7 +552,18 @@ export function NowEdgeLine({ className = "" }) {
   );
 }
 
-export function LoadSpine({ blocks = [], summary, nowId, nowEdge, className = "" }) {
+// `events` (round 5, the event-rail mockup): [{ id, label, startMin,
+// endMin }] — each draws a horizontal rail BELOW the bars, spanning from
+// the left edge of the first bar it overlaps to the right edge of the
+// last (bars + rails share one CSS grid so the edges align). The rail
+// carries the E badge (dotted hover cue → the event's name) and the
+// NowRule language adapted into a start—end timeline. `conflictIds`: bar
+// ids overlapped by an UNCOVERED time off / event — those bars wear the
+// warn diagonal stripes + a warn border until cover is accepted.
+export function LoadSpine({
+  blocks = [], summary, nowId, nowEdge, events = [], conflictIds,
+  className = "",
+}) {
   const bars = blocks.filter(
     (b) => (b.total ?? 0) > 0 || b.state === "hole" || b.kind === "project");
   // Chore bars scale to the heaviest count; project bars scale to the longest
@@ -530,26 +573,54 @@ export function LoadSpine({ blocks = [], summary, nowId, nowEdge, className = ""
   const dur = (b) => b.durationMin ?? ((b.endMin ?? 0) - (b.startMin ?? 0));
   const maxDur = Math.max(
     1, ...bars.filter((b) => b.kind === "project").map(dur));
+  // Bars + event rails share ONE grid template so a rail's left/right
+  // edges land exactly on the first/last overlapped bar's edges.
+  const gridStyle = {
+    gridTemplateColumns:
+      `repeat(${Math.max(1, bars.length)}, minmax(3px, 1fr))`,
+  };
+  const barWin = (b) => ({
+    s: b.window?.startMin ?? b.startMin ?? null,
+    e: b.window?.endMin ?? b.endMin ?? null,
+  });
+  const railSpan = (ev) => {
+    const evEnd = ev.endMin ?? (ev.startMin ?? 0) + 60;
+    let first = -1;
+    let last = -1;
+    bars.forEach((b, i) => {
+      const w = barWin(b);
+      if (w.s == null || w.e == null || ev.startMin == null) return;
+      if (w.s < evEnd && w.e > ev.startMin) {
+        if (first < 0) first = i;
+        last = i;
+      }
+    });
+    return first < 0 ? null : { first, last };
+  };
   return (
     <div className={"flex items-center gap-3 " + className}>
       {/* No overflow-hidden: bar heights are already clamped (B2), and the
           clip was cutting the NowEdgeLine's glow dot (round 4). No baseline
           border either — the day load is fully chromeless. */}
-      <div className="flex items-end gap-0.5 h-10 flex-1 min-w-0">
-        {nowEdge === "before" && <NowEdgeLine className="mr-0.5" />}
+      <div className="flex-1 min-w-0">
+      <div className="flex items-stretch gap-0.5">
+        {nowEdge === "before" && <NowEdgeLine className="mr-0.5 my-1" />}
         {bars.length === 0 ? (
           <span className="self-center text-[10px] text-faint">—</span>
         ) : (
-          bars.map((b) => {
+         <div
+           className="grid items-end gap-0.5 h-10 flex-1 min-w-0"
+           style={gridStyle}
+         >
+          {bars.map((b) => {
             const isProject = b.kind === "project";
-            const isHole = b.state === "hole";
             const h = isProject
               ? Math.min(100, Math.max(8, (dur(b) / maxDur) * 100))
               : Math.min(100, Math.max(8, ((b.total ?? 0) / maxCount) * 100));
             const style = { height: h + "%" };
             if (isProject) {
               if (b.planned) {
-                style.background = "var(--c-project)";
+                style.backgroundColor = "var(--c-project)";
               } else {
                 style.backgroundImage = hatchUnplanned();
                 style.boxShadow =
@@ -557,7 +628,22 @@ export function LoadSpine({ blocks = [], summary, nowId, nowEdge, className = ""
                   " var(--c-project) 45%, transparent)";
               }
             } else {
-              style.background = "var(--c-chore)";
+              style.backgroundColor = "var(--c-chore)";
+            }
+            // Round 5 — overlapped by an uncovered time off / event: bg-
+            // colored diagonal stripes over the kind fill + a warn border
+            // (the mockup's man-down language). Cover accepted → plain.
+            if (conflictIds?.has?.(b.blockId ?? b.id)) {
+              style.backgroundImage = [
+                "repeating-linear-gradient(45deg,"
+                + "color-mix(in srgb, var(--color-bg) 85%, transparent)"
+                + " 0 7px, transparent 7px 14px)",
+                style.backgroundImage,
+              ].filter(Boolean).join(", ");
+              style.boxShadow = [
+                "inset 0 0 0 1.5px var(--c-warn)",
+                style.boxShadow,
+              ].filter(Boolean).join(", ");
             }
             const isNow = nowId != null && (b.blockId ?? b.id) === nowId;
             return (
@@ -583,22 +669,61 @@ export function LoadSpine({ blocks = [], summary, nowId, nowEdge, className = ""
                     }}
                   />
                 )}
-                {isHole && (
-                  // A conflict triangle reads as the man-down signal (F23). It
-                  // sits in a tiny `--c-bg` chip so the warn glyph stays legible
-                  // on the amber chore fill (amber-on-amber otherwise).
-                  <span
-                    className="absolute top-0 left-1/2 -translate-x-1/2 inline-flex items-center justify-center rounded-full"
-                    style={{ background: "var(--c-bg)", padding: 1 }}
-                  >
-                    <AlertTriangle size={9} className="text-warn" />
-                  </span>
-                )}
+                {/* (Round 5) The per-bar man-down triangle is gone — the
+                    warn stripes + border carry the needs-cover state on
+                    the bar, and the stat row's conflict badge carries
+                    the count. */}
               </div>
             );
-          })
+          })}
+         </div>
         )}
-        {nowEdge === "after" && <NowEdgeLine className="ml-0.5" />}
+        {nowEdge === "after" && <NowEdgeLine className="ml-0.5 my-1" />}
+      </div>
+      {/* Event rails (round 5): one per event, below the bars, spanning
+          first-overlapped to last-overlapped bar. The E badge wears the
+          hover cue (the tip = the event's name); the start—end timeline
+          adapts the NowRule language into the event's periwinkle. */}
+      {events.map((ev) => {
+        const span = railSpan(ev);
+        if (!span) return null;
+        return (
+          <div key={ev.id} className="grid gap-0.5 mt-1" style={gridStyle}>
+            <div
+              className="flex items-center gap-1.5 border px-1.5 py-1"
+              style={{
+                gridColumn: `${span.first + 1} / ${span.last + 2}`,
+                borderColor:
+                  "color-mix(in srgb, var(--c-event) 55%, transparent)",
+                background:
+                  "color-mix(in srgb, var(--c-event) 8%, transparent)",
+              }}
+            >
+              <BadgeHint
+                tip={<>
+                  <b className="text-fg">{ev.label ?? "Event"}</b>
+                  {"\n"}{ev.startLabel}
+                  {ev.endLabel ? ` — ${ev.endLabel}` : ""}
+                </>}
+              >
+                <KindBadge kind="event" size={14} />
+              </BadgeHint>
+              <span className="shrink-0 font-ui text-[10px] font-semibold text-event [font-variant-numeric:tabular-nums]">
+                · {ev.startLabel}
+              </span>
+              <span
+                className="flex-1 border-t"
+                style={{ borderColor: "var(--c-event)" }}
+              />
+              {ev.endLabel && (
+                <span className="shrink-0 font-ui text-[10px] font-semibold text-event [font-variant-numeric:tabular-nums]">
+                  {ev.endLabel}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
       </div>
       {summary && (
         <div className="shrink-0 text-[11px] font-ui text-faint [font-variant-numeric:tabular-nums] whitespace-nowrap">
@@ -767,6 +892,7 @@ export function WeekStrip({
   conflictsByISO,
   warmingByISO,
   overnightByISO,
+  coveredByISO,
   className = "",
 }) {
   if (!week?.days?.length || !ymd) return null;
@@ -794,6 +920,7 @@ export function WeekStrip({
         const confCount = conflictsByISO?.get(iso) ?? 0;
         const warm = warmingByISO?.get(iso);
         const overnight = overnightByISO?.has?.(iso);
+        const covered = coveredByISO?.get?.(iso);
         return (
           <button
             key={iso}
@@ -866,9 +993,15 @@ export function WeekStrip({
               )}
               {day.events > 0 && (
                 <BadgeHint
-                  tip={day.events === 1
-                    ? "Event today"
-                    : day.events + " events"}
+                  tip={(day.eventList?.length ?? 0) > 0
+                    ? day.eventList.map((ev, i) => (
+                      <span key={i} className="block">
+                        <b className="text-fg font-semibold">{ev.label}</b>
+                        {ev.timeLabel ? ` — ${ev.timeLabel}` : ""}
+                      </span>
+                    ))
+                    : (day.events === 1
+                      ? "Event today" : day.events + " events")}
                 >
                   <KindBadge kind="event" size={14} />
                 </BadgeHint>
@@ -881,6 +1014,21 @@ export function WeekStrip({
                 >
                   <AlertTriangle size={14} className="text-warn" />
                 </BadgeHint>
+              )}
+              {/* Round 5 — a day whose time off has ACCEPTED cover wears
+                  the muted circle-alert beside (or instead of) the
+                  conflict triangle; hover says what was covered. */}
+              {(covered?.length ?? 0) > 0 && (
+                <CoveredBadge
+                  size={14}
+                  cue
+                  tip={covered.map((c, i) => (
+                    <span key={i} className="block">
+                      <b className="text-fg font-semibold">{c.label}</b>
+                      {c.by ? ` — ${c.by} covers` : ""}
+                    </span>
+                  ))}
+                />
               )}
             </span>
           </button>

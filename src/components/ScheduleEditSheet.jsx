@@ -16,6 +16,10 @@ import { assessEdit } from "../lib/schedule/overrides.js";
 //   currentClockTime - existing clock time, or null
 //   canMoveDay       - true for commitment-backed rows (ad_hoc/chore/note)
 //   blocks           - [{ id, name }] for the block picker
+//   gapTargets       - the day's project gaps (round 5, commitment rows
+//                      only): [{ bucket, label }] — picking one time-
+//                      routes the row into that gap (the caller
+//                      translates "project:<min>" to a clockTime)
 //   onApply(change)  - change = { toBlockId, clockTime, toDate }
 //   onClose()
 const ANYTIME = "anytime";
@@ -29,7 +33,7 @@ function ymd(d) {
 
 export default function ScheduleEditSheet({
   label, fromBucket, fromBlockName, isFirstInBlock, currentClockTime,
-  canMoveDay, committed, blocks, onApply, onClose,
+  canMoveDay, committed, blocks, gapTargets = [], onApply, onClose,
 }) {
   const [toBlockId, setToBlockId] = useState(fromBucket ?? ANYTIME);
   const [clockTime, setClockTime] = useState(currentClockTime ?? "");
@@ -131,6 +135,9 @@ export default function ScheduleEditSheet({
               >
                 {blocks.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+                {gapTargets.map((t) => (
+                  <option key={t.bucket} value={t.bucket}>{t.label}</option>
                 ))}
                 <option value={ANYTIME}>Anytime</option>
               </select>

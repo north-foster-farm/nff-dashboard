@@ -19,7 +19,7 @@ import {
 } from "../schedule/weekView.js";
 import { getEventOccurrences } from "../recurrence.js";
 import {
-  computeManDown,
+  reservationWindow,
   reservationWindows,
 } from "../schedule/manDown.js";
 import { doubleBookConflicts } from "../schedule/conflicts.js";
@@ -28,8 +28,8 @@ import {
   resolveAssignee,
   choreDaysRemaining,
 } from "../chores.js";
-import { projectGaps } from "../schedule/partition.js";
-import { resolveBlockMinutes } from "../sunTimes.js";
+import { projectGaps, occurringBlockWindows } from "../schedule/partition.js";
+import { resolveBlockMinutes, formatMinutesOfDay } from "../sunTimes.js";
 
 // (Round-3 NO-LEGACY) The `heatColor` ramp + the `loadColor` state→fill map
 // are GONE: the day-load no longer paints a continuous should-heat gradient
@@ -110,20 +110,18 @@ export function farmLoad({
     return { rollup: r, win, rows, total, done };
   });
 
-  // Man-down across every assigned row, using each row's block window.
-  const flat = [];
-  for (const b of perBlock) {
-    for (const row of b.rows) {
-      flat.push({
-        key: row.key, assignee: row.assignee,
-        blockStart: b.win.startMin, blockEnd: b.win.endMin,
-      });
-    }
-  }
-  const manDown = computeManDown(flat, windows);
+  // Needs-cover is BLOCK-level now (round 5): a time off marks every block
+  // it overlaps (the farm runs two-handed — one person off is a man down
+  // for the whole block), and accepting cover clears the mark. A window is
+  // uncovered until its reservation carries source_ref.cover.
+  const coverById = new Map(
+    reservations.map((r) => [r.id, r.source_ref?.cover ?? null]));
+  const uncoveredWindows = windows.filter((w) => !coverById.get(w.id));
+  const overlapsWin = (win, w) => win.startMin != null && win.endMin != null
+    && win.startMin <= w.endMin && win.endMin > w.startMin;
 
   const blocks = perBlock.map((b) => {
-    const hole = b.rows.some((row) => manDown.has(row.key));
+    const hole = uncoveredWindows.some((w) => overlapsWin(b.win, w));
     let state;
     if (hole) state = "hole";
     else if (b.total > 0 && b.done === b.total) state = "done";
@@ -209,27 +207,45 @@ export function farmLoad({
   // Per-day event presence across the week (F17 — the week-pane "E" marker).
   // One expansion over the week's UTC range (mirrors deriveDay's dayUTC), then
   // bucketed by occurrence ISO. Cancelled occurrences don't count.
+  // Round 5 BUG FIX: the range END is exclusive of any occurrence carrying a
+  // time-of-day past midnight (rrule.between compares instants, and a
+  // Saturday 1 PM occurrence sits after Saturday 00:00) — so Saturday's E
+  // badge never showed. Expand through the day AFTER the week's Saturday.
+  // Each day now also carries `eventList` [{ label, timeLabel }] so the E
+  // badge's hover can name the events (round 5).
   const wd = weekDays(date);
   const toUTC = (d) =>
     new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const weekEnd = toUTC(wd[6]);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 1);
   const eventsByISO = new Map();
   if (data.events?.kinds) {
     for (const o of getEventOccurrences(
-      data.events, toUTC(wd[0]), toUTC(wd[6]), null)) {
+      data.events, toUTC(wd[0]), weekEnd, null)) {
       if (o.status === "cancelled") continue;
-      eventsByISO.set(o.date, (eventsByISO.get(o.date) ?? 0) + 1);
+      const sm = hmToMin(o.startTime);
+      const list = eventsByISO.get(o.date) ?? [];
+      list.push({
+        label: o.instanceLabel,
+        timeLabel: sm == null ? "all day" : formatMinutesOfDay(sm),
+      });
+      eventsByISO.set(o.date, list);
     }
   }
   const week = {
     ...weekBase,
-    days: weekBase.days.map((d) => ({
-      ...d, events: eventsByISO.get(ymdLocal(d.date)) ?? 0,
-    })),
+    days: weekBase.days.map((d) => {
+      const list = eventsByISO.get(ymdLocal(d.date)) ?? [];
+      return { ...d, events: list.length, eventList: list };
+    }),
   };
 
   const items = blocks.reduce((s, b) => s + b.total, 0);
   const doneCount = blocks.reduce((s, b) => s + b.done, 0);
-  const uncovered = new Set([...manDown.keys()]).size;
+  // Uncovered = UNITS, not rows (round 5): each uncovered time off that
+  // touches at least one block counts once.
+  const uncovered = uncoveredWindows.filter(
+    (w) => perBlock.some((b) => overlapsWin(b.win, w))).length;
   // Counter fix (42.3 round 3): "chores" counts CHORE obligations only —
   // one-off tasks and placed project steps aren't chores; and the project
   // count is DISTINCT projects worked on the day, not project gaps.
@@ -355,6 +371,18 @@ export function dayConflictCount({
   data, date, ruleOpts, choreCtx, completions,
   reservations = [], overrides = [],
 }) {
+  // Round 5 — conflicts count as UNITS: each UNCOVERED time off that
+  // overlaps at least one of the day's blocks is ONE conflict, however
+  // many blocks it crosses (an all-day off marks every block but counts
+  // once). Cover acceptance lives on the reservation (source_ref.cover).
+  // Same-person double-bookings still count individually.
+  const uncovered = reservationWindows(
+    reservations.filter((r) => !r.source_ref?.cover));
+  const blockWins = occurringBlockWindows(date, ruleOpts?.blocks ?? []);
+  const units = uncovered.filter((w) =>
+    blockWins.some((b) => b.start <= w.endMin && b.end > w.startMin))
+    .length;
+
   const byTarget = new Map();
   for (const o of overrides) {
     const t = o.source_ref?.target;
@@ -384,9 +412,31 @@ export function dayConflictCount({
       });
     }
   }
-  const windows = reservationWindows(reservations);
-  const manDown = windows.length ? computeManDown(flat, windows).size : 0;
-  return manDown + doubleBookConflicts(flat).length;
+  return units + doubleBookConflicts(flat).length;
+}
+
+// The day's COVERED time offs — the accepted-cover units the sidebars turn
+// into the muted circle-alert (round 5). Returns [{ id, by, at, label }].
+export function dayCoveredUnits({ date, blocks = [], reservations = [] }) {
+  const blockWins = occurringBlockWindows(date, blocks);
+  const out = [];
+  for (const r of reservations) {
+    const cover = r.source_ref?.cover;
+    if (!cover) continue;
+    const w = reservationWindow(r);
+    if (!w) continue;
+    if (!blockWins.some(
+      (b) => b.start <= w.endMin && b.end > w.startMin)) continue;
+    out.push({
+      id: r.id,
+      by: cover.by ?? null,
+      at: cover.at ?? null,
+      label: `${w.assignee} — ${w.kind === "day_off" ? "all day"
+        : formatMinutesOfDay(w.startMin) + "–"
+          + formatMinutesOfDay(w.endMin)}`,
+    });
+  }
+  return out;
 }
 
 // "HH:MM" → minutes-of-day, or null (mirrors Schedule's `hmToMin`; kept local

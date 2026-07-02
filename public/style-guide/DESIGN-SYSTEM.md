@@ -223,11 +223,42 @@ Each: STATUS · what · use/not · canonical source.
   hover/press tint is `row-active` (row-hover's 9% is imperceptible on
   white). Rides beside the row's 12-hour set time — the "time · tag" line
   the spine project rows wear: time in 10px tabular `faint`, tag colored
-  semibold. Shared by `ChoreCheckRow` and `AdHocRow`. History entries read
+  semibold. Round 5: in `ChoreCheckRow` the tag lives on the WHERE line
+  (place · days-left · edited), beside the new `DaysLeftTag`; `AdHocRow`
+  keeps it on the title line. Shared by `ChoreCheckRow` and `AdHocRow`.
+  History entries read
   **"Rescheduled from X to Y"** (from = the source block or previous set
   time, times 12-hour via `fmtClock12`) — never "Moved"/"Split" — with the
   datetime and the actor's capitalized first name. Source:
   `src/components/EditedHistory.jsx` (`EditedTag`, `fmtClock12`).
+- **DaysLeftTag** · New (round 5) · the quiet deadline-runway disclosure on
+  a chore row: the old "FRI JUL 3 · 1 DAY LEFT" pill + "optional today"
+  collapsed into an `accent-deep` EditedTag-language dropdown reading
+  "N days left" on the row's WHERE line; expanding shows "Due Fri, Jul 3,
+  5:00 PM" (from `computeDeadline`). Due-today / overran keep the loud
+  inline `ChoreRemainingPill`. Source:
+  `src/components/ChoreCheckRow.jsx` (`DaysLeftTag`).
+- **CoveredBadge** · New (round 5) · the muted "cover accepted" mark: a
+  Lucide `CircleAlert` in `text-muted` that REPLACES the warn conflict
+  triangle once a needs-cover unit is accepted. Hover (BadgeHint cue via
+  `cue`) says what was covered, who accepted, and when. Surfaces: the
+  day-load stat row, the day-spine block rows, the This Week day symbols
+  (`coveredByISO`). Source: `src/components/ui.jsx` (`CoveredBadge`).
+- **NeedsCoverCard** · New (round 5) · ONE card per scheduled time off (or
+  per event putting the farm a man down), covering EVERY block it
+  overlaps — replaces the per-chore AttentionCard leak + CoverSheet + the
+  acknowledge step (NO-LEGACY). AttentionCard chrome (flush amber, warn
+  eyebrow). Title: the block's name (one block), the capitalized window
+  phrase + "• Sat, Jul 4" (several), or "All day • Fri, Jul 3". Body:
+  "[person] is [off-site|on a break|out|off] [from X to Y|until X|after
+  X|all day]." / "[event] puts us a man down …". A "N chores"
+  EditedTag-language dropdown lists the affected work — grouped under
+  per-block mini-headings when more than one block is hit. The button
+  ("[person] covers" / "Cover accepted") is the SINGLE confirmation: one
+  write (the reservation's `source_ref.cover`, or an event-keyed override
+  delta) resolves every overlapped block. Renders above the block header
+  row, below the confirm/+ Add row. Source: `src/pages/Schedule.jsx`
+  (`NeedsCoverCard`).
 - **FinishStamp** · Stable · celadon ✓ in a square + "Finished · who · window
   · N/N" (C5 — the word "Sealed" is killed). Whole-run, never a sub-bucket;
   anchors the Rounds wrap. Block completion auto-derives (no submit gate); the
@@ -236,12 +267,20 @@ Each: STATUS · what · use/not · canonical source.
 - **LoadSpine** · Stable · the day-load silhouette — one bar per block,
   interleaved with the day's project gaps, reading `farmLoad.spine` directly.
   Color is by KIND, not a load-state ramp (slice D, F23/F26): a chore bar is
-  `--c-chore` (teal, height ∝ item count); a man-down `hole` keeps the chore
-  color and carries a small conflict `AlertTriangle` (F23 — a symbol, NOT a
-  hatch/fill, replaces the old warn treatment); a project bar is `--c-project`
+  `--c-chore` (teal, height ∝ item count); a bar overlapped by an UNCOVERED
+  time off / event wears bg-colored diagonal stripes over its kind fill + a
+  1.5px `--c-warn` border (round 5 — `conflictIds`; the per-bar triangle is
+  gone, the stat row's conflict badge carries the count); a project bar is
+  `--c-project`
   (slate, height ∝ block DURATION), solid when `planned` and a blue cross-hatch
   when unplanned — see **planned vs unplanned** below. **No per-bar item
-  counts** (F23). `nowId` (today only, gate at the call site) rings the
+  counts** (F23). `events` (round 5, the event-rail mockup): each event
+  draws a horizontal RAIL below the bars — bars + rails share one CSS grid
+  so the rail spans exactly from the first overlapped bar's left edge to
+  the last's right edge; the rail carries the E `KindBadge` (BadgeHint cue
+  → the event's name + times) and the NowRule language adapted into a
+  periwinkle start—end timeline ("· 1:15 PM ——— 5:00 PM").
+  `nowId` (today only, gate at the call site) rings the
   current block's bar with the day-strip's offset inset now-ring (2px
   `accent-deep` + a bg separation line, `--inv-zoom`-compensated) — chore
   buckets are farmLoad blockIds, so the Schedule passes `nowBucket`
@@ -251,7 +290,10 @@ Each: STATUS · what · use/not · canonical source.
   obligations only — one-off tasks and project steps aren't chores) ·
   `N blocks` (everything the spine shows: chore blocks + project gaps +
   events + overnight) · `N projects` (DISTINCT projects placed, not
-  gaps) — each pluralized. Bars clamped to the track (B2 — the frame's
+  gaps) · `N events` (round 5) — each pluralized; then the warming
+  ClockAlert, the conflict badge (warn triangle ×N, hover-me dots, tip
+  names who's off / which event and when), and the `CoveredBadge` when
+  accepted cover exists — all with the BadgeHint cue. Bars clamped to the track (B2 — the frame's
   `overflow-hidden` was dropped in 42.3 round 4: it clipped the
   NowEdgeLine's glow dot); the optional `summary` read sits beside it.
   Round 4: `nowId` is resolved by WINDOW across kinds (the bar whose
@@ -295,9 +337,14 @@ Each: STATUS · what · use/not · canonical source.
   symbols on the right (F15–F17): the per-day number + heat box are dropped for a
   teal **Moon** when an overnight chore touches that day (`overnightByISO` —
   both calendar days a night spans), a periwinkle **E** `KindBadge` when the day
-  has an event (hover → count), a warn/due `WarmingBadge` (ClockAlert) when it
-  has a warming chore (`warmingByISO`), and an amber conflict `AlertTriangle`
-  when it has man-down conflicts (hover → count, fed by `conflictsByISO`). The
+  has an event (hover → the events' NAMES + times, round 5 — fed by
+  `farmLoad.week` day `eventList`), a warn/due `WarmingBadge` (ClockAlert)
+  when it has a warming chore (`warmingByISO`), an amber conflict
+  `AlertTriangle` when it has uncovered conflicts (hover → count, fed by
+  `conflictsByISO` — round 5: conflicts count as UNITS, one per uncovered
+  time off), and the muted `CoveredBadge` when a day's time off has
+  accepted cover (`coveredByISO`, round 5; both icons coexist when a day
+  has covered + unresolved). The
   symbol cell is a FIXED width, LEFT-aligned, so every day's mini-spine is the
   same width and the badges line up in a column; every symbol wears
   `BadgeHint` (round 4 — the full affordance standard, not a bare
@@ -406,6 +453,11 @@ Each: STATUS · what · use/not · canonical source.
   time everywhere it's drawn: a gap with a real step in it is SOLID project
   slate; a free/unbooked gap wears the 45° blue cross-hatch (the wash-eggs
   ribbon pattern in `--c-project`) from the shared `hatchUnplanned(strength)`
+  — and its round-5 sibling `hatchCover(strength)`: the SAME stripe
+  language in `--c-warn` marks a block needing cover (spine rows layer
+  `hatchCover(12)` over the kind tint; day-load bars use bg-colored
+  stripes + a warn border via `conflictIds`); accepting cover removes it
+  and the `CoveredBadge` takes over
   util (`src/components/ui.jsx`). Bare bars take full strength (LoadSpine 60,
   phone strip 45); row backgrounds with text on top take the light forms
   (day-spine rows: hatch **10** — dropped from 16 in round 4, the 12px row

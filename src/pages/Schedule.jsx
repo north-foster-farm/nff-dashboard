@@ -1,9 +1,9 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
-  ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X, CloudOff,
-  GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock, MapPin,
-  Repeat, StickyNote, Timer, CalendarX,
-  ClockArrowRight, ClockArrowLeft, CornerDownRight, CalendarSync,
+  ChevronLeft, ChevronRight, ArrowDownToLine, ListChecks, Check, Plus, X,
+  CloudOff, GripVertical, MoreHorizontal, AlertTriangle, Ban, CalendarClock,
+  MapPin, Repeat, StickyNote, Timer, CalendarX,
+  ClockArrowRight, ClockArrowLeft, CornerDownRight,
 } from "lucide-react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -20,8 +20,7 @@ import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
 import { deriveDay, rollupChoresForDay } from "../lib/schedule/deriveDay.js";
 import { applyOverrides } from "../lib/schedule/overrides.js";
 import {
-  computeManDown, reservationWindows, reservationWindow, pickCoverPerson,
-  ADMINS,
+  reservationWindows, reservationWindow, ADMINS,
 } from "../lib/schedule/manDown.js";
 import {
   buffersForTarget, storedBufferWindow, describeBuffer, deriveTemplateBuffer,
@@ -33,7 +32,7 @@ import {
 import ConflictsPanel from "../components/ConflictsPanel.jsx";
 import {
   obligationPlaceIds, getAllChoreDefinitions, resolveAssignee,
-  choreDaysRemaining,
+  choreDaysRemaining, describeChoreAnchor,
 } from "../lib/chores.js";
 import AddToScheduleSearch from "../components/AddToScheduleSearch.jsx";
 import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
@@ -43,7 +42,6 @@ import BufferSheet from "../components/BufferSheet.jsx";
 import EventTimeSheet from "../components/EventTimeSheet.jsx";
 import EventScopePrompt from "../components/EventScopePrompt.jsx";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
-import CoverSheet from "../components/CoverSheet.jsx";
 import EditedHistory, { EditedTag, fmtClock12 }
   from "../components/EditedHistory.jsx";
 import { DayRailSpine, DayStrip } from "../components/ScheduleSidebars.jsx";
@@ -53,27 +51,26 @@ import { weekDays } from "../lib/schedule/weekView.js";
 import { monthFullness } from "../lib/schedule/monthView.js";
 import { blockStartDrift, dayReviews } from "../lib/schedule/lookBack.js";
 import { useRunHistory } from "../lib/data/useRunHistory.js";
-import {
-  isActiveProject, nextProjectStepFor,
-} from "../lib/projects.js";
+import { isActiveProject } from "../lib/projects.js";
+import { nextRankedStep } from "../lib/schedule/reflow.js";
 import { segmentForStart, buildDaySegments } from "../lib/schedule/placement.js";
 import {
   overnightWindow, inOvernight, OVERNIGHT_LEAD, OVERNIGHT_TRAIL,
 } from "../lib/schedule/partition.js";
 import { useNeighborDeltas } from "../lib/data/useNeighborDeltas.js";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
-import { navigate, usePersistedState } from "../lib/router.js";
-import { useScheduleReflow } from "../lib/data/useScheduleReflow.js";
+import { navigate } from "../lib/router.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { recordCapture, readCaptures } from "../lib/capture/capture.js";
 import { supabase, realtimeChannel } from "../lib/supabase.js";
 import { formatMinutesOfDay, resolveBlockMinutes } from "../lib/sunTimes.js";
 import {
-  NowTag, KindBadge, AttentionCard, LoadSpine, WeekStrip, WarmingBadge,
-  AlertStrip, Tooltip, INPUT_CLS,
+  NowTag, KindBadge, LoadSpine, WeekStrip, WarmingBadge,
+  AlertStrip, Tooltip, CoveredBadge, INPUT_CLS,
 } from "../components/ui.jsx";
-import { farmLoad, dayConflictCount, dayWarming }
-  from "../lib/load/farmLoad.js";
+import {
+  farmLoad, dayConflictCount, dayCoveredUnits, dayWarming,
+} from "../lib/load/farmLoad.js";
 import { T } from "../theme.js";
 
 // The Schedule — the phone-first, single-open accordion of the day's chore
@@ -111,6 +108,10 @@ function startKey(r) {
   if (r.kind === "overnightblock") {
     return r.side === "lead" ? Number.MIN_SAFE_INTEGER : r.startMin;
   }
+  // An event pins directly BEFORE the first block it overlaps (round 5 —
+  // the mockup's ordering): its sortMin is that block's start minus a
+  // hair, while startMin stays the real start for display.
+  if (r.sortMin != null) return r.sortMin;
   return r.startMin == null ? Number.MAX_SAFE_INTEGER : r.startMin;
 }
 
@@ -528,7 +529,6 @@ function DraggableRow({
         onRemove={row.deltaId ? () => removeDelta(row.deltaId) : undefined}
         onEdit={onEdit}
         edit={row.edit}
-        showPriority
         {...sortable}
       />
     );
@@ -616,6 +616,118 @@ function AddTaskBar({ targets, defaultTarget, onAdd, onClose }) {
   );
 }
 
+// ── NeedsCoverCard (round 5) ─────────────────────────────────────────
+// ONE card per scheduled time off (or per event putting the farm a man
+// down), covering EVERY block it overlaps. Flush amber (the
+// AttentionCard chrome); the "N chores" disclosure lists the affected
+// work — grouped under per-block headings when more than one block is
+// hit; the button is the single confirmation.
+const COVER_KIND_WORD = {
+  off_site: "off-site",
+  break: "on a break",
+  appointment: "out",
+  day_off: "off",
+};
+
+function coverPhrase(w, allDay) {
+  if (allDay) return "all day";
+  if ((w.startMin ?? 0) <= 0) {
+    return `until ${formatMinutesOfDay(w.endMin)}`;
+  }
+  if ((w.endMin ?? 0) >= 1440) {
+    return `after ${formatMinutesOfDay(w.startMin)}`;
+  }
+  return `from ${formatMinutesOfDay(w.startMin)}`
+    + ` to ${formatMinutesOfDay(w.endMin)}`;
+}
+
+function NeedsCoverCard({ unit, dateShort, onCover }) {
+  const [open, setOpen] = useState(false);
+  const w = unit.window;
+  const phrase = coverPhrase(w, unit.allDay);
+  const title = unit.allDay
+    ? `All day • ${dateShort}`
+    : unit.blocks.length === 1
+      ? unit.blocks[0].name
+      : phrase.charAt(0).toUpperCase() + phrase.slice(1) + ` • ${dateShort}`;
+  const body = unit.kind === "event"
+    ? `${unit.label} puts us a man down ${phrase}.`
+    : `${unit.person} is ${COVER_KIND_WORD[w.kind] ?? "off"} ${phrase}.`;
+  const grouped = unit.allDay || unit.blocks.length > 1;
+  const action = unit.coverer ? `${unit.coverer} covers` : "Cover accepted";
+  return (
+    <div
+      className="mb-3 border"
+      style={{
+        borderColor: "color-mix(in srgb, var(--c-warn) 50%, transparent)",
+        background: "color-mix(in srgb, var(--c-warn) 7%, var(--c-bg))",
+      }}
+    >
+      <div
+        className="px-3 py-2 flex items-center gap-2 border-b"
+        style={{
+          borderColor: "color-mix(in srgb, var(--c-warn) 22%, transparent)",
+        }}
+      >
+        <AlertTriangle size={15} className="shrink-0 text-warn" />
+        <span className="font-ui text-[11px] font-semibold uppercase tracking-[0.14em] text-warn">
+          Needs cover
+        </span>
+      </div>
+      <div className="px-3 py-3">
+        <div className="font-heading text-[15px] font-medium text-fg">
+          {title}
+        </div>
+        <div className="text-[12px] text-dim mt-1 leading-snug">
+          {body}
+        </div>
+        {unit.itemCount > 0 && (
+          <div className="mt-1.5">
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              className="inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-warn px-1 py-0.5 cursor-pointer transition-colors hover:bg-row-active active:bg-row-active"
+            >
+              {unit.itemCount === 1 ? "1 chore" : `${unit.itemCount} chores`}
+              <ChevronRight
+                size={11}
+                className={
+                  "transition-transform duration-[140ms] ease-out "
+                  + (open ? "rotate-90" : "")
+                }
+              />
+            </button>
+            {open && (
+              <ul className="mt-1 border-l border-line pl-3 flex flex-col gap-0.5">
+                {unit.blocks.map((b) => (
+                  <li key={b.bucket} className="text-[12px] leading-snug">
+                    {grouped && (
+                      <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.12em] text-faint mt-1">
+                        {b.name}
+                      </div>
+                    )}
+                    {b.items.map((t, i) => (
+                      <div key={i} className="text-dim">{t}</div>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onCover}
+          className="w-full mt-2.5 bg-warn text-on-accent border-0 py-2.5 cursor-pointer font-ui text-[12px] font-bold uppercase tracking-[0.1em]"
+        >
+          {action}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Schedule({ data }) {
   // The day being viewed (defaults to today; tapping a week day opens it).
   const [today, setToday] = useState(() => new Date());
@@ -632,15 +744,9 @@ export default function Schedule({ data }) {
   // target), distinct from `dateISO`, the day being viewed.
   const realTodayISO = useMemo(() => ymdLocal(new Date()), []);
 
-  // Projects reflow engine, mounted HERE as well as on the Projects page
-  // (F59/F60): the schedule is where a stale ranking is actually felt —
-  // "nothing planned" project blocks — so it surfaces staleness with a
-  // Sync now, and the same debounced auto-fallback fires while you're
-  // looking at the schedule. Always plans the REAL today (the engine's
-  // today-only horizon), whatever day is being viewed.
-  const [autoReflow] = usePersistedState("nff-schedule-autoreflow", true);
-  const projectReflow = useScheduleReflow({
-    dateISO: realTodayISO, projects: data.projects, autoReflow });
+  // (Round 5 — NO-LEGACY) The auto-seeding reflow engine is retired:
+  // project steps land on the day ONLY by hand — the ranked queue feeds
+  // the "add next task" quick-add instead of an automatic fill.
 
   // Yesterday's unfinished musts (S12) — when building today, surface the
   // must-do chores that fell due yesterday and weren't completed, so a missed
@@ -673,6 +779,7 @@ export default function Schedule({ data }) {
   const {
     deltas, addTask, addNote, addChore, addProject, removeDelta, setDone,
     upsertOverride, updateDelta, addReservation, removeSeries,
+    acceptCover, addEventCover,
     addBuffer, toggleBufferItem,
   } = useScheduleDeltas(dateISO);
 
@@ -698,10 +805,6 @@ export default function Schedule({ data }) {
     return m;
   }, [choreDefs]);
   const [picking, setPicking] = useState(false);
-  // The Project segment a "+ add" / "swap" affordance is targeting — opens the
-  // add-to-day search with its handlers bound to the segment's start time, so
-  // whatever's added routes into this block (P12/P13). null = closed.
-  const [projectAddFor, setProjectAddFor] = useState(null);
   // Add one (chore, place) onto the day (S33 search-to-add). The search
   // component handles dedup-by-title + place-narrow and calls this per place.
   const addChoreAt = (choreId, placeId, dates = null) => {
@@ -895,7 +998,6 @@ export default function Schedule({ data }) {
       const choreRows = [];
       for (const inst of r.items) {
         const placeIds = obligationPlaceIds(inst.chore, choreCtx ?? {});
-        const multi = placeIds.length > 1;
         const assignee = resolveAssignee(inst.chore, today, ruleOpts);
         for (const pid of placeIds) {
           seen.add(inst.chore.id + "|" + (pid ?? ""));
@@ -906,7 +1008,11 @@ export default function Schedule({ data }) {
               key: "c|" + inst.chore.id + "|" + (pid ?? ""),
               chore: inst.chore,
               placeId: pid,
-              placeLabel: multi ? p?.name ?? null : null,
+              // R5.13 — every chore row says WHERE: the resolved place,
+              // else the chore's anchor description (species/batch —
+              // the "animal" fallback).
+              placeLabel: p?.name
+                ?? describeChoreAnchor(inst.chore, choreCtx ?? {}),
               assignee,
             },
             ps: p?.sortOrder ?? 0,
@@ -931,7 +1037,8 @@ export default function Schedule({ data }) {
           seen.add(k);
           rows.push({
             kind: "chore", key: "cd|" + ex.id, chore, placeId: pid,
-            placeLabel: choreCtx?.placesById?.get(pid)?.name ?? null,
+            placeLabel: choreCtx?.placesById?.get(pid)?.name
+              ?? describeChoreAnchor(chore, choreCtx ?? {}),
             deltaId: ex.id, delta: ex,
             assignee: resolveAssignee(chore, today, ruleOpts),
           });
@@ -953,52 +1060,42 @@ export default function Schedule({ data }) {
   const eventEntries = useMemo(
     () => (derived.events ?? [])
       .filter((o) => o.status !== "cancelled")
-      .map((o) => ({
-        kind: "event",
-        bucket: "ev|" + o.instanceId + "|" + o.date + "|" + (o.startTime ?? ""),
-        startMin: hmToMin(o.startTime),
-        occ: o,
-      })),
-    [derived]);
+      .map((o) => {
+        const startMin = hmToMin(o.startTime);
+        const endMin = hmToMin(o.endTime)
+          ?? (startMin != null ? startMin + 60 : null);
+        // R5.23 — the event's spine row sits directly BEFORE the first
+        // block it overlaps (an event that overlaps nothing keeps its
+        // own start time as its place in the day).
+        let sortMin = startMin;
+        if (startMin != null) {
+          const first = daySegments.find(
+            (seg) => seg.start < endMin && seg.end > startMin);
+          if (first) sortMin = first.start - 0.5;
+        }
+        return {
+          kind: "event",
+          bucket:
+            "ev|" + o.instanceId + "|" + o.date + "|" + (o.startTime ?? ""),
+          startMin,
+          endMin,
+          sortMin,
+          occ: o,
+        };
+      }),
+    [derived, daySegments]);
 
   // Project blocks (the derived gaps) as timeline + navigator entries (batch
   // 2 — now with contents). Each carries its placed `items` (project_node /
   // ad_hoc deltas routed here by time, written by the scheduling engine's
   // reflow or a manual add). `startMin` sorts them into the agenda/spine.
   const projectEntries = useMemo(() => {
-    const projectsById = new Map(
-      (data.projects ?? []).map((p) => [p.id, p]));
-    // Running state threaded DOWN the day's Project blocks (F32): which
-    // project is featured in the block above (`carryProjectId`) and every step
-    // id already placed or auto-shown above (`seenStepIds`), so a "Continue"
-    // copies the project's NEXT step down — never a step already used above.
-    const seenStepIds = new Set();
-    let carryProjectId = null;
-    return (derived.projectSegments ?? []).map((seg, idx) => {
+    // (Round 5) The "continue project above" carry + the engine's auto-
+    // fill preview are both retired — placed steps alone drive a block,
+    // and the quick-add pulls the next ranked step on demand.
+    return (derived.projectSegments ?? []).map((seg) => {
       const bucket = "project:" + seg.startMin;
       const items = projectPlacements.byBucket.get(bucket) ?? [];
-      // Placed project steps (from the scheduling engine's reflow, or a
-      // manual add) drive the block — there is no live first-gap auto-pull
-      // preview (retired: the engine now fills every gap across the day).
-      const placedStepIds = new Set(
-        items.map((d) => d.source_ref?.step_id).filter(Boolean));
-      const placedProjId = items
-        .map((d) => d.source_ref?.project_id).filter(Boolean).at(-1) ?? null;
-
-      // "Continue project above" (F32): an empty later block can copy the
-      // carried project's next undone step down. Only offered when nothing is
-      // placed in this block and a project is being carried from above.
-      let continueFrom = null;
-      if (idx > 0 && items.length === 0 && carryProjectId) {
-        continueFrom = nextProjectStepFor(
-          projectsById.get(carryProjectId), seenStepIds);
-      }
-
-      // Advance the carry/seen state for the blocks below.
-      for (const sid of placedStepIds) seenStepIds.add(sid);
-      const blockProjId = placedProjId;
-      if (blockProjId) carryProjectId = blockProjId;
-
       const doneCount = items.filter((d) => d.state === "done").length;
       return {
         kind: "projectblock",
@@ -1013,13 +1110,12 @@ export default function Schedule({ data }) {
         // on the spine + strip (same language as the LoadSpine bars).
         planned: items.length > 0,
         items,
-        continueFrom,
         count: items.length,
         done: doneCount,
         allDone: items.length > 0 && doneCount === items.length,
       };
     });
-  }, [derived, projectPlacements, data, dateISO]);
+  }, [derived, projectPlacements]);
 
   // Overnight blocks as timeline + navigator entries (batch 3). Two per page:
   // the LEADING shift (last night → this morning, the first segment, continued)
@@ -1172,20 +1268,6 @@ export default function Schedule({ data }) {
     return { start, end: start + (blocksById.get(bucket)?.durationMinutes ?? 0) };
   };
 
-  const manDown = useMemo(() => {
-    const flat = [];
-    for (const b of blockRows) {
-      const w = blockWindow(b.bucket);
-      for (const row of b.rows) {
-        flat.push({
-          key: row.key, assignee: row.assignee ?? null,
-          blockStart: w.start, blockEnd: w.end,
-        });
-      }
-    }
-    return computeManDown(flat, windows);
-  }, [blockRows, windows, startMinByBucket, blocksById]);
-
   // done / total per block, across chores (completions) + ad-hoc (state).
   const counts = useMemo(() => blockRows.map((b) => {
     let done = 0;
@@ -1288,23 +1370,147 @@ export default function Schedule({ data }) {
       name: b.block?.name ?? "Anytime",
       block: b.block,
       startMin: b.startMin,
+      endMin: b.startMin != null
+        ? b.startMin + (b.block?.durationMinutes ?? 0) : null,
       count: counts[i].total,
       done: counts[i].done,
       allDone: counts[i].total > 0 && counts[i].done === counts[i].total,
-      hasManDown: b.rows.some((r) => manDown.has(r.key)),
       warn: w?.warn ?? [],
       due: w?.due ?? [],
     };
-  }), [blockRows, counts, manDown, farm]);
+  }), [blockRows, counts, farm]);
 
-  // The navigator segments = chore blocks + Project gaps + the Overnight wrap,
-  // in time order, so the spine/strip read as one tiled time axis (the leading
-  // overnight pins first, the trailing last — via startKey).
+  // ── Needs-cover UNITS (round 5) ────────────────────────────────────
+  // ONE unit per scheduled time off (reservation) that overlaps any of
+  // the day's blocks — however many blocks it crosses — plus one per
+  // EVENT that overlaps blocks (an event puts the farm a man down).
+  // Cover acceptance is a single write: the reservation's
+  // source_ref.cover, or an event-keyed override delta.
+  const coverUnits = useMemo(() => {
+    const segs = [];
+    for (const b of blockRows) {
+      if (!b.block) continue;
+      const w = blockWindow(b.bucket);
+      if (w.start == null) continue;
+      segs.push({
+        bucket: b.bucket, name: b.block.name, start: w.start, end: w.end,
+        items: b.rows.filter((r) => r.kind !== "note").map((r) =>
+          r.kind === "chore"
+            ? r.chore.title
+            : (r.commitment.source_ref?.title ?? "task")),
+      });
+    }
+    for (const e of projectEntries) {
+      segs.push({
+        bucket: e.bucket,
+        name: "Project · " + formatMinutesOfDay(e.startMin),
+        start: e.startMin, end: e.endMin,
+        items: e.items.map((d) => d.source_ref?.title ?? "task"),
+      });
+    }
+    segs.sort((a, b) => a.start - b.start);
+    const overlap = (seg, w) => seg.start <= w.endMin && seg.end > w.startMin;
+
+    const units = [];
+    for (const w of windows) {
+      const hit = segs.filter((seg) => overlap(seg, w));
+      if (!hit.length) continue;
+      const res = reservations.find((r) => r.id === w.id);
+      units.push({
+        kind: "timeoff", id: w.id, window: w,
+        allDay: w.kind === "day_off",
+        person: w.assignee,
+        coverer: ADMINS.find((a) => a !== w.assignee) ?? null,
+        blocks: hit,
+        itemCount: hit.reduce((n, seg) => n + seg.items.length, 0),
+        cover: res?.source_ref?.cover ?? null,
+      });
+    }
+    const eventCovers = deltas.filter((d) => d.source_type === "override"
+      && d.source_ref?.target?.kind === "event");
+    for (const e of eventEntries) {
+      if (e.startMin == null) continue;
+      const w = { startMin: e.startMin, endMin: e.endMin };
+      const hit = segs.filter((seg) => overlap(seg, w));
+      if (!hit.length) continue;
+      const cov = eventCovers.find((d) =>
+        d.source_ref?.target?.instance_id === e.occ.instanceId
+        && d.source_ref?.target?.date === e.occ.date);
+      units.push({
+        kind: "event", id: "evc|" + e.occ.instanceId + "|" + e.occ.date,
+        occ: e.occ, window: { ...w, kind: "event" },
+        allDay: false, person: null, coverer: null,
+        label: e.occ.instanceLabel,
+        blocks: hit,
+        itemCount: hit.reduce((n, seg) => n + seg.items.length, 0),
+        cover: cov?.source_ref?.cover ?? null,
+      });
+    }
+    return units;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockRows, projectEntries, windows, reservations, deltas,
+    eventEntries, startMinByBucket, blocksById]);
+
+  const uncoveredUnits = useMemo(
+    () => coverUnits.filter((u) => !u.cover), [coverUnits]);
+  const coveredUnits = useMemo(
+    () => coverUnits.filter((u) => u.cover), [coverUnits]);
+
+  // Per-bucket flags for the sidebars: conflict stripes/triangle on every
+  // block an UNCOVERED unit touches; the muted covered mark elsewhere.
+  const needsCoverBuckets = useMemo(() => new Set(
+    uncoveredUnits.flatMap((u) => u.blocks.map((b) => b.bucket))),
+  [uncoveredUnits]);
+  const coveredByBucket = useMemo(() => {
+    const m = new Map();
+    for (const u of coveredUnits) {
+      for (const b of u.blocks) {
+        const list = m.get(b.bucket) ?? [];
+        list.push({
+          by: u.cover?.by ?? null,
+          at: u.cover?.at ?? null,
+          label: u.kind === "event"
+            ? (u.label ?? "Event")
+            : `${u.person} — ${u.allDay ? "all day"
+              : formatMinutesOfDay(u.window.startMin) + "–"
+                + formatMinutesOfDay(u.window.endMin)}`,
+        });
+        m.set(b.bucket, list);
+      }
+    }
+    return m;
+  }, [coveredUnits]);
+
+  // Day-load bars overlapped by an uncovered unit — LoadSpine stripes them
+  // in the warn language until cover is accepted (round 5).
+  const conflictBarIds = useMemo(() => {
+    const out = new Set();
+    for (const b of farm.spine) {
+      const sMin = b.window?.startMin;
+      const eMin = b.window?.endMin;
+      if (sMin == null || eMin == null) continue;
+      if (uncoveredUnits.some(
+        (u) => sMin <= u.window.endMin && eMin > u.window.startMin)) {
+        out.add(b.blockId);
+      }
+    }
+    return out;
+  }, [farm, uncoveredUnits]);
+
+  // The navigator segments = chore blocks + Project gaps + the Overnight wrap
+  // + events, in time order (events pin before their first overlapped
+  // block), each carrying its needs-cover / covered flags.
   const navSegments = useMemo(
     () => [...spineBlocks, ...projectEntries, ...overnightEntries,
       ...eventEntries]
+      .map((e) => ({
+        ...e,
+        needsCover: needsCoverBuckets.has(e.bucket),
+        covered: coveredByBucket.get(e.bucket) ?? null,
+      }))
       .sort((a, b) => startKey(a) - startKey(b)),
-    [spineBlocks, projectEntries, overnightEntries, eventEntries]);
+    [spineBlocks, projectEntries, overnightEntries, eventEntries,
+      needsCoverBuckets, coveredByBucket]);
 
   // Day-load counters (42.3 round 3): CHORES (chore obligations only — a
   // one-off task or a placed project step isn't a chore), BLOCKS as the
@@ -1324,20 +1530,70 @@ export default function Schedule({ data }) {
       chores,
       blocks: navSegments.length,
       projects: projectIds.size,
+      events: eventEntries.length,
     };
-  }, [blockRows, projectEntries, navSegments]);
+  }, [blockRows, projectEntries, navSegments, eventEntries]);
 
   // The one day-load count line, shared verbatim by the desktop header and
   // the phone strip header (they must never disagree). Pluralized per word.
   const nText = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  // The stat row's conflict badge (round 5): a warn triangle + ×N with
+  // the hover-me cue; the tip names who is off (or which event) and when.
+  const unitTip = (u) => u.kind === "event"
+    ? `${u.label} — ${formatMinutesOfDay(u.window.startMin)}–`
+      + formatMinutesOfDay(u.window.endMin)
+    : `${u.person} — ${u.allDay ? "all day"
+      : formatMinutesOfDay(u.window.startMin) + "–"
+        + formatMinutesOfDay(u.window.endMin)}`;
   const dayLoadSummary = (
     <span className="flex items-center gap-1">
       {nText(dayLoadCounts.chores, "chore")}
       {" · "}{nText(dayLoadCounts.blocks, "block")}
       {dayLoadCounts.projects > 0
         ? ` · ${nText(dayLoadCounts.projects, "project")}` : ""}
+      {dayLoadCounts.events > 0
+        ? ` · ${nText(dayLoadCounts.events, "event")}` : ""}
       {(farm.warming.warn.length + farm.warming.due.length) > 0 && " · "}
-      <WarmingBadge warn={farm.warming.warn} due={farm.warming.due} />
+      <WarmingBadge warn={farm.warming.warn} due={farm.warming.due} cue />
+      {uncoveredUnits.length > 0 && (
+        <>
+          {" · "}
+          <Tooltip
+            tip={uncoveredUnits.map((u, i) => (
+              <span key={i} className="block">{unitTip(u)}</span>
+            ))}
+            className="cursor-pointer"
+          >
+            <span className="flex flex-col items-center gap-[2px]">
+              <span className="inline-flex items-center gap-0.5 text-warn">
+                <AlertTriangle size={14} />
+                {uncoveredUnits.length > 1 && (
+                  <span className="font-ui text-[10px] font-semibold leading-none">
+                    ×{uncoveredUnits.length}
+                  </span>
+                )}
+              </span>
+              <span className="w-full border-b border-dotted border-faint" />
+            </span>
+          </Tooltip>
+        </>
+      )}
+      {coveredUnits.length > 0 && (
+        <>
+          {" · "}
+          <CoveredBadge
+            size={14}
+            cue
+            tip={coveredUnits.map((u, i) => (
+              <span key={i} className="block">
+                <b className="text-fg font-semibold">{unitTip(u)}</b>
+                {u.cover?.by ? ` — ${u.cover.by} covers` : " — covered"}
+                {u.cover?.at ? ` · ${fmtStamp(u.cover.at)}` : ""}
+              </span>
+            ))}
+          />
+        </>
+      )}
     </span>
   );
 
@@ -1797,8 +2053,20 @@ export default function Schedule({ data }) {
     }
   };
 
-  const applyEdit = (change) => {
+  const applyEdit = (changeIn) => {
     if (!editing) return;
+    let change = { ...changeIn };
+    // A project-gap target (R5.17) is time-routed: block_id clears and
+    // the gap's start rides clockTime, so segmentForStart lands the row
+    // in the chosen gap.
+    let toLabel = null;
+    if (typeof change.toBlockId === "string"
+      && change.toBlockId.startsWith("project:")) {
+      const t = oneOffTargets.find((x) => x.bucket === change.toBlockId);
+      toLabel = t?.label ?? "a project block";
+      change.toBlockId = null;
+      if (t?.clockTime) change.clockTime = t.clockTime;
+    }
     // History copy (round 4): a move reads "Rescheduled from X to Y" —
     // never "Moved"/"Split". X is what the user left (the source block, or
     // the previous set time), Y where it landed; times are 12-hour.
@@ -1806,7 +2074,7 @@ export default function Schedule({ data }) {
     const newTime = change.clockTime ? fmtClock12(change.clockTime) : null;
     if ("toBlockId" in change) {
       parts.push(`Rescheduled from ${editing.fromBlockName} to `
-        + bucketName(change.toBlockId)
+        + (toLabel ?? bucketName(change.toBlockId))
         + (newTime ? ` at ${newTime}` : ""));
     } else if ("clockTime" in change && change.clockTime) {
       const from = editing.currentClockTime
@@ -1853,10 +2121,9 @@ export default function Schedule({ data }) {
     writeRow(b.rows[from], b.bucket, { order }, entry);
   };
 
-  // ── Non-work time (S7) + man-down cover (S8) ───────────────────────
+  // ── Non-work time (S7) ─────────────────────────────────────────────
   const [addingTimeOff, setAddingTimeOff] = useState(false);
   const [bufferFor, setBufferFor] = useState(null);
-  const [covering, setCovering] = useState(null);
 
   // ── Edit an event's time from the schedule (S67) ───────────────────
   // The series mutators encode the this/following/all writes; `data.events`
@@ -1916,52 +2183,29 @@ export default function Schedule({ data }) {
   const rowLabel = (row) => row.kind === "chore"
     ? row.chore.title : (row.commitment.source_ref?.title ?? "task");
 
-  // The prose reason a row's assignee can't do it — "James is off-site until
-  // 1:00." Shared by the cover sheet and the needs-cover card.
-  const coverReason = (row) => {
-    const res = manDown.get(row.key);
-    if (!res) return null;
-    if (res.kind === "day_off") return `${row.assignee} is off for the day.`;
-    const until = formatMinutesOfDay(res.endMin);
-    const where = res.kind === "break" ? "on a break"
-      : res.kind === "appointment" ? "out" : "off-site";
-    return `${row.assignee} is ${where} until ${until}.`;
-  };
-
-  const openCover = (row, b) => {
-    const w = blockWindow(b.bucket);
-    const reason = coverReason(row);
-    setCovering({
-      row, bucket: b.bucket,
-      label: rowLabel(row),
-      placeLabel: row.placeLabel ?? null,
-      blockName: b.block?.name ?? "Anytime",
-      timeLabel: w.start != null ? formatMinutesOfDay(w.start) : null,
-      assignee: row.assignee,
-      reason,
-      cover: pickCoverPerson(row.assignee, windows, w.start, w.end),
-    });
-  };
-
-  const doCover = () => {
-    const who = covering?.cover?.person;
-    if (!who) return;
-    const entry = {
-      at: new Date().toISOString(), by: email ?? null,
-      summary: `Covered by ${who}`,
-    };
-    writeRow(covering.row, covering.bucket,
-      { assignee: who, cover: { by: who, ack: false } }, entry);
-    setCovering(null);
-  };
-
-  const acknowledgeCover = (row, bucket) => {
-    const by = row.edit?.cover?.by;
-    const entry = {
-      at: new Date().toISOString(), by: email ?? null,
-      summary: `${by} acknowledged cover`,
-    };
-    writeRow(row, bucket, { cover: { by, ack: true } }, entry);
+  // Accept a needs-cover unit (round 5) — ONE write resolves every block
+  // the time off / event overlaps. The card's button is the confirmation.
+  const acceptUnitCover = (u) => {
+    const at = new Date().toISOString();
+    const me = email
+      ? (() => {
+        const n = String(email).split("@")[0].split("+")[0];
+        return n.charAt(0).toUpperCase() + n.slice(1);
+      })()
+      : null;
+    if (u.kind === "event") {
+      const entry = {
+        at, by: email ?? null,
+        summary: `Cover accepted for ${u.label}`,
+      };
+      addEventCover(u.occ, { by: me, at }, entry);
+    } else {
+      const entry = {
+        at, by: email ?? null,
+        summary: `${u.coverer} covers ${u.person}'s time off`,
+      };
+      acceptCover(u.id, { by: u.coverer, at }, entry);
+    }
   };
 
   // Carry-over banner dismissal persists per day on this device (F19) — once
@@ -2033,6 +2277,20 @@ export default function Schedule({ data }) {
   // entries). They never reach man-down / double-book / squeeze.
   const todayConflicts = useMemo(() => {
     const out = [];
+    // Round 5 — needs-cover counts as UNITS: one conflict per uncovered
+    // time off / event, however many blocks it crosses.
+    for (const u of uncoveredUnits) {
+      out.push({
+        type: "cover", scope: "today",
+        bucket: u.blocks[0]?.bucket ?? null, iso: dateISO,
+        label: u.kind === "event"
+          ? `${u.label} needs cover`
+          : `${u.person} off — `
+            + `${u.blocks.length} block${u.blocks.length === 1 ? "" : "s"}`
+            + " need cover",
+        detail: unitTip(u),
+      });
+    }
     const flat = [];
     for (const b of blockRows) {
       const w = blockWindow(b.bucket);
@@ -2041,16 +2299,6 @@ export default function Schedule({ data }) {
           key: row.key, label: rowLabel(row), assignee: row.assignee ?? null,
           blockStart: w.start, blockEnd: w.end, bucket: b.bucket,
         });
-        const hit = manDown.get(row.key);
-        if (hit) {
-          out.push({
-            type: "manDown", scope: "today", bucket: b.bucket,
-            iso: dateISO, assignee: row.assignee,
-            label: `${rowLabel(row)} needs cover`,
-            detail: hit.label
-              ? `${row.assignee} — ${hit.label}` : `${row.assignee} unavailable`,
-          });
-        }
       }
     }
     for (const c of doubleBookConflicts(flat)) {
@@ -2069,7 +2317,7 @@ export default function Schedule({ data }) {
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockRows, manDown, dateISO, activeBufferWindows]);
+  }, [blockRows, uncoveredUnits, dateISO, activeBufferWindows]);
 
   // Buffers squeezed today → an inline warn in their panel (S61).
   const squeezedBufferIds = useMemo(
@@ -2150,6 +2398,25 @@ export default function Schedule({ data }) {
     return m;
   }, [horizon, today, data, ruleOpts, choreCtx, completions,
     todayConflicts, dateISO]);
+
+  // Per-day COVERED time offs for the week pane (round 5) — the muted
+  // circle-alert beside/instead of the conflict triangle.
+  const weekCoveredByISO = useMemo(() => {
+    const m = new Map();
+    if (horizon) {
+      for (const d of weekDays(today)) {
+        const iso = ymdLocal(d);
+        const units = dayCoveredUnits({
+          date: d, blocks,
+          reservations: horizon.res.get(iso) ?? [],
+        });
+        if (units.length) {
+          m.set(iso, units.map((u) => ({ by: u.by, label: u.label })));
+        }
+      }
+    }
+    return m;
+  }, [horizon, today, blocks]);
 
   // Per-day warming (F24/F25) for the week pane — a ClockAlert marker on every
   // day that has a warn/due chore, mirroring `weekConflictsByISO`. Reuses the
@@ -2256,8 +2523,12 @@ export default function Schedule({ data }) {
 
   const loading = blocksLoading || sitesLoading || completions.loading;
 
+  // Full month name (round 5) — the subheader date never abbreviates.
   const dateLabel = today.toLocaleDateString("en-US", {
-    weekday: "long", month: "short", day: "numeric",
+    weekday: "long", month: "long", day: "numeric",
+  });
+  const dateShort = today.toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
   });
 
   // The center column's h2 tracks the zoom: the day, the week's range, or
@@ -2299,6 +2570,15 @@ export default function Schedule({ data }) {
   // target today, and the entry doesn't render.
   const addStepTarget = focusEntry?.kind === "projectblock"
     ? focusEntry : (projectEntries[0] ?? null);
+  // The quick-add's payload (round 5): the next highest-priority ranked
+  // step not already placed on this day. Both the "+ Add" menu's project
+  // entry and the project block's in-card button grab exactly this.
+  const placedStepIds = useMemo(() => new Set(
+    deltas.filter((d) => d.source_type === "project_node")
+      .map((d) => d.source_ref?.step_id).filter(Boolean)), [deltas]);
+  const nextStep = useMemo(
+    () => nextRankedStep(data.projects, placedStepIds),
+    [data, placedStepIds]);
   const bufferTarget = (() => {
     if (focusEntry?.kind === "event") {
       const occ = focusEntry.occ;
@@ -2321,50 +2601,6 @@ export default function Schedule({ data }) {
       startMin: w.start, endMin: w.end,
     };
   })();
-
-  // Man-down leak + awaiting-ack lines for a block entry — shared by the
-  // overview rows and the open detail. `pad` sets the left indent.
-  const blockAlerts = (b, pad) => (
-    <>
-      {b.rows.filter((r) => manDown.has(r.key)).map((r) => {
-        const coverer = ADMINS.find((a) => a !== r.assignee);
-        return (
-          <div key={"leak|" + r.key} className={"pr-4 pb-3 -mt-1 " + pad}>
-            {/* The one promoted needs-cover surface (AttentionCard) — same
-                man-down row, reason, and cover action; flush amber, Lora work
-                line, solid-amber button (C6). */}
-            <AttentionCard
-              kind="cover"
-              work={rowLabel(r)}
-              where={r.placeLabel ?? null}
-              reason={coverReason(r)}
-              action={`${coverer} covers — I've got it`}
-              onAct={() => openCover(r, b)}
-              note={`The acknowledgment is the record — the hole closes green `
-                + `in ${coverer}'s lane.`}
-            />
-          </div>
-        );
-      })}
-      {b.rows.filter((r) => r.edit?.cover && !r.edit.cover.ack
-        && !manDown.has(r.key)).map((r) => (
-        <div key={"ack|" + r.key}
-          className={"flex items-center gap-2 pr-4 pb-3 -mt-1 " + pad}>
-          <Check size={13} className="shrink-0 text-resolved" />
-          <span className="flex-1 text-[12px] text-dim">
-            {rowLabel(r)} covered by {r.edit.cover.by} · awaiting ack
-          </span>
-          <button
-            type="button"
-            onClick={() => acknowledgeCover(r, b.bucket)}
-            className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-accent border border-line px-1.5 py-0.5 hover:border-accent cursor-pointer"
-          >
-            Acknowledge
-          </button>
-        </div>
-      ))}
-    </>
-  );
 
   return (
     <div className="max-w-2xl lg:max-w-[1120px] mx-auto">
@@ -2453,7 +2689,7 @@ export default function Schedule({ data }) {
       {/* Chromeless day load (round 4): bg-bg, no horizontal padding (the
           bars stretch the column's full width), separated from what
           follows by the page's standard hairline divider. */}
-      <div className="hidden lg:block bg-bg mb-4 py-4 border-b border-line">
+      <div className="hidden lg:block bg-bg py-4 border-b border-line">
         <div className="flex items-center justify-between mb-2.5">
           <span className="font-ui text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
             Day load
@@ -2477,8 +2713,35 @@ export default function Schedule({ data }) {
               && nowMin < (b.endMin ?? b.startMin))?.blockId ?? nowBucket)
             : null}
           nowEdge={nowEdge}
+          conflictIds={conflictBarIds}
+          events={eventEntries
+            .filter((e) => e.startMin != null)
+            .map((e) => ({
+              id: e.bucket,
+              label: e.occ.instanceLabel,
+              startMin: e.startMin,
+              endMin: e.endMin,
+              startLabel: fmtClock12(e.occ.startTime),
+              endLabel: fmtClock12(e.occ.endTime),
+            }))}
         />
       </div>
+      {/* Phone day-strip — the navigable time axis (lg:hidden), ABOVE
+          the confirm/+ Add row so the phone order matches the desktop
+          (round 5). */}
+      {!loading && timeline.length > 0 && (
+        <DayStrip
+          key={dateISO}
+          blocks={navSegments}
+          focus={focus}
+          nowBucket={nowBucket}
+          nowEdge={nowEdge}
+          summary={dayLoadSummary}
+          onPick={pickBlock}
+          onWholeDay={showOverview}
+        />
+      )}
+
       {/* Source-changed-after-confirm strip — informs, never auto-applies. A
           passive AlertStrip leading with the count; the per-item names sit
           behind an on-demand "Details" toggle, not an inline list (F28).
@@ -2513,19 +2776,19 @@ export default function Schedule({ data }) {
         );
       })()}
 
-      <div className="px-1 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-        {/* Round 4 — Confirm is ONE row, the same box as the adjacent
-            + Add button (equal height); the counts sub-line is gone (the
-            day-load summary carries those numbers). Confirmed occupies
-            the SAME box and is a live control: tap to revert to draft. */}
+      <div className="px-1 mb-3 flex items-center justify-between gap-3">
+        {/* ONE toolbar for both breakpoints (round 5): the desktop now
+            matches the mobile pattern — Confirm (primary) at the left,
+            the consolidated "+ Add" menu at the right, space-between.
+            Conflicts are a STATUS chip that renders only when real
+            (the "0 conflicts" button is gone). */}
         {confirmedDoc ? (
-          <Tooltip tip="Tap to revert this day to a draft"
-            className="flex-1 sm:flex-none">
+          <Tooltip tip="Tap to revert this day to a draft">
             <button
               type="button"
               onClick={unconfirmDay}
               disabled={confirming}
-              className="w-full text-[12px] font-medium px-3 py-1.5 border border-resolved text-resolved inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:bg-row-active disabled:opacity-50"
+              className="text-[12px] font-medium px-3 py-1.5 border border-resolved text-resolved inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:bg-row-active disabled:opacity-50"
             >
               <Check size={13} strokeWidth={3} /> Confirmed
               {fmtStamp(confirmedDoc.confirmed_at) && (
@@ -2540,18 +2803,24 @@ export default function Schedule({ data }) {
             type="button"
             onClick={confirmDay}
             disabled={confirming || loading || timeline.length === 0}
-            className="flex-1 sm:flex-none text-[12px] font-medium px-3 py-1.5 bg-accent text-on-accent border border-accent disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+            className="text-[12px] font-medium px-3 py-1.5 bg-accent text-on-accent border border-accent disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           >
             {viewingToday ? "Confirm today" : `Confirm ${dateLabel}`}
           </button>
         )}
+        <div className="flex items-center gap-2">
         <OutboxIndicator />
-        {/* PHONE toolbar (42.3 round 3): the standard mobile shape —
-            ONE primary action (Confirm, above) + ONE consolidated
-            "+ Add" menu holding the secondary adds (chore / task / time
-            off). Conflicts are a STATUS, not an action: on the phone the
-            zero state disappears and a warn chip shows only when real. */}
-        <div className="sm:hidden ml-auto relative">
+        {todayConflicts.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowConflicts(true)}
+            className="text-[12px] font-medium text-warn inline-flex items-center gap-1.5 px-2 py-1 border border-warn/40 hover:bg-row-hover cursor-pointer"
+          >
+            <AlertTriangle size={14} />
+            {`${todayConflicts.length} conflict${todayConflicts.length === 1 ? "" : "s"}`}
+          </button>
+        )}
+        <div className="relative">
           {/* Hover/press must actually READ (round 4): row-hover is a 9%
               tint — imperceptible on the white menu surface — so both the
               button and the items step straight to row-active (16%), and
@@ -2585,12 +2854,15 @@ export default function Schedule({ data }) {
                     act: () => setPicking(true) },
                   { label: "Add task", icon: Plus,
                     act: () => setAddingTask(true) },
-                  // Round 4 — the context-anchored adds live here now
-                  // (their in-card buttons are gone); hidden when the
-                  // day offers no eligible anchor.
-                  ...(addStepTarget ? [{
+                  // Round 5 — "Add project step" quick-adds the NEXT
+                  // highest-priority ranked step into the anchored gap
+                  // (the open project block, else the day's first);
+                  // hidden when there's no gap or nothing queued.
+                  ...(addStepTarget && nextStep ? [{
                     label: "Add project step", icon: Plus,
-                    act: () => setProjectAddFor(addStepTarget) }] : []),
+                    act: () => addProject(
+                      nextStep, null, null,
+                      minToHM(addStepTarget.startMin)) }] : []),
                   ...(bufferTarget ? [{
                     label: "Add buffer", icon: Timer,
                     act: () => setBufferFor(bufferTarget) }] : []),
@@ -2610,72 +2882,6 @@ export default function Schedule({ data }) {
             </>
           )}
         </div>
-        {todayConflicts.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setShowConflicts(true)}
-            className="sm:hidden w-full text-[12px] font-medium text-warn inline-flex items-center gap-1.5 px-2 py-1 border border-warn/40 hover:bg-row-hover cursor-pointer"
-          >
-            <AlertTriangle size={14} />
-            {`${todayConflicts.length} conflict${todayConflicts.length === 1 ? "" : "s"}`}
-          </button>
-        )}
-        {/* DESKTOP toolbar — the shipped F25/F58 row, unchanged. flex-wrap:
-            four nowrap actions can exceed the center column on narrow
-            desktops; they flow onto extra lines instead of sliding under
-            the This Week aside. */}
-        <div className="hidden sm:flex sm:ml-auto flex-wrap items-center gap-x-3 gap-y-1">
-          <button
-            type="button"
-            onClick={() => setShowConflicts(true)}
-            className={"text-[12px] font-medium whitespace-nowrap inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer "
-              + (todayConflicts.length > 0 ? "text-warn" : "text-faint")}
-          >
-            <AlertTriangle size={14} />
-            {`${todayConflicts.length} conflict${todayConflicts.length === 1 ? "" : "s"}`}
-          </button>
-          <button
-            type="button"
-            onClick={() => setAddingTimeOff(true)}
-            className="text-[12px] font-medium whitespace-nowrap text-dim inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
-          >
-            <Ban size={14} /> Time off
-          </button>
-          <button
-            type="button"
-            onClick={() => setPicking(true)}
-            className="text-[12px] font-medium whitespace-nowrap text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
-          >
-            <Plus size={14} /> Add chore
-          </button>
-          <button
-            type="button"
-            onClick={() => setAddingTask(true)}
-            className="text-[12px] font-medium whitespace-nowrap text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
-          >
-            <Plus size={14} /> Add task
-          </button>
-          {/* Round 4 — the context-anchored adds, mirroring the phone
-              menu (their in-card buttons are gone). Hidden when the day
-              offers no eligible anchor. */}
-          {addStepTarget && (
-            <button
-              type="button"
-              onClick={() => setProjectAddFor(addStepTarget)}
-              className="text-[12px] font-medium whitespace-nowrap text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
-            >
-              <Plus size={14} /> Add step
-            </button>
-          )}
-          {bufferTarget && (
-            <button
-              type="button"
-              onClick={() => setBufferFor(bufferTarget)}
-              className="text-[12px] font-medium whitespace-nowrap text-accent inline-flex items-center gap-1 px-2 py-1 border border-transparent hover:bg-row-hover cursor-pointer"
-            >
-              <Timer size={14} /> Add buffer
-            </button>
-          )}
         </div>
       </div>
 
@@ -2699,23 +2905,6 @@ export default function Schedule({ data }) {
           }}
           onClose={() => setAddingTask(false)}
         />
-      )}
-
-      {/* Stale projects ranking (F59/F60) — the reflow engine's staleness,
-          surfaced where it's felt. Gated on live projects having loaded so
-          a transient empty slice can't invite a destructive sync. */}
-      {viewMode === "day" && viewingToday && projectReflow.stale
-        && (data.projects?.length ?? 0) > 0 && (
-        <AlertStrip
-          className="mb-3"
-          tone="info"
-          icon={CalendarSync}
-          action="Sync now"
-          onAct={() => projectReflow.syncNow()}
-        >
-          Today's project blocks don't reflect the projects ranking yet.
-          {autoReflow ? " They'll auto-sync shortly." : " Auto-sync is off."}
-        </AlertStrip>
       )}
 
       {/* Yesterday's unfinished musts (S12) — only when building today. A
@@ -2779,19 +2968,18 @@ export default function Schedule({ data }) {
         </ul>
       )}
 
-      {/* Phone day-strip — the navigable time axis (lg:hidden). */}
-      {!loading && timeline.length > 0 && (
-        <DayStrip
-          key={dateISO}
-          blocks={navSegments}
-          focus={focus}
-          nowBucket={nowBucket}
-          nowEdge={nowEdge}
-          summary={dayLoadSummary}
-          onPick={pickBlock}
-          onWholeDay={showOverview}
+      {/* Needs-cover cards (round 5): ONE per uncovered time off / event,
+          above the block header row, below the confirm/+ Add row. The
+          button is the single confirmation — accepting covers EVERY
+          overlapped block at once. */}
+      {viewMode === "day" && uncoveredUnits.map((u) => (
+        <NeedsCoverCard
+          key={u.id}
+          unit={u}
+          dateShort={dateShort}
+          onCover={() => acceptUnitCover(u)}
         />
-      )}
+      ))}
 
       {loading ? (
         <div className="px-4 py-10 text-center text-dim text-sm">Loading the day…</div>
@@ -2963,7 +3151,6 @@ export default function Schedule({ data }) {
                   </span>
                   <ChevronRight size={16} className="shrink-0 text-faint" />
                 </button>
-                {blockAlerts(b, "pl-[18px]")}
               </li>
             );
           })}
@@ -3092,41 +3279,52 @@ export default function Schedule({ data }) {
                 </div>
                 {b.items.length > 0 && (
                   <ul>
-                    {b.items.map((d) => (
+                    {b.items.map((d, di) => (
                       <AdHocRow
                         key={d.id}
                         commitment={d}
                         onToggle={toggleItem}
                         onRemove={removeDelta}
+                        onEdit={() => openEdit({
+                          kind: d.source_type === "project_node"
+                            ? "project" : "adhoc",
+                          key: d.id,
+                          commitment: d,
+                          edit: {
+                            clockTime: d.clock_time, history: d.history,
+                          },
+                        }, {
+                          bucket: b.bucket,
+                          block: {
+                            name: "Project · "
+                              + formatMinutesOfDay(b.startMin),
+                          },
+                        }, di)}
                         edit={{ history: d.history }}
                       />
                     ))}
                   </ul>
                 )}
-                {b.items.length === 0 ? (
-                  b.continueFrom ? (
-                    /* Copy the project carried from the block above down into
-                       this gap — its next undone step (F32). One quick tap to
-                       keep working the same project across the day. */
-                    <button
-                      type="button"
-                      onClick={() => addProject(
-                        b.continueFrom, null, null, minToHM(b.startMin))}
-                      className="w-full flex items-center gap-2 px-4 py-3 border-b border-line text-[13px] font-medium text-project hover:bg-row-hover cursor-pointer"
-                    >
-                      <CornerDownRight size={15} className="shrink-0" />
-                      <span className="truncate">
-                        Continue {b.continueFrom.projectTitle}
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="px-4 py-3 border-b border-line text-[13px] text-faint italic">
-                      free — nothing planned
-                    </div>
-                  )
-                ) : null}
-                {/* "Add a project step" moved to the toolbar "+ Add"
-                    menu (round 4) — the block carries no add chrome. */}
+                {b.items.length === 0 && !nextStep && (
+                  <div className="px-4 py-3 border-b border-line text-[13px] text-faint italic">
+                    free — nothing planned
+                  </div>
+                )}
+                {/* R5.16 — the quick-add: one tap places the next
+                    highest-priority ranked step into THIS gap. */}
+                {nextStep && (
+                  <button
+                    type="button"
+                    onClick={() => addProject(
+                      nextStep, null, null, minToHM(b.startMin))}
+                    className="w-full flex items-center gap-2 px-4 py-3 border-b border-line text-[13px] font-medium text-project hover:bg-row-hover cursor-pointer"
+                  >
+                    <CornerDownRight size={15} className="shrink-0" />
+                    <span className="truncate">
+                      Add next task — {nextStep.title}
+                    </span>
+                  </button>
+                )}
               </>
             );
           })()}
@@ -3172,7 +3370,6 @@ export default function Schedule({ data }) {
                     <ChevronRight size={15} />
                   </button>
                 )}
-                {blockAlerts(b, "pl-4")}
                 {b.block && b.startMin != null && (() => {
                   const w = blockWindow(b.bucket);
                   const bufs = buffersForActivity("block", b.bucket, {
@@ -3239,8 +3436,29 @@ export default function Schedule({ data }) {
           sidebar wraps it — the F16 fixed 180px gave way to this rule. */}
       {viewMode === "day" && (
         <aside className="hidden lg:block shrink-0 border-l border-line py-5 px-3">
-          <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.16em] text-faint mb-4">
-            This week
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.16em] text-faint">
+              This week
+            </div>
+            {/* R5.12 — advance the viewed week without leaving the day. */}
+            <div className="flex items-center gap-1">
+              {[[-7, "Previous week", ChevronLeft],
+                [7, "Next week", ChevronRight]].map(([d, label, Icon]) => (
+                <button
+                  key={label}
+                  type="button"
+                  aria-label={label}
+                  onClick={() => {
+                    const t = new Date(today);
+                    t.setDate(t.getDate() + d);
+                    goToDay(t);
+                  }}
+                  className="p-0.5 border border-line text-dim hover:bg-row-hover hover:text-fg cursor-pointer"
+                >
+                  <Icon size={13} />
+                </button>
+              ))}
+            </div>
           </div>
           <WeekStrip
             week={farm.week}
@@ -3251,6 +3469,7 @@ export default function Schedule({ data }) {
             conflictsByISO={weekConflictsByISO}
             warmingByISO={weekWarmingByISO}
             overnightByISO={weekOvernightISOs}
+            coveredByISO={weekCoveredByISO}
           />
         </aside>
       )}
@@ -3272,27 +3491,6 @@ export default function Schedule({ data }) {
         />
       )}
 
-      {projectAddFor && (
-        /* Add into a Project block — same search, but every add carries the
-           segment's start time so segmentForStart routes it back here. */
-        <AddToScheduleSearch
-          chores={choreDefs}
-          choreCtx={choreCtx}
-          projectNodes={projectNodes}
-          scope="project"
-          anchorDate={today}
-          todayISO={realTodayISO}
-          ymd={ymdLocal}
-          onAddChore={addChoreAt}
-          onAddProject={(node, dates) =>
-            addProject(node, null, dates, minToHM(projectAddFor.startMin))}
-          onAddTask={(title, dates) =>
-            addTask(title, null, null, dates, minToHM(projectAddFor.startMin))}
-          onAddNote={(text, dates) => addNote(text, null, dates)}
-          onClose={() => setProjectAddFor(null)}
-        />
-      )}
-
       {editing && (
         <ScheduleEditSheet
           label={editing.label}
@@ -3303,6 +3501,9 @@ export default function Schedule({ data }) {
           canMoveDay={editing.canMoveDay}
           committed={!!confirmedDoc}
           blocks={blocks}
+          gapTargets={editing.row.kind === "chore"
+            ? []
+            : oneOffTargets.filter((t) => t.clockTime)}
           onApply={applyEdit}
           onClose={() => setEditing(null)}
         />
@@ -3356,20 +3557,6 @@ export default function Schedule({ data }) {
             setEventScope(null);
           }}
           onCancel={() => setEventScope(null)}
-        />
-      )}
-
-      {covering && (
-        <CoverSheet
-          label={covering.label}
-          placeLabel={covering.placeLabel}
-          blockName={covering.blockName}
-          timeLabel={covering.timeLabel}
-          assignee={covering.assignee}
-          reason={covering.reason}
-          cover={covering.cover}
-          onCover={doCover}
-          onClose={() => setCovering(null)}
         />
       )}
 

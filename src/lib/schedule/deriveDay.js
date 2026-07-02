@@ -84,7 +84,14 @@ export function getRollupAssignee(rollup, dayDate, ruleOpts) {
 // derived day must be skipped, never throw (the derive-and-fold merge is
 // the feature's richest bug surface; S6 fills `foldDeltas` accordingly).
 export function deriveDay({ data, dayDate, dayUTC, dayISO, ruleOpts, deltas = [] }) {
-  const events = getEventOccurrences(data.events, dayUTC, dayUTC, null);
+  // Round 5 BUG FIX: the zero-width range (dayUTC..dayUTC) only matched
+  // occurrences at exactly midnight — an event with a real start time
+  // (rrule dtstart carrying 13:15) sits after the range end and never
+  // reached the day page. Expand across the whole day, then keep the
+  // day's own occurrences.
+  const dayEnd = new Date(dayUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
+  const events = getEventOccurrences(data.events, dayUTC, dayEnd, null)
+    .filter((o) => o.date === dayISO);
   const choreRollups = rollupChoresForDay(data, dayDate, ruleOpts);
   const projects = (data.projects ?? []).filter((p) => isActiveProject(p, dayISO));
   // Project blocks (the gaps) trim against the same availability the rest of
