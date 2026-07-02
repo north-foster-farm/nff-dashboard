@@ -4465,6 +4465,35 @@ color; clock-arrow overnight icons). Build refs in
     here" traceability go to the availability design bracket (F1,
     F6, F8); WeekStrip symbol cell can crowd past 3 symbols (visual
     check on a busy week).
+- **42.8 — live HTML doc attachments. `v0.10.85-alpha` (2026-07-02);
+  migration 0045 (applied to prod, backed up first).** An attached
+  `.html` file (e.g. the pricing worksheet) opens as a WORKING page
+  inside the app, its localStorage persisted to the database and
+  synced between editors — James's sneak-in feature request.
+  - Data (0045): `attachment_doc_data` (per-attachment, per-KEY
+    key/value rows — two editors on different keys can never clobber
+    each other) + `attachment_doc_locks` (advisory write lock) —
+    admin RLS, realtime; `project_attachments.phase_id` added so
+    attachments can hang off phases too (schema-ready; phase UI
+    later).
+  - Engine (`lib/docdata/liveDoc.js`, TDD, 16 tests):
+    `createStorageShim` (localStorage semantics over our store, the
+    same function serialized into the injected runtime),
+    `injectShim` (shim script immediately after `<head>`, seed JSON
+    `<`-escaped so a value can't close the tag), `lockState`
+    (unlocked/mine/theirs/stale; own stale lock stays mine; 90s
+    cutoff).
+  - App: `useDocData` (rows + lock, realtime-filtered to the
+    attachment, optimistic writes, claim/heartbeat/release);
+    `LiveDocViewer` (sandboxed iframe — allow-scripts allow-forms,
+    opaque origin; opens read-only, Edit claims the lock + reloads
+    writable, 30s heartbeat, release on Done/close; realtime saves
+    diff into the open page as storage events); AttachmentsBlock
+    routes `.html` rows to the viewer (accent Globe icon).
+  - Docs: Live HTML doc pattern + component entry, both faces.
+  - Known follow-ups: phase-level attachment UI; a
+    same-key-conflict banner if simultaneous same-key editing ever
+    bites in practice.
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.

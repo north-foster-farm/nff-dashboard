@@ -434,6 +434,48 @@
     endpoint low-risk — it can only enqueue, never corrupt.
   </p>
 
+  <!-- LIVE HTML DOC -->
+  <h2 class="ds-h2" id="livedoc">Live HTML doc (attachments)</h2>
+  <p>
+    An attached <span class="mono">.html</span> file opens as a
+    <b>working page</b>, not a download.
+    <span class="mono">LiveDocViewer</span> renders it full-screen in a
+    sandboxed iframe (<span class="mono">allow-scripts allow-forms</span> —
+    opaque origin, so the page can't reach the app session or real
+    storage) and injects a shim that swaps the page's
+    <span class="mono">localStorage</span> for a per-attachment key/value
+    store (<span class="mono">attachment_doc_data</span>). Per-KEY rows
+    mean two people editing different keys never clobber each other;
+    edits sync via realtime into an open page as storage events.
+  </p>
+  <p>
+    The doc opens <b>read-only</b>; Edit claims the advisory write lock
+    (<span class="mono">attachment_doc_locks</span>, 30s heartbeat, 90s
+    stale cutoff — a closed laptop never wedges the doc), Done releases.
+    The other editor sees a live lock chip.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:flex;align-items:center;gap:12px;
+        border-bottom:1px solid var(--c-border);padding:8px 12px">
+        <span style="font-family:var(--font-ui);font-size:13px;
+          font-weight:600">nff-pricing-worksheet.html</span>
+        <span style="font-family:var(--font-ui);font-size:11px;
+          color:var(--c-warn)">🔒 Jim is editing</span>
+        <span style="flex:1"></span>
+        <span style="font-family:var(--font-ui);font-size:11px;
+          font-weight:600;border:1px solid var(--c-border);
+          padding:4px 10px;opacity:.4">✎ Edit</span>
+        <span style="color:var(--c-text-muted)">✕</span>
+      </div>
+      <div style="padding:18px 12px;color:var(--c-text-muted);
+        font-size:12px">…the attached page, live in a sandboxed
+        iframe…</div>
+    </div>
+    <div class="ds-example-meta">filename · live lock chip · Edit
+      disabled while the other person holds the lock · close.</div>
+  </div>
+
   <!-- EMPTY -->
   <h2 class="ds-h2" id="empty">Empty &amp; first-run</h2>
   <p>

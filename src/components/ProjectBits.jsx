@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { FileText, Image, Paperclip, Trash2, Upload } from "lucide-react";
+import {
+  FileText, Globe, Image, Paperclip, Trash2, Upload,
+} from "lucide-react";
+import { LiveDocViewer, isLiveDoc } from "./LiveDocViewer.jsx";
+import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 
 // Shared small components for the Projects subsystem (Batch 22):
 // inline-editable text, assignee chips, and the Storage-backed
@@ -126,6 +130,10 @@ export function AttachmentsBlock({
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+  // Live HTML docs (batch 42.8) open in the in-app viewer — the doc's
+  // localStorage persists to the database — instead of a raw tab.
+  const [liveDoc, setLiveDoc] = useState(null);
+  const userEmail = useCurrentUserEmail();
 
   const pick = () => fileRef.current?.click();
 
@@ -145,6 +153,7 @@ export function AttachmentsBlock({
   };
 
   const open = async (att) => {
+    if (isLiveDoc(att)) { setLiveDoc(att); return; }
     try {
       const url = await getUrl(att);
       window.open(url, "_blank", "noopener");
@@ -167,9 +176,11 @@ export function AttachmentsBlock({
           key={att.id}
           className="flex items-center gap-2 bg-surface-alt px-2.5 py-1.5"
         >
-          {att.contentType?.startsWith("image/")
-            ? <Image size={13} className="text-dim shrink-0" />
-            : <FileText size={13} className="text-dim shrink-0" />}
+          {isLiveDoc(att)
+            ? <Globe size={13} className="text-accent shrink-0" />
+            : att.contentType?.startsWith("image/")
+              ? <Image size={13} className="text-dim shrink-0" />
+              : <FileText size={13} className="text-dim shrink-0" />}
           <button
             onClick={() => open(att)}
             className="bg-transparent border-0 p-0 font-[inherit] text-[12px] text-fg hover:text-accent cursor-pointer truncate text-left flex-1"
@@ -208,6 +219,14 @@ export function AttachmentsBlock({
             </>}
       </button>
       {errorMsg && <div className="text-[11px] text-warn">{errorMsg}</div>}
+      {liveDoc && (
+        <LiveDocViewer
+          attachment={liveDoc}
+          getUrl={getUrl}
+          me={userEmail}
+          onClose={() => setLiveDoc(null)}
+        />
+      )}
     </div>
   );
 }

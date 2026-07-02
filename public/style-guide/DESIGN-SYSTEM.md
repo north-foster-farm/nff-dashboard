@@ -592,6 +592,21 @@ Each: STATUS · what · use/not · canonical source.
   realtime, so one queued from a phone shows up instantly. The agent's write
   tools (`mcp/`) are propose-only, which also keeps a future public endpoint
   low-risk — it can only enqueue, never corrupt.
+- **Live HTML doc** (batch 42.8) — an attached `.html` file opens as a
+  WORKING page, not a download: `LiveDocViewer` renders it full-screen
+  in a sandboxed iframe (`allow-scripts allow-forms` — opaque origin,
+  no app session/storage reach) and an injected shim swaps the page's
+  `localStorage` for the per-attachment key/value store
+  (`attachment_doc_data`, per-KEY rows so two editors on different
+  keys never clobber). The doc opens READ-ONLY; "Edit" claims the
+  advisory lock (`attachment_doc_locks`, 30s heartbeat, 90s stale
+  cutoff), "Done" releases; the other editor sees a live lock chip
+  ("Jim is editing") and their realtime saves stream into an open
+  page as storage events. Chrome: filename + lock chip + Edit/Done +
+  close over the iframe; HTML rows in AttachmentsBlock wear an
+  accent Globe icon. Engine: `lib/docdata/liveDoc.js` (shim,
+  injection, lockState — TDD'd); data: `useDocData`. Source:
+  `src/components/LiveDocViewer.jsx`.
 
 ## Consolidation backlog (the bounded-options payoff)
 
