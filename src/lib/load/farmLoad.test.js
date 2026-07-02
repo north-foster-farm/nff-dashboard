@@ -412,24 +412,12 @@ describe("dayConflictCount — block-level units, not per-person/per-chore", () 
     expect(out).toBe(0);
   });
 
-  // SUSPECTED LATENT BUG (found while authoring this suite, not fixed —
-  // flagging for triage rather than silently asserting broken behavior as
-  // correct). The docstring above dayConflictCount promises it adds
-  // doubleBookConflicts(flat) "over the same rows" as the focal day. But
-  // the `flat.push(...)` a few lines up never sets a `.bucket` field on
-  // its rows (unlike conflicts.js's `assignedRowsForDay`, which does:
-  // `bucket: r.bucket`). doubleBookConflicts's very first pairwise check
-  // is `if (a.bucket === b.bucket) continue;` — with every row's bucket
-  // `undefined`, that comparison is ALWAYS true, so it always continues
-  // past every pair. Net effect: the "+ doubleBookConflicts(flat).length"
-  // term in dayConflictCount's return is dead code — it can never
-  // contribute anything above 0, so the week pane's conflict badge can
-  // silently under-count a real double-booking that the focal day's own
-  // `todayConflicts` (Schedule.jsx, which builds its own bucket-carrying
-  // rows) would still catch. The two tests below pin the CURRENT (buggy)
-  // behavior so a future fix is a deliberate, visible diff here, not a
-  // silent behavior change.
-  it("BUG PIN: a same-block-free double-booking should add a conflict but currently contributes 0 (missing .bucket on flat rows)", () => {
+  // These two were BUG PINS while the suite was authored: dayConflictCount's
+  // flat rows carried no `.bucket`, so doubleBookConflicts' same-bucket skip
+  // (`a.bucket === b.bucket` with both undefined) always fired and the
+  // double-book term was dead code — the week pane under-counted what the
+  // focal day showed (walkthrough 2026-07-02, F5). Now asserted as intended.
+  it("a same-block-free double-booking adds one conflict (F5 — was a dead term)", () => {
     const overlappingBlocks = [fixedBlock("morning", "Morning", 360, 120), fixedBlock("market", "Market", 420, 60)];
     const defs = [
       dailyChore("c1", { blockId: "morning", assignment: { default: "James" } }),
@@ -440,11 +428,10 @@ describe("dayConflictCount — block-level units, not per-person/per-chore", () 
       ruleOpts: { blocks: overlappingBlocks }, choreCtx: emptyChoreCtx, completions: noCompletions,
       reservations: [],
     });
-    // Intended: 1 (a real overlapping double-booking for James). Actual: 0.
-    expect(out).toBe(0);
+    expect(out).toBe(1); // James in two overlapping blocks
   });
 
-  it("BUG PIN: an override-relocated chore that now overlaps another assignment also contributes 0 for the same reason", () => {
+  it("an override-relocated chore that now overlaps another assignment adds one conflict (F5)", () => {
     const overlappingBlocks = [fixedBlock("morning", "Morning", 360, 120), fixedBlock("market", "Market", 420, 60)];
     const defs = [
       dailyChore("c1", { blockId: "morning", assignment: { default: "James" } }),
@@ -458,9 +445,63 @@ describe("dayConflictCount — block-level units, not per-person/per-chore", () 
       ruleOpts: { blocks: overlappingBlocks }, choreCtx: emptyChoreCtx, completions: noCompletions,
       reservations: [], overrides,
     });
-    // Intended: 1 (the override relocated c2 into an overlap with c1).
-    // Actual: 0, same root cause as the pin above.
+    expect(out).toBe(1); // the override relocated c2 into an overlap with c1
+  });
+
+  // F5 (walkthrough 2026-07-02) — the focal day counts an uncovered EVENT
+  // overlapping the day's blocks as a needs-cover unit, but the week scan
+  // didn't, so the This Week triangle only appeared once the day was
+  // clicked. dayConflictCount must count event units the same way.
+  const marketOn = (occursOn, times = {}) => ({
+    kinds: [{
+      id: "market", label: "Farmers markets",
+      instances: [{
+        id: "s1", label: "Scituate Market", subtitle: null, location: null,
+        rrule: null, dtstart: null, durationMinutes: null,
+        occurrences: [{
+          id: "occ1", occursOn,
+          startTime: "06:30", endTime: "07:30", ...times,
+        }],
+        automationEmissionId: null,
+      }],
+    }],
+  });
+
+  it("an uncovered event overlapping a block counts as one unit (F5)", () => {
+    const out = dayConflictCount({
+      data: { chores: NO_CHORES, events: marketOn("2026-06-03") },
+      date: d(2026, 6, 3),
+      ruleOpts: { blocks: BLOCKS }, choreCtx: emptyChoreCtx, completions: noCompletions,
+      reservations: [],
+    });
+    expect(out).toBe(1); // 6:30-7:30 market overlaps the 6:00-7:00 block
+  });
+
+  it("an event with an accepted cover override contributes zero units", () => {
+    const coverAccepted = [{
+      source_ref: {
+        target: { kind: "event", instance_id: "s1", date: "2026-06-03" },
+        cover: { by: "Jim" },
+      },
+    }];
+    const out = dayConflictCount({
+      data: { chores: NO_CHORES, events: marketOn("2026-06-03") },
+      date: d(2026, 6, 3),
+      ruleOpts: { blocks: BLOCKS }, choreCtx: emptyChoreCtx, completions: noCompletions,
+      reservations: [], overrides: coverAccepted,
+    });
     expect(out).toBe(0);
+  });
+
+  it("an event that overlaps no occurring block contributes zero units", () => {
+    const middayMarket = marketOn(
+      "2026-06-03", { startTime: "12:00", endTime: "13:00" });
+    const out = dayConflictCount({
+      data: { chores: NO_CHORES, events: middayMarket }, date: d(2026, 6, 3),
+      ruleOpts: { blocks: BLOCKS }, choreCtx: emptyChoreCtx, completions: noCompletions,
+      reservations: [],
+    });
+    expect(out).toBe(0); // midday market misses the 6-7 AM / 6-7 PM blocks
   });
 });
 
@@ -521,4 +562,23 @@ describe("dayCoveredUnits", () => {
     expect(out[0].label).not.toContain("all day");
     expect(out[0].label).toContain("James");
   });
+});
+
+describe("farmLoad — availability threading (batch 42 slice 6)", () => {
+  it("nobody scheduled to work yields zero project gaps for the day",
+    () => {
+      const nobodyWorks = {
+        hours: [
+          { id: "x1", person: "James", weekday: null,
+            onDate: "2026-06-03", startMin: null, endMin: null },
+          { id: "x2", person: "Jim", weekday: null,
+            onDate: "2026-06-03", startMin: null, endMin: null },
+        ],
+        timeOff: [], breaks: [],
+      };
+      const out = farmLoad(baseArgs({
+        ruleOpts: { blocks: BLOCKS, availability: nobodyWorks },
+      }));
+      expect(out.projects).toEqual([]);
+    });
 });

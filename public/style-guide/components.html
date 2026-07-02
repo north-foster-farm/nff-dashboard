@@ -617,7 +617,11 @@
     4 — it clipped the NowEdgeLine's glow dot); the whole day load is
     chromeless (bg-bg, full width, closed by the page hairline). Kept
     separate from the Rounds
-    progress bar. Now in <span class="mono">ui.jsx</span>.
+    progress bar. <b>Event coverage marker</b> (batch 42 slice 7, F47):
+    the event rail's trailing annotation gains "N of M here" whenever
+    fewer than everyone is available during the event, turning
+    <span class="mono">text-warn</span> when nobody is — silent on full
+    coverage. Now in <span class="mono">ui.jsx</span>.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -697,9 +701,12 @@
     both days a night spans), a periwinkle <span class="mono">E</span>
     <span class="mono">KindBadge</span> when the day has an event, a warn/due
     <span class="mono">WarmingBadge</span> (ClockAlert) when it has a warming
-    chore (<span class="mono">warmingByISO</span>), and an amber conflict
+    chore (<span class="mono">warmingByISO</span>), an amber conflict
     triangle when it has man-down conflicts (each hovers to its detail, fed by
-    <span class="mono">conflictsByISO</span>). The symbol cell is a fixed width,
+    <span class="mono">conflictsByISO</span>), and a muted
+    <span class="mono">UserX</span> per person with zero availability that
+    day (batch 42 slice 7, F46 — a scheduled day off or an all-day/
+    window-swallowing time off; hover names who). The symbol cell is a fixed width,
     left-aligned, so spines stay equal-width and badges align in a column;
     every symbol wears <span class="mono">BadgeHint</span> (42.3 round 4 —
     the full affordance standard, not a bare Tooltip). <b>One baseline
@@ -914,6 +921,34 @@
     + unresolved conflicts shows BOTH icons. In
     <span class="mono">ui.jsx</span>.
   </p>
+
+  <h3 class="ds-h3">DayRailSpine — time-off row
+    <span class="ds-status stable">Stable</span></h3>
+  <p>
+    A person's unavailability rides the desktop spine as its own quiet
+    row kind (batch 42 slice 7, F45): no kind rail, no fill, a muted
+    <span class="mono">UserX</span> + "«person» out" + the window
+    ("All day" or a compact range). It never takes focus — clicking
+    opens the Availability page instead of picking the row, since it
+    isn't a work segment. Desktop spine only.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+        max-width:200px;border:1px solid transparent">
+        <span style="width:5px;align-self:stretch;flex-shrink:0;
+          box-shadow:inset 0 0 0 1px var(--c-line)"></span>
+        <span style="color:var(--c-text-muted)">🚫</span>
+        <span style="font-size:12px">
+          <span style="display:block">Jim out</span>
+          <span style="display:block;font-size:10px;color:var(--c-text-faint)">
+            All day</span>
+        </span>
+      </div>
+    </div>
+    <div class="ds-example-meta">hollow rail (no kind color) · muted
+      glyph stands in for Lucide UserX · click → Availability page.</div>
+  </div>
 
   <table class="ds-table">
     <thead><tr><th>Component</th><th>Status</th><th>Job &amp; bounded form</th></tr></thead>

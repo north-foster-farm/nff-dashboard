@@ -4436,6 +4436,35 @@ color; clock-arrow overnight icons). Build refs in
     a v1 headed to a design bracket — no edit-after-create on time
     off/exceptions, break names locked, sunrise/sunset not yet valid
     time options, "Default" label confusion.
+- **42.7 — slice 7: availability surfaces + week-scan conflict
+  parity. `v0.10.84-alpha` (2026-07-02); pure frontend.** The
+  schedule reads the 42.6 model (F45–F47); the who's-here strip
+  (F48) was built, walkthrough-reviewed the same day, and REVERTED —
+  see below.
+  - F45 spine time-off rows: absences ride the desktop DayRailSpine
+    as a quiet no-rail row (muted UserX + "«person» out" + window);
+    never focusable; click opens Availability.
+  - F46 This Week out-all-day: a muted UserX per person with zero
+    availability that day (`outAllDay` — day off / swallowing time
+    off), hover names who; after the conflict triangle.
+  - F47 event coverage marker: the day-load event rail reads "N of M
+    here" from real availability during the event window.
+  - F5 fix (walkthrough 2026-07-02): `dayConflictCount` — the week
+    pane's engine — now counts uncovered EVENT units (cover lives on
+    the event-target override) and carries `.bucket` on its rows,
+    reviving the dead double-book term. Closes 42.4's "event-driven
+    conflicts mark only the FOCAL day" follow-up: the This Week
+    triangle no longer materializes only when a day is clicked.
+  - F48 HereStrip REVERTED (walkthrough F1): the who's-here count
+    strip layered UI on UI and had no phone affordance. Removed from
+    both day-loads + both library faces; `availabilitySegments`
+    stays in the engine for the design-bracket successor.
+  - Docs: DayRailSpine time-off row, WeekStrip out-all-day symbol,
+    LoadSpine event-coverage marker — BOTH library faces.
+  - Known follow-ups: who's-here presentation + "why is no one
+    here" traceability go to the availability design bracket (F1,
+    F6, F8); WeekStrip symbol cell can crowd past 3 symbols (visual
+    check on a busy week).
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.

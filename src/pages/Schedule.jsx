@@ -15,6 +15,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
 import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js";
+import { useAvailability } from "../lib/data/useAvailability.js";
 import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
 import { deriveDay, rollupChoresForDay } from "../lib/schedule/deriveDay.js";
@@ -56,10 +57,14 @@ import { nextRankedStep } from "../lib/schedule/reflow.js";
 import { segmentForStart, buildDaySegments } from "../lib/schedule/placement.js";
 import {
   overnightWindow, inOvernight, OVERNIGHT_LEAD, OVERNIGHT_TRAIL,
+  PARTITION_ADMINS,
 } from "../lib/schedule/partition.js";
+import {
+  timeOffWindows, defaultAssignees, outAllDay,
+} from "../lib/schedule/availability.js";
 import { useNeighborDeltas } from "../lib/data/useNeighborDeltas.js";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
-import { navigate } from "../lib/router.js";
+import { navigate, pathForSection } from "../lib/router.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { recordCapture, readCaptures } from "../lib/capture/capture.js";
 import { supabase, realtimeChannel } from "../lib/supabase.js";
@@ -807,9 +812,13 @@ export default function Schedule({ data }) {
   const { blocks, loading: blocksLoading } = useChoreBlocks();
   const { choreCtx, loading: sitesLoading } = useSites();
   const { rulesByChoreId, rulesByBlockId } = useChoreAssignmentRules();
+  // Batch 42 slice 6: the availability ctx rides ruleOpts into
+  // deriveDay/farmLoad — working-hours band, breaks, real who's-free,
+  // and the X3 everyone-available assignment fallback.
+  const { ctx: availability } = useAvailability();
   const ruleOpts = useMemo(
-    () => ({ rulesByChoreId, rulesByBlockId, blocks }),
-    [rulesByChoreId, rulesByBlockId, blocks],
+    () => ({ rulesByChoreId, rulesByBlockId, blocks, availability }),
+    [rulesByChoreId, rulesByBlockId, blocks, availability],
   );
   const completions = useChoreCompletions(today);
   const dateISO = useMemo(() => ymdLocal(today), [today]);
@@ -1707,6 +1716,28 @@ export default function Schedule({ data }) {
       .sort((a, b) => startKey(a) - startKey(b)),
     [spineBlocks, projectEntries, overnightEntries, eventEntries,
       needsCoverBuckets, coveredByBucket]);
+
+  // F45 — the day's absences as spine rows: one per time-off window,
+  // sorted into the day like any other segment ("James out 10a–2p" /
+  // "out all day" pins first). Desktop spine only — a click opens the
+  // Availability page, so these never join the phone strip's pager or
+  // the focus buckets.
+  const timeOffEntries = useMemo(
+    () => PARTITION_ADMINS.flatMap((person) =>
+      timeOffWindows(person, today, availability.timeOff)
+        .map((w) => ({
+          kind: "timeoff",
+          bucket: "off|" + person + "|" + w.startMin,
+          person,
+          startMin: w.startMin,
+          endMin: w.endMin,
+          allDay: w.startMin === 0 && w.endMin === 1440,
+        }))),
+    [today, availability]);
+  const spineSegments = useMemo(
+    () => [...navSegments, ...timeOffEntries]
+      .sort((a, b) => startKey(a) - startKey(b)),
+    [navSegments, timeOffEntries]);
 
   // Day-load counters (42.3 round 3): CHORES (chore obligations only — a
   // one-off task or a placed project step isn't a chore), BLOCKS as the
@@ -2630,6 +2661,19 @@ export default function Schedule({ data }) {
     return m;
   }, [horizon, today, blocks]);
 
+  // F46 — per-day whole-day absences for the week pane: a day where a
+  // person has NO availability at all (day off, all-day time off, or a
+  // time off swallowing the working window) wears the muted out icon.
+  const weekOutByISO = useMemo(() => {
+    const m = new Map();
+    for (const d of weekDays(today)) {
+      const out = PARTITION_ADMINS.filter(
+        (p) => outAllDay(p, d, availability));
+      if (out.length) m.set(ymdLocal(d), out);
+    }
+    return m;
+  }, [today, availability]);
+
   // Per-day warming (F24/F25) for the week pane — a ClockAlert marker on every
   // day that has a warn/due chore, mirroring `weekConflictsByISO`. Reuses the
   // same `dayWarming` the focal day-load reads, so the week marker can't
@@ -2823,12 +2867,13 @@ export default function Schedule({ data }) {
       {/* Desktop load-spine — the day's shape AND the navigator (Day zoom). */}
       {viewMode === "day" && (
         <DayRailSpine
-          blocks={navSegments}
+          blocks={spineSegments}
           focus={focus}
           nowBucket={nowBucket}
           nowMin={viewingToday ? nowMin : null}
           nowEdge={nowEdge}
           onPick={pickBlock}
+          onPickTimeOff={() => navigate(pathForSection("availability"))}
         />
       )}
 
@@ -2948,14 +2993,25 @@ export default function Schedule({ data }) {
           conflictIds={conflictBarIds}
           events={eventEntries
             .filter((e) => e.startMin != null)
-            .map((e) => ({
-              id: e.bucket,
-              label: e.occ.instanceLabel,
-              startMin: e.startMin,
-              endMin: e.endMin,
-              startLabel: fmtClock12(e.occ.startTime),
-              endLabel: fmtClock12(e.occ.endTime),
-            }))}
+            .map((e) => {
+              // F47 — event coverage: who's available during the
+              // event's window; the rail wears a quiet "1 of 2 here"
+              // marker when anyone is out.
+              const here = defaultAssignees(
+                today, { startMin: e.startMin, endMin: e.endMin },
+                availability, PARTITION_ADMINS);
+              return {
+                id: e.bucket,
+                label: e.occ.instanceLabel,
+                startMin: e.startMin,
+                endMin: e.endMin,
+                startLabel: fmtClock12(e.occ.startTime),
+                endLabel: fmtClock12(e.occ.endTime),
+                here,
+                away: PARTITION_ADMINS.filter(
+                  (p) => !here.includes(p)),
+              };
+            })}
         />
       </div>
       {/* Phone day-strip — the navigable time axis (lg:hidden), ABOVE
@@ -3706,6 +3762,7 @@ export default function Schedule({ data }) {
             warmingByISO={weekWarmingByISO}
             overnightByISO={weekOvernightISOs}
             coveredByISO={weekCoveredByISO}
+            outByISO={weekOutByISO}
           />
         </aside>
       )}

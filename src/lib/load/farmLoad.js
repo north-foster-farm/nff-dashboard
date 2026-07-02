@@ -179,6 +179,8 @@ export function farmLoad({
     reservations,
     buffers: deltas.filter(
       (d) => d.source_type === "buffer" && d.source_ref?.scope !== "all"),
+    // Batch 42 slice 6: working-hours band + breaks + real who's-free.
+    availability: ruleOpts?.availability ?? null,
   });
   const projects = segments.map((seg, i) => {
     const placed = projNodeMins.some(
@@ -273,6 +275,7 @@ export function farmLoad({
       blocks: ruleOpts?.blocks ?? [],
       reservations: weekRes?.get?.(iso) ?? [],
       buffers: [],
+      availability: ruleOpts?.availability ?? null,
     });
     const projMins = focal ? projNodeMins
       : (weekTimed?.get?.(iso) ?? [])
@@ -490,10 +493,40 @@ export function dayConflictCount({
         key: row.key,
         assignee: ov?.assignee ?? row.assignee, // reassignment override
         blockStart: win.startMin, blockEnd: win.endMin,
+        // bucket keys doubleBookConflicts' same-block skip — without it
+        // every pair compared undefined===undefined and the double-book
+        // term was dead code (F5, walkthrough 2026-07-02).
+        bucket: block?.id ?? null,
       });
     }
   }
-  return units + doubleBookConflicts(flat).length;
+
+  // Uncovered EVENTS overlapping the day's blocks are needs-cover units
+  // too — the focal day counts them, so the week scan must (F5). Cover
+  // acceptance lives on an override targeting the event instance+date.
+  const dayISO = ymdLocal(date);
+  let eventUnits = 0;
+  if (data.events?.kinds) {
+    const from = new Date(Date.UTC(
+      date.getFullYear(), date.getMonth(), date.getDate()));
+    const to = new Date(from);
+    to.setUTCDate(to.getUTCDate() + 1);
+    for (const o of getEventOccurrences(data.events, from, to, null)) {
+      if (o.date !== dayISO || o.status === "cancelled") continue;
+      const s = hmToMin(o.startTime);
+      const e = hmToMin(o.endTime);
+      if (s == null) continue; // all-day events aren't man-down windows
+      if (!blockWins.some((b) => b.start <= e && b.end > s)) continue;
+      const covered = overrides.some((ov) =>
+        ov.source_ref?.target?.kind === "event"
+        && ov.source_ref.target.instance_id === o.instanceId
+        && ov.source_ref.target.date === o.date
+        && ov.source_ref.cover);
+      if (!covered) eventUnits += 1;
+    }
+  }
+
+  return units + eventUnits + doubleBookConflicts(flat).length;
 }
 
 // The day's COVERED time offs — the accepted-cover units the sidebars turn

@@ -10,7 +10,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import {
-  Check, AlertTriangle, CircleAlert, ClockAlert, Moon, X,
+  Check, AlertTriangle, CircleAlert, ClockAlert, Moon, UserX, X,
 } from "lucide-react";
 
 // ── form controls ──────────────────────────────────────────────────────
@@ -757,6 +757,42 @@ export function LoadSpine({
                     {ev.endLabel}
                   </span>
                 )}
+                {/* F47 — event coverage: a quiet "N of M here" when
+                    anyone is out during the event's window; warn when
+                    nobody is. Hover names who's here and who's out. */}
+                {(ev.away?.length ?? 0) > 0 && (
+                  <Tooltip
+                    tip={<>
+                      {(ev.here ?? []).map((p) => (
+                        <span key={p} className="block">
+                          <b className="text-fg font-semibold">{p}</b>
+                          {" — here"}
+                        </span>
+                      ))}
+                      {ev.away.map((p) => (
+                        <span key={p} className="block">
+                          <b className="text-fg font-semibold">{p}</b>
+                          {" — out"}
+                        </span>
+                      ))}
+                    </>}
+                  >
+                    <span
+                      className={
+                        "shrink-0 inline-flex items-center gap-1 "
+                        + "font-ui text-[10px] "
+                        + "[font-variant-numeric:tabular-nums] "
+                        + ((ev.here?.length ?? 0) === 0
+                          ? "text-warn font-semibold"
+                          : "text-muted")
+                      }
+                    >
+                      <UserX size={12} />
+                      {(ev.here?.length ?? 0)} of{" "}
+                      {(ev.here?.length ?? 0) + ev.away.length} here
+                    </span>
+                  </Tooltip>
+                )}
               </div>
             </div>
           </div>
@@ -931,6 +967,7 @@ export function WeekStrip({
   warmingByISO,
   overnightByISO,
   coveredByISO,
+  outByISO,
   className = "",
 }) {
   if (!week?.days?.length || !ymd) return null;
@@ -1012,6 +1049,7 @@ export function WeekStrip({
         const warm = warmingByISO?.get(iso);
         const overnight = overnightByISO?.has?.(iso);
         const covered = coveredByISO?.get?.(iso);
+        const out = outByISO?.get?.(iso);
         return (
           <button
             key={iso}
@@ -1100,6 +1138,21 @@ export function WeekStrip({
                     : confCount + " conflicts"}
                 >
                   <AlertTriangle size={14} className="text-warn" />
+                </BadgeHint>
+              )}
+              {/* F46 — someone is out the WHOLE day: the muted out
+                  icon; hover names who. Quiet on purpose — a needs-
+                  cover conflict already speaks in warn. */}
+              {(out?.length ?? 0) > 0 && (
+                <BadgeHint
+                  tip={out.map((p, i) => (
+                    <span key={i} className="block">
+                      <b className="text-fg font-semibold">{p}</b>
+                      {" — out all day"}
+                    </span>
+                  ))}
+                >
+                  <UserX size={14} className="text-muted" />
                 </BadgeHint>
               )}
               {/* Round 5 — a day whose time off has ACCEPTED cover wears

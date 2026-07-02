@@ -343,7 +343,13 @@ Each: STATUS · what · use/not · canonical source.
   sandwich** (see the now-ring note below). The day load itself is
   CHROMELESS: bg-bg, no border/padding chrome, full column width, closed
   by the page hairline (both surfaces). Kept distinct from the Rounds
-  completion-fraction bar. Source: `src/components/ui.jsx` (`LoadSpine`).
+  completion-fraction bar. **Event rail — coverage marker** (batch 42
+  slice 7, F47): the event rail's trailing annotation gains "N of M
+  here" (a muted `UserX` + tabular count) whenever fewer than everyone
+  is available during the event's window; nobody available turns it
+  `text-warn`. Silent when full coverage — the marker only speaks up
+  when it's informative. Hover (`Tooltip`) names each person "here" or
+  "out". Source: `src/components/ui.jsx` (`LoadSpine`).
 - **WarmingBadge** · Converging · the binary warn/due signal (slice D, F24/F25)
   that REPLACED the continuous should-heat gradient. A Lucide `ClockAlert`,
   reading a `farmLoad.warming` bucket `{ warn:[…], due:[…] }`: any DUE-today
@@ -358,6 +364,17 @@ Each: STATUS · what · use/not · canonical source.
   sidebar badge. Backed by exported `dayWarming(...)` in `farmLoad` (the
   focal day-load and the week scan share it). Source:
   `src/components/ui.jsx` (`WarmingBadge`).
+- **DayRailSpine — time-off row** · Stable · a person's unavailability
+  rides the desktop spine as its own quiet row kind (batch 42 slice 7,
+  F45): no kind rail, no fill, a muted `UserX` (via `BadgeHint`) + "«person»
+  out" + the window ("All day" or a compact range). It never takes
+  focus — a work-segment convention (accent fill, bounding box) would
+  overstate an absence — clicking opens the Availability page instead
+  of picking the row. Sits above the first work row when the absence
+  starts before the day's blocks. Desktop only; the phone pager stays
+  work-segments-only.
+  Source: `src/components/ScheduleSidebars.jsx` (`DayRailSpine`, the
+  `kind === "timeoff"` branch).
 - **AddTaskBar** · Stable · the Schedule's one-off task entry (batch 42.2,
   F58): lives in the TOP toolbar (an "Add task" button beside Add chore
   expands it) — one line of text + a target selector pulling the day's
@@ -400,7 +417,13 @@ Each: STATUS · what · use/not · canonical source.
   `conflictsByISO` — round 5: conflicts count as UNITS, one per uncovered
   time off), and the muted `CoveredBadge` when a day's time off has
   accepted cover (`coveredByISO`, round 5; both icons coexist when a day
-  has covered + unresolved). The
+  has covered + unresolved). **Out-all-day** (batch 42 slice 7, F46): a
+  muted `UserX` per person with zero availability that day (`outByISO`
+  — a scheduled day off OR an all-day/window-swallowing time off, per
+  the engine's `outAllDay`), hover names who; sits after the conflict
+  triangle. A busy week row can carry several symbols — the fixed-width
+  cell wraps rather than clips (worth a visual check on a crowded day).
+  The
   symbol cell is a FIXED width, LEFT-aligned, so every day's mini-spine is the
   same width and the badges line up in a column; every symbol wears
   `BadgeHint` (round 4 — the full affordance standard, not a bare
@@ -454,6 +477,21 @@ Each: STATUS · what · use/not · canonical source.
 
 - **Page shell** — header (Lora title + uppercase back-link + bottom hairline)
   over flush eyebrow-titled sections.
+- **Editor list (settings surfaces)** — the add → rows → inline-edit shape
+  for small config lists, shared by Chores → Blocks and the Availability
+  page (batch 42 slice 6, F50/F51: time off, per-person weekly hours +
+  per-date exceptions, farm-wide breaks). One-line intro + ONE accent add
+  button (Pane `actions`); a `bg-surface-alt` inline form of tiny-uppercase
+  labeled fields — a segmented control for finite choices (person,
+  all-day/part, hours/off), native date/time inputs; saved entries =
+  `bg-surface border` rows that WRAP on the phone (no fixed grids), value
+  text `text-dim`, ghost Pencil/X icon actions right, past/paused rows
+  dimmed `opacity-55` (kept, not hidden). The weekly-hours grid is the
+  sanctioned `gap-px bg-line` hairline-divider stack (7 rows, Sun..Sat),
+  each row editable in place, "(default)" in `text-faint` when no row
+  exists. Availability introduces NO new components — Pane / BTN_* /
+  AlertStrip + these shapes cover all three lists. Sources:
+  `src/components/ChoresBlocksTab.jsx`, `src/pages/Availability.jsx`.
 - **Master–detail** (Schedule desktop) — left load rail · center detail ·
   right week sidebar (→ one WeekStrip). PAGE HEADER (42.3 round 4): the
   "Schedule" Lora h1 and the Day/Week/Month/Review tabs share ONE

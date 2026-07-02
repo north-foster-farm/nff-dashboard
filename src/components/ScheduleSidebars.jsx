@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  LayoutList, AlertTriangle, ChevronLeft, ChevronRight, Moon,
+  LayoutList, AlertTriangle, ChevronLeft, ChevronRight, Moon, UserX,
 } from "lucide-react";
 import {
   BadgeHint, CoveredBadge, KindBadge, NowEdgeLine, NowRule, WarmingBadge,
@@ -114,7 +114,7 @@ const SPINE_TITLE_CLS =
 // the list. Block names collapse to "Chores" (F12) — the C badge + time
 // carry the identity, like every project reads "Project".
 export function DayRailSpine({
-  blocks, focus, nowBucket, nowMin, nowEdge, onPick,
+  blocks, focus, nowBucket, nowMin, nowEdge, onPick, onPickTimeOff,
 }) {
   const nowTime = nowMin != null ? compactTime(nowMin) : null;
   // Now outside the day's blocks (nowEdge): no row is current — the
@@ -226,6 +226,56 @@ export function DayRailSpine({
                     </span>
                   )}
                 </span>
+            </button>
+          );
+        }
+
+        // F45 — a person's time off rides the spine as a quiet marker
+        // row: no kind rail, no fill, a muted out glyph + "«person»
+        // out" + the window. It isn't a work segment, so it never
+        // takes focus — clicking opens the Availability page.
+        if (b.kind === "timeoff") {
+          const when = b.allDay
+            ? "All day"
+            : compactRange(b.startMin, b.endMin);
+          return (
+            <button
+              key={b.bucket}
+              type="button"
+              onClick={onPickTimeOff}
+              className={
+                "relative z-[1] w-full flex items-center gap-2 px-2 "
+                + "py-2 text-left min-h-[46px] border "
+                + "border-transparent cursor-pointer "
+                + "transition-colors hover:bg-row-hover"
+              }
+            >
+              {/* hollow rail — the absence keeps the rows' left
+                  gutter without claiming a kind color. */}
+              <span
+                className="w-[5px] self-stretch shrink-0"
+                style={{
+                  boxShadow:
+                    "inset 0 0 0 1px var(--color-line)",
+                }}
+              />
+              <BadgeHint
+                tip={<>
+                  <b className="text-fg">{b.person} — time off</b>
+                  {"\n"}{when}
+                  {"\n"}Opens Availability
+                </>}
+              >
+                <UserX size={16} className="shrink-0 text-muted" />
+              </BadgeHint>
+              <span className="flex-1 min-w-0">
+                <span className={SPINE_TITLE_CLS}>
+                  {b.person} out
+                </span>
+                <span className="block text-[10px] [font-variant-numeric:tabular-nums] text-faint leading-tight truncate">
+                  {when}
+                </span>
+              </span>
             </button>
           );
         }
