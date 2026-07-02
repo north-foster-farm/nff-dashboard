@@ -19,6 +19,10 @@
 import { resolveBlockMinutes } from "../sunTimes.js";
 import { reservationWindows } from "./manDown.js";
 import { storedBufferWindow } from "./buffers.js";
+// Function-level cycle with availability.js (it imports
+// subtractIntervals from here) — safe: neither side uses the other's
+// exports during module init.
+import { availableDuring, projectBand } from "./availability.js";
 
 // Farm-wide defaults (v1 — the per-day override editor is deferred).
 export const PROJECT_DEFAULT_START = 8 * 60; // 8:00a earliest project start
@@ -82,9 +86,24 @@ export function mergeWindows(wins) {
 // uncovered minute in the segment (after subtracting THEIR reservations).
 // Returns structured { freeCount, who:[names] } so a consumer can branch on
 // "both free" vs "one free" without re-deriving (kept structured per scope).
-export function whoFree(segment, resWindows) {
+// Optional third arg { date, availability, roster } additionally requires
+// real availability (working hours ∩ ¬time-off ∩ ¬break, F51) — a person
+// on time off or outside their hours is not free, reservations or not.
+export function whoFree(segment, resWindows, availOpts) {
+  const roster = availOpts?.roster ?? PARTITION_ADMINS;
   const who = [];
-  for (const name of PARTITION_ADMINS) {
+  for (const name of roster) {
+    if (
+      availOpts?.availability &&
+      !availableDuring(
+        name,
+        availOpts.date,
+        { startMin: segment.s, endMin: segment.e },
+        availOpts.availability
+      )
+    ) {
+      continue;
+    }
     const holes = (resWindows ?? [])
       .filter((w) => w.assignee === name)
       .map((w) => ({ s: w.startMin, e: w.endMin }));
@@ -139,6 +158,10 @@ export function inOvernight(win, minutes, side) {
 // Derive the Project segments for a day. Returns ordered segments:
 //   { kind:'project', startMin, endMin, durationMin, who:{freeCount,who} }
 // Excludes the after-last-block window (that is Overnight, added later).
+// When `availability` (the { hours, timeOff, breaks } ctx from
+// useAvailability) is passed, the band derives from working hours —
+// retiring the magic 8a-6p defaults (F51) — active breaks carve holes
+// like buffers, and who's-free respects time off + working hours.
 export function projectGaps({
   date,
   blocks,
@@ -146,15 +169,26 @@ export function projectGaps({
   buffers = [],
   defaultStart = PROJECT_DEFAULT_START,
   defaultEnd = PROJECT_DEFAULT_END,
+  availability = null,
+  roster = PARTITION_ADMINS,
 }) {
   // Merge to the union first so overlapping blocks can't leave a "gap" that
   // runs through a block ending late (see mergeWindows).
   const wins = mergeWindows(occurringBlockWindows(date, blocks));
   if (wins.length === 0) return []; // no chore frame → no project time
 
+  let bandStart = defaultStart;
+  let bandEnd = defaultEnd;
+  if (availability) {
+    const band = projectBand(date, availability, roster);
+    if (!band) return []; // nobody scheduled to work → no project time
+    bandStart = band.startMin;
+    bandEnd = band.endMin;
+  }
+
   // Candidate gaps: before the first block, then between consecutive blocks.
   // (After the last block belongs to Overnight, never a Project block.)
-  const candidates = [{ s: defaultStart, e: wins[0].start }];
+  const candidates = [{ s: bandStart, e: wins[0].start }];
   for (let i = 0; i < wins.length - 1; i++) {
     candidates.push({ s: wins[i].end, e: wins[i + 1].start });
   }
@@ -164,20 +198,27 @@ export function projectGaps({
     .map((b) => storedBufferWindow(b))
     .filter(Boolean)
     .map((w) => ({ s: w.startMin, e: w.endMin }));
+  for (const br of availability?.breaks ?? []) {
+    if (br.isActive === false) continue;
+    bufHoles.push({ s: br.startMin, e: br.endMin });
+  }
+  const availOpts = availability
+    ? { date, availability, roster }
+    : undefined;
 
   const out = [];
   for (const c of candidates) {
-    // Clamp to the farm-wide band; drop inverted/empty gaps (the DST /
-    // sun-drift safety clamp — a winter sunset block can invert a summer gap).
-    const s = Math.max(c.s, defaultStart);
-    const e = Math.min(c.e, defaultEnd);
+    // Clamp to the band; drop inverted/empty gaps (the DST / sun-drift
+    // safety clamp — a winter sunset block can invert a summer gap).
+    const s = Math.max(c.s, bandStart);
+    const e = Math.min(c.e, bandEnd);
     if (e - s < MIN_PROJECT_GAP) continue;
     // Subtract whole-farm buffer windows → 1+ sub-gaps (a buffer mid-gap
     // splits project time rather than shrinking one edge).
     for (const sub of subtractIntervals({ s, e }, bufHoles)) {
       const durationMin = sub.e - sub.s;
       if (durationMin < MIN_PROJECT_GAP) continue;
-      const who = whoFree(sub, resWins);
+      const who = whoFree(sub, resWins, availOpts);
       if (who.freeCount === 0) continue; // nobody home → no segment (absent)
       out.push({
         kind: "project",

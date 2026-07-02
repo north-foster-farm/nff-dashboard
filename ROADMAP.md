@@ -4406,6 +4406,36 @@ color; clock-arrow overnight icons). Build refs in
     it still reads loud, next candidates are a muted warn mix or a
     wider cadence. Warming pill live-verify awaits a naturally warm
     chore (none on the farm today).
+- **42.6 — slice 6: availability core (hours, time off, breaks).
+  `v0.10.83-alpha` (2026-07-02); migration 0044 (applied to prod,
+  backed up first).** THE availability model (F50/F51 + triage X3):
+  who works when becomes data, retiring the magic constants.
+  - Data: `time_off` (person, inclusive date span, minute window or
+    all-day, note), `working_hours` (per weekday default OR per-date
+    exception; null minutes = day off), `breaks` (farm-wide daily
+    carve-outs, is_active) — admin RLS, realtime, additive-only.
+  - Engine (`src/lib/schedule/availability.js`, TDD, 40 tests):
+    availability = working hours ∩ ¬time-off ∩ ¬break; per-date
+    exception > weekday default > 9–5 fallback; `availableWindows` /
+    `availableDuring` (strict overlap) / `defaultAssignees` (X3: an
+    unassigned block belongs to everyone available; [] = needs
+    cover) / `availabilitySegments` / `outAllDay` / `projectBand`
+    (the union of working windows replaces the magic 8a–6p project
+    band; time off doesn't shrink it — who's-free handles that).
+  - Wiring: `partition.projectGaps` takes `availability` (band from
+    projectBand, breaks join the buffer holes, whoFree consults
+    real availability); `deriveDay.getRollupAssignee` X3 fallback
+    fills unassigned rollups from `defaultAssignees`; farmLoad
+    threads `ruleOpts.availability` through both gap calls.
+  - App: `useAvailability` (one hook, 3 tables, realtime, CRUD) +
+    the Availability page (Planning group): time-off list, Sun–Sat
+    working-hours grid + per-date exceptions, breaks editor.
+  - Docs: Editor list pattern (patterns.html) — the add → rows →
+    inline-edit shape shared with Chores → Blocks.
+  - Known follow-ups (walkthrough 2026-07-02, F12–F17): the page is
+    a v1 headed to a design bracket — no edit-after-create on time
+    off/exceptions, break names locked, sunrise/sunset not yet valid
+    time options, "Default" label confusion.
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.

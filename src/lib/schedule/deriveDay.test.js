@@ -125,6 +125,64 @@ describe("getRollupAssignee", () => {
     const rollup = { bucket: "morning", items: [{ chore: { id: "a" } }] };
     expect(getRollupAssignee(rollup, d(2026, 6, 1), {})).toBeNull();
   });
+
+  // X3 (batch 42 slice 6): with the availability ctx present, an
+  // entirely-unassigned block belongs to everyone available during its
+  // window instead of reading as nobody's job.
+  const MID_MORNING_ROLLUP = {
+    bucket: "mid",
+    startMin: 600, // 10:00, inside everyone's default 9-5
+    block: { id: "mid", durationMinutes: 60 },
+    items: [{ chore: { id: "a" } }],
+  };
+
+  it("X3: an unassigned block falls back to everyone available", () => {
+    const availability = { hours: [], timeOff: [], breaks: [] };
+    expect(
+      getRollupAssignee(MID_MORNING_ROLLUP, d(2026, 6, 1), { availability })
+    ).toBe("James · Jim");
+  });
+
+  it("X3: a person on time off drops off the fallback", () => {
+    const availability = {
+      hours: [],
+      timeOff: [{
+        id: "to1", person: "Jim", startDate: "2026-06-01",
+        endDate: "2026-06-01", startMin: null, endMin: null, note: null,
+      }],
+      breaks: [],
+    };
+    expect(
+      getRollupAssignee(MID_MORNING_ROLLUP, d(2026, 6, 1), { availability })
+    ).toBe("James");
+  });
+
+  it("X3: an explicit assignment still beats the fallback", () => {
+    const availability = { hours: [], timeOff: [], breaks: [] };
+    const rollup = {
+      ...MID_MORNING_ROLLUP,
+      items: [{ chore: { id: "a", assignment: { default: "Jim" } } }],
+    };
+    expect(getRollupAssignee(rollup, d(2026, 6, 1), { availability }))
+      .toBe("Jim");
+  });
+
+  it("X3: nobody available leaves the block unassigned (null), not " +
+     "a phantom name", () => {
+    const availability = {
+      hours: [],
+      timeOff: [
+        { id: "t1", person: "James", startDate: "2026-06-01",
+          endDate: "2026-06-01", startMin: null, endMin: null, note: null },
+        { id: "t2", person: "Jim", startDate: "2026-06-01",
+          endDate: "2026-06-01", startMin: null, endMin: null, note: null },
+      ],
+      breaks: [],
+    };
+    expect(
+      getRollupAssignee(MID_MORNING_ROLLUP, d(2026, 6, 1), { availability })
+    ).toBeNull();
+  });
 });
 
 describe("deriveDay — event folding (S17, round-5 zero-width-range regression pin)", () => {
@@ -299,5 +357,36 @@ describe("deriveDay -> foldDeltas — the delta-folding seam (S6, BD17-20)", () 
     const out = call(deltas);
     const morning = out.choreRollups.find((r) => r.bucket === "morning");
     expect(morning.extras.map((x) => x.id)).toEqual(["d1", "d2"]);
+  });
+});
+
+describe("deriveDay — availability threading (batch 42 slice 6)", () => {
+  it("passes ruleOpts.availability to projectGaps: nobody scheduled " +
+     "to work means no project segments", () => {
+    const dayISO = "2026-06-01";
+    const dayUTC = new Date(Date.UTC(2026, 5, 1));
+    const data = {
+      chores: { definitions: [] }, events: { kinds: [] }, projects: [],
+    };
+    const nobodyWorks = {
+      hours: [
+        { id: "x1", person: "James", weekday: null,
+          onDate: dayISO, startMin: null, endMin: null },
+        { id: "x2", person: "Jim", weekday: null,
+          onDate: dayISO, startMin: null, endMin: null },
+      ],
+      timeOff: [], breaks: [],
+    };
+    const withAvailability = deriveDay({
+      data, dayDate: d(2026, 6, 1), dayUTC, dayISO,
+      ruleOpts: { blocks: BLOCKS, availability: nobodyWorks },
+    });
+    const withoutAvailability = deriveDay({
+      data, dayDate: d(2026, 6, 1), dayUTC, dayISO,
+      ruleOpts: { blocks: BLOCKS },
+    });
+    expect(withoutAvailability.projectSegments.length)
+      .toBeGreaterThan(0);
+    expect(withAvailability.projectSegments).toEqual([]);
   });
 });

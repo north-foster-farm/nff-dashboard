@@ -378,3 +378,103 @@ describe("projectGaps — the day's project segments", () => {
       expect(out[0].who).toEqual({ freeCount: 2, who: ["James", "Jim"] });
     });
 });
+
+// ── Availability-aware partition (batch 42 slice 6, F51) ────────────────
+// When the caller passes the availability ctx ({ hours, timeOff,
+// breaks } from useAvailability), the band derives from working hours
+// (retiring the magic 8a-6p), breaks carve holes like buffers, and
+// who's-free respects time off + working hours, not just reservations.
+// DATE (2026-06-26) is a Friday, weekday 5.
+
+function weekdayHours(person, weekday, startMin, endMin) {
+  return {
+    id: `wh-${person}-${weekday}`, person, weekday, onDate: null,
+    startMin, endMin,
+  };
+}
+function allDayOff(person, dateISO) {
+  return {
+    id: `to-${person}`, person, startDate: dateISO, endDate: dateISO,
+    startMin: null, endMin: null, note: null,
+  };
+}
+
+describe("projectGaps — availability-derived band + breaks (F51)", () => {
+  it("derives the band from working hours, not the magic 8a-6p", () => {
+    // Both admins work 10:00-16:00 on Fridays; the mid-day gap
+    // (7:00-17:00 between the two blocks) clamps to that band.
+    const availability = {
+      hours: [
+        weekdayHours("James", 5, 600, 960),
+        weekdayHours("Jim", 5, 600, 960),
+      ],
+      timeOff: [], breaks: [],
+    };
+    const out = projectGaps({ date: DATE, blocks: BLOCKS, availability });
+    expect(out).toHaveLength(1);
+    expect(out[0].startMin).toBe(600);
+    expect(out[0].endMin).toBe(960);
+  });
+
+  it("carves active breaks out of the gap like buffers", () => {
+    const lunch = {
+      id: "br-lunch", name: "Lunch", startMin: 720, endMin: 750,
+      isActive: true,
+    };
+    const availability = { hours: [], timeOff: [], breaks: [lunch] };
+    const out = projectGaps({ date: DATE, blocks: BLOCKS, availability });
+    // Default 9-5 working hours band the gap to 540-1020, lunch
+    // splits it in two.
+    expect(out.map((g) => [g.startMin, g.endMin]))
+      .toEqual([[540, 720], [750, 1020]]);
+  });
+
+  it("nobody scheduled to work means no project segments at all", () => {
+    const availability = {
+      hours: [
+        { id: "x1", person: "James", weekday: null,
+          onDate: "2026-06-26", startMin: null, endMin: null },
+        { id: "x2", person: "Jim", weekday: null,
+          onDate: "2026-06-26", startMin: null, endMin: null },
+      ],
+      timeOff: [], breaks: [],
+    };
+    expect(projectGaps({ date: DATE, blocks: BLOCKS, availability }))
+      .toEqual([]);
+  });
+
+  it("a person on all-day time off drops out of who's-free", () => {
+    const availability = {
+      hours: [], timeOff: [allDayOff("Jim", "2026-06-26")], breaks: [],
+    };
+    const out = projectGaps({ date: DATE, blocks: BLOCKS, availability });
+    expect(out[0].who).toEqual({ freeCount: 1, who: ["James"] });
+  });
+});
+
+describe("whoFree — availability-aware (opts form)", () => {
+  it("time off makes a person not-free even with zero reservations", () => {
+    const availability = {
+      hours: [], timeOff: [allDayOff("James", "2026-06-26")], breaks: [],
+    };
+    const midDay = { s: 600, e: 660 };
+    expect(whoFree(midDay, [], { date: DATE, availability }))
+      .toEqual({ freeCount: 1, who: ["Jim"] });
+  });
+
+  it("a segment outside someone's working hours excludes them", () => {
+    const availability = {
+      hours: [weekdayHours("Jim", 5, 600, 840)], // Jim: 10:00-14:00
+      timeOff: [], breaks: [],
+    };
+    const lateAfternoon = { s: 900, e: 960 };
+    expect(whoFree(lateAfternoon, [], { date: DATE, availability }))
+      .toEqual({ freeCount: 1, who: ["James"] });
+  });
+
+  it("without the opts arg, behaves exactly as before (reservations only)",
+    () => {
+      expect(whoFree({ s: 600, e: 660 }, []))
+        .toEqual({ freeCount: 2, who: ["James", "Jim"] });
+    });
+});

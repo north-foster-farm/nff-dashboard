@@ -3,7 +3,7 @@ import {
   Calendar, CalendarCheck, ListChecks, Tent, Sparkles, Package, Tag, Boxes, Activity,
   FolderKanban, Workflow, NotebookPen, MessageCircleQuestion,
   Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
-  CalendarRange, Store, Cog, Sunrise, Telescope,
+  CalendarRange, CalendarClock, Store, Cog, Sunrise, Telescope,
   UserPlus, ClipboardList, CalendarDays, Newspaper, Map, MapPin, Eye,
   Lightbulb, ChartLine, Palette, Bot
 } from "lucide-react";
@@ -48,6 +48,14 @@ export const SECTIONS = [
   { id: "metrics", group: null, label: "Metrics", icon: ChartLine, description: "Performance numbers side by side — FCR, daily gain, uniformity, and mortality per broiler batch; hen-housed production and feed efficiency per layer flock.", getCount: () => null },
 
   { id: "schedule", group: "Planning", label: "Schedule", icon: CalendarCheck, description: "Today's plan — chores, projects, and events as one agreed day", getCount: () => null },
+  // Availability (batch 42 slice 6, F50/F51): time off, per-person
+  // working hours, and farm-wide breaks — the rows the schedule's
+  // availability engine plans around.
+  { id: "availability", group: "Planning", label: "Availability",
+    icon: CalendarClock,
+    description: "Who's here and when — time off, working hours, " +
+      "and breaks the schedule plans around.",
+    getCount: () => null },
   { id: "calendar", group: "Planning", label: "Calendar", icon: Calendar, description: "Calendar and timeline view of everything date-bound", getCount: () => null },
   { id: "events_all_types", group: "Planning", label: "Events", flyoutTitle: "Events", icon: CalendarRange, kind: "flyout",
     children: [

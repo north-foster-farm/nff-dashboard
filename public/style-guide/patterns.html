@@ -66,6 +66,49 @@
       section</div>
   </div>
 
+  <!-- EDITOR LIST -->
+  <h2 class="ds-h2" id="editorlist">Editor list (settings surfaces)</h2>
+  <p>
+    The add → rows → inline-edit shape for small config lists: time blocks
+    (Chores → Blocks) and the Availability page (time off, working hours,
+    breaks). A one-line intro says what the list controls; <b>one</b> accent
+    button opens a <span class="mono">surface-alt</span> form of
+    tiny-uppercase labeled fields (a segmented control for finite choices —
+    person, hours/off — and native date/time inputs); saved entries are
+    bordered <span class="mono">surface</span> rows that wrap on a phone,
+    ghost icon actions (edit / delete) on the right. Past or paused entries
+    dim to 55% instead of disappearing.
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="font-size:12px;color:var(--c-text-dim);margin-bottom:10px">
+        Days or hours a person is away.</div>
+      <div style="border:1px solid var(--c-border);background:var(--c-surface);
+        padding:8px 12px;display:flex;gap:12px;align-items:center;
+        font-size:12px;color:var(--c-text-dim)">
+        <b style="font-size:13px;color:var(--c-text)">Jim</b>
+        <span>Sat, Jul 4 – Sun, Jul 5</span>
+        <span>All day</span>
+        <span style="margin-left:auto;color:var(--c-text-muted)">✕</span>
+      </div>
+      <div style="border:1px solid var(--c-border);background:var(--c-surface);
+        padding:8px 12px;display:flex;gap:12px;align-items:center;
+        font-size:12px;color:var(--c-text-dim);opacity:.55;margin-top:8px">
+        <b style="font-size:13px;color:var(--c-text)">James</b>
+        <span>Tue, Jul 1</span>
+        <span>9 AM – 12 PM</span>
+        <span style="margin-left:auto;color:var(--c-text-muted)">✕</span>
+      </div>
+    </div>
+    <div class="ds-example-meta">intro → one accent add → surface-alt form →
+      bordered rows (dimmed = past / paused)</div>
+  </div>
+  <div class="ds-use"><b>Use</b> for short lists the operator edits in place
+    (blocks, time off, weekly hours, breaks). &nbsp; <b>Not</b> for the day's
+    work — doing surfaces are Rounds and the Schedule. &nbsp; Sources:
+    <span class="mono">ChoresBlocksTab.jsx</span>,
+    <span class="mono">pages/Availability.jsx</span>.</div>
+
   <!-- MASTER-DETAIL -->
   <h2 class="ds-h2" id="masterdetail">Master–detail (desktop workbench)</h2>
   <p>

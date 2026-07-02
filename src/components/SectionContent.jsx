@@ -11,6 +11,7 @@ import Chores from "../pages/Chores.jsx";
 import Threads from "../pages/Threads.jsx";
 import Calendar from "../pages/Calendar.jsx";
 import Schedule from "../pages/Schedule.jsx";
+import Availability from "../pages/Availability.jsx";
 import SpeciesPage from "../pages/SpeciesPage.jsx";
 import BatchPage from "../pages/BatchPage.jsx";
 import Products from "../pages/Products.jsx";
@@ -115,6 +116,9 @@ export default function SectionContent({
       return <Inventory data={data} startCreating key="new-lot" />;
     case "calendar": return <Calendar data={data} onOpenEvent={onOpenEvent} />;
     case "schedule": return <Schedule data={data} />;
+    // Availability (batch 42 slice 6, F50/F51) — time off, working
+    // hours, and breaks.
+    case "availability": return <Availability />;
     case "chores": return <Chores data={data} />;
     case "projects":
       // Project detail deep links (/projects/<projectId>) carry the

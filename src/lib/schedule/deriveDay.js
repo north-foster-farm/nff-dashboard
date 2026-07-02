@@ -22,7 +22,8 @@ import {
 import { resolveBlockMinutes } from "../sunTimes.js";
 import { getEventOccurrences } from "../recurrence.js";
 import { isActiveProject } from "../projects.js";
-import { projectGaps } from "./partition.js";
+import { projectGaps, PARTITION_ADMINS } from "./partition.js";
+import { defaultAssignees } from "./availability.js";
 
 // One rollup per BLOCK for a day, each carrying its member chore instances
 // (.items). Chores with no block fall into an "anytime" bucket. Ordered
@@ -57,13 +58,30 @@ export function todaysMorningCutoff(data, dayDate, blocks, ruleOpts) {
 // If every chore in the rollup that has an assignee resolves to the same
 // single person on `dayDate`, return that name; otherwise null. Unassigned
 // chores are ignored.
+//
+// X3 (batch 42 slice 6): when NOTHING in the block resolves to anyone
+// and the caller passed ruleOpts.availability, the block falls back to
+// everyone available during its window ("James · Jim") — unassigned
+// stops meaning nobody's job. Nobody available → still null.
 export function getRollupAssignee(rollup, dayDate, ruleOpts) {
   const names = new Set();
   for (const inst of rollup.items) {
     const a = resolveAssignee(inst.chore, dayDate, ruleOpts);
     if (a) names.add(a);
   }
-  return names.size === 1 ? [...names][0] : null;
+  if (names.size === 1) return [...names][0];
+  if (names.size > 1) return null;
+  const availability = ruleOpts?.availability;
+  if (!availability || rollup.startMin == null) return null;
+  const endMin =
+    rollup.startMin + (rollup.block?.durationMinutes ?? 0);
+  const everyone = defaultAssignees(
+    dayDate,
+    { startMin: rollup.startMin, endMin },
+    availability,
+    PARTITION_ADMINS
+  );
+  return everyone.length > 0 ? everyone.join(" · ") : null;
 }
 
 // Compose the integrated day. Returns the structured shape consumers
@@ -104,6 +122,9 @@ export function deriveDay({ data, dayDate, dayUTC, dayISO, ruleOpts, deltas = []
     reservations: deltas.filter((d) => d.source_type === "reservation"),
     buffers: deltas.filter((d) =>
       d.source_type === "buffer" && d.source_ref?.scope !== "all"),
+    // Batch 42 slice 6: working hours derive the band, breaks carve
+    // holes, who's-free respects time off (null = legacy band).
+    availability: ruleOpts?.availability ?? null,
   });
   return foldDeltas(
     { dayISO, events, choreRollups, projects, projectSegments },
