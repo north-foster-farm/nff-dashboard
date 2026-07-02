@@ -211,7 +211,9 @@
     <tbody>
       <tr><td class="mono">ChoreRemainingPill</td>
         <td>Deadline countdown for window chores (re-ticks 60s)</td>
-        <td>days (neutral) · today (accent) · overran (warn)</td></tr>
+        <td><b>Binary since 42.5 (F21)</b>: due (today OR overran —
+          deadline red + ClockAlert) · warn (deadline lands this week —
+          amber + ClockAlert) · days (farther runway, quiet neutral)</td></tr>
       <tr><td class="mono">BlockBadge</td>
         <td>Icon-only time-of-day for a chore row</td>
         <td>Sunrise/Sun/Sunset/Moon/Clock; list collapses to glyph + ×N</td></tr>
@@ -396,12 +398,20 @@
     time off (or per event putting the farm a man down), covering EVERY
     block it overlaps — it replaced the per-chore leak + CoverSheet +
     acknowledge step. Title = block name / window phrase + date /
-    "All day • Fri, Jul 3"; body = "[person] is [off-site…] [from X to
+    "All day · Fri, Jul 3" (the small mid-dot, round 6); body = "[person]
+    is [off-site…] [from X to
     Y…]."; a "N chores" dropdown lists the affected work (per-block
     mini-headings when several blocks are hit); the button
     ("[person] covers") is the single confirmation — one write resolves
     every overlapped block. Renders above the block header row, below the
     confirm/+ Add row (<span class="mono">Schedule.jsx</span>).
+    <b>Round 6 — the NobodyCard variant:</b> when uncovered units from
+    different people OVERLAP (an event counts as its own person), nobody
+    can cover — the cards collapse into ONE "Nobody at the farm" card:
+    every ≥2-out span as "From X to Y · date · duration", the parts
+    listed bold, and the button is <b>"Acknowledged"</b> (an
+    <span class="mono">{ack:true}</span> cover written to every unit;
+    read-backs say "acknowledged").
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -583,9 +593,11 @@
     Color is <b>by kind</b>, not a load-state ramp (slice D, F23/F26): a chore
     bar is <span class="mono">--c-chore</span> (teal, height = item count); a
     man-down <b>hole</b> keeps the chore color and carries a small conflict
-    triangle (F23 — retired round 5: an uncovered time off / event now
-    stripes every overlapped bar — bg-colored diagonals over the kind fill
-    + a warn border — and the stat row carries the conflict badge); a
+    triangle (F23 — retired round 5; since round 6 an uncovered time off /
+    event REPLACES the overlapped bar's fill with the <b>alternating
+    warn/kind stripes</b> — <span class="mono">hatchConflict(kind)</span>,
+    3px warn tick / 7px kind, no border — and the stat row's conflict
+    badge carries the count AND opens the conflict list on click); a
     project bar is
     <span class="mono">--c-project</span> (slate, height = block
     <b>duration</b>), solid when <span class="mono">planned</span> and a blue
@@ -615,10 +627,10 @@
       <div style="display:flex;align-items:flex-end;gap:6px;height:56px">
         <!-- chore bars = teal chore color -->
         <div style="flex:1;height:70%;background:var(--c-chore)"></div>
-        <!-- man-down hole: chore color + conflict triangle -->
-        <div style="position:relative;flex:1;height:48%;background:var(--c-chore)">
-          <span style="position:absolute;top:-2px;left:50%;transform:translateX(-50%);
-            color:var(--c-warn);font-size:10px;line-height:1">⚠</span></div>
+        <!-- needs-cover chore bar: alternating warn/teal stripes (round 6) -->
+        <div style="flex:1;height:48%;
+          background-image:repeating-linear-gradient(45deg,
+            var(--c-warn) 0 3px, var(--c-chore) 3px 10px)"></div>
         <!-- planned project = solid slate, height by duration -->
         <div style="flex:1;height:30%;background:var(--c-project)"></div>
         <div style="flex:1;height:55%;background:var(--c-chore)"></div>
@@ -630,11 +642,13 @@
           box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c-project) 45%,transparent)"></div>
       </div>
     </div>
-    <div class="ds-example-meta">chore=teal · hole=teal + ⚠ conflict symbol ·
+    <div class="ds-example-meta">chore=teal ·
       project=slate (height ∝ duration) · unplanned=blue cross-hatch ·
-      needs-cover bar = warn border + bg stripes · event rail below spans
-      first→last overlapped bar (E badge + periwinkle start—end timeline,
-      round 5)</div>
+      needs-cover bar = alternating warn/kind stripes
+      (<span class="mono">hatchConflict</span>, round 6 — the fill IS the
+      stripes) · event rail below spans
+      first→last overlapped bar (E badge + periwinkle start—end timeline;
+      round 6: min-width = content, centers over its span when wider)</div>
   </div>
 
   <h3 class="ds-h3">WarmingBadge <span class="ds-status converging">Converging</span></h3>
@@ -671,7 +685,13 @@
     The week drawn <b>once</b> off <span class="mono">farmLoad.week</span>,
     desktop sidebar only (the phone <span class="mono">layout="header"</span>
     variant + its should-heat tick were <b>deleted</b> in slice D, NO-LEGACY). A
-    row per day · inline mini-spine · identity symbols (F15–F17): the per-day
+    row per day · <b>identity bars</b> (42.5, F40 — the accent-green
+    count bars are gone) · identity symbols (F15–F17). The bars carry the
+    complete day: chore blocks with items (teal, height ∝ count), project
+    gaps (slate, height ∝ duration; planned solid / free cross-hatch),
+    events (periwinkle wash + ring, fixed mid height) — time-ordered, and
+    every bar hovers to a real Tooltip (F42: block name + count + window /
+    planned-free + who's free / event name + time). The symbols: the per-day
     number + heat box are dropped for a teal <span class="mono">Moon</span> when
     an overnight chore touches the day (<span class="mono">overnightByISO</span>,
     both days a night spans), a periwinkle <span class="mono">E</span>
@@ -702,9 +722,11 @@
         <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
           <span style="width:42px;font-size:13px">Thu 26</span>
           <span style="flex:1;display:flex;align-items:flex-end;gap:2px;height:16px">
-            <i style="flex:1;height:60%;background:var(--c-accent)"></i>
-            <i style="flex:1;height:100%;background:var(--c-accent)"></i>
-            <i style="flex:1;height:40%;background:var(--c-accent)"></i>
+            <i style="flex:1;height:60%;background:color-mix(in srgb,var(--c-chore) 85%,transparent)"></i>
+            <i style="flex:1;height:100%;background:var(--c-project)"></i>
+            <i style="flex:1;height:40%;background:color-mix(in srgb,var(--c-chore) 85%,transparent)"></i>
+            <i style="flex:1;height:50%;background:color-mix(in srgb,var(--c-event) 45%,transparent);
+              box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c-event) 55%,transparent)"></i>
           </span>
           <span style="display:inline-flex;align-items:center;justify-content:center;
             width:14px;height:14px;font-size:9px;font-family:var(--font-ui);
@@ -714,16 +736,22 @@
         <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
           <span style="width:42px;font-size:13px">Fri 27</span>
           <span style="flex:1;display:flex;align-items:flex-end;gap:2px;height:16px">
-            <i style="flex:1;height:30%;background:var(--c-accent)"></i>
-            <i style="flex:1;height:45%;background:var(--c-accent)"></i>
-            <i style="flex:1;height:20%;background:var(--c-accent)"></i>
+            <i style="flex:1;height:30%;background:color-mix(in srgb,var(--c-chore) 85%,transparent)"></i>
+            <i style="flex:1;height:45%;
+              background-image:repeating-linear-gradient(45deg,
+                color-mix(in srgb,var(--c-project) 60%,transparent) 0 4px,
+                transparent 4px 8px);
+              box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c-project) 45%,transparent)"></i>
+            <i style="flex:1;height:20%;background:color-mix(in srgb,var(--c-chore) 85%,transparent)"></i>
           </span>
           <span style="color:var(--c-warn);font-size:13px" title="2 conflicts">⚠</span>
         </div>
       </div>
     </div>
-    <div class="ds-example-meta">mini-spine + identity symbols: periwinkle E
-      (event) · amber ⚠ (conflict). Number + heat box dropped (F17).</div>
+    <div class="ds-example-meta">identity bars (42.5): teal chores ·
+      slate projects (solid planned / hatched free) · periwinkle event ·
+      + identity symbols: periwinkle E (event) · amber ⚠ (conflict).
+      Every bar and symbol hovers to its detail.</div>
   </div>
 
   <!-- ============ NAV / OVERLAYS / STATUS ============ -->
@@ -737,9 +765,12 @@
     no hover; the a11y trade-off is accepted for this internal app). The tip
     is pointer-transparent and never swallows the click of a row it sits in.
     Surface + hairline + shadow; body text in <span class="mono">dim</span>,
-    lead-ins bold in <span class="mono">fg</span>. In
+    lead-ins bold in <span class="mono">fg</span>. <b>Viewport guardrails
+    (round 6):</b> on open the tip is measured and shifted horizontally so
+    neither edge passes the screen (8px margin) — a sidebar tip hugs the
+    edge instead of running off it. In
     <span class="mono">ui.jsx</span>; carriers: WarmingBadge, the This Week
-    day symbols (E badge, conflict triangle, overnight moon), the day-spine
+    day symbols <b>and bars</b> (42.5), the day-spine
     row badges (via <span class="mono">BadgeHint</span>), the Confirmed
     chip ("tap to revert").
   </p>

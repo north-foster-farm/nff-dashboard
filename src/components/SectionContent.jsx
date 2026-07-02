@@ -20,7 +20,6 @@ import Activity from "../pages/Activity.jsx";
 import Observations from "../pages/Observations.jsx";
 import Settings from "../pages/Settings.jsx";
 import Roadmap from "../pages/Roadmap.jsx";
-import StyleGuide from "../pages/StyleGuide.jsx";
 import SitesPage from "../pages/SitesPage.jsx";
 import Inbox from "../pages/Inbox.jsx";
 import Proposals from "../pages/Proposals.jsx";
@@ -144,7 +143,19 @@ export default function SectionContent({
     case "threads": return <Threads data={data} />;
     case "settings": return <Settings />;
     case "roadmap": return <Roadmap />;
-    case "style_guide": return <StyleGuide />;
+    // style_guide is an EXTERNAL section (round 6) — the nav opens the
+    // static doc site in its own tab; a stale deep link gets a plain
+    // anchor, never the old iframe page.
+    case "style_guide": return (
+      <a
+        href="/style-guide/index.html"
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-1.5 font-ui text-[11px] font-semibold uppercase tracking-[0.12em] text-dim hover:text-fg border border-line px-3 py-1.5 w-max"
+      >
+        Open the style guide
+      </a>
+    );
     case "resources_sites": return <SitesPage data={data} />;
     default: {
       const items = data[section.id] ?? [];

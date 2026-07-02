@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import {
   BadgeHint, CoveredBadge, KindBadge, NowEdgeLine, NowRule, WarmingBadge,
-  hatchCover, hatchUnplanned, kindTint,
+  hatchConflict, hatchCover, hatchUnplanned, kindTint,
 } from "./ui.jsx";
 import { formatMinutesOfDay } from "../lib/sunTimes.js";
 
@@ -61,11 +61,14 @@ function compactRange(startMin, endMin) {
 }
 
 // The covered tooltip body: what was covered, who accepted, when.
+// (Round 6) an `ack` cover — the "Nobody at the farm" acknowledgement —
+// reads "acknowledged", not "covered".
 function coveredTip(covered) {
   return (covered ?? []).map((c, i) => (
     <span key={i} className="block">
       <b className="text-fg font-semibold">{c.label}</b>
-      {c.by ? ` — ${c.by} covers` : " — covered"}
+      {c.by ? ` — ${c.by} covers`
+        : c.ack ? " — acknowledged" : " — covered"}
     </span>
   ));
 }
@@ -160,10 +163,15 @@ export function DayRailSpine({
           // heavier diagonals and got hard to read in light mode; the
           // rail + badge + "both free" tag carry the free signal, so the
           // row hatch only needs to whisper.
-          let projFill = b.planned
-            ? kindTint("--c-project")
-            : hatchUnplanned(10);
-          if (b.needsCover) projFill = coverWash(projFill);
+          // Round 6 — an UNPLANNED row that also needs cover wears ONE
+          // alternating warn/slate stripe set (stacking the warn hatch
+          // over the blue hatch read as mud); a planned row keeps the
+          // warn stripes over its flat tint.
+          const projFill = b.needsCover
+            ? (b.planned
+              ? coverWash(kindTint("--c-project"))
+              : hatchConflict("--c-project", 14, 10))
+            : (b.planned ? kindTint("--c-project") : hatchUnplanned(10));
           return (
             <button
               key={b.bucket}
@@ -242,9 +250,26 @@ export function DayRailSpine({
                   className="w-[5px] self-stretch shrink-0 ring-1 ring-inset ring-event"
                   style={{ background: "var(--c-event)", opacity: 0.9 }}
                 />
+                {/* Round 6 — the row reads "Event" like chores read
+                    "Chores"; the E badge's hover carries the identity:
+                    the event's TYPE, NAME, and LOCATION. A location is
+                    an object ({ name, address }) — never render it raw. */}
                 <BadgeHint
                   tip={<>
+                    {occ?.kindLabel && (
+                      <span className="block text-faint">
+                        {occ.kindLabel}
+                      </span>
+                    )}
                     <b className="text-fg">{occ?.instanceLabel ?? "Event"}</b>
+                    {occ?.location && (
+                      <span className="block">
+                        {typeof occ.location === "string"
+                          ? occ.location
+                          : [occ.location.name, occ.location.address]
+                            .filter(Boolean).join(" · ")}
+                      </span>
+                    )}
                     {"\n"}
                     {b.startMin != null
                       ? compactRange(b.startMin, b.endMin) : "All day"}
@@ -254,7 +279,7 @@ export function DayRailSpine({
                 </BadgeHint>
                 <span className="flex-1 min-w-0">
                   <span className={SPINE_TITLE_CLS}>
-                    {occ?.instanceLabel ?? "Event"}
+                    Event
                   </span>
                   {isNow ? (
                     <NowRule time={nowTime} size="sm" className="pr-1" />
@@ -446,7 +471,9 @@ export function DayStrip({
           same count line (one shared `summary` node — they can't drift).
           The counts take their own line — the eyebrow + Whole-day toggle
           fill the first, and a phone column can't fit all three. */}
-      <div className="flex items-center justify-between gap-2 pt-3">
+      {/* pt-0 (round 6): the page heading's own margin is the whole gap
+          above the day load. */}
+      <div className="flex items-center justify-between gap-2">
         <span className="shrink-0 font-ui text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
           Day load
         </span>
@@ -468,7 +495,9 @@ export function DayStrip({
       <div className="pb-1 flex font-ui text-[10px] text-faint [font-variant-numeric:tabular-nums]">
         {summary}
       </div>
-      <div className="pb-2">
+      {/* pb-3 (round 6): even air on both sides of the divider below —
+          the toolbar under it takes the matching mt-3. */}
+      <div className="pb-3">
         {/* No baseline border — the day load is chromeless (round 4). */}
         {/* overflow-x-clip: the pager track slides in from ±16px
             (nff-page-from-*), and iOS Safari counts that transformed
@@ -517,12 +546,17 @@ export function DayStrip({
                         boxShadow:
                           "inset 0 0 0 1px color-mix(in srgb,"
                           + " var(--c-project) 40%, transparent)",
-                        ...(b.planned
-                          ? {
-                            background:
-                              "color-mix(in srgb, var(--c-project) 45%, transparent)",
-                          }
-                          : { backgroundImage: hatchUnplanned(45) }),
+                        // Round 6 — needs-cover: ONE alternating warn/
+                        // slate stripe set at the strip's 45% strength
+                        // (same language as the spine rows + day-load).
+                        ...(b.needsCover
+                          ? { backgroundImage: hatchConflict("--c-project", 45, 45) }
+                          : b.planned
+                            ? {
+                              background:
+                                "color-mix(in srgb, var(--c-project) 45%, transparent)",
+                            }
+                            : { backgroundImage: hatchUnplanned(45) }),
                       }}
                     >
                       {(isNow || isFocus) && (
@@ -656,10 +690,6 @@ export function DayStrip({
                 className={STRIP_COL_CLS + (b.allDone ? "opacity-60" : "")}
               >
                 <span className="relative w-full h-[56px] flex items-end justify-center">
-                  {b.needsCover && (
-                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-warn"
-                      style={{ boxShadow: "0 0 0 2px var(--color-bg)" }} />
-                  )}
                   <span
                     className="relative w-full flex flex-col-reverse"
                     style={{
@@ -671,8 +701,18 @@ export function DayStrip({
                     <span style={{ height: fillH + "px", background: "var(--color-resolved)" }} />
                     {/* remainder in the chore identity teal (F9 — chores
                         don't borrow accent green), matching the desktop
-                        rail */}
-                    <span style={{ height: remH + "px", background: "var(--color-chore)", opacity: 0.85 }} />
+                        rail. Round 6: needs-cover = the SAME alternating
+                        warn/teal stripes as the desktop day-load bars
+                        (the old warn dot above the rail is gone). */}
+                    <span style={{
+                      height: remH + "px",
+                      ...(b.needsCover
+                        ? { backgroundImage: hatchConflict("--c-chore") }
+                        : {
+                          background: "var(--color-chore)",
+                          opacity: 0.85,
+                        }),
+                    }} />
                     {/* now/focus ring as an INSET overlay painted ABOVE the
                         fills — a box-shadow on the bar itself sits under
                         its children, and an outset ring falsifies the bar's

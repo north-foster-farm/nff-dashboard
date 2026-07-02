@@ -4325,6 +4325,87 @@ color; clock-arrow overnight icons). Build refs in
     only); drag-reorder WITHIN a project gap still rides slice 8's
     order-preserve; the week covered icon reads reservation covers only
     (event covers are day-local).
+- **42.5 — slice 4 (This Week truer week) + round 6 fixes.
+  `v0.10.82-alpha` (2026-07-02); pure frontend, NO migration.**
+  Slice 4 of the redesign plan (F40/F21/F42; F49 closed by
+  verification — round 4's week-wide Moon scan already carried it) plus
+  James's round-6 bug list (screenshots, given mid-build).
+  - F40 This Week identity bars: `farmLoad` builds per-day
+    `week.days[].bars` — chore blocks (teal, count-scaled vs the week
+    max) + project gaps (slate, duration-scaled vs the week's longest
+    gap; planned solid / free cross-hatch) + events (periwinkle wash +
+    ring, fixed height) — time-ordered. Fed by two week maps the
+    Schedule now passes in (`weekRes` = the horizon reservations,
+    `weekTimed` = the week's timed ad_hoc/project_node deltas — both
+    moved above the `farm` memo); the focal day reads its LIVE
+    deltas/reservations instead. WeekStrip renders the bars (the
+    accent-green count bars are gone; empty blocks no longer draw
+    stubs) and sizes its track to the richest day.
+  - F42 (This Week half): every bar carries a real Tooltip — chore →
+    block name + N chores + window; project → Planned/Free + who's
+    free + window; event → name + time. Window labels are preformatted
+    in farmLoad (`windowLabel`) so ui.jsx stays free of the time utils.
+    The day-load half rides slice 5.
+  - F21 warming collapse (the chore ROW finally matches the binary
+    model): ChoreRemainingPill = due-today AND overran → ONE red "due"
+    tone (`--c-cat-processing`) + ClockAlert glyph; runway landing THIS
+    week → warn amber + glyph (same Sun-first rule as dayWarming);
+    farther runway → quiet neutral. DaysLeftTag warms (amber +
+    ClockAlert) when the deadline lands this week; the row escalation
+    tint is one red wash for both due states (the accent/warn split is
+    gone).
+  - Round 6 (same session, James's screenshots):
+    * Tooltip viewport guardrails: on open the tip is measured and
+      shifted so neither edge passes the viewport (8px margin) — the
+      This Week sidebar tips no longer run off the right edge.
+    * ONE conflict-stripe language: new `hatchConflict(kind)` =
+      alternating warn/kind diagonals, uneven duty (3px warn tick /
+      7px kind — a 50/50 alternation of saturated hues strobed at bar
+      size). Spine free+needs-cover project rows use it at light
+      strength (the warn hatch STACKED over the blue hatch read as
+      mud); day-load bars REPLACE their fill with it (the crude
+      bg-stripes + warn border are gone); the phone strip stripes the
+      chore remainder + project columns the same way (the warn dot
+      above the rail is gone).
+    * "Nobody at the farm": overlapping uncovered units from different
+      people (events always count as their own person) union-find into
+      ONE card — spans where ≥2 are out at once (sweep), each with
+      window · date · duration, the parts listed bold; the button is
+      "Acknowledged" (writes an `{ack:true,at}` cover to every unit —
+      same write path, no coverer). Covered read-backs say
+      "acknowledged" (stat row, spine, This Week).
+    * Conflicts entry point: the toolbar conflicts chip is DELETED —
+      the day-load stat-row warn badge counts every today-conflict,
+      bolds each NAME in its hover, and opens the conflict list on
+      click (dayLoadSummary now builds below the conflicts memos).
+    * Day-load event rail: bullet dropped; min-width = content +
+      padding (min-w-max), centered over its bar span when wider
+      (flex justify-center wrapper) — short events no longer overflow.
+    * NeedsCoverCard title uses the small mid-dot (·, not •).
+    * Spine event rows read "Event"; the E badge hover = event type +
+      name + location (+ window). Location is `{name, address}` —
+      rendered joined, fixing the hover CRASH James hit.
+    * Spacing: heading mb-5→4, day-load top padding dropped, even air
+      around the divider (pb-4/mt-4 desktop, pb-3/mt-3 phone).
+    * Mobile: day NAVIGATION lands (prev/next arrows + native date
+      input + Today jump under the h2 — the phone had no way off
+      today); project block headers, chore-block headers, AdHocRow
+      titles + project sub-lines, and "Add next task — …" all WRAP;
+      the horizontal page-scroll bug's root cause fixed (ml-10 on
+      basis-full disclosure rows — DaysLeftTag due panel +
+      EditedHistory — overflowed the row by the margin; indent moved
+      inside a wrapper).
+    * Style guide nav link opens the doc site in its own tab
+      (`external` section kind; the iframe page StyleGuide.jsx is
+      DELETED, NO-LEGACY; stale deep links get a plain anchor).
+  - Docs: WeekStrip identity bars + bar tooltips, hatchConflict,
+    Tooltip guardrails, binary ChoreRemainingPill/DaysLeftTag,
+    NobodyCard, event-rail sizing — BOTH library faces.
+  - Known follow-ups: the day-load conflict stripes' palette is
+    James-flagged as "rough" — shipped with the calmer 3/10 duty; if
+    it still reads loud, next candidates are a muted warn mix or a
+    wider cadence. Warming pill live-verify awaits a naturally warm
+    chore (none on the farm today).
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.

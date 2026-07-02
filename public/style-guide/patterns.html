@@ -326,9 +326,18 @@
     alpha images so hover/active row tints show through the gaps.
     <b>Round 5:</b> the sibling <span class="mono">hatchCover(strength)</span>
     speaks the same stripe language in <span class="mono">--c-warn</span> —
-    a block needing cover wears it (spine rows layer
-    <span class="mono">hatchCover(12)</span> over the kind tint; day-load
-    bars take bg-colored stripes + a warn border) until cover is accepted.
+    a PLANNED block needing cover layers it over its flat kind tint
+    (<span class="mono">hatchCover(12)</span>) until cover is accepted.
+    <b>Round 6:</b> when the surface underneath is itself striped or a
+    solid bar, needs-cover is the <b>alternating</b>
+    <span class="mono">hatchConflict(kindVar)</span> — warn/kind
+    diagonals, deliberately uneven (3px warn tick / 7px kind: a 50/50
+    alternation of two saturated hues strobes at bar size; thin ticks
+    over the dominant identity color read as "warning ON the bar", not a
+    third color). Never stack two hatch sets. Carriers: free+needs-cover
+    spine project rows (light 14/10), day-load conflict bars (full — the
+    fill IS the stripes, no warn border), the phone strip's chore
+    remainder + project columns.
   </p>
   <div class="ds-example">
     <div class="ds-example-stage">
@@ -349,12 +358,23 @@
           <span style="color:var(--c-text-faint);font-size:11px">11 AM ·
             free</span>
         </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+          background-image:repeating-linear-gradient(45deg,
+            color-mix(in srgb,var(--c-warn) 14%,transparent) 0 3px,
+            color-mix(in srgb,var(--c-project) 10%,transparent) 3px 10px)">
+          <span style="font-weight:500;font-size:12px">Project</span>
+          <span style="color:var(--c-text-faint);font-size:11px">3 PM ·
+            free · needs cover</span>
+        </div>
       </div>
     </div>
     <div class="ds-example-meta">solid wash (= the kind tint) = planned ·
-      cross-hatch = free · carriers: LoadSpine bars (60), day-spine rows
-      (10 — dropped from 16 in 42.3 round 4 for 12px text legibility;
-      the rail + badge carry the free signal), phone strip bars (45)</div>
+      cross-hatch = free · alternating warn/kind
+      (<span class="mono">hatchConflict</span>, round 6) = needs cover on
+      a striped/solid surface · carriers: LoadSpine bars (60), day-spine
+      rows (10 — dropped from 16 in 42.3 round 4 for 12px text
+      legibility; the rail + badge carry the free signal), phone strip
+      bars (45)</div>
   </div>
 
   <!-- APPROVAL QUEUE -->

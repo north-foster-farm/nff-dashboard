@@ -8,16 +8,21 @@ export default function EditedHistory({ history }) {
   const entries = [...(history ?? [])].reverse();
   if (entries.length === 0) return null;
   return (
-    <ul className="basis-full w-full mt-1 ml-10 border-l border-line pl-3 flex flex-col gap-1">
-      {entries.map((e, i) => (
-        <li key={i} className="text-[11px] text-dim leading-snug">
-          <span className="text-fg">{e.summary}</span>
-          <span className="text-faint">
-            {" — "}{fmt(e.at)}{e.by ? ` · ${shortWho(e.by)}` : ""}
-          </span>
-        </li>
-      ))}
-    </ul>
+    // Round 6 — the indent lives INSIDE the full-width item (ml on a
+    // basis-full flex item overflowed its row by the margin → the
+    // phone's horizontal page-scroll bug).
+    <div className="basis-full min-w-0 mt-1">
+      <ul className="ml-10 border-l border-line pl-3 flex flex-col gap-1">
+        {entries.map((e, i) => (
+          <li key={i} className="text-[11px] text-dim leading-snug">
+            <span className="text-fg">{e.summary}</span>
+            <span className="text-faint">
+              {" — "}{fmt(e.at)}{e.by ? ` · ${shortWho(e.by)}` : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

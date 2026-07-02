@@ -400,10 +400,12 @@ function AdHocRow({
       </button>
       <div className="flex-1 min-w-0">
         <div className={
-          "text-[14px] flex items-center gap-2 " +
+          "text-[14px] flex flex-wrap items-center gap-x-2 gap-y-0.5 " +
           (done ? "text-muted line-through" : "text-fg font-medium")
         }>
-          <span className="truncate">
+          {/* Round 6 — the title WRAPS (matches ChoreCheckRow: a task
+              or step name is content, never truncated). */}
+          <span className="min-w-0">
             {commitment.source_ref?.title ?? (isProject ? "(project)" : "(task)")}
           </span>
           {/* One-off tasks keep the chip; a project step's identity is
@@ -432,7 +434,7 @@ function AdHocRow({
           )}
         </div>
         {isProject && commitment.source_ref?.project_title && (
-          <div className="text-[12px] text-faint italic mt-0.5 truncate">
+          <div className="text-[12px] text-faint italic mt-0.5 leading-snug">
             {commitment.source_ref.project_title}
           </div>
         )}
@@ -645,11 +647,13 @@ function NeedsCoverCard({ unit, dateShort, onCover }) {
   const [open, setOpen] = useState(false);
   const w = unit.window;
   const phrase = coverPhrase(w, unit.allDay);
+  // Round 6 — the small mid-dot between time and date, matching every
+  // other separator in the app (the heavy bullet read as a third weight).
   const title = unit.allDay
-    ? `All day • ${dateShort}`
+    ? `All day · ${dateShort}`
     : unit.blocks.length === 1
       ? unit.blocks[0].name
-      : phrase.charAt(0).toUpperCase() + phrase.slice(1) + ` • ${dateShort}`;
+      : phrase.charAt(0).toUpperCase() + phrase.slice(1) + ` · ${dateShort}`;
   const body = unit.kind === "event"
     ? `${unit.label} puts us a man down ${phrase}.`
     : `${unit.person} is ${COVER_KIND_WORD[w.kind] ?? "off"} ${phrase}.`;
@@ -722,6 +726,75 @@ function NeedsCoverCard({ unit, dateShort, onCover }) {
           className="w-full mt-2.5 bg-warn text-on-accent border-0 py-2.5 cursor-pointer font-ui text-[12px] font-bold uppercase tracking-[0.1em]"
         >
           {action}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── NobodyCard (round 6) ─────────────────────────────────────────────
+// When BOTH of us are out at once, the overlapping needs-cover units
+// collapse into ONE card: nobody can cover, so it summarizes the
+// overlapping conflicts — who/what, when, and for how long — and the
+// only confirmation is "Acknowledged".
+function durationText(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h && m) return `${h} h ${m} min`;
+  if (h) return `${h} h`;
+  return `${m} min`;
+}
+
+function NobodyCard({ group, dateShort, onAck }) {
+  const partName = (u) => u.kind === "event" ? u.label : u.person;
+  const partWhen = (u) => u.allDay
+    ? "all day"
+    : formatMinutesOfDay(u.window.startMin) + "–"
+      + formatMinutesOfDay(u.window.endMin);
+  return (
+    <div
+      className="mb-3 border"
+      style={{
+        borderColor: "color-mix(in srgb, var(--c-warn) 50%, transparent)",
+        background: "color-mix(in srgb, var(--c-warn) 7%, var(--c-bg))",
+      }}
+    >
+      <div
+        className="px-3 py-2 flex items-center gap-2 border-b"
+        style={{
+          borderColor: "color-mix(in srgb, var(--c-warn) 22%, transparent)",
+        }}
+      >
+        <AlertTriangle size={15} className="shrink-0 text-warn" />
+        <span className="font-ui text-[11px] font-semibold uppercase tracking-[0.14em] text-warn">
+          Nobody at the farm
+        </span>
+      </div>
+      <div className="px-3 py-3">
+        {group.spans.map(([s, e], i) => (
+          <div
+            key={i}
+            className="font-heading text-[15px] font-medium text-fg"
+          >
+            {`From ${formatMinutesOfDay(s)} to ${formatMinutesOfDay(e)}`}
+            {` · ${dateShort} · ${durationText(e - s)}`}
+          </div>
+        ))}
+        <div className="text-[12px] text-dim mt-1 leading-snug">
+          {group.units.map((u, i) => (
+            <div key={i}>
+              <b className="text-fg font-semibold">{partName(u)}</b>
+              {u.kind === "event" ? " — event, " : " — off "}
+              {partWhen(u)}
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={onAck}
+          className="w-full mt-2.5 bg-warn text-on-accent border-0 py-2.5 cursor-pointer font-ui text-[12px] font-bold uppercase tracking-[0.1em]"
+        >
+          Acknowledged
         </button>
       </div>
     </div>
@@ -1290,19 +1363,85 @@ export default function Schedule({ data }) {
     return m;
   }, [blockRows, counts]);
 
+  const HORIZON_DAYS = 14;
+  // { res: Map<iso, reservation[]>, ovr: Map<iso, override[]> }. Always loaded
+  // (not gated on the conflicts panel) so the week pane can mark EVERY day of
+  // the displayed week (F17), not just focal/forward days. One read-only query
+  // for both reservation + override commitments, spanning the week's Sunday
+  // through the forward 14-day horizon. Overrides are needed because a man-down
+  // often only exists after a block-move/reassignment override (see
+  // `dayConflictCount`). Declared above the `farm` memo — the week identity
+  // bars (F40) read `horizon.res` for gap splitting.
+  const [horizon, setHorizon] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    const from = new Date(today);
+    from.setDate(from.getDate() - from.getDay()); // the week's Sunday
+    const to = new Date(today);
+    to.setDate(to.getDate() + HORIZON_DAYS);
+    supabase.from("commitments")
+      .select("id, source_type, source_ref, run_date, clock_time, assignee")
+      .in("source_type", ["reservation", "override"])
+      .gte("run_date", ymdLocal(from)).lte("run_date", ymdLocal(to))
+      .then((res) => {
+        if (cancelled) return;
+        const r = new Map();
+        const o = new Map();
+        for (const row of res.data ?? []) {
+          const m = row.source_type === "override" ? o : r;
+          if (!m.has(row.run_date)) m.set(row.run_date, []);
+          m.get(row.run_date).push(row);
+        }
+        setHorizon({ res: r, ovr: o });
+      });
+    return () => { cancelled = true; };
+  }, [today]);
+
+  // The week's timed ad_hoc/project_node commitments (± a day for the
+  // overnight wrap's edges), keyed by run_date. Feeds the week-pane Moon
+  // scan (round 4) AND the week identity bars' planned-vs-free test (F40).
+  const [weekTimedDeltas, setWeekTimedDeltas] = useState(() => new Map());
+  useEffect(() => {
+    let cancelled = false;
+    const ds = weekDays(today);
+    const from = new Date(ds[0]);
+    from.setDate(from.getDate() - 1);
+    const to = new Date(ds[6]);
+    to.setDate(to.getDate() + 1);
+    supabase.from("commitments")
+      .select("id, source_type, source_ref, run_date, clock_time")
+      .in("source_type", ["ad_hoc", "project_node"])
+      .not("clock_time", "is", null)
+      .gte("run_date", ymdLocal(from)).lte("run_date", ymdLocal(to))
+      .then((res) => {
+        if (cancelled) return;
+        const m = new Map();
+        for (const r of res.data ?? []) {
+          if (r.source_ref?.origin === "removed") continue; // tombstones
+          if (!m.has(r.run_date)) m.set(r.run_date, []);
+          m.get(r.run_date).push(r);
+        }
+        setWeekTimedDeltas(m);
+      });
+    return () => { cancelled = true; };
+  }, [today]);
+
   // The one farmLoad model for the viewed day (Round-3, harvest-remix). The
   // shared day-load read consumed by the LoadSpine and the WeekStrip — folding
   // what were the inline `daySilhouette` / `week` / `shouldHeat` computations
   // into ONE (those are deleted below; NO-LEGACY). It reads the same walks they
   // did, so it can't drift. `nowMin` only flows on a today-view (else block
-  // now/future state is meaningless).
+  // now/future state is meaningless). `weekRes`/`weekTimed` feed the This
+  // Week identity bars (F40).
   const farm = useMemo(
     () => farmLoad({
       data, date: today, ruleOpts, choreCtx, completions, deltas,
       nowMin: dateISO === realTodayISO ? nowMin : null,
+      weekRes: horizon?.res ?? null,
+      weekTimed: weekTimedDeltas,
     }),
     [data, today, ruleOpts, choreCtx, completions, deltas, dateISO,
-      realTodayISO, nowMin],
+      realTodayISO, nowMin, horizon, weekTimedDeltas],
   );
 
   // (Round-3 NO-LEGACY) The inline `personLanes` + `daySilhouette` memos that
@@ -1456,6 +1595,62 @@ export default function Schedule({ data }) {
   const coveredUnits = useMemo(
     () => coverUnits.filter((u) => u.cover), [coverUnits]);
 
+  // Round 6 — overlapping uncovered units from DIFFERENT people (an event
+  // always counts as its own person: someone must be there) mean nobody
+  // can cover: they group into ONE "Nobody at the farm" card. `spans` =
+  // the intervals where ≥2 of the group are out at once. Same-person
+  // overlaps (an appointment inside a day off) never group.
+  const coverGroups = useMemo(() => {
+    const units = uncoveredUnits;
+    const overlaps = (a, b) =>
+      a.window.startMin < b.window.endMin
+      && b.window.startMin < a.window.endMin
+      && (a.kind === "event" || b.kind === "event"
+        || a.person !== b.person);
+    const parent = units.map((_, i) => i);
+    const find = (i) =>
+      parent[i] === i ? i : (parent[i] = find(parent[i]));
+    for (let i = 0; i < units.length; i++) {
+      for (let j = i + 1; j < units.length; j++) {
+        if (overlaps(units[i], units[j])) parent[find(i)] = find(j);
+      }
+    }
+    const byRoot = new Map();
+    units.forEach((u, i) => {
+      const r = find(i);
+      if (!byRoot.has(r)) byRoot.set(r, []);
+      byRoot.get(r).push(u);
+    });
+    const nobody = [];
+    const singles = [];
+    for (const group of byRoot.values()) {
+      if (group.length < 2) {
+        singles.push(...group);
+        continue;
+      }
+      const pts = group
+        .flatMap((u) => [[u.window.startMin, 1], [u.window.endMin, -1]])
+        .sort((a, b) => a[0] - b[0] || b[1] - a[1]);
+      let depth = 0;
+      let start = null;
+      const spans = [];
+      for (const [t, d] of pts) {
+        depth += d;
+        if (depth >= 2 && start == null) start = t;
+        else if (depth < 2 && start != null) {
+          spans.push([start, t]);
+          start = null;
+        }
+      }
+      nobody.push({
+        id: "nobody|" + group.map((u) => u.id).join("+"),
+        units: group,
+        spans,
+      });
+    }
+    return { nobody, singles };
+  }, [uncoveredUnits]);
+
   // Per-bucket flags for the sidebars: conflict stripes/triangle on every
   // block an UNCOVERED unit touches; the muted covered mark elsewhere.
   const needsCoverBuckets = useMemo(() => new Set(
@@ -1468,6 +1663,7 @@ export default function Schedule({ data }) {
         const list = m.get(b.bucket) ?? [];
         list.push({
           by: u.cover?.by ?? null,
+          ack: u.cover?.ack ?? false,
           at: u.cover?.at ?? null,
           label: u.kind === "event"
             ? (u.label ?? "Event")
@@ -1537,65 +1733,16 @@ export default function Schedule({ data }) {
   // The one day-load count line, shared verbatim by the desktop header and
   // the phone strip header (they must never disagree). Pluralized per word.
   const nText = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-  // The stat row's conflict badge (round 5): a warn triangle + ×N with
-  // the hover-me cue; the tip names who is off (or which event) and when.
-  const unitTip = (u) => u.kind === "event"
-    ? `${u.label} — ${formatMinutesOfDay(u.window.startMin)}–`
+  // A unit's who + when, for the badge tooltips + the conflict list.
+  const unitWhen = (u) => u.kind === "event" || !u.allDay
+    ? formatMinutesOfDay(u.window.startMin) + "–"
       + formatMinutesOfDay(u.window.endMin)
-    : `${u.person} — ${u.allDay ? "all day"
-      : formatMinutesOfDay(u.window.startMin) + "–"
-        + formatMinutesOfDay(u.window.endMin)}`;
-  const dayLoadSummary = (
-    <span className="flex items-center gap-1">
-      {nText(dayLoadCounts.chores, "chore")}
-      {" · "}{nText(dayLoadCounts.blocks, "block")}
-      {dayLoadCounts.projects > 0
-        ? ` · ${nText(dayLoadCounts.projects, "project")}` : ""}
-      {dayLoadCounts.events > 0
-        ? ` · ${nText(dayLoadCounts.events, "event")}` : ""}
-      {(farm.warming.warn.length + farm.warming.due.length) > 0 && " · "}
-      <WarmingBadge warn={farm.warming.warn} due={farm.warming.due} cue />
-      {uncoveredUnits.length > 0 && (
-        <>
-          {" · "}
-          <Tooltip
-            tip={uncoveredUnits.map((u, i) => (
-              <span key={i} className="block">{unitTip(u)}</span>
-            ))}
-            className="cursor-pointer"
-          >
-            <span className="flex flex-col items-center gap-[2px]">
-              <span className="inline-flex items-center gap-0.5 text-warn">
-                <AlertTriangle size={14} />
-                {uncoveredUnits.length > 1 && (
-                  <span className="font-ui text-[10px] font-semibold leading-none">
-                    ×{uncoveredUnits.length}
-                  </span>
-                )}
-              </span>
-              <span className="w-full border-b border-dotted border-faint" />
-            </span>
-          </Tooltip>
-        </>
-      )}
-      {coveredUnits.length > 0 && (
-        <>
-          {" · "}
-          <CoveredBadge
-            size={14}
-            cue
-            tip={coveredUnits.map((u, i) => (
-              <span key={i} className="block">
-                <b className="text-fg font-semibold">{unitTip(u)}</b>
-                {u.cover?.by ? ` — ${u.cover.by} covers` : " — covered"}
-                {u.cover?.at ? ` · ${fmtStamp(u.cover.at)}` : ""}
-              </span>
-            ))}
-          />
-        </>
-      )}
-    </span>
-  );
+    : "all day";
+  const unitName = (u) => u.kind === "event" ? u.label : u.person;
+  const unitTip = (u) => `${unitName(u)} — ${unitWhen(u)}`;
+  // (Round 6) `dayLoadSummary` itself is built BELOW the conflicts
+  // section — its warn badge counts every today-conflict and opens the
+  // conflict list on click (it replaced the toolbar conflicts button).
 
   // (Round-3 NO-LEGACY) The inline `week` (weekFullness) memo is GONE — it is
   // folded into the one `farm` model (`farm.week`) consumed by the sidebar
@@ -2208,6 +2355,24 @@ export default function Schedule({ data }) {
     }
   };
 
+  // Acknowledge a "Nobody at the farm" group (round 6): nobody can cover,
+  // so each underlying unit is marked with an `ack` cover — same write
+  // path, no coverer — and every surface reads it as resolved.
+  const acknowledgeNobody = (g) => {
+    const at = new Date().toISOString();
+    for (const u of g.units) {
+      const entry = {
+        at, by: email ?? null,
+        summary: "Nobody at the farm — acknowledged",
+      };
+      if (u.kind === "event") {
+        addEventCover(u.occ, { ack: true, at }, entry);
+      } else {
+        acceptCover(u.id, { ack: true, at }, entry);
+      }
+    }
+  };
+
   // Carry-over banner dismissal persists per day on this device (F19) — once
   // dismissed it stays gone across refreshes, re-appearing only on a new day.
   const carryoverKey = `nff:sched:carryover-dismissed:${dateISO}`;
@@ -2327,38 +2492,8 @@ export default function Schedule({ data }) {
 
   // Horizon scan (next 14 days) for man-down conflicts — driven by reservations
   // read once when the panel opens. Recurring days-off (S46) land here.
-  const HORIZON_DAYS = 14;
-  // { res: Map<iso, reservation[]>, ovr: Map<iso, override[]> }. Always loaded
-  // (not gated on the conflicts panel) so the week pane can mark EVERY day of
-  // the displayed week (F17), not just focal/forward days. One read-only query
-  // for both reservation + override commitments, spanning the week's Sunday
-  // through the forward 14-day horizon. Overrides are needed because a man-down
-  // often only exists after a block-move/reassignment override (see
-  // `dayConflictCount`).
-  const [horizon, setHorizon] = useState(null);
-  useEffect(() => {
-    let cancelled = false;
-    const from = new Date(today);
-    from.setDate(from.getDate() - from.getDay()); // the week's Sunday
-    const to = new Date(today);
-    to.setDate(to.getDate() + HORIZON_DAYS);
-    supabase.from("commitments")
-      .select("id, source_type, source_ref, run_date, clock_time, assignee")
-      .in("source_type", ["reservation", "override"])
-      .gte("run_date", ymdLocal(from)).lte("run_date", ymdLocal(to))
-      .then((res) => {
-        if (cancelled) return;
-        const r = new Map();
-        const o = new Map();
-        for (const row of res.data ?? []) {
-          const m = row.source_type === "override" ? o : r;
-          if (!m.has(row.run_date)) m.set(row.run_date, []);
-          m.get(row.run_date).push(row);
-        }
-        setHorizon({ res: r, ovr: o });
-      });
-    return () => { cancelled = true; };
-  }, [today]);
+  // (Slice 4) `horizon` + `weekTimedDeltas` moved above the `farm` memo —
+  // the week identity bars read them.
 
   const upcomingConflicts = useMemo(() => {
     if (!horizon) return [];
@@ -2371,6 +2506,82 @@ export default function Schedule({ data }) {
   const conflicts = useMemo(
     () => [...todayConflicts, ...upcomingConflicts],
     [todayConflicts, upcomingConflicts]);
+
+  // The one day-load count line (shared verbatim by the desktop header and
+  // the phone strip header). Round 6 — the warn badge IS the conflicts
+  // entry point now (the toolbar button is gone): it counts every
+  // today-conflict, its hover bolds each NAME, and clicking it opens the
+  // conflict list.
+  const dayLoadSummary = (
+    <span className="flex items-center gap-1">
+      {nText(dayLoadCounts.chores, "chore")}
+      {" · "}{nText(dayLoadCounts.blocks, "block")}
+      {dayLoadCounts.projects > 0
+        ? ` · ${nText(dayLoadCounts.projects, "project")}` : ""}
+      {dayLoadCounts.events > 0
+        ? ` · ${nText(dayLoadCounts.events, "event")}` : ""}
+      {(farm.warming.warn.length + farm.warming.due.length) > 0 && " · "}
+      <WarmingBadge warn={farm.warming.warn} due={farm.warming.due} cue />
+      {todayConflicts.length > 0 && (
+        <>
+          {" · "}
+          <Tooltip
+            tip={<>
+              {uncoveredUnits.map((u, i) => (
+                <span key={"u" + i} className="block">
+                  <b className="text-fg font-semibold">{unitName(u)}</b>
+                  {" — "}{unitWhen(u)}
+                </span>
+              ))}
+              {todayConflicts.filter((c) => c.type !== "cover")
+                .map((c, i) => (
+                  <span key={"c" + i} className="block">
+                    <b className="text-fg font-semibold">{c.label}</b>
+                    {c.detail ? ` — ${c.detail}` : ""}
+                  </span>
+                ))}
+            </>}
+            className="cursor-pointer"
+          >
+            <button
+              type="button"
+              onClick={() => setShowConflicts(true)}
+              aria-label="Open the conflict list"
+              className="flex flex-col items-center gap-[2px] cursor-pointer"
+            >
+              <span className="inline-flex items-center gap-0.5 text-warn">
+                <AlertTriangle size={14} />
+                {todayConflicts.length > 1 && (
+                  <span className="font-ui text-[10px] font-semibold leading-none">
+                    ×{todayConflicts.length}
+                  </span>
+                )}
+              </span>
+              <span className="w-full border-b border-dotted border-faint" />
+            </button>
+          </Tooltip>
+        </>
+      )}
+      {coveredUnits.length > 0 && (
+        <>
+          {" · "}
+          <CoveredBadge
+            size={14}
+            cue
+            tip={coveredUnits.map((u, i) => (
+              <span key={i} className="block">
+                <b className="text-fg font-semibold">{unitName(u)}</b>
+                {" — "}{unitWhen(u)}
+                {u.cover?.by ? ` — ${u.cover.by} covers`
+                  : u.cover?.ack ? " — acknowledged" : " — covered"}
+                {u.cover?.at ? ` · ${fmtStamp(u.cover.at)}` : ""}
+              </span>
+            ))}
+          />
+        </>
+      )}
+    </span>
+  );
 
   // Per-day conflict counts for the week pane (F17) — for EVERY day of the
   // displayed week, so a triangle shows without first selecting the day. Uses
@@ -2411,7 +2622,8 @@ export default function Schedule({ data }) {
           reservations: horizon.res.get(iso) ?? [],
         });
         if (units.length) {
-          m.set(iso, units.map((u) => ({ by: u.by, label: u.label })));
+          m.set(iso, units.map(
+            (u) => ({ by: u.by, ack: u.ack, label: u.label })));
         }
       }
     }
@@ -2435,34 +2647,8 @@ export default function Schedule({ data }) {
   // an overnight marks BOTH days it touches. Round 4 — EVERY night touching
   // the viewed week is scanned (the Moon used to derive from the focal
   // day's loaded entries only, so it appeared once an overnight day was
-  // SELECTED, not before). One range read of the week's timed commitments
-  // (± a day for the wrap's edges), refreshed when the viewed day changes.
-  const [weekTimedDeltas, setWeekTimedDeltas] = useState(() => new Map());
-  useEffect(() => {
-    let cancelled = false;
-    const ds = weekDays(today);
-    const from = new Date(ds[0]);
-    from.setDate(from.getDate() - 1);
-    const to = new Date(ds[6]);
-    to.setDate(to.getDate() + 1);
-    supabase.from("commitments")
-      .select("id, source_type, source_ref, run_date, clock_time")
-      .in("source_type", ["ad_hoc", "project_node"])
-      .not("clock_time", "is", null)
-      .gte("run_date", ymdLocal(from)).lte("run_date", ymdLocal(to))
-      .then((res) => {
-        if (cancelled) return;
-        const m = new Map();
-        for (const r of res.data ?? []) {
-          if (r.source_ref?.origin === "removed") continue; // tombstones
-          if (!m.has(r.run_date)) m.set(r.run_date, []);
-          m.get(r.run_date).push(r);
-        }
-        setWeekTimedDeltas(m);
-      });
-    return () => { cancelled = true; };
-  }, [today]);
-
+  // SELECTED, not before). Reads `weekTimedDeltas` (declared above the
+  // `farm` memo — the week identity bars share it).
   const weekOvernightISOs = useMemo(() => {
     const s = new Set();
     // The focal day's LIVE overnight entries — instant on edits (the week
@@ -2649,13 +2835,56 @@ export default function Schedule({ data }) {
       <div className="flex-1 min-w-0 pb-24 lg:px-8">
       {/* The date IS the center heading (round 4) — h2 under the page's
           Schedule h1; the day's events ride its sub-line (F15). */}
-      <div className="mb-5">
+      {/* mb-4 (was 5) — round 6: the day load sat too far below this. */}
+      <div className="mb-4">
         <h2 className="font-heading text-[22px] font-semibold -tracking-[0.01em] m-0 text-fg">
           {centerHeading}
         </h2>
         {eventsSub && (
           <div className="text-[13px] text-dim mt-1 leading-snug">
             {eventsSub}
+          </div>
+        )}
+        {/* Round 6 — phone day navigation (the desktop has This Week +
+            the week arrows; the phone had NO way off today): previous /
+            next day arrows + a native date input + a Today jump. */}
+        {viewMode === "day" && (
+          <div className="lg:hidden mt-2 flex items-center gap-1.5">
+            {[[-1, "Previous day", ChevronLeft],
+              [1, "Next day", ChevronRight]].map(([d, label, Icon]) => (
+              <button
+                key={label}
+                type="button"
+                aria-label={label}
+                onClick={() => {
+                  const t = new Date(today);
+                  t.setDate(t.getDate() + d);
+                  goToDay(t);
+                }}
+                className="p-1.5 border border-line text-dim hover:bg-row-hover hover:text-fg active:bg-row-active cursor-pointer"
+              >
+                <Icon size={14} />
+              </button>
+            ))}
+            <input
+              type="date"
+              value={dateISO}
+              onChange={(e) => {
+                const [y, m, d] = e.target.value.split("-").map(Number);
+                if (y && m && d) goToDay(new Date(y, m - 1, d));
+              }}
+              aria-label="Go to date"
+              className="bg-bg border border-line text-fg text-[12px] px-2 py-1 font-[inherit] [font-variant-numeric:tabular-nums]"
+            />
+            {!viewingToday && (
+              <button
+                type="button"
+                onClick={() => goToDay(new Date())}
+                className="text-[12px] font-medium text-accent px-2 py-1 border border-line hover:bg-row-hover active:bg-row-active cursor-pointer"
+              >
+                Today
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -2688,8 +2917,11 @@ export default function Schedule({ data }) {
           LoadSpine reading farmLoad (Round-3 demote). lg-only. */}
       {/* Chromeless day load (round 4): bg-bg, no horizontal padding (the
           bars stretch the column's full width), separated from what
-          follows by the page's standard hairline divider. */}
-      <div className="hidden lg:block bg-bg py-4 border-b border-line">
+          follows by the page's standard hairline divider. Round 6 — no
+          top padding (the heading's own margin is the whole gap) and the
+          divider gets EVEN air: pb-4 above the line, mt-4 on whatever
+          follows it. */}
+      <div className="hidden lg:block bg-bg pb-4 border-b border-line">
         <div className="flex items-center justify-between mb-2.5">
           <span className="font-ui text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
             Day load
@@ -2758,7 +2990,7 @@ export default function Schedule({ data }) {
         ];
         return (
           <AlertStrip
-            className="mb-3"
+            className="mt-3 lg:mt-4 mb-3"
             action={names.length > 0 ? (showChangeDetail ? "Hide" : "Details") : undefined}
             onAct={() => setShowChangeDetail((v) => !v)}
             onDismiss={() => setDismissedChangeSig(sig)}
@@ -2776,12 +3008,11 @@ export default function Schedule({ data }) {
         );
       })()}
 
-      <div className="px-1 mb-3 flex items-center justify-between gap-3">
+      <div className="px-1 mt-3 lg:mt-4 mb-3 flex items-center justify-between gap-3">
         {/* ONE toolbar for both breakpoints (round 5): the desktop now
             matches the mobile pattern — Confirm (primary) at the left,
             the consolidated "+ Add" menu at the right, space-between.
-            Conflicts are a STATUS chip that renders only when real
-            (the "0 conflicts" button is gone). */}
+            Round 6 — the conflicts entry moved into the day-load badge. */}
         {confirmedDoc ? (
           <Tooltip tip="Tap to revert this day to a draft">
             <button
@@ -2810,16 +3041,8 @@ export default function Schedule({ data }) {
         )}
         <div className="flex items-center gap-2">
         <OutboxIndicator />
-        {todayConflicts.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setShowConflicts(true)}
-            className="text-[12px] font-medium text-warn inline-flex items-center gap-1.5 px-2 py-1 border border-warn/40 hover:bg-row-hover cursor-pointer"
-          >
-            <AlertTriangle size={14} />
-            {`${todayConflicts.length} conflict${todayConflicts.length === 1 ? "" : "s"}`}
-          </button>
-        )}
+        {/* Round 6 — the toolbar conflicts button is GONE: the day-load
+            summary's warn badge is the one conflicts entry point. */}
         <div className="relative">
           {/* Hover/press must actually READ (round 4): row-hover is a 9%
               tint — imperceptible on the white menu surface — so both the
@@ -2971,8 +3194,18 @@ export default function Schedule({ data }) {
       {/* Needs-cover cards (round 5): ONE per uncovered time off / event,
           above the block header row, below the confirm/+ Add row. The
           button is the single confirmation — accepting covers EVERY
-          overlapped block at once. */}
-      {viewMode === "day" && uncoveredUnits.map((u) => (
+          overlapped block at once. Round 6: units that overlap across
+          BOTH of us collapse into one "Nobody at the farm" card whose
+          confirmation is just "Acknowledged". */}
+      {viewMode === "day" && coverGroups.nobody.map((g) => (
+        <NobodyCard
+          key={g.id}
+          group={g}
+          dateShort={dateShort}
+          onAck={() => acknowledgeNobody(g)}
+        />
+      ))}
+      {viewMode === "day" && coverGroups.singles.map((u) => (
         <NeedsCoverCard
           key={u.id}
           unit={u}
@@ -3190,7 +3423,7 @@ export default function Schedule({ data }) {
               <>
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-row-active">
                   <Icon size={18} className="shrink-0 text-accent-deep" />
-                  <span className="flex-1 min-w-0 truncate font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
+                  <span className="flex-1 min-w-0 leading-snug font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
                     Overnight · {b.rangeLabel}
                   </span>
                   {b.countsTonight && b.count > 0 && (
@@ -3257,7 +3490,8 @@ export default function Schedule({ data }) {
                       identity mark the sidebars wear; no hover detail in
                       the center pane. */}
                   <KindBadge kind="project" size={18} />
-                  <span className="flex-1 min-w-0 truncate font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
+                  {/* Round 6 — headers WRAP (content never truncates). */}
+                  <span className="flex-1 min-w-0 leading-snug font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
                     Project · {range}
                   </span>
                   {b.count > 0 && (
@@ -3320,7 +3554,9 @@ export default function Schedule({ data }) {
                     className="w-full flex items-center gap-2 px-4 py-3 border-b border-line text-[13px] font-medium text-project hover:bg-row-hover cursor-pointer"
                   >
                     <CornerDownRight size={15} className="shrink-0" />
-                    <span className="truncate">
+                    {/* Round 6 — the link WRAPS; the step title is
+                        content, never chrome. */}
+                    <span className="min-w-0 text-left leading-snug">
                       Add next task — {nextStep.title}
                     </span>
                   </button>
@@ -3344,7 +3580,7 @@ export default function Schedule({ data }) {
                   + (nowHere ? "bg-accent/[0.08]" : "bg-row-active")
                 }>
                   <KindBadge kind="chore" size={16} title="Chores" />
-                  <span className="flex-1 min-w-0 truncate font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
+                  <span className="flex-1 min-w-0 leading-snug font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
                     {b.block?.name ?? "Anytime"}
                   </span>
                   {nowHere && <NowTag />}

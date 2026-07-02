@@ -162,6 +162,14 @@ export default function App({ session }) {
   }
 
   const handleSelect = (id) => {
+    // External sections (round 6): open in their own tab — no in-app
+    // frame. Works from the sidebar AND the command palette.
+    const target = findSection(id);
+    if (target?.external) {
+      window.open(target.external, "_blank", "noopener");
+      setNavOpen(false);
+      return;
+    }
     navigate(pathForSection(id));
     setNavOpen(false);
   };

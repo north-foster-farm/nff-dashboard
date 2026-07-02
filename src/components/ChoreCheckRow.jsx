@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  ChevronRight, CloudOff, X, GripVertical, MoreHorizontal,
+  ChevronRight, ClockAlert, CloudOff, X, GripVertical, MoreHorizontal,
 } from "lucide-react";
 import { CheckTarget } from "./ui.jsx";
 import ChoreRemainingPill from "./ChoreRemainingPill.jsx";
@@ -32,7 +32,11 @@ import { choreDaysRemaining, computeDeadline } from "../lib/chores.js";
 
 // The days-left disclosure (round 5): same tag language as EditedTag —
 // colored semibold, chevron rotates open. Sits on the where line.
-function DaysLeftTag({ days, open, onToggle }) {
+// F21 (slice 4): when the deadline lands THIS week the tag IS the row's
+// warning state — warn amber + the ClockAlert glyph, the same binary
+// signal the day-load summary and block rows repeat. Runway beyond the
+// week stays the quiet accent tag.
+function DaysLeftTag({ days, warm, open, onToggle }) {
   return (
     <button
       type="button"
@@ -40,11 +44,13 @@ function DaysLeftTag({ days, open, onToggle }) {
       aria-expanded={open}
       className={
         "shrink-0 inline-flex items-center gap-0.5 text-[10px] font-semibold "
-        + "uppercase tracking-wide text-accent-deep px-1 py-0.5 "
+        + "uppercase tracking-wide px-1 py-0.5 "
+        + (warm ? "text-warn " : "text-accent-deep ")
         + "cursor-pointer transition-colors hover:bg-row-active "
         + "active:bg-row-active"
       }
     >
+      {warm && <ClockAlert size={11} className="shrink-0" />}
       {days === 1 ? "1 day left" : `${days} days left`}
       <ChevronRight
         size={11}
@@ -72,12 +78,14 @@ export default function ChoreCheckRow({
   const rem = choreDaysRemaining(chore, new Date(), blocks);
   const escalating = rem?.kind === "today" || rem?.kind === "overran";
   const hasRunway = rem?.kind === "days";
+  // F21 — runway that lands THIS week = the binary warning state (the tag
+  // warms). Same Sun-first rule as farmLoad's dayWarming.
+  const warmWeek = hasRunway && rem.days <= 6 - new Date().getDay();
   // Escalation chrome is flush (DESIGN principle 1): a flat fill, no raised
-  // left-rail.
+  // left-rail. F21 binary: due-today and overran are ONE "due" state — the
+  // same red wash (the old accent/warn split was a third tone).
   const escalateClass = !done && escalating
-    ? (rem.kind === "overran"
-      ? " bg-warn/[0.08]"
-      : " bg-accent-deep/[0.06]")
+    ? " bg-cat-processing/[0.06]"
     : "";
   // True while this row's tick is sitting in the device-local outbox
   // waiting for connectivity.
@@ -194,6 +202,7 @@ export default function ChoreCheckRow({
                 {placeLabel && <span>·</span>}
                 <DaysLeftTag
                   days={rem.days}
+                  warm={warmWeek}
                   open={showDue}
                   onToggle={() => setShowDue((s) => !s)}
                 />
@@ -231,9 +240,14 @@ export default function ChoreCheckRow({
           <X size={16} />
         </button>
       )}
+      {/* Round 6 — the indent lives INSIDE the full-width row (ml on a
+          basis-full item overflowed the container by the margin: the
+          phone's horizontal page-scroll bug). */}
       {showDue && dueText && (
-        <div className="basis-full w-full mt-1 ml-10 border-l border-line pl-3 text-[11px] text-dim leading-snug">
-          Due {dueText}
+        <div className="basis-full min-w-0 mt-1">
+          <div className="ml-10 border-l border-line pl-3 text-[11px] text-dim leading-snug">
+            Due {dueText}
+          </div>
         </div>
       )}
       {showHist && edit?.history?.length > 0 && (

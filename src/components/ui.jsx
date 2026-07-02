@@ -8,7 +8,7 @@
 // per-use tweaks (`INPUT_CLS + " w-full"`), exactly how the inlined
 // copies were used.
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   Check, AlertTriangle, CircleAlert, ClockAlert, Moon, X,
 } from "lucide-react";
@@ -192,8 +192,26 @@ export function NowTag({ className = "" }) {
 // events so it never steals the hover from its trigger, and the wrapper
 // deliberately does NOT stopPropagation — a badge inside a clickable row
 // must not eat the row's click.
+// Viewport guardrails (round 6): a tip near a screen edge (the This Week
+// sidebar especially) used to run off it. On open, the tip is measured
+// and shifted horizontally so neither edge passes the viewport (8px
+// margin); the centered position stays the default.
 export function Tooltip({ tip, side = "top", className = "", children }) {
   const [open, setOpen] = useState(false);
+  const [shift, setShift] = useState(0);
+  const tipRef = useRef(null);
+  useLayoutEffect(() => {
+    if (!open) { setShift(0); return; }
+    const el = tipRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const pad = 8;
+    const maxRight = document.documentElement.clientWidth - pad;
+    let dx = 0;
+    if (r.right > maxRight) dx = maxRight - r.right;
+    if (r.left + dx < pad) dx = pad - r.left;
+    if (dx !== 0) setShift(dx);
+  }, [open]);
   if (!tip) return children ?? null;
   const pos = side === "bottom"
     ? "top-full mt-1.5"
@@ -208,9 +226,11 @@ export function Tooltip({ tip, side = "top", className = "", children }) {
       {children}
       {open && (
         <span
+          ref={tipRef}
           role="tooltip"
+          style={{ transform: `translateX(calc(-50% + ${shift}px))` }}
           className={
-            "absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none " +
+            "absolute left-1/2 z-50 pointer-events-none " +
             pos + " w-max max-w-[240px] px-2.5 py-1.5 " +
             "bg-surface border border-line shadow-md " +
             "font-ui text-[11px] font-normal leading-snug text-dim " +
@@ -498,6 +518,19 @@ export const hatchCover = (strength = 60) =>
   `color-mix(in srgb, var(--c-warn) ${strength}%, transparent) 0 4px,` +
   "transparent 4px 8px)";
 
+// The ALTERNATING conflict stripes (round 6): warn / kind-color, one
+// cadence everywhere. This is THE needs-cover treatment when the surface
+// underneath is itself striped or a solid bar — two overlaid hatch sets
+// used to stack into mud. The duty cycle is deliberately UNEVEN (3px warn
+// tick / 7px kind): a 50/50 alternation of two saturated mid-luminance
+// hues strobes at bar size, while thin amber ticks over the dominant
+// identity color read as "warning ON the bar", not a third color. Spine
+// rows take light strengths (text sits on top); bars take full color.
+export const hatchConflict = (cssVar, warnStrength = 100, kindStrength = 100) =>
+  "repeating-linear-gradient(45deg," +
+  `color-mix(in srgb, var(--c-warn) ${warnStrength}%, transparent) 0 3px,` +
+  `color-mix(in srgb, var(${cssVar}) ${kindStrength}%, transparent) 3px 10px)`;
+
 // The muted "covered" mark (round 5): a conflict whose cover was accepted
 // turns from the warn triangle into this quiet circle-alert. `tip` carries
 // what was covered + who accepted and when; sidebars wrap it in the
@@ -630,20 +663,16 @@ export function LoadSpine({
             } else {
               style.backgroundColor = "var(--c-chore)";
             }
-            // Round 5 — overlapped by an uncovered time off / event: bg-
-            // colored diagonal stripes over the kind fill + a warn border
-            // (the mockup's man-down language). Cover accepted → plain.
+            // Round 6 — overlapped by an uncovered time off / event: the
+            // bar's fill BECOMES the alternating warn/kind stripes (the
+            // same 4px cadence as the spine rows) — never a second stripe
+            // set stacked over the first, never a border. Cover accepted
+            // → plain.
             if (conflictIds?.has?.(b.blockId ?? b.id)) {
-              style.backgroundImage = [
-                "repeating-linear-gradient(45deg,"
-                + "color-mix(in srgb, var(--color-bg) 85%, transparent)"
-                + " 0 7px, transparent 7px 14px)",
-                style.backgroundImage,
-              ].filter(Boolean).join(", ");
-              style.boxShadow = [
-                "inset 0 0 0 1.5px var(--c-warn)",
-                style.boxShadow,
-              ].filter(Boolean).join(", ");
+              delete style.backgroundColor;
+              style.backgroundImage = hatchConflict(
+                isProject ? "--c-project" : "--c-chore");
+              style.boxShadow = undefined;
             }
             const isNow = nowId != null && (b.blockId ?? b.id) === nowId;
             return (
@@ -689,37 +718,46 @@ export function LoadSpine({
         if (!span) return null;
         return (
           <div key={ev.id} className="grid gap-0.5 mt-1" style={gridStyle}>
+            {/* Round 6 — a SHORT event must not overflow its rail: the
+                rail's floor is its own content + padding (min-w-max),
+                and when that beats the bar span it aligns with, it
+                CENTERS over the span (the flex wrapper lets it overflow
+                both flanks equally) instead of stretching the grid. */}
             <div
-              className="flex items-center gap-1.5 border px-1.5 py-1"
-              style={{
-                gridColumn: `${span.first + 1} / ${span.last + 2}`,
-                borderColor:
-                  "color-mix(in srgb, var(--c-event) 55%, transparent)",
-                background:
-                  "color-mix(in srgb, var(--c-event) 8%, transparent)",
-              }}
+              className="flex justify-center min-w-0"
+              style={{ gridColumn: `${span.first + 1} / ${span.last + 2}` }}
             >
-              <BadgeHint
-                tip={<>
-                  <b className="text-fg">{ev.label ?? "Event"}</b>
-                  {"\n"}{ev.startLabel}
-                  {ev.endLabel ? ` — ${ev.endLabel}` : ""}
-                </>}
+              <div
+                className="flex items-center gap-1.5 border px-1.5 py-1 w-full min-w-max"
+                style={{
+                  borderColor:
+                    "color-mix(in srgb, var(--c-event) 55%, transparent)",
+                  background:
+                    "color-mix(in srgb, var(--c-event) 8%, transparent)",
+                }}
               >
-                <KindBadge kind="event" size={14} />
-              </BadgeHint>
-              <span className="shrink-0 font-ui text-[10px] font-semibold text-event [font-variant-numeric:tabular-nums]">
-                · {ev.startLabel}
-              </span>
-              <span
-                className="flex-1 border-t"
-                style={{ borderColor: "var(--c-event)" }}
-              />
-              {ev.endLabel && (
+                <BadgeHint
+                  tip={<>
+                    <b className="text-fg">{ev.label ?? "Event"}</b>
+                    {"\n"}{ev.startLabel}
+                    {ev.endLabel ? ` — ${ev.endLabel}` : ""}
+                  </>}
+                >
+                  <KindBadge kind="event" size={14} />
+                </BadgeHint>
                 <span className="shrink-0 font-ui text-[10px] font-semibold text-event [font-variant-numeric:tabular-nums]">
-                  {ev.endLabel}
+                  {ev.startLabel}
                 </span>
-              )}
+                <span
+                  className="flex-1 border-t"
+                  style={{ borderColor: "var(--c-event)" }}
+                />
+                {ev.endLabel && (
+                  <span className="shrink-0 font-ui text-[10px] font-semibold text-event [font-variant-numeric:tabular-nums]">
+                    {ev.endLabel}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -903,8 +941,61 @@ export function WeekStrip({
   // under the symbol cell and the whole sidebar sizes to fit. A lighter
   // day's bars flex a little wider inside the same track.
   const maxBars = Math.max(
-    1, ...week.days.map((d) => (d.blocks ?? []).length));
+    1, ...week.days.map((d) => (d.bars ?? []).length));
   const trackW = maxBars * 5 + (maxBars - 1) * 4;
+
+  // Two height scales, mirroring the day-load LoadSpine: chore bars scale
+  // to the week's heaviest block COUNT; project bars to its longest gap
+  // DURATION (chores carry no duration, projects no count). Events take a
+  // fixed mid height — presence, not magnitude.
+  const maxDur = Math.max(1, ...week.days.flatMap((d) =>
+    (d.bars ?? []).filter((b) => b.kind === "project")
+      .map((b) => b.durationMin ?? 0)));
+  const barPct = (b) => b.kind === "event" ? 50
+    : b.kind === "project"
+      ? Math.min(100, Math.max(12, ((b.durationMin ?? 0) / maxDur) * 100))
+      : Math.min(100, Math.max(12, ((b.count ?? 0) / max) * 100));
+
+  // F40 — identity colors, the same fill language as the day-load and the
+  // phone strip: chore teal; project slate, solid when planned and the
+  // blue cross-hatch when free (F9); event periwinkle wash + ring.
+  const barStyle = (b) => {
+    const s = { height: barPct(b) + "%" };
+    if (b.kind === "project") {
+      if (b.planned) s.background = "var(--c-project)";
+      else {
+        s.backgroundImage = hatchUnplanned();
+        s.boxShadow = "inset 0 0 0 1px color-mix(in srgb,"
+          + " var(--c-project) 45%, transparent)";
+      }
+    } else if (b.kind === "event") {
+      s.background = "color-mix(in srgb, var(--c-event) 45%, transparent)";
+      s.boxShadow = "inset 0 0 0 1px color-mix(in srgb,"
+        + " var(--c-event) 55%, transparent)";
+    } else {
+      s.background = "color-mix(in srgb, var(--c-chore) 85%, transparent)";
+    }
+    return s;
+  };
+
+  // F42 — each bar hovers to its detail (a real Tooltip, never the native
+  // `title`): chore block → name + count + window; project → planned/free
+  // + who's free; event → name + time.
+  const barTip = (b) => (
+    <>
+      <b className="text-fg font-semibold">{b.name}</b>
+      {"\n"}
+      {b.kind === "chore" && (
+        b.count + (b.count === 1 ? " chore" : " chores")
+        + (b.windowLabel ? " · " + b.windowLabel : "")
+      )}
+      {b.kind === "project" && (
+        (b.windowLabel ?? "")
+        + (b.whoLabel ? " · " + b.whoLabel : "")
+      )}
+      {b.kind === "event" && (b.windowLabel ?? "all day")}
+    </>
+  );
 
   // Sidebar: a row per day.
   return (
@@ -952,18 +1043,14 @@ export function WeekStrip({
               className="relative shrink-0 flex items-end gap-1 h-7"
               style={{ width: trackW + "px" }}
             >
-              {(day.blocks ?? []).map((b) => (
-                <span
-                  key={b.bucket}
-                  title={`${b.name} · ${b.count}`}
-                  style={{
-                    height:
-                      Math.min(100, Math.max(12, (b.count / max) * 100)) + "%",
-                  }}
-                  className={
-                    "flex-1 min-w-[5px] " + (b.count ? "bg-accent/70" : "bg-line")
-                  }
-                />
+              {(day.bars ?? []).map((b) => (
+                <Tooltip
+                  key={b.id}
+                  tip={barTip(b)}
+                  className="flex-1 min-w-[5px] self-stretch items-end"
+                >
+                  <span className="w-full" style={barStyle(b)} />
+                </Tooltip>
               ))}
             </span>
             {/* Fixed-width symbol cell so EVERY day's mini-spine is the same
@@ -1025,7 +1112,8 @@ export function WeekStrip({
                   tip={covered.map((c, i) => (
                     <span key={i} className="block">
                       <b className="text-fg font-semibold">{c.label}</b>
-                      {c.by ? ` — ${c.by} covers` : ""}
+                      {c.by ? ` — ${c.by} covers`
+                        : c.ack ? " — acknowledged" : ""}
                     </span>
                   ))}
                 />

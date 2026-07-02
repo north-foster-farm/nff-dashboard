@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { ArrowRight, ChevronRight, X } from "lucide-react";
+import { ArrowRight, ChevronRight, ExternalLink, X } from "lucide-react";
 import { SECTIONS, findFlyoutParentForChild } from "../sections.jsx";
 import RoundsSidebarItem from "./RoundsSidebarItem.jsx";
 
@@ -171,6 +171,9 @@ function SidebarItem({ section, active, isFlyoutOpen, anyFlyoutOpen, count, onSe
       <Icon size={14} className={`shrink-0 ${active ? "text-accent" : ""}`} />
       <span className="flex-1 min-w-0 whitespace-nowrap">{section.label}</span>
       <TrailingSlot hover={hover}>
+        {section.external && (
+          <ExternalLink size={13} className={hover ? "text-accent" : "text-muted"} />
+        )}
         {isAction && (
           <ArrowRight size={14} className={hover || active ? "text-accent" : "text-muted"} />
         )}

@@ -125,7 +125,9 @@ export const SECTIONS = [
   { id: "inbox", group: "Other", label: "Inbox", icon: Lightbulb, description: "Just-a-thought capture — ideas that aren't yet projects or chores. Pin, archive, or promote them to events.", getCount: () => null },
   { id: "proposals", group: "Other", label: "Proposals", icon: Bot, description: "Actions a Claude chat has proposed for the farm — new projects and more. Approve one and the app creates it for real; reject to discard. Nothing changes your data until you approve it.", getCount: () => null },
   { id: "roadmap", group: "Other", label: "What's coming", icon: Telescope, description: "Features on deck for upcoming releases.", getCount: () => null },
-  { id: "style_guide", group: "Other", label: "Style guide", icon: Palette, description: "The design system, component library, patterns, and tone & voice — the bounded source of truth for how the app looks and reads.", getCount: () => null },
+  // `external` (round 6): the nav link opens the static doc site in its
+  // own tab — the in-app iframe page is gone (NO-LEGACY).
+  { id: "style_guide", group: "Other", label: "Style guide", icon: Palette, external: "/style-guide/index.html", description: "The design system, component library, patterns, and tone & voice — the bounded source of truth for how the app looks and reads.", getCount: () => null },
   { id: "activity", group: "Other", label: "Activity", icon: Activity, description: "Every action logged across the farm — chore completions, temperature readings, weight logs, sales, and more.", getCount: () => null },
   { id: "observations", group: "Other", label: "Observations", icon: Eye, description: "Notes, condition flags, mortality, cohort moves, and infra sweeps logged from Rounds — filterable by site, kind, date, and author.", getCount: () => null },
   { id: "notes", group: "Other", label: "Notes", icon: NotebookPen, description: "Uncategorized brain dumps", getCount: () => null },

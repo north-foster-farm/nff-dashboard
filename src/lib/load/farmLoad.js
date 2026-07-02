@@ -70,18 +70,26 @@ function rowsForRollup(rollup, date, choreCtx, ruleOpts, completions) {
 
 // The one day-load model.
 //
-//   farmLoad({ data, date, ruleOpts, choreCtx, completions, deltas, nowMin })
+//   farmLoad({ data, date, ruleOpts, choreCtx, completions, deltas, nowMin,
+//              weekRes, weekTimed })
 //
 // Returns:
 //   { dayISO, blocks, projects, week, warming, totals }
 //   blocks: [{ blockId, name, kind:'chore', startMin, endMin,
 //              total, done, projectCount, state, window }]
 //   projects: [{ id, title, startMin, endMin, durationMin, planned, who }]
-//   week: the folded weekFullness output (+ per-day `events`)
+//   week: the folded weekFullness output (+ per-day `events` and `bars` —
+//     the This Week identity bars, F40)
 //   warming: { warn:[…], due:[…], byBucket } — binary warn/due per day (F24)
 //     entries: { choreId, title, level:'warn'|'due', daysLeft }
 //   totals: { items, chores, blocks, blocksAll, projects, projectsDistinct,
 //             done, uncovered }
+//
+// `weekRes` / `weekTimed` (optional, Maps keyed YYYY-MM-DD) feed the week
+// identity bars: per-day reservations (gap splitting) and timed
+// ad_hoc/project_node commitments (the planned-vs-free test). Callers
+// without them (Rounds, Overview) still get the bars — gaps just read
+// unsplit/unplanned.
 export function farmLoad({
   data,
   date,
@@ -90,6 +98,8 @@ export function farmLoad({
   completions,
   deltas = [],
   nowMin = null,
+  weekRes = null,
+  weekTimed = null,
 }) {
   const rollups = rollupChoresForDay(data, date, ruleOpts);
 
@@ -227,16 +237,87 @@ export function farmLoad({
       const list = eventsByISO.get(o.date) ?? [];
       list.push({
         label: o.instanceLabel,
+        startMin: sm,
         timeLabel: sm == null ? "all day" : formatMinutesOfDay(sm),
       });
       eventsByISO.set(o.date, list);
     }
   }
+  // This Week identity bars (F40): per day, the complete set — chore blocks
+  // with items (count-scaled), project gaps (duration-scaled, planned vs
+  // free), events — time-ordered, each carrying a preformatted window label
+  // so the WeekStrip tooltips (F42) stay free of the time utils. The FOCAL
+  // day reads its live deltas/reservations (instant on edits); the other
+  // days read the horizon maps, which lag by a fetch.
+  const short = (min) => formatMinutesOfDay(min).replace(":00", "");
+  const rangeLabel = (s, e) => (s == null ? null
+    : e == null || e === s ? short(s) : short(s) + "–" + short(e));
+  const barsFor = (d, eventList) => {
+    const iso = ymdLocal(d.date);
+    const focal = iso === dayISO;
+    const bars = [];
+    for (const b of d.blocks) {
+      if (!b.count) continue;
+      const win = blockWindowFor(b.block, d.date);
+      bars.push({
+        id: "c|" + b.bucket,
+        kind: "chore",
+        name: b.name,
+        count: b.count,
+        startMin: win.startMin,
+        windowLabel: rangeLabel(win.startMin, win.endMin),
+      });
+    }
+    const segs = focal ? segments : projectGaps({
+      date: d.date,
+      blocks: ruleOpts?.blocks ?? [],
+      reservations: weekRes?.get?.(iso) ?? [],
+      buffers: [],
+    });
+    const projMins = focal ? projNodeMins
+      : (weekTimed?.get?.(iso) ?? [])
+        .filter((x) => x.source_type === "project_node")
+        .map((x) => hmToMin(x.clock_time))
+        .filter((t) => t != null);
+    segs.forEach((seg, i) => {
+      const planned = projMins.some(
+        (t) => seg.startMin != null && t >= seg.startMin && t < seg.endMin);
+      const free = seg.who?.freeCount ?? 0;
+      bars.push({
+        id: (seg.id ?? "proj|" + i) + "|" + iso,
+        kind: "project",
+        name: planned ? "Project" : "Free project block",
+        planned,
+        durationMin: seg.durationMin
+          ?? ((seg.endMin ?? 0) - (seg.startMin ?? 0)),
+        startMin: seg.startMin,
+        windowLabel: rangeLabel(seg.startMin, seg.endMin),
+        whoLabel: free >= 2 ? "both free"
+          : free === 1 ? (seg.who?.who?.[0] ?? "") + " free" : "",
+      });
+    });
+    eventList.forEach((ev, i) => {
+      bars.push({
+        id: "e|" + iso + "|" + i,
+        kind: "event",
+        name: ev.label,
+        startMin: ev.startMin,
+        windowLabel: ev.timeLabel,
+      });
+    });
+    return bars.sort(
+      (a, b) => (a.startMin ?? 1e9) - (b.startMin ?? 1e9));
+  };
   const week = {
     ...weekBase,
     days: weekBase.days.map((d) => {
       const list = eventsByISO.get(ymdLocal(d.date)) ?? [];
-      return { ...d, events: list.length, eventList: list };
+      return {
+        ...d,
+        events: list.length,
+        eventList: list,
+        bars: barsFor(d, list),
+      };
     }),
   };
 
@@ -430,6 +511,7 @@ export function dayCoveredUnits({ date, blocks = [], reservations = [] }) {
     out.push({
       id: r.id,
       by: cover.by ?? null,
+      ack: cover.ack ?? false,
       at: cover.at ?? null,
       label: `${w.assignee} — ${w.kind === "day_off" ? "all day"
         : formatMinutesOfDay(w.startMin) + "–"
