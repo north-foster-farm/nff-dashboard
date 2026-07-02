@@ -3992,6 +3992,27 @@ color; clock-arrow overnight icons). Build refs in
   and the optional placement-unification refactor. The Overnight + Project
   feature is functionally complete for its main flows.
 
+- **42.1 — interaction foundations: affordance standard + Tooltip.
+  `v0.10.78-alpha` (2026-07-01); pure frontend, NO migration.** Opens the
+  Schedule-redesign batch (42.1–42.8, slice plan from the 2026-07-01
+  video-audit findings; availability cluster lands as slices 6–7). The
+  cross-cutting F65 affordance standard — interactive elements LOOK
+  interactive, no instructional text: rest "key" fill
+  (`bg-row-active-dim`) for dense touch strips, `hover:bg-row-hover`
+  tint, `bg-row-active` selected, `active:` press feedback — now
+  design-library principle 10, applied to the mobile day-strip time
+  columns (F29: the "tap a time" caption is deleted; the columns
+  themselves read as controls), the mobile Whole-day toggle, and
+  `BTN_GHOST` (all ghost buttons gain the hover tint). New `Tooltip`
+  primitive in ui.jsx (F41): instant, formatted (multi-line, bold
+  lead-ins), tap-to-toggle on touch, pointer-transparent, never eats a
+  host row's click; replaces native `title` on `WarmingBadge` (bold
+  chore names + deadlines) and the `WeekStrip` day symbols (E badge,
+  conflict triangle, overnight moon). Design library updated in both
+  faces (patterns.html affordance section, components.html Tooltip
+  entry, DESIGN-SYSTEM.md principle 10 + component entry). Deeper
+  tooltip content (event names, block details) rides slices 4–5.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

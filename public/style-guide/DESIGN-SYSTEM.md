@@ -32,6 +32,14 @@ code). We iterate aggressively — expect churn; keep this file current.
 9. **Words are design material.** Active voice, sentence case, plain verbs.
    Name by what the operator controls; an action keeps its name through the
    flow; empty states invite, errors instruct.
+10. **Interactive elements LOOK interactive** (batch 42.1, F65) — never
+   instructional text. One standard, desktop + phone: rest-state "key" fill
+   `bg-row-active-dim` where hover can't carry the signal (dense touch
+   strips); `hover:bg-row-hover` background tint (a fill change, never
+   text-color-only); active/selected `bg-row-active` (+ a border bounding
+   box only for a row in a series); pressed = `active:bg-row-active` for
+   tap feedback. Hover detail beyond a short label uses `Tooltip`, never
+   the native `title`.
 
 ## Tokens (values in `index.html`; mapped to Tailwind in `src/styles.css`)
 
@@ -167,6 +175,17 @@ Each: STATUS · what · use/not · canonical source.
   and the master-detail header. Replaces a divider rule above the row (which
   read as belonging to the gap, not the block). Source: `src/components/ui.jsx`
   (`NowTag`).
+- **Tooltip** · Stable · the real hover tip (batch 42.1, F41) — replaces the
+  native `title` attribute wherever the tip should be INSTANT or FORMATTED
+  (multi-line, bold lead-ins). Hover shows it; a tap toggles it (touch has no
+  hover — a11y trade-off accepted for this internal app). Surface + hairline +
+  `shadow-md`; body `text-dim` 11px font-ui, lead-ins bold `text-fg`;
+  `whitespace-pre-line` so string tips break on `\n`; `pointer-events-none` on
+  the tip and NO stopPropagation on the wrapper (a badge inside a clickable
+  row must not eat the row's click). `side="top"|"bottom"`. Carriers:
+  `WarmingBadge`, the `WeekStrip` day symbols. Richer per-surface content
+  (event names, block details) lands with the This Week / day-load slices.
+  Source: `src/components/ui.jsx` (`Tooltip`).
 - **FinishStamp** · Stable · celadon ✓ in a square + "Finished · who · window
   · N/N" (C5 — the word "Sealed" is killed). Whole-run, never a sub-bucket;
   anchors the Rounds wrap. Block completion auto-derives (no submit gate); the
@@ -188,7 +207,7 @@ Each: STATUS · what · use/not · canonical source.
   reading a `farmLoad.warming` bucket `{ warn:[…], due:[…] }`: any DUE-today
   chore → red (`--c-cat-processing`, the deadline red); else WARN amber
   (`--c-warn`). `×N` when more than one chore is warm; the hover names each chore
-  + when it's due (F25). **Inline — no background fill or padding**, just the
+  + when it's due (F25) — a real `Tooltip` since batch 42.1, bold chore names. **Inline — no background fill or padding**, just the
   colored glyph, so it reads as part of its line. Three surfaces: the day-load
   summary (after a `·`), the affected `DayRailSpine` block row (count hidden),
   and the week pane (per warming day, count hidden — fed by `warmingByISO`).

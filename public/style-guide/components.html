@@ -677,6 +677,39 @@
 
   <!-- ============ NAV / OVERLAYS / STATUS ============ -->
   <h2 class="ds-h2" id="nav">Navigation, overlays, status</h2>
+
+  <h3 class="ds-h3">Tooltip <span class="ds-status stable">Stable</span></h3>
+  <p>
+    The real hover tip — replaces the native <span class="mono">title</span>
+    attribute wherever the tip should be <b>instant</b> or <b>formatted</b>
+    (multi-line, bold lead-ins). Hover shows it, a tap toggles it (touch has
+    no hover; the a11y trade-off is accepted for this internal app). The tip
+    is pointer-transparent and never swallows the click of a row it sits in.
+    Surface + hairline + shadow; body text in <span class="mono">dim</span>,
+    lead-ins bold in <span class="mono">fg</span>. In
+    <span class="mono">ui.jsx</span>; carriers: WarmingBadge, the This Week
+    day symbols (E badge, conflict triangle, overnight moon).
+  </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:inline-flex;position:relative;margin-top:64px">
+        <span style="position:absolute;bottom:calc(100% + 6px);left:50%;
+          transform:translateX(-50%);width:max-content;max-width:240px;
+          background:var(--c-surface);border:1px solid var(--c-border);
+          box-shadow:0 2px 8px rgba(0,0,0,.12);padding:6px 10px;
+          font-family:var(--font-ui);font-size:11px;line-height:1.4;
+          color:var(--c-text-dim);text-align:left">
+          <b style="color:var(--c-text)">Fill grit</b> — 4 days left<br>
+          <b style="color:var(--c-text)">Fill oyster shell</b> — 4 days left
+        </span>
+        <span style="display:inline-flex;align-items:center;
+          color:var(--c-warn)">⏰</span>
+      </div>
+    </div>
+    <div class="ds-example-meta">instant on hover · formatted lines · tap to
+      toggle on touch (ui.jsx <span class="mono">Tooltip</span>)</div>
+  </div>
+
   <table class="ds-table">
     <thead><tr><th>Component</th><th>Status</th><th>Job &amp; bounded form</th></tr></thead>
     <tbody>

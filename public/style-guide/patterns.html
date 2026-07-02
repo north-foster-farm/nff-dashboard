@@ -183,6 +183,44 @@
     </tbody>
   </table>
 
+  <!-- AFFORDANCE -->
+  <h2 class="ds-h2" id="affordance">Interactive affordance (the hover/active standard)</h2>
+  <p>
+    Interactive elements must <b>look</b> interactive — never lean on
+    instructional text ("tap a block to see it" was the anti-pattern).
+    One standard, the same on desktop and phone:
+  </p>
+  <table class="ds-table">
+    <thead><tr><th>State</th><th>Treatment</th><th>Token</th></tr></thead>
+    <tbody>
+      <tr><td>Rest, tappable in a dense strip</td>
+        <td>A faint neutral "key" fill so the element reads as a control
+          before any interaction — the rest-state signal where hover
+          doesn't exist (touch)</td>
+        <td class="mono">bg-row-active-dim</td></tr>
+      <tr><td>Hover</td>
+        <td>A background tint that follows the cursor — a fill change,
+          never a text-color-only change, and lighter rather than
+          darker</td>
+        <td class="mono">hover:bg-row-hover</td></tr>
+      <tr><td>Active / selected</td>
+        <td>Filled background; a border bounding box only when the
+          element is a row in a series (spine, This Week list)</td>
+        <td class="mono">bg-row-active</td></tr>
+      <tr><td>Pressed (touch)</td>
+        <td>The active fill while the finger is down — tap feedback on
+          phones</td>
+        <td class="mono">active:bg-row-active</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Carriers today: spine rows, the Day/Week/Month/Review tabs, This Week
+    rows, ghost buttons (<span class="mono">BTN_GHOST</span>), and the
+    mobile day-strip time columns. Hover detail beyond a short label uses
+    the <span class="mono">Tooltip</span> primitive, never the native
+    <span class="mono">title</span> attribute.
+  </p>
+
   <!-- APPROVAL QUEUE -->
   <h2 class="ds-h2" id="approval">Approval queue (Proposals)</h2>
   <p>

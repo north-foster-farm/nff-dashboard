@@ -8,6 +8,7 @@
 // per-use tweaks (`INPUT_CLS + " w-full"`), exactly how the inlined
 // copies were used.
 
+import { useState } from "react";
 import { Check, AlertTriangle, ClockAlert, Moon, X } from "lucide-react";
 
 // ── form controls ──────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ export const BTN_ACCENT =
 export const BTN_GHOST =
   "bg-transparent border border-line text-dim font-[inherit] text-[10px] " +
   "font-semibold uppercase tracking-[0.12em] px-2.5 py-1.5 cursor-pointer " +
-  "hover:text-fg disabled:opacity-50";
+  "hover:text-fg hover:bg-row-hover transition-colors disabled:opacity-50";
 
 export const BTN_GHOST_WARN = BTN_GHOST + " text-warn hover:text-warn";
 
@@ -162,6 +163,47 @@ export function NowTag({ className = "" }) {
       }
     >
       Now
+    </span>
+  );
+}
+
+// ── Tooltip: the real hover tip (F41) ───────────────────────────────────
+// Replaces native `title` wherever the tip should be instant or formatted
+// (multi-line, bold lead-ins, mixed color) — native tooltips lag ~1s and
+// are plain text. Hover shows it; a tap toggles it (touch has no hover —
+// the a11y trade-off is accepted for this internal app). `tip` takes a
+// string (newlines become line breaks) or JSX. The tip ignores pointer
+// events so it never steals the hover from its trigger, and the wrapper
+// deliberately does NOT stopPropagation — a badge inside a clickable row
+// must not eat the row's click.
+export function Tooltip({ tip, side = "top", className = "", children }) {
+  const [open, setOpen] = useState(false);
+  if (!tip) return children ?? null;
+  const pos = side === "bottom"
+    ? "top-full mt-1.5"
+    : "bottom-full mb-1.5";
+  return (
+    <span
+      className={"relative inline-flex " + className}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen((o) => !o)}
+    >
+      {children}
+      {open && (
+        <span
+          role="tooltip"
+          className={
+            "absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none " +
+            pos + " w-max max-w-[240px] px-2.5 py-1.5 " +
+            "bg-surface border border-line shadow-md " +
+            "font-ui text-[11px] font-normal leading-snug text-dim " +
+            "text-left whitespace-pre-line normal-case tracking-normal"
+          }
+        >
+          {tip}
+        </span>
+      )}
     </span>
   );
 }
@@ -341,27 +383,41 @@ export function WarmingBadge({
   const total = warn.length + due.length;
   if (!total) return null;
   const color = due.length ? "var(--c-cat-processing)" : "var(--c-warn)";
-  const lines = [
-    ...due.map((c) => `${c.title} — due today`),
-    ...warn.map((c) =>
-      `${c.title} — ${c.daysLeft === 1 ? "1 day" : c.daysLeft + " days"} left`),
-  ];
-  return (
-    <span
-      title={lines.join("\n")}
-      className={
-        "inline-flex items-center gap-0.5 shrink-0 " +
-        "[font-variant-numeric:tabular-nums] " + className
-      }
-      style={{ color }}
-    >
-      <ClockAlert size={size} />
-      {showCount && total > 1 && (
-        <span className="font-ui text-[10px] font-semibold leading-none">
-          ×{total}
+  // F41 — a real Tooltip, not the native `title`: instant, and each chore
+  // name reads bold against its deadline text.
+  const tip = (
+    <>
+      {due.map((c) => (
+        <span key={"d" + c.title} className="block">
+          <b className="text-fg font-semibold">{c.title}</b> — due today
         </span>
-      )}
-    </span>
+      ))}
+      {warn.map((c) => (
+        <span key={"w" + c.title} className="block">
+          <b className="text-fg font-semibold">{c.title}</b>
+          {" — "}
+          {c.daysLeft === 1 ? "1 day" : c.daysLeft + " days"} left
+        </span>
+      ))}
+    </>
+  );
+  return (
+    <Tooltip tip={tip} className={className}>
+      <span
+        className={
+          "inline-flex items-center gap-0.5 shrink-0 " +
+          "[font-variant-numeric:tabular-nums]"
+        }
+        style={{ color }}
+      >
+        <ClockAlert size={size} />
+        {showCount && total > 1 && (
+          <span className="font-ui text-[10px] font-semibold leading-none">
+            ×{total}
+          </span>
+        )}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -663,13 +719,14 @@ export function WeekStrip({
                 busiest row — up to warming + event + conflict — sets it).
                 Left-aligned so the FIRST badge of every row shares one column
                 (an E under an E), not pinned to the right edge. */}
+            {/* F41 — each symbol carries a real Tooltip (instant, formatted)
+                instead of the laggy native `title`. Event names / richer
+                detail land with the This Week deepening slice. */}
             <span className="w-20 shrink-0 flex items-center justify-start gap-1.5">
               {overnight && (
-                <Moon
-                  size={14}
-                  className="text-chore"
-                  title="Overnight chores"
-                />
+                <Tooltip tip="Overnight chores">
+                  <Moon size={14} className="text-chore" />
+                </Tooltip>
               )}
               {warm && (
                 <WarmingBadge
@@ -677,18 +734,22 @@ export function WeekStrip({
                 />
               )}
               {day.events > 0 && (
-                <KindBadge
-                  kind="event"
-                  size={14}
-                  title={day.events === 1 ? "Event today" : day.events + " events"}
-                />
+                <Tooltip
+                  tip={day.events === 1
+                    ? "Event today"
+                    : day.events + " events"}
+                >
+                  <KindBadge kind="event" size={14} />
+                </Tooltip>
               )}
               {confCount > 0 && (
-                <AlertTriangle
-                  size={14}
-                  className="text-warn"
-                  title={confCount === 1 ? "1 conflict" : confCount + " conflicts"}
-                />
+                <Tooltip
+                  tip={confCount === 1
+                    ? "1 conflict"
+                    : confCount + " conflicts"}
+                >
+                  <AlertTriangle size={14} className="text-warn" />
+                </Tooltip>
               )}
             </span>
           </button>

@@ -252,6 +252,17 @@ export function DayRailSpine({
 }
 
 // ── Phone day-strip (the navigable time axis — James's tweak) ───────────
+// F29 — tappable affordance for the strip's time columns: a faint "key"
+// fill at rest (row-active-dim) so each column reads as a control, the
+// row-hover tint on desktop hover, and the row-active tint while pressed
+// on touch. The UI itself says "tap me" — the old instructional caption
+// was the wrong fix. Shared across the chore / project / overnight
+// column variants.
+const STRIP_COL_CLS =
+  "flex-1 min-w-0 flex flex-col items-center cursor-pointer " +
+  "transition-colors bg-row-active-dim hover:bg-row-hover " +
+  "active:bg-row-active pt-1 ";
+
 export function DayStrip({
   blocks, focus, nowBucket, onPick, onWholeDay,
 }) {
@@ -260,7 +271,9 @@ export function DayStrip({
   return (
     <div className="lg:hidden border-b border-line bg-surface">
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        <span className="eyebrow text-[10px] text-faint">Day · tap a time</span>
+        {/* F29 — the "tap a time" instruction is gone: the columns
+            themselves now read as controls (key fill + press tint). */}
+        <span className="eyebrow text-[10px] text-faint">Day</span>
         <button
           type="button"
           onClick={onWholeDay}
@@ -269,7 +282,8 @@ export function DayStrip({
             + "border cursor-pointer transition-colors "
             + (overview
               ? "border-accent-deep bg-[color:var(--color-row-active)] text-accent"
-              : "border-line text-muted hover:text-dim")
+              : "border-line text-muted hover:text-dim hover:bg-row-hover "
+                + "active:bg-row-active")
           }
         >
           <LayoutList size={12} /> Whole day
@@ -288,10 +302,7 @@ export function DayStrip({
                   type="button"
                   onClick={() => onPick(b.bucket)}
                   title={`Project${free ? " · " + free + " free" : ""}`}
-                  className={
-                    "flex-1 min-w-0 flex flex-col items-center cursor-pointer "
-                    + (b.allDone ? "opacity-60" : "")
-                  }
+                  className={STRIP_COL_CLS + (b.allDone ? "opacity-60" : "")}
                 >
                   <span className="relative w-full h-[56px] flex items-end justify-center">
                     <span
@@ -325,10 +336,7 @@ export function DayStrip({
                   type="button"
                   onClick={() => onPick(b.bucket)}
                   title={`Overnight · ${b.rangeLabel}`}
-                  className={
-                    "flex-1 min-w-0 flex flex-col items-center cursor-pointer "
-                    + (b.allDone ? "opacity-60" : "")
-                  }
+                  className={STRIP_COL_CLS + (b.allDone ? "opacity-60" : "")}
                 >
                   <span className="relative w-full h-[56px] flex items-end justify-center">
                     <span
@@ -373,10 +381,7 @@ export function DayStrip({
                 type="button"
                 onClick={() => onPick(b.bucket)}
                 title={`${b.name} · ${b.done}/${b.count}`}
-                className={
-                  "flex-1 min-w-0 flex flex-col items-center cursor-pointer "
-                  + (b.allDone ? "opacity-60" : "")
-                }
+                className={STRIP_COL_CLS + (b.allDone ? "opacity-60" : "")}
               >
                 <span className="relative w-full h-[56px] flex items-end justify-center">
                   {b.hasManDown && (
