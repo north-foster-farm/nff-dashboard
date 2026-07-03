@@ -368,7 +368,7 @@ function ProjectCard({
           </span>
         )}
         <div
-          onClick={() => navigate(pathForProject(project.id))}
+          onClick={() => navigate(pathForProject(project))}
           className="min-w-0 flex-1 cursor-pointer"
         >
           <div

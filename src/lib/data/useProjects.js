@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { realtimeChannel, supabase } from "../supabase.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
+import { slugify } from "../slug.js";
 import {
   computeDependentShifts, dayDelta, progressOf, phaseDone,
 } from "../projects.js";
@@ -25,7 +26,7 @@ const PROJECT_COLS =
   "id, title, description, status, owner_email, started_at, " +
   "target_date, completed_at, notes, created_at, body_md, created_by, " +
   "archived_at, sort_order, updated_at, queue_state, timing_note, " +
-  "locked_date";
+  "locked_date, slug";
 const PHASE_COLS =
   "id, project_id, title, description, sort_order, start_date, " +
   "target_date, completed_at, locked_date, created_at, updated_at";
@@ -59,6 +60,9 @@ function shapeProject(r) {
   return {
     id: r.id,
     title: r.title,
+    // Immutable URL slug (0047) — derived from the title at create /
+    // backfill, never rewritten on retitle so shared links keep working.
+    slug: r.slug ?? null,
     description: r.description,
     bodyMd: r.body_md,
     status: r.status,
@@ -351,6 +355,12 @@ export function useProjects() {
     return Math.max(0, ...sorts) + 1;
   }, [tables]);
 
+  // Slugs are unique across ALL projects (archived included) — the
+  // taken set feeds slugify's -2/-3… collision suffixes.
+  const takenSlugs = useCallback(() => new Set(
+    (tables?.projects ?? []).map(p => p.slug).filter(Boolean)
+  ), [tables]);
+
   const createProject = useCallback(async ({
     title, description, queueState = "ranked",
   }) => {
@@ -358,6 +368,7 @@ export function useProjects() {
     if (!trimmed) throw new Error("Title required.");
     const data = await dbInsert("projects", {
       title: trimmed,
+      slug: slugify(trimmed, takenSlugs()),
       description: (description ?? "").trim() || null,
       created_by: userEmail,
       queue_state: queueState,
@@ -365,7 +376,7 @@ export function useProjects() {
     }, PROJECT_COLS);
     await fetchAll();
     return data.id;
-  }, [userEmail, rankedTailSort, fetchAll]);
+  }, [userEmail, rankedTailSort, takenSlugs, fetchAll]);
 
   // Create a whole project in one shot from an approved agent proposal:
   // the project (tail of the ranked queue), and — if steps were proposed
@@ -379,6 +390,7 @@ export function useProjects() {
     if (!trimmed) throw new Error("Title required.");
     const project = await dbInsert("projects", {
       title: trimmed,
+      slug: slugify(trimmed, takenSlugs()),
       description: (description ?? "").trim() || null,
       created_by: userEmail,
       queue_state: "ranked",
@@ -405,7 +417,7 @@ export function useProjects() {
     }
     await fetchAll();
     return project.id;
-  }, [userEmail, rankedTailSort, fetchAll]);
+  }, [userEmail, rankedTailSort, takenSlugs, fetchAll]);
 
   const updateProject = useCallback(async (id, patch) => {
     await dbUpdate("projects", id, projectPatch(patch));
@@ -475,9 +487,18 @@ export function useProjects() {
 
 // ── useProject — the detail page + step modal ─────────────────────────
 
-export function useProject(projectId) {
+// `projectKey` is a uuid OR a slug (0047) — the URL carries either;
+// everything below resolves and works off the real id.
+export function useProject(projectKey) {
   const userEmail = useCurrentUserEmail();
   const { tables, error, fetchAll } = useProjectTables();
+
+  const projectId = useMemo(() => {
+    const p = (tables?.projects ?? []).find(
+      (r) => r.id === projectKey || r.slug === projectKey
+    );
+    return p?.id ?? projectKey;
+  }, [tables, projectKey]);
 
   // ── Shaping: one project's full tree ────────────────────────────────
   const shaped = useMemo(() => {

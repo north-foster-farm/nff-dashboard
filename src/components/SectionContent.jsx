@@ -121,11 +121,13 @@ export default function SectionContent({
     case "availability": return <Availability />;
     case "chores": return <Chores data={data} />;
     case "projects":
-      // Project detail deep links (/projects/<projectId>) carry the
-      // project id on the route (Batch 22).
+      // Project detail deep links (/projects/<slug-or-id>) carry the
+      // slug/uuid on the route (Batch 22; slugs 0047), plus an
+      // optional /files/<attachmentId> tail for one attachment.
       if (route.kind === "section" && route.projectId) {
         return <ProjectPage
           projectId={route.projectId}
+          attachmentId={route.attachmentId}
           data={data}
           onOpenEvent={onOpenEvent}
           key={route.projectId}

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  FileText, Globe, Image, Paperclip, Trash2, Upload,
+  Check, FileText, Globe, Image, Link2, Paperclip, Trash2, Upload,
 } from "lucide-react";
 import { LiveDocViewer, isLiveDoc } from "./LiveDocViewer.jsx";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
+import { pathForAttachment } from "../lib/router.js";
 
 // Shared small components for the Projects subsystem (Batch 22):
 // inline-editable text, assignee chips, and the Storage-backed
@@ -124,12 +125,17 @@ export function AssigneeChips({ value, onChange, readonly = false }) {
 // ── AttachmentsBlock ──────────────────────────────────────────────────
 // Upload + list of Storage-backed files. `attachments` is the shaped
 // list; upload / remove / url come from useProject().
+// `project` (the shaped project row, optional) enables the per-file
+// copy-URL button: a deep link (/projects/<slug>/files/<id>) that
+// reopens this file — the live-doc viewer for HTML docs, a download
+// for everything else.
 export function AttachmentsBlock({
-  attachments, onUpload, onRemove, getUrl, compact = false,
+  attachments, onUpload, onRemove, getUrl, project, compact = false,
 }) {
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
   // Live HTML docs (batch 42.8) open in the in-app viewer — the doc's
   // localStorage persists to the database — instead of a raw tab.
   const [liveDoc, setLiveDoc] = useState(null);
@@ -191,6 +197,27 @@ export function AttachmentsBlock({
           <span className="text-[10px] text-faint shrink-0">
             {formatBytes(att.sizeBytes)}
           </span>
+          {project && (
+            <button
+              onClick={async () => {
+                const url = window.location.origin
+                  + pathForAttachment(project, att.id);
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setCopiedId(att.id);
+                  setTimeout(() => setCopiedId(null), 1500);
+                } catch {
+                  setErrorMsg("Couldn't copy — " + url);
+                }
+              }}
+              className="bg-transparent border-0 p-0.5 text-muted hover:text-accent cursor-pointer shrink-0"
+              title="Copy link to this file"
+            >
+              {copiedId === att.id
+                ? <Check size={12} className="text-accent" />
+                : <Link2 size={12} />}
+            </button>
+          )}
           <button
             onClick={() => onRemove(att).catch(
               (err) => setErrorMsg(err?.message ?? "Delete failed."))}

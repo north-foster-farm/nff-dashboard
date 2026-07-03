@@ -154,6 +154,7 @@ export default function ProjectStepModal({ step, proj, onClose }) {
               onUpload={(f) => proj.uploadAttachment(f, { stepId: step.id })}
               onRemove={proj.removeAttachment}
               getUrl={proj.attachmentUrl}
+              project={proj.project}
               compact
             />
           </Block>

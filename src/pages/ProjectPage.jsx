@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -12,9 +12,9 @@ import {
   Circle, CircleCheck, FolderKanban, GripVertical, Link2, Lock, Paperclip,
   Pencil, Plus, Trash2, X,
 } from "lucide-react";
-import { useProject } from "../lib/data/useProjects.js";
+import { useProject, useProjects } from "../lib/data/useProjects.js";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
-import { navigate } from "../lib/router.js";
+import { navigate, pathForProject, pathForAttachment } from "../lib/router.js";
 import { formatDateRange, checklistRollup } from "../lib/projects.js";
 import { ProgressBar } from "./Projects.jsx";
 import ProjectStepModal from "../components/ProjectStepModal.jsx";
@@ -22,6 +22,8 @@ import Markdown from "../components/Markdown.jsx";
 import {
   AssigneeChips, AttachmentsBlock, EditableText,
 } from "../components/ProjectBits.jsx";
+import { LiveDocViewer, isLiveDoc } from "../components/LiveDocViewer.jsx";
+import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { BTN_ACCENT } from "../components/ui.jsx";
 
 // The project detail page (Batch 22) — one project's full hierarchy:
@@ -39,13 +41,55 @@ const STATUS_OPTIONS = [
   { value: "completed", label: "Completed" },
 ];
 
-export default function ProjectPage({ projectId, data, onOpenEvent }) {
+// `projectId` is the URL key — a slug or a uuid; useProject resolves
+// either. `attachmentId` (the /files/<id> tail) deep-links one file.
+export default function ProjectPage({
+  projectId, attachmentId, data, onOpenEvent,
+}) {
   const proj = useProject(projectId);
+  const userEmail = useCurrentUserEmail();
   const [openStepId, setOpenStepId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editingBody, setEditingBody] = useState(false);
+  // The deep-linked live doc (non-live deep links open in a new tab).
+  const [deepDoc, setDeepDoc] = useState(null);
+  const consumedDeepLink = useRef(null);
 
   const openStep = proj.steps.find(s => s.id === openStepId) ?? null;
+
+  // Canonicalize a uuid URL to the slug once the row is loaded, so
+  // copied links read well; pre-slug uuid links still resolve.
+  useEffect(() => {
+    const { project } = proj;
+    if (project?.slug && projectId === project.id) {
+      navigate(
+        pathForProject(project)
+          + (attachmentId ? `/files/${attachmentId}` : ""),
+        { replace: true }
+      );
+    }
+  }, [proj.project, projectId, attachmentId]);
+
+  // Deep-linked attachment: search project- AND step-level files;
+  // live HTML docs open the in-app viewer, anything else opens its
+  // signed URL in a new tab. Consumed once per attachment id.
+  useEffect(() => {
+    if (!attachmentId || proj.loading) return;
+    if (consumedDeepLink.current === attachmentId) return;
+    const att = [
+      ...proj.attachments,
+      ...proj.steps.flatMap(st => st.attachments),
+    ].find(a => a.id === attachmentId);
+    if (!att) return;
+    consumedDeepLink.current = attachmentId;
+    if (isLiveDoc(att)) {
+      setDeepDoc(att);
+    } else {
+      proj.attachmentUrl(att)
+        .then(url => window.open(url, "_blank", "noopener"))
+        .catch(() => {});
+    }
+  }, [attachmentId, proj]);
 
   if (proj.loading) {
     return <div className="text-[12px] text-dim italic">Loading…</div>;
@@ -198,16 +242,8 @@ export default function ProjectPage({ projectId, data, onOpenEvent }) {
         )}
       </section>
 
-      {/* ── phases ── */}
-      {phases.map(phase => (
-        <PhaseSection
-          key={phase.id}
-          phase={phase}
-          phaseCount={phases.length}
-          proj={proj}
-          onOpenStep={setOpenStepId}
-        />
-      ))}
+      {/* ── phases (drag the header grip to reorder) ── */}
+      <PhaseList proj={proj} phases={phases} onOpenStep={setOpenStepId} />
       <AddRow
         label={phases.length === 0 ? "Add the first phase" : "Add phase"}
         onAdd={(title) => proj.createPhase({ title }).catch(() => {})}
@@ -229,6 +265,7 @@ export default function ProjectPage({ projectId, data, onOpenEvent }) {
           onUpload={(f) => proj.uploadAttachment(f)}
           onRemove={proj.removeAttachment}
           getUrl={proj.attachmentUrl}
+          project={project}
         />
       </section>
 
@@ -238,6 +275,16 @@ export default function ProjectPage({ projectId, data, onOpenEvent }) {
           step={openStep}
           proj={proj}
           onClose={() => setOpenStepId(null)}
+        />
+      )}
+
+      {/* ── deep-linked live doc ── */}
+      {deepDoc && (
+        <LiveDocViewer
+          attachment={deepDoc}
+          getUrl={proj.attachmentUrl}
+          me={userEmail}
+          onClose={() => setDeepDoc(null)}
         />
       )}
 
@@ -394,7 +441,69 @@ function ToggleChip({ on, onClick, children }) {
 
 // ── phases + steps ────────────────────────────────────────────────────
 
-function PhaseSection({ phase, phaseCount, proj, onOpenStep }) {
+// The reorderable phase stack: an outer DndContext over phase ids
+// (nested cleanly outside each phase's own step-reorder context),
+// mirroring the ranked-projects and step patterns. Writes the new
+// order via proj.reorderPhases.
+function PhaseList({ proj, phases, onOpenStep }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+  const phaseIds = phases.map(p => p.id);
+
+  const onDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const from = phaseIds.indexOf(active.id);
+    const to = phaseIds.indexOf(over.id);
+    if (from < 0 || to < 0) return;
+    proj.reorderPhases(arrayMove(phaseIds, from, to)).catch(() => {});
+  };
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={onDragEnd}
+    >
+      <SortableContext
+        items={phaseIds}
+        strategy={verticalListSortingStrategy}
+      >
+        {phases.map(phase => (
+          <SortablePhaseSection
+            key={phase.id}
+            phase={phase}
+            phaseCount={phases.length}
+            proj={proj}
+            onOpenStep={onOpenStep}
+          />
+        ))}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function SortablePhaseSection(props) {
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: props.phase.id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? "opacity-60 z-10 relative" : ""}
+    >
+      <PhaseSection
+        {...props}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
+  );
+}
+
+function PhaseSection({
+  phase, phaseCount, proj, onOpenStep, dragHandleProps,
+}) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
@@ -413,7 +522,14 @@ function PhaseSection({ phase, phaseCount, proj, onOpenStep }) {
   return (
     <section className="border border-line">
       {/* phase header */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-line">
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-line group/phase">
+        <span
+          {...dragHandleProps}
+          className="shrink-0 text-faint hover:text-dim cursor-grab touch-none opacity-0 group-hover/phase:opacity-100"
+          title="Drag to reorder phases"
+        >
+          <GripVertical size={14} />
+        </span>
         {/* Milestone toggle — only meaningful when milestones drive the
             percentage (more than one phase). */}
         <button
@@ -709,10 +825,14 @@ function AddRow({ label, onAdd, placeholder, inline = false }) {
 const LINK_KINDS = [
   { value: "event_series", label: "Event" },
   { value: "chore", label: "Chore" },
+  // Project→project references ride the same project_links table
+  // (target_kind is unconstrained); clicking navigates to the target.
+  { value: "project", label: "Project" },
 ];
 
 function LinksSection({ proj, data, onOpenEvent }) {
   const { series } = useEventSeries();
+  const { projects: allProjects } = useProjects();
   const [adding, setAdding] = useState(false);
   const [kind, setKind] = useState("event_series");
   const [targetId, setTargetId] = useState("");
@@ -725,10 +845,14 @@ function LinksSection({ proj, data, onOpenEvent }) {
   const options = useMemo(() => {
     const all = kind === "event_series"
       ? (series ?? []).map(s => ({ id: s.id, label: s.label }))
-      : (data?.chores?.definitions ?? [])
-        .map(c => ({ id: c.id, label: c.title }));
+      : kind === "project"
+        ? (allProjects ?? [])
+          .filter(p => p.id !== proj.project?.id) // no self-link
+          .map(p => ({ id: p.id, label: p.title }))
+        : (data?.chores?.definitions ?? [])
+          .map(c => ({ id: c.id, label: c.title }));
     return all.filter(o => !linkedKeys.has(`${kind}:${o.id}`));
-  }, [kind, series, data, linkedKeys]);
+  }, [kind, series, data, allProjects, proj.project, linkedKeys]);
 
   const add = async () => {
     const opt = options.find(o => o.id === targetId);
@@ -747,6 +871,10 @@ function LinksSection({ proj, data, onOpenEvent }) {
       onOpenEvent?.({ mode: "edit", seriesId: link.targetId });
     } else if (link.targetKind === "chore") {
       navigate("/chores");
+    } else if (link.targetKind === "project") {
+      const target = (allProjects ?? [])
+        .find(p => p.id === link.targetId);
+      navigate(pathForProject(target ?? link.targetId));
     }
   };
 
@@ -761,8 +889,8 @@ function LinksSection({ proj, data, onOpenEvent }) {
       />
       {proj.links.length === 0 && !adding && (
         <div className="text-[12px] text-faint italic">
-          Nothing linked. Connect this project to the events and chores
-          it relates to.
+          Nothing linked. Connect this project to the events, chores,
+          and other projects it relates to.
         </div>
       )}
       <div className="flex flex-col gap-1">

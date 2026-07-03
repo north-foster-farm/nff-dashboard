@@ -8,6 +8,7 @@ import {
   pathForSection,
   pathForBatch,
   pathForProject,
+  pathForAttachment,
   pathForPlaceTimeline,
   parseRoute,
 } from "./router.js";
@@ -47,6 +48,30 @@ describe("pathForBatch / pathForProject / pathForPlaceTimeline", () => {
   it("keeps project ids verbatim (uuid dashes are real)", () => {
     const id = "0a1b2c3d-4e5f-6789-abcd-ef0123456789";
     expect(pathForProject(id)).toBe("/projects/" + id);
+  });
+
+  it("prefers a project's slug over its uuid when given the row", () => {
+    const project = {
+      id: "0a1b2c3d-4e5f-6789-abcd-ef0123456789",
+      slug: "farm-stand-rebuild",
+    };
+    expect(pathForProject(project)).toBe("/projects/farm-stand-rebuild");
+  });
+
+  it("falls back to the uuid for a row without a slug", () => {
+    const preSlugProject = {
+      id: "0a1b2c3d-4e5f-6789-abcd-ef0123456789",
+      slug: null,
+    };
+    expect(pathForProject(preSlugProject)).toBe(
+      "/projects/0a1b2c3d-4e5f-6789-abcd-ef0123456789"
+    );
+  });
+
+  it("builds an attachment deep link under the project", () => {
+    expect(pathForAttachment("farm-stand-rebuild", "att-1")).toBe(
+      "/projects/farm-stand-rebuild/files/att-1"
+    );
   });
 
   it("builds /place/<id>/timeline with the place id verbatim", () => {
@@ -93,6 +118,22 @@ describe("parseRoute — round-trips through the path builders", () => {
     const route = parseRoute(pathForProject(id));
     expect(route.sectionId).toBe("projects");
     expect(route.projectId).toBe(id);
+    expect(route.attachmentId).toBeNull();
+  });
+
+  it("recovers a project slug just as verbatim as a uuid", () => {
+    const route = parseRoute("/projects/farm-stand-rebuild");
+    expect(route.sectionId).toBe("projects");
+    expect(route.projectId).toBe("farm-stand-rebuild");
+  });
+
+  it("recovers the attachment id from a files deep link", () => {
+    const route = parseRoute(
+      pathForAttachment("farm-stand-rebuild", "att-1")
+    );
+    expect(route.sectionId).toBe("projects");
+    expect(route.projectId).toBe("farm-stand-rebuild");
+    expect(route.attachmentId).toBe("att-1");
   });
 
   it("recovers a place-timeline path as the map section", () => {
@@ -133,6 +174,7 @@ describe("parseRoute — direct cases", () => {
       choresTab: null,
       batchId: null,
       projectId: null,
+      attachmentId: null,
     });
   });
 

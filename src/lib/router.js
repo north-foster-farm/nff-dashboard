@@ -48,10 +48,22 @@ export function pathForBatch(speciesId, batchId) {
   return "/livestock/" + dashed(speciesId) + "/" + dashed(batchId);
 }
 
-// Deep link to one project's detail page (Batch 22). Project ids are
-// uuids — they ride the URL verbatim (no dash/underscore mapping).
-export function pathForProject(projectId) {
-  return "/projects/" + projectId;
+// Deep link to one project's detail page (Batch 22). Accepts a
+// project row (preferring its immutable `slug`, falling back to the
+// uuid for pre-slug rows) or a bare slug/uuid string. Either rides
+// the URL verbatim (no dash/underscore mapping — dashes are real).
+export function pathForProject(project) {
+  const key = typeof project === "string"
+    ? project
+    : project?.slug ?? project?.id;
+  return "/projects/" + key;
+}
+
+// Deep link to one attachment on a project ("/…/files/<attachmentId>")
+// — opens the project page with that file's viewer open (live HTML
+// docs) or its download started (everything else).
+export function pathForAttachment(project, attachmentId) {
+  return pathForProject(project) + "/files/" + attachmentId;
 }
 
 // Deep link to a place's timeline (Batch 27.6) — the Schedule filtered
@@ -97,8 +109,12 @@ export function parseRoute(pathname) {
     });
   }
   if (head === "projects" && rest[0]) {
-    // Project ids are uuids — keep them verbatim (dashes are real).
-    return section("projects", { projectId: rest[0] });
+    // Slug or uuid — keep verbatim (dashes are real). An optional
+    // /files/<attachmentId> tail deep-links one attachment.
+    return section("projects", {
+      projectId: rest[0],
+      attachmentId: rest[1] === "files" ? rest[2] ?? null : null,
+    });
   }
   if (head === "chores") {
     return section("chores", { choresTab: rest[0] ?? null });
@@ -115,6 +131,7 @@ function section(sectionId, extra = {}) {
     choresTab: null,
     batchId: null,
     projectId: null,
+    attachmentId: null,
     ...extra,
   };
 }

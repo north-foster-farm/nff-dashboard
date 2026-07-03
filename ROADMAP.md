@@ -4522,6 +4522,25 @@ color; clock-arrow overnight icons). Build refs in
     edit-in-place — both library faces.
   - Known follow-ups: Rounds header layout ("sliver") + who's-here
     presentation go to the design brackets (F1/F4/F6/F8/F12).
+- **42.10 — project URLs, slugs + phase reorder. `v0.10.87-alpha`
+  (2026-07-02); migration 0047 (applied to prod, backed up first).**
+  James's evening asks, all five.
+  - Phase drag-reorder: dnd-kit grip in the phase header (mirrors
+    steps/ranked projects; `reorderPhases` existed unwired).
+  - Project→project links: `project` kind on project_links (no
+    schema change); click navigates to the target.
+  - Slugs (0047): `projects.slug` — immutable, derived from the
+    title once (`src/lib/slug.js`, TDD), SQL backfill; the router
+    resolves `/projects/<slug-or-uuid>` and canonicalizes uuid URLs
+    to the slug on load.
+  - Attachment deep links: `/projects/<slug>/files/<attachmentId>`
+    opens the LiveDocViewer for HTML docs, a signed URL otherwise;
+    threaded route → SectionContent → ProjectPage.
+  - Copy-URL button (Link2 → accent Check) on every attachment row,
+    project- and step-level.
+  - Docs: "Project URLs & attachment deep links" pattern — both
+    library faces.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

@@ -476,6 +476,25 @@
       disabled while the other person holds the lock · close.</div>
   </div>
 
+  <!-- PROJECT URLS + DEEP LINKS -->
+  <h2 class="ds-h2" id="project-urls">Project URLs &amp; attachment
+    deep links</h2>
+  <p>
+    Projects live at <span class="mono">/projects/&lt;slug&gt;</span> —
+    an immutable slug derived from the title once
+    (<span class="mono">lib/slug.js</span>); retitling never rewrites
+    it, and old uuid links still resolve (the page canonicalizes them
+    to the slug). Every attachment row carries a ghost
+    <span class="mono">Link2</span> copy-URL action (flips to an accent
+    check for 1.5s); its link,
+    <span class="mono">/projects/&lt;slug&gt;/files/&lt;id&gt;</span>,
+    reopens that file — the LiveDocViewer for live HTML docs, a signed
+    URL in a new tab for everything else. Phase headers wear the same
+    hover <span class="mono">GripVertical</span> drag-reorder grip as
+    steps and ranked projects, and the "Linked to" section links
+    projects to <em>other projects</em> alongside events and chores.
+  </p>
+
   <!-- EMPTY -->
   <h2 class="ds-h2" id="empty">Empty &amp; first-run</h2>
   <p>

@@ -627,6 +627,21 @@ Each: STATUS · what · use/not · canonical source.
   accent Globe icon. Engine: `lib/docdata/liveDoc.js` (shim,
   injection, lockState — TDD'd); data: `useDocData`. Source:
   `src/components/LiveDocViewer.jsx`.
+- **Project URLs + attachment deep links** (0047) — projects live at
+  `/projects/<slug>` (immutable slug from the title, `lib/slug.js`;
+  uuid links still resolve and canonicalize to the slug on load).
+  Every attachment row carries a ghost `Link2` copy-URL action (flips
+  to an accent Check for 1.5s) whose link,
+  `/projects/<slug>/files/<attachmentId>`, reopens that file:
+  live HTML docs open the LiveDocViewer, anything else opens its
+  signed URL. Phase headers wear the same hover `GripVertical`
+  drag-reorder grip as steps and ranked projects (one dnd-kit
+  language, three levels). The "Linked to" section adds a
+  **Project** kind — project→project references on the same
+  `project_links` rows; clicking navigates to the target project.
+  Sources: `src/lib/router.js`, `src/components/ProjectBits.jsx`,
+  `src/pages/ProjectPage.jsx`.
+
 ## Consolidation backlog (the bounded-options payoff)
 
 **App-wide flush-flip propagation (2026-06-30) — DONE for the page layer.**
