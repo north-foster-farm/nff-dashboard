@@ -4703,6 +4703,27 @@ color; clock-arrow overnight icons). Build refs in
     On prod: no_band/blue_band/orange_band pool across Mobile Coop 2;
     gold_band (alone in MC1) stays per-flock.
 
+- **42.19 — F20 close-out: accurate lifecycle copy, F26 rename retired.
+  `v0.10.96-alpha` (2026-07-03); pure frontend, no migration.** Closes
+  the animals cluster's F20.
+  - AddBatchForm (SpeciesPage) was broiler-only and described pre-0038
+    behavior ("fires the broiler lifecycle automation: arrival,
+    pasture-move, and processing events plus a brooder cleanout
+    chore"). After F20 that's wrong twice over: layers now fire an
+    arrival automation too, and the automation only creates the arrival
+    event — the pasture-move + cleanout are chores from the lifecycle
+    PROCESS. Gate is now `isMeatSpecies || isLayerSpecies`; copy reads
+    "Adding a {noun} sets its arrival on the calendar; the lifecycle
+    process then schedules the pasture-move and brooder-cleanout
+    chores."
+  - **F26 (rename "Automations" → process) retired, not done.**
+    Post-0038 automations and processes are distinct subsystems that
+    change for different reasons: automations = DB-trigger rules on data
+    events (batch-arrival, feed-reorder); processes = user-authored,
+    calendar-anchored chore generators. A blanket rename would conflate
+    them and mislabel the feed-reorder rule. Decision (with James): keep
+    both terms; only the genuinely-stale lifecycle copy above was fixed.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

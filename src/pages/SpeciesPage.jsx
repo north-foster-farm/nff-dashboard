@@ -3,7 +3,9 @@ import {
   MapPin, Pencil, Plus, Sparkles,
 } from "lucide-react";
 import { computeAge, formatDate } from "../lib/dates.js";
-import { batchLifecycle } from "../lib/metrics.js";
+import {
+  batchLifecycle, isLayerSpecies, isMeatSpecies,
+} from "../lib/metrics.js";
 import { useProcessingDates } from "../lib/data/useProcessingDates.js";
 import BatchStatePill from "../components/BatchStatePill.jsx";
 import { computeStageCost } from "../lib/feedCost.js";
@@ -186,9 +188,10 @@ function GroupsTab({ species }) {
   );
 }
 
-// Minimal create-batch form. For broilers, inserting a row fires the
-// broiler-lifecycle automation server-side: arrival / pasture-move /
-// processing events + a brooder cleanout chore.
+// Minimal create-batch form. For broilers and layers, inserting a row
+// fires that species' arrival automation server-side (it creates the
+// arrival event); the lifecycle process then schedules the pasture-move
+// and brooder-cleanout chores off that arrival.
 function AddBatchForm({ species }) {
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
@@ -200,7 +203,7 @@ function AddBatchForm({ species }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const hasAutomation = species.id === "broilers";
+  const hasLifecycle = isMeatSpecies(species) || isLayerSpecies(species);
   const noun = species.trackingModel === "batch" ? "batch" : "group";
 
   const reset = () => {
@@ -303,11 +306,12 @@ function AddBatchForm({ species }) {
           </button>
         </div>
       </div>
-      {hasAutomation && (
+      {hasLifecycle && (
         <div className="flex items-center gap-1.5 text-[11px] text-dim mt-3 leading-relaxed">
           <Sparkles size={12} className="text-accent-deep shrink-0" />
-          Adding a batch fires the broiler lifecycle automation: arrival,
-          pasture-move, and processing events plus a brooder cleanout chore.
+          Adding a {noun} sets its arrival on the calendar; the lifecycle
+          process then schedules the pasture-move and brooder-cleanout
+          chores.
         </div>
       )}
       {error && (
