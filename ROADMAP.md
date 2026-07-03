@@ -4724,6 +4724,26 @@ color; clock-arrow overnight icons). Build refs in
     them and mislabel the feed-reorder rule. Decision (with James): keep
     both terms; only the genuinely-stale lifecycle copy above was fixed.
 
+- **42.20 — live today progress in the Schedule header (F12).
+  `v0.10.97-alpha` (2026-07-03); pure frontend, no migration.** The
+  day-load header showed a static count ("N chores · M blocks") that
+  didn't say what was *achieved* today and didn't move when items were
+  ticked. Now, on today's view, the count run leads with a live
+  "{done}/{total} done" (+ "{overdue} overdue" in warn) that updates as
+  chores/ad-hoc items are checked.
+  - New tested pure helper `dayProgress(blocks, nowMin)` in
+    farmLoad.js: folds per-block { done, total, endMin } into
+    { done, total, remaining, overdue }; overdue = unfinished work in
+    blocks whose window has closed (nowMin null on non-today views, so
+    overdue is 0). TDD, 4 cases.
+  - Schedule wires it from the existing reactive `counts` (per-block
+    done/total sourced from completion state), so the summary is live
+    by construction; rendered in the shared dayLoadSummary → both the
+    desktop Day-load header and the phone strip.
+  - NOTE: header presentation kept conservative (matches the existing
+    10px count-run style); flagged for a visual pass with James — he
+    may want the progress larger / relocated.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

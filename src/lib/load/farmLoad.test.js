@@ -8,7 +8,9 @@
 // logic: block state derivation, the binary warming fold, needs-cover
 // UNIT counting, and the This Week bar assembly.
 import { describe, it, expect } from "vitest";
-import { farmLoad, dayWarming, dayConflictCount, dayCoveredUnits } from "./farmLoad.js";
+import {
+  farmLoad, dayWarming, dayConflictCount, dayCoveredUnits, dayProgress,
+} from "./farmLoad.js";
 
 const d = (y, m, day, h = 12, min = 0) => new Date(y, m - 1, day, h, min);
 
@@ -581,4 +583,42 @@ describe("farmLoad — availability threading (batch 42 slice 6)", () => {
       }));
       expect(out.projects).toEqual([]);
     });
+});
+
+describe("dayProgress — live today done/remaining/overdue (F12)", () => {
+  // The header's day-load count was a static total ("53 items") that
+  // ignored ticking. dayProgress folds the per-block done/total (which
+  // ARE live — sourced from completions state) into a glanceable today
+  // summary, with overdue = unfinished work in blocks whose window has
+  // already closed.
+  const block = (done, total, endMin) => ({ done, total, endMin });
+
+  it("sums done, total and remaining across the day's blocks", () => {
+    const p = dayProgress(
+      [block(3, 5, 420), block(1, 4, 1140)], 600
+    );
+    expect(p.done).toBe(4);
+    expect(p.total).toBe(9);
+    expect(p.remaining).toBe(5);
+  });
+
+  it("counts unfinished work in past blocks as overdue", () => {
+    const nowMin = 600; // 10:00 — the morning block (ends 07:00) is past
+    const p = dayProgress(
+      [block(3, 5, 420), block(0, 4, 1140)], nowMin
+    );
+    // morning: 5 total, 3 done → 2 overdue; evening still upcoming.
+    expect(p.overdue).toBe(2);
+  });
+
+  it("has no overdue without a clock (a non-today view)", () => {
+    const p = dayProgress([block(0, 5, 420)], null);
+    expect(p.overdue).toBe(0);
+    expect(p.remaining).toBe(5);
+  });
+
+  it("never reports negative overdue when a past block is fully done", () => {
+    const p = dayProgress([block(5, 5, 420)], 600);
+    expect(p.overdue).toBe(0);
+  });
 });

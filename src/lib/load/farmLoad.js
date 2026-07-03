@@ -554,6 +554,25 @@ export function dayCoveredUnits({ date, blocks = [], reservations = [] }) {
   return out;
 }
 
+// F12: a live, glanceable "what's achieved today" summary. The per-block
+// { done, total } come from the same completion state that ticking
+// mutates, so this is reactive by construction. `blocks` is
+// [{ done, total, endMin }]; overdue = unfinished work in blocks whose
+// window has already closed (endMin <= nowMin). Pass nowMin = null for a
+// non-today view, where "overdue" is meaningless.
+export function dayProgress(blocks = [], nowMin = null) {
+  let done = 0;
+  let total = 0;
+  let overdue = 0;
+  for (const b of blocks) {
+    done += b.done ?? 0;
+    total += b.total ?? 0;
+    const past = nowMin != null && b.endMin != null && b.endMin <= nowMin;
+    if (past) overdue += Math.max(0, (b.total ?? 0) - (b.done ?? 0));
+  }
+  return { done, total, remaining: total - done, overdue };
+}
+
 // "HH:MM" → minutes-of-day, or null (mirrors Schedule's `hmToMin`; kept local
 // to route project_node placements into their gap window for the F26 planned
 // test).

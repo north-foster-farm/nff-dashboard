@@ -74,7 +74,7 @@ import {
   AlertStrip, Tooltip, CoveredBadge, INPUT_CLS,
 } from "../components/ui.jsx";
 import {
-  farmLoad, dayConflictCount, dayCoveredUnits, dayWarming,
+  farmLoad, dayConflictCount, dayCoveredUnits, dayWarming, dayProgress,
 } from "../lib/load/farmLoad.js";
 import { T } from "../theme.js";
 
@@ -1946,6 +1946,20 @@ export default function Schedule({ data }) {
   // a later block). Jumping snaps the viewed day back to today AND follows now.
   const viewingToday = dateISO === realTodayISO;
 
+  // F12 — a live "what's done today" summary for the header. Reactive by
+  // construction: `counts` (per-block done/total) is derived from the
+  // same completion state ticking mutates. Overdue only means something
+  // on today, so nowMin flows only then.
+  const dayDone = useMemo(() => {
+    const blocks = blockRows.map((b, i) => ({
+      done: counts[i]?.done ?? 0,
+      total: counts[i]?.total ?? 0,
+      endMin: blockWindow(b.bucket).end,
+    }));
+    return dayProgress(blocks, viewingToday ? nowMin : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockRows, counts, viewingToday, nowMin]);
+
   // Yesterday's unfinished musts (S12), computed only when building today.
   const yesterdayMusts = useMemo(() => {
     if (!viewingToday) return { count: 0, titles: [] };
@@ -2564,6 +2578,23 @@ export default function Schedule({ data }) {
   // conflict list.
   const dayLoadSummary = (
     <span className="flex items-center gap-1">
+      {/* F12 — today's live done/overdue leads the run so glancing at the
+          header tells you what's achieved *today*, not just the day's
+          static load. Reactive: dayDone folds the per-block done/total
+          that ticking mutates. */}
+      {viewingToday && dayDone.total > 0 && (
+        <>
+          <span className="text-fg font-semibold">
+            {dayDone.done}/{dayDone.total} done
+          </span>
+          {dayDone.overdue > 0 && (
+            <span className="text-warn font-semibold">
+              {" · "}{dayDone.overdue} overdue
+            </span>
+          )}
+          {" · "}
+        </>
+      )}
       {nText(dayLoadCounts.chores, "chore")}
       {" · "}{nText(dayLoadCounts.blocks, "block")}
       {dayLoadCounts.projects > 0
