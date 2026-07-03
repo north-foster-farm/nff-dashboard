@@ -4667,6 +4667,23 @@ color; clock-arrow overnight icons). Build refs in
     whose anchor is a different species before writing any expansion.
   - useProcesses shapes/patches the new `speciesId` field.
 
+- **42.17 — layer lifecycle (F20.2).
+  `v0.10.94-alpha` (2026-07-03); migration 0050 (additive seed).**
+  Layers get the same two-part lifecycle as broilers, riding the
+  species-scoped process foundation from 42.16.
+  - Migration 0050 seeds (idempotent): a "Layer batch arrival"
+    automation (batch_created, species_id=layers) that creates only the
+    arrival event (batch_milestones) — the anchor; and a "Layer pasture
+    (lifecycle)" process scoped species_id=layers, linked to
+    batch_milestones, with two chore steps: Move to pasture (+20d,
+    batch anchor) and Brooder cleanout (+27d ≈ 1wk after the move,
+    former_occupancy 'brooder' anchor). Offsets are editable defaults.
+  - BatchPage lifecycle strip gate opened for layers (isMeatSpecies ||
+    isLayerSpecies); still hidden for sheep. Layers set a processing
+    date manually (retired-cohort) via the strip's create pill.
+  - Fires for NEW layer cohorts only (the batch_created trigger runs on
+    insert); existing layer groups don't retroactively populate.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

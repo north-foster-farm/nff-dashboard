@@ -10,7 +10,8 @@ import { useEventLinks } from "../lib/data/useEventLinks.js";
 import { supabase } from "../lib/supabase.js";
 import { computeAge, formatDate } from "../lib/dates.js";
 import {
-  batchLifecycle, BATCH_STATES, isMeatSpecies, liveProcessingISO,
+  batchLifecycle, BATCH_STATES, isMeatSpecies, isLayerSpecies,
+  liveProcessingISO,
 } from "../lib/metrics.js";
 import { navigate, pathForSection } from "../lib/router.js";
 import BatchMetricsSection from "../components/BatchMetrics.jsx";
@@ -412,11 +413,13 @@ export default function BatchPage({
       </div>
 
       {/* ── lifecycle strip ── */}
-      {/* The arrival→pasture→processing→cleanout arc is the MEAT-bird
-          lifecycle (F27). Layers and pet species (sheep) don't get
-          processed, so it's hidden for them — their own lifecycle
-          rules arrive with the layer-process work. */}
-      {isMeatSpecies(species) && (
+      {/* The arrival→pasture→processing→cleanout arc applies to both
+          meat birds (F27) and layers (F20): layers get arrival +
+          pasture-move + brooder-cleanout from their own lifecycle
+          process, and set a processing date manually when a cohort is
+          retired. Pet species (sheep) don't get processed, so it stays
+          hidden for them. */}
+      {(isMeatSpecies(species) || isLayerSpecies(species)) && (
       <Pane title="Lifecycle" icon={CalendarRange}>
         {linksLoading ? (
           <div className="text-[12px] text-dim italic">Loading…</div>
