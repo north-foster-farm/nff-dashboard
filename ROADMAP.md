@@ -4610,6 +4610,26 @@ color; clock-arrow overnight icons). Build refs in
   separate lines. Legacy project-based expansions (2 still on prod)
   keep their "open the prep project" link.
 
+- **42.14 — processing days require a batch (implicit link).
+  `v0.10.91-alpha` (2026-07-03); pure frontend, no migration.** F22c: a
+  processing day is the processing of *some* batch — it can't exist
+  without one. Two problems fixed:
+  - The workspace read its batch from `batch_assignments`, but
+    `BatchPage.createMilestone` writes only `event_links`; on prod 5 of
+    8 linked processing days therefore showed "— no batch assigned —".
+    New `useSeriesBatchLink(seriesId)` (BatchPicker.jsx) makes
+    `event_links` (target_type 'batch') the source of truth, so a
+    batch-created day already shows its batch. Assigning writes
+    `event_links` first, then `batch_assignments` (kept for cross-device
+    realtime).
+  - Enforcement at both write boundaries via a new tested pure
+    predicate `processingBatchMissing({ kindId, batchId })`: EventEditor
+    blocks *creating* a new processing day with no batch (disabled
+    Create + hint); the workspace blocks *Resolve* with no batch
+    ("Assign a batch before resolving."). Non-destructive — 5 legacy
+    orphan processing events stay editable and just can't be resolved
+    until assigned.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

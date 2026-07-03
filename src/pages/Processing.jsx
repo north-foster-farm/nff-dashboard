@@ -6,9 +6,10 @@ import { useEventSeries } from "../lib/data/useEventSeries.js";
 import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
 import { useBatchAssignments } from "../lib/data/useBatchAssignments.js";
 import BatchPicker, {
-  useBatchCandidates, syncBatchLink,
+  useBatchCandidates, useSeriesBatchLink, syncBatchLink,
 } from "../components/BatchPicker.jsx";
 import { navigate, pathForBatch } from "../lib/router.js";
+import { processingBatchMissing } from "../lib/processes.js";
 
 // Processing-day workspace (Batch 14.2). Reachable only from the
 // EventEditor's "Open processing details →" link on a processing_days
@@ -34,6 +35,14 @@ import { navigate, pathForBatch } from "../lib/router.js";
 export default function Processing({ seriesId, occursOn, data, onClose }) {
   const { seriesById, updateSeries } = useEventSeries();
   const { occurrences, upsertOverride } = useEventOccurrences({ seriesId });
+  // F22c: event_links is the source of truth for the batch — gating
+  // resolve on it (not batch_assignments) covers batch-created days too.
+  const {
+    batchId: linkedBatchId, refresh: refreshBatchLink,
+  } = useSeriesBatchLink(seriesId);
+  const batchMissing = processingBatchMissing({
+    kindId: "processing_days", batchId: linkedBatchId,
+  });
   const series = seriesId ? seriesById.get(seriesId) : null;
   const occurrence = useMemo(
     () => (occurrences ?? []).find(o => o.occursOn === occursOn) ?? null,
@@ -151,7 +160,12 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
         </div>
       </header>
 
-      <BatchAssignSection seriesId={seriesId} data={data} />
+      <BatchAssignSection
+        seriesId={seriesId}
+        data={data}
+        batchId={linkedBatchId}
+        onAssigned={refreshBatchLink}
+      />
 
       <Section title="Cut sheet" subtitle="Cut sizes, packaging, anything the processor needs ahead of the day.">
         <textarea
@@ -197,13 +211,20 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
           <Save size={13} className="shrink-0" /> Save
         </button>
         {!resolved ? (
-          <button
-            onClick={() => save({ resolveOnSave: true })}
-            disabled={pending}
-            className="inline-flex items-center gap-1.5 bg-resolved text-on-accent border border-resolved font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <CheckCircle2 size={13} className="shrink-0" /> Resolve batch
-          </button>
+          <div className="flex flex-col items-end gap-1.5">
+            <button
+              onClick={() => save({ resolveOnSave: true })}
+              disabled={pending || batchMissing}
+              className="inline-flex items-center gap-1.5 bg-resolved text-on-accent border border-resolved font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CheckCircle2 size={13} className="shrink-0" /> Resolve batch
+            </button>
+            {batchMissing && (
+              <span className="text-[10px] text-faint">
+                Assign a batch before resolving.
+              </span>
+            )}
+          </div>
         ) : (
           <button
             onClick={() => { setResolved(false); save({ resolveOnSave: false }); }}
@@ -221,29 +242,31 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
 // ── Batch assignment (Batch 20) ───────────────────────────────────────
 // The real picker replacing the old EventKindPage stub. Lists every
 // batch of batch-tracked species with its current location; assigning
-// writes batch_assignments (keyed by series id) AND keeps the
-// event_links row in sync so the batch's lifecycle page shows this
-// processing day. The candidates list, select UI, and event_links sync
-// moved to components/BatchPicker.jsx (Batch 27.6) so the EventEditor
-// offers the same picker.
-function BatchAssignSection({ seriesId, data }) {
-  const { getBatchId, assign, loading } = useBatchAssignments();
+// writes both event_links (the source of truth the parent reads) AND
+// batch_assignments (for cross-device realtime). The displayed value is
+// the parent's authoritative event_links batch (F22c), so a
+// batch-created processing day already shows its batch. The candidates
+// list, select UI, and event_links sync moved to
+// components/BatchPicker.jsx (Batch 27.6) so the EventEditor offers the
+// same picker.
+function BatchAssignSection({ seriesId, data, batchId, onAssigned }) {
+  const { assign, loading } = useBatchAssignments();
   const candidates = useBatchCandidates(data);
   const [pending, setPending] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  const assignedBatchId = getBatchId(seriesId);
+  const assignedBatchId = batchId;
   const assigned = candidates.find((c) => c.id === assignedBatchId) ?? null;
 
-  const onAssign = async (batchId) => {
+  const onAssign = async (nextBatchId) => {
+    if (!nextBatchId) return; // batch is required — no un-assigning to null
     setPending(true);
     setErrorMsg(null);
     try {
-      if (batchId) {
-        const err = await assign(seriesId, batchId);
-        if (err) throw err;
-        await syncBatchLink(seriesId, batchId);
-      }
+      await syncBatchLink(seriesId, nextBatchId);
+      const err = await assign(seriesId, nextBatchId);
+      if (err) throw err;
+      await onAssigned?.();
     } catch (e) {
       setErrorMsg(e?.message ?? "Assignment failed.");
     } finally {

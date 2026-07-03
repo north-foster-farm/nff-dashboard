@@ -5,7 +5,9 @@ import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
 import { useBatchAssignments } from "../lib/data/useBatchAssignments.js";
 import { supabase } from "../lib/supabase.js";
 import { navigate, pathForProject } from "../lib/router.js";
-import { classifyProcessWork } from "../lib/processes.js";
+import {
+  classifyProcessWork, processingBatchMissing,
+} from "../lib/processes.js";
 import RecurrenceEditor from "./RecurrenceEditor.jsx";
 import EventScopePrompt from "./EventScopePrompt.jsx";
 import BatchPicker, {
@@ -119,11 +121,20 @@ export default function EventEditor({
 
   const isOneOff = !isRecurring;
 
+  // F22c: a new processing day can't be created without a batch — the
+  // event is the processing of some batch. Legacy processing events
+  // with no batch (isNew false) stay editable so they aren't stranded.
+  const batchMissingOnNew =
+    isNew && processingBatchMissing({ kindId, batchId });
+
   const handleSaveClick = async () => {
     setErrorMsg(null);
     if (!label.trim()) { setErrorMsg("Title required."); return; }
     if (!kindId) { setErrorMsg("Pick a kind."); return; }
     if (!date) { setErrorMsg("Pick a date."); return; }
+    if (batchMissingOnNew) {
+      setErrorMsg("A processing day needs a batch."); return;
+    }
 
     if (isNew) {
       return runSave("all");
@@ -356,8 +367,9 @@ export default function EventEditor({
                 disabled={pending}
               />
               <div className="text-[10px] text-faint leading-relaxed mt-0.5">
-                Linking a batch shows it in the Schedule title and on
-                the batch&rsquo;s lifecycle page.
+                {batchMissingOnNew
+                  ? "A processing day is the processing of a batch — pick one to create it."
+                  : "Linking a batch shows it in the Schedule title and on the batch’s lifecycle page."}
               </div>
             </Field>
           )}
@@ -468,7 +480,7 @@ export default function EventEditor({
             </button>
             <button
               onClick={handleSaveClick}
-              disabled={pending}
+              disabled={pending || batchMissingOnNew}
               className="bg-accent text-on-accent border border-accent font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3 py-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pending ? "Saving…" : isNew ? "Create" : "Save"}

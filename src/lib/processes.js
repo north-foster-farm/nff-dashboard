@@ -238,6 +238,15 @@ export function occurrenceIsCurrent(occursOn, today = new Date()) {
   return occursOn >= formatISODate(startOfDayUTC(today));
 }
 
+// F22c invariant: a processing day can't exist without a batch — the
+// event *is* the processing of some batch. Returns true when a
+// processing-kind event still lacks a batch, so callers can block the
+// write (creating the event, resolving it in the workspace). Any other
+// event kind is never blocked by this rule.
+export function processingBatchMissing({ kindId, batchId }) {
+  return kindId === "processing_days" && !batchId;
+}
+
 // Classify an event's process-work links (event_links rows) for the
 // event-side badge. A process expansion emits two kinds of chore link:
 // role 'process' = one-time prep chores it *adds*, and

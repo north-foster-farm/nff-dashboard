@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase.js";
 import { useSites } from "../lib/data/useSites.js";
 
@@ -67,6 +67,35 @@ export async function syncBatchLink(seriesId, batchId) {
       });
     if (iErr) throw iErr;
   }
+}
+
+// The authoritative "which batch is this processing day about?" read.
+// event_links (target_type 'batch') is the source of truth — it's what
+// BatchPage.createMilestone writes and what the lifecycle page reads,
+// whereas batch_assignments is only populated when someone assigns from
+// the workspace picker. Reading event_links means a batch-created
+// processing day already shows its batch here. Returns { batchId,
+// loading, refresh }.
+export function useSeriesBatchLink(seriesId) {
+  const [batchId, setBatchId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (!seriesId) { setBatchId(null); setLoading(false); return; }
+    setLoading(true);
+    const { data } = await supabase
+      .from("event_links")
+      .select("target_id")
+      .eq("series_id", seriesId)
+      .eq("target_type", "batch")
+      .limit(1);
+    setBatchId(data?.[0]?.target_id ?? null);
+    setLoading(false);
+  }, [seriesId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { batchId, loading, refresh };
 }
 
 export default function BatchPicker({

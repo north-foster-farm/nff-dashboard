@@ -8,6 +8,7 @@ import {
   planExpansions, expansionKey, expansionSummary, stepDateFor, splitSteps,
   describeOffset, expansionProjectTitle, processChoreId, resolveChoreAnchor,
   processChoreRow, occurrenceIsCurrent, classifyProcessWork,
+  processingBatchMissing,
 } from "./processes.js";
 
 function process(over = {}) {
@@ -403,6 +404,28 @@ describe("classifyProcessWork", () => {
     expect(classifyProcessWork(null)).toEqual({
       projectLinks: [], prepChoreCount: 0, modifierCount: 0,
     });
+  });
+});
+
+describe("processingBatchMissing", () => {
+  // F22c invariant: a processing day can't exist without a batch — it
+  // *is* the processing of some batch. This guards the two write
+  // boundaries (creating the event, resolving it in the workspace).
+  const PROCESSING = "processing_days";
+
+  it("blocks a processing event with no batch", () => {
+    expect(processingBatchMissing({ kindId: PROCESSING, batchId: null }))
+      .toBe(true);
+  });
+
+  it("allows a processing event once a batch is picked", () => {
+    expect(processingBatchMissing({ kindId: PROCESSING, batchId: "b1" }))
+      .toBe(false);
+  });
+
+  it("never blocks a non-processing event kind", () => {
+    expect(processingBatchMissing({ kindId: "batch_milestones", batchId: null }))
+      .toBe(false);
   });
 });
 
