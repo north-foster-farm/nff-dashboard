@@ -5,10 +5,12 @@ import {
 import { useWeightSamples } from "../lib/data/useWeightSamples.js";
 import { useEggCollections } from "../lib/data/useEggCollections.js";
 import { useMortalityLog } from "../lib/data/useMortalityLog.js";
+import { useSites } from "../lib/data/useSites.js";
 import {
-  averageDailyGain, bodyWeightTrend, feedConversionRatio, fmtMetric,
-  henHousedProduction, isLayerSpecies, isMeatSpecies, layerFeedEfficiency,
-  layingRate, mortalityStats, summarizeSamples, uniformity, weeksTimeline,
+  aggregateLayerCohort, averageDailyGain, bodyWeightTrend, coopMateIds,
+  feedConversionRatio, fmtMetric, henHousedProduction, isLayerSpecies,
+  isMeatSpecies, layerFeedEfficiency, layingRate, mortalityStats,
+  summarizeSamples, uniformity, weeksTimeline,
 } from "../lib/metrics.js";
 import { formatDate } from "../lib/dates.js";
 import { Pane, INPUT_SURFACE_CLS } from "./ui.jsx";
@@ -82,6 +84,7 @@ export default function BatchMetricsSection({
       {isLayer && !notYetArrived && (
         <ProductionCard
           batch={batch}
+          species={species}
           samples={samples}
           collections={collections}
           mortalityEvents={mortalityEvents}
@@ -190,12 +193,53 @@ function PerformanceCard({
 
 // ── layer production ──────────────────────────────────────────────────
 
-function ProductionCard({ batch, samples, collections, mortalityEvents, ctx }) {
-  const hh = henHousedProduction(batch, collections);
-  const rate = layingRate(batch, collections);
+function ProductionCard({
+  batch, species, samples, collections, mortalityEvents, ctx,
+}) {
+  // F20.3: layers share mobile coops, so eggs can't be attributed to
+  // one flock. When this flock cohabits, hen-housed + laying rate are
+  // computed across the whole coop (pooled eggs ÷ pooled hens) — the
+  // only honest figures — while feed efficiency stays per-flock.
+  const { placements, placesById } = useSites();
+  const allEggs = useEggCollections(null).collections;
+
+  const coop = useMemo(() => {
+    const mates = coopMateIds(batch.id, placements ?? []);
+    if (mates.length <= 1) return null;
+    const groupsById = new Map(
+      (species.groups ?? []).map((g) => [g.id, g])
+    );
+    const members = mates
+      .map((id) => ({
+        group: groupsById.get(id),
+        collections: allEggs.filter((c) => c.groupId === id),
+      }))
+      .filter((m) => m.group);
+    const mine = (placements ?? []).find(
+      (p) => p.occupantType === "batch" && p.occupantId === batch.id
+        && p.movedOut == null
+    );
+    return {
+      cohort: aggregateLayerCohort(members),
+      flockCount: members.length,
+      placeName: mine ? placesById?.get(mine.placeId)?.name ?? null : null,
+    };
+  }, [batch.id, placements, placesById, species.groups, allEggs]);
+
+  // Coop-level source for the shared metrics; the flock's own numbers
+  // when it isn't cohabiting.
+  const metricGroup = coop ? coop.cohort : batch;
+  const metricCollections = coop ? coop.cohort.collections : collections;
+  const hh = henHousedProduction(metricGroup, metricCollections);
+  const rate = layingRate(metricGroup, metricCollections);
   const eff = layerFeedEfficiency(batch, collections, ctx);
   const weight = bodyWeightTrend(samples);
   const mort = mortalityStats(batch, mortalityEvents);
+
+  const coopNote = coop
+    ? `across ${coop.flockCount} flocks` +
+      (coop.placeName ? ` in ${coop.placeName}` : " sharing a coop")
+    : null;
 
   const caveats = dedupe([
     ...hh.caveats, ...rate.caveats, ...eff.caveats,
@@ -204,12 +248,19 @@ function ProductionCard({ batch, samples, collections, mortalityEvents, ctx }) {
 
   return (
     <Pane title="Production" icon={Egg}>
+      {coopNote && (
+        <p className="text-[11px] text-dim leading-relaxed m-0 mb-3">
+          These flocks share a coop, so eggs can’t be told apart —
+          hen-housed and laying rate are pooled {coopNote}. Feed
+          efficiency stays per-flock.
+        </p>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-5 gap-y-4">
         <MetricStat
           label="Hen-housed"
           value={fmtMetric(hh.value, { digits: 1 })}
           sub={hh.value != null
-            ? "eggs/hen placed · target 280–320/yr"
+            ? (coop ? "eggs/hen placed · coop" : "eggs/hen placed · target 280–320/yr")
             : null}
         />
         <MetricStat
@@ -218,7 +269,7 @@ function ProductionCard({ batch, samples, collections, mortalityEvents, ctx }) {
             ? `${Math.round(rate.value * 100)}%`
             : "—"}
           sub={rate.value != null
-            ? `last ${rate.windowDays} days`
+            ? `last ${rate.windowDays} days${coop ? " · coop" : ""}`
             : null}
         />
         <MetricStat

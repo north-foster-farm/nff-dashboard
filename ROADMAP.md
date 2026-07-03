@@ -4684,6 +4684,25 @@ color; clock-arrow overnight icons). Build refs in
   - Fires for NEW layer cohorts only (the batch_created trigger runs on
     insert); existing layer groups don't retroactively populate.
 
+- **42.18 — cohabiting egg averages (F20.3).
+  `v0.10.95-alpha` (2026-07-03); pure frontend, no migration.** Layers
+  share mobile coops (MC1/MC2), so eggs collected from a coop can't be
+  attributed to one flock — per-flock hen-housed / laying rate were
+  dishonest. Now, when a flock cohabits, those two metrics are pooled
+  across the whole coop (eggs ÷ hens summed over the cohort); feed
+  efficiency stays per-flock.
+  - Two tested pure helpers in metrics.js: `coopMateIds(groupId,
+    placements)` (current batch occupants of the flock's place, from
+    the placements model — the structured cohabitation source, per
+    James) and `aggregateLayerCohort(members)` (sums count/placedCount,
+    pools collections into a synthetic group the existing
+    henHousedProduction/layingRate consume unchanged).
+  - ProductionCard resolves the cohort via useSites placements, loads
+    all collections (useEggCollections(null)) to pool the cohort's
+    eggs, and labels the pooled metrics ("across N flocks in <coop>").
+    On prod: no_band/blue_band/orange_band pool across Mobile Coop 2;
+    gold_band (alone in MC1) stays per-flock.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

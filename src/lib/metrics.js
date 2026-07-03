@@ -382,6 +382,51 @@ export function weeksTimeline(group, species, processingISO) {
 
 // ── layer metrics ─────────────────────────────────────────────────────
 
+// F20.3: which flocks share a coop. Layers cohabit mobile coops
+// (MC1/MC2), so eggs collected from a coop can't be attributed to one
+// flock — the placements model (occupantType 'batch') is the structured
+// source of who's in a coop *now*. Returns the current batch occupants
+// of the flock's place, including the flock itself; empty if the flock
+// isn't currently placed anywhere.
+export function coopMateIds(groupId, placements) {
+  const current = (placements ?? []).filter(
+    (p) => p.occupantType === "batch" && p.movedOut == null
+  );
+  const mine = current.find((p) => p.occupantId === groupId);
+  if (!mine) return [];
+  return current
+    .filter((p) => p.placeId === mine.placeId)
+    .map((p) => p.occupantId);
+}
+
+// F20.3: pool a set of cohabiting flocks into one synthetic cohort so
+// the per-group layer metrics (henHousedProduction, layingRate) compute
+// an honest coop-level number. `members` is [{ group, collections }];
+// hen counts sum and collections concatenate, matching the group +
+// collections shape those functions already consume.
+export function aggregateLayerCohort(members) {
+  const list = members ?? [];
+  let count = 0;
+  let placedCount = 0;
+  let hasCount = false;
+  let hasPlaced = false;
+  const collections = [];
+  for (const { group, collections: cols } of list) {
+    if (Number.isFinite(group?.count)) { count += group.count; hasCount = true; }
+    if (Number.isFinite(group?.placedCount)) {
+      placedCount += group.placedCount;
+      hasPlaced = true;
+    }
+    collections.push(...(cols ?? []));
+  }
+  return {
+    count: hasCount ? count : null,
+    placedCount: hasPlaced ? placedCount : null,
+    collections,
+  };
+}
+
+
 // Total eggs across collections, optionally clipped to a window.
 function totalEggs(collections, fromISO, toISO) {
   let total = 0;

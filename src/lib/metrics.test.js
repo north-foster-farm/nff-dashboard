@@ -33,6 +33,8 @@ import {
   isMeatSpecies,
   batchLifecycle,
   liveProcessingISO,
+  coopMateIds,
+  aggregateLayerCohort,
 } from "./metrics.js";
 
 // ── fixtures ─────────────────────────────────────────────────────────
@@ -956,5 +958,65 @@ describe("batchLifecycle", () => {
     const out = batchLifecycle({}, null, TODAY);
     expect(out.state).toBe("unknown");
     expect(out.arrivalISO).toBeNull();
+  });
+});
+
+describe("coopMateIds", () => {
+  // Layers share mobile coops; the placements model (occupantType
+  // 'batch') is the structured source of who shares a coop. Only
+  // *current* occupancy counts — a flock that has moved out isn't a
+  // coop-mate anymore.
+  const placement = (occupantId, placeId, movedOut = null) =>
+    ({ occupantType: "batch", occupantId, placeId, movedOut });
+  const placements = [
+    placement("no_bands", "mc2"),
+    placement("blue_bands", "mc2"),
+    placement("gold_bands", "mc1"),
+    placement("old_flock", "mc2", "2026-05-01"), // moved out
+  ];
+
+  it("returns every current batch in the flock's place, including itself", () => {
+    const mates = coopMateIds("no_bands", placements);
+    expect(mates.sort()).toEqual(["blue_bands", "no_bands"]);
+  });
+
+  it("excludes flocks that have moved out of the coop", () => {
+    expect(coopMateIds("no_bands", placements)).not.toContain("old_flock");
+  });
+
+  it("is empty for a flock with no current placement", () => {
+    expect(coopMateIds("unplaced", placements)).toEqual([]);
+  });
+});
+
+describe("aggregateLayerCohort", () => {
+  // When flocks cohabit, eggs can't be attributed per flock — sum the
+  // hens (and placed counts) and pool the collections so the existing
+  // laying-rate / hen-housed functions compute an honest coop-level
+  // number over the whole cohort.
+  const members = [
+    { group: { count: 20, placedCount: 22 },
+      collections: [{ collectedOn: "2026-07-01", count: 15 }] },
+    { group: { count: 10, placedCount: 12 },
+      collections: [{ collectedOn: "2026-07-01", count: 8 }] },
+  ];
+
+  it("sums live and placed hen counts across the cohort", () => {
+    const cohort = aggregateLayerCohort(members);
+    expect(cohort.count).toBe(30);
+    expect(cohort.placedCount).toBe(34);
+  });
+
+  it("pools every flock's collections", () => {
+    const cohort = aggregateLayerCohort(members);
+    const totalEggs = cohort.collections.reduce((n, c) => n + c.count, 0);
+    expect(cohort.collections).toHaveLength(2);
+    expect(totalEggs).toBe(23);
+  });
+
+  it("handles a single-member cohort as itself", () => {
+    const solo = aggregateLayerCohort([members[0]]);
+    expect(solo.count).toBe(20);
+    expect(solo.collections).toHaveLength(1);
   });
 });
