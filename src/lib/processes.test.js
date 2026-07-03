@@ -7,7 +7,7 @@ import { describe, it, expect } from "vitest";
 import {
   planExpansions, expansionKey, expansionSummary, stepDateFor, splitSteps,
   describeOffset, expansionProjectTitle, processChoreId, resolveChoreAnchor,
-  processChoreRow, occurrenceIsCurrent,
+  processChoreRow, occurrenceIsCurrent, classifyProcessWork,
 } from "./processes.js";
 
 function process(over = {}) {
@@ -366,6 +366,43 @@ describe("processChoreRow", () => {
     });
     expect(row.description.startsWith("Check tire pressure first.")).toBe(true);
     expect(row.description).toContain("Processing day prep");
+  });
+});
+
+describe("classifyProcessWork", () => {
+  // The event-side badge (EventEditor's ProcessWorkNote) once counted
+  // every target_type:'chore' link as a "chore change". But a process
+  // expansion emits two kinds of chore link: role 'process' (one-time
+  // prep chores it *adds*) and role 'process_modifier' (edits to an
+  // existing chore). Only the latter are chore *changes* — the badge
+  // must not conflate them. (Real prod expansion: 6 prep + 1 modifier.)
+  const prepChoreLink = { target_type: "chore", role: "process" };
+  const modifierLink = { target_type: "chore", role: "process_modifier" };
+  const legacyProjectLink = { id: "p1", target_type: "project", role: "process" };
+
+  it("counts prep chores and modifier chores separately", () => {
+    const links = [
+      prepChoreLink, prepChoreLink, prepChoreLink,
+      prepChoreLink, prepChoreLink, prepChoreLink,
+      modifierLink,
+    ];
+    const { prepChoreCount, modifierCount } = classifyProcessWork(links);
+    expect(prepChoreCount).toBe(6);
+    expect(modifierCount).toBe(1);
+  });
+
+  it("keeps legacy project links out of the chore counts", () => {
+    const { projectLinks, prepChoreCount, modifierCount } =
+      classifyProcessWork([legacyProjectLink]);
+    expect(projectLinks).toEqual([legacyProjectLink]);
+    expect(prepChoreCount).toBe(0);
+    expect(modifierCount).toBe(0);
+  });
+
+  it("treats missing/empty input as no process work", () => {
+    expect(classifyProcessWork(null)).toEqual({
+      projectLinks: [], prepChoreCount: 0, modifierCount: 0,
+    });
   });
 });
 

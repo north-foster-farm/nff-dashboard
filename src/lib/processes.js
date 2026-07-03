@@ -237,3 +237,21 @@ export function processChoreRow({
 export function occurrenceIsCurrent(occursOn, today = new Date()) {
   return occursOn >= formatISODate(startOfDayUTC(today));
 }
+
+// Classify an event's process-work links (event_links rows) for the
+// event-side badge. A process expansion emits two kinds of chore link:
+// role 'process' = one-time prep chores it *adds*, and
+// role 'process_modifier' = edits to an existing chore. Only the latter
+// are chore *changes* — the badge must count them apart. Legacy
+// project-based expansions (role 'process', target_type 'project') are
+// returned untouched so their "open the prep project" link still shows.
+export function classifyProcessWork(links) {
+  const rows = links ?? [];
+  const projectLinks = rows.filter(l => l.target_type === "project");
+  const chores = rows.filter(l => l.target_type === "chore");
+  return {
+    projectLinks,
+    prepChoreCount: chores.filter(l => l.role === "process").length,
+    modifierCount: chores.filter(l => l.role === "process_modifier").length,
+  };
+}

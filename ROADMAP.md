@@ -4597,6 +4597,19 @@ color; clock-arrow overnight icons). Build refs in
     link on a processing event), F22d (cut sizes as a file upload,
     not a text field), F22b (verify the "N chore changes" badge).
 
+- **42.13 — process-work badge: prep chores vs. chore changes.
+  `v0.10.90-alpha` (2026-07-03); pure frontend, no migration.** The
+  event-side slice of F22 (F22b). EventEditor's `ProcessWorkNote`
+  counted every `target_type:'chore'` link as a "chore change", but a
+  process expansion emits two roles: `process` (one-time prep chores it
+  *adds*) and `process_modifier` (edits to an existing chore). A real
+  prod expansion (6 prep + 1 modifier) rendered a misleading "7 chore
+  changes". New tested pure helper `classifyProcessWork(links)` splits
+  links into `projectLinks` / `prepChoreCount` / `modifierCount`; the
+  badge now shows "N prep chores added" and "N chore changes" as
+  separate lines. Legacy project-based expansions (2 still on prod)
+  keep their "open the prep project" link.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

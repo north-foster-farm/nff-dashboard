@@ -5,6 +5,7 @@ import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
 import { useBatchAssignments } from "../lib/data/useBatchAssignments.js";
 import { supabase } from "../lib/supabase.js";
 import { navigate, pathForProject } from "../lib/router.js";
+import { classifyProcessWork } from "../lib/processes.js";
 import RecurrenceEditor from "./RecurrenceEditor.jsx";
 import EventScopePrompt from "./EventScopePrompt.jsx";
 import BatchPicker, {
@@ -513,8 +514,8 @@ function ProcessWorkNote({ seriesId, onNavigateAway }) {
   }, [seriesId]);
 
   if (!links || links.length === 0) return null;
-  const projectLinks = links.filter(l => l.target_type === "project");
-  const modifierCount = links.filter(l => l.target_type === "chore").length;
+  const { projectLinks, prepChoreCount, modifierCount } =
+    classifyProcessWork(links);
 
   return (
     <div className="bg-surface border border-line px-3 py-2.5 flex flex-col gap-1.5">
@@ -536,6 +537,12 @@ function ProcessWorkNote({ seriesId, onNavigateAway }) {
           <ArrowUpRight size={13} className="shrink-0" />
         </button>
       ))}
+      {prepChoreCount > 0 && (
+        <div className="text-[11px] text-dim">
+          {prepChoreCount} prep chore{prepChoreCount === 1 ? "" : "s"} added
+          for this event — they show in Rounds and the Today tab on the day.
+        </div>
+      )}
       {modifierCount > 0 && (
         <div className="text-[11px] text-dim">
           {modifierCount} chore change{modifierCount === 1 ? "" : "s"} scheduled
