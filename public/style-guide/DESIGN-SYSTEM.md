@@ -255,12 +255,23 @@ Each: STATUS · what · use/not · canonical source.
   row by the margin: the phone's horizontal page-scroll bug; same fix in
   `EditedHistory`). Source:
   `src/components/ChoreCheckRow.jsx` (`DaysLeftTag`).
-- **CoveredBadge** · New (round 5) · the muted "cover accepted" mark: a
-  Lucide `CircleAlert` in `text-muted` that REPLACES the warn conflict
-  triangle once a needs-cover unit is accepted. Hover (BadgeHint cue via
-  `cue`) says what was covered, who accepted, and when. Surfaces: the
-  day-load stat row, the day-spine block rows, the This Week day symbols
-  (`coveredByISO`). Source: `src/components/ui.jsx` (`CoveredBadge`).
+- **CoveredBadge** · New (round 5; restyled F10) · the "cover accepted"
+  mark: a Lucide `CircleCheck` in `text-accent` — a small success cue —
+  that REPLACES the warn conflict triangle once a needs-cover unit is
+  accepted. Hover (BadgeHint cue via `cue`) leads with the coverage
+  ("Jim covers — …") and names the block(s); the accept TIMESTAMP is
+  deliberately not shown (F9 — noise, and batch-accepted covers all
+  carry the same minute). Surfaces: the day-load stat row, the
+  day-spine block rows, the This Week day symbols (`coveredByISO`).
+  Source: `src/components/ui.jsx` (`CoveredBadge`).
+- **TimePoint / AnchoredRange** · New (F15) · the sun-anchorable time
+  field: a select (Clock time · Sunrise · Sunset) + a `type="time"`
+  input shown only for clock times; `AnchoredRange` pairs two with a
+  "to" joiner. Working-hours windows and breaks use it (rows label as
+  "Sunrise – 5 PM" via `rowWindowLabel`); time off keeps the plain
+  `TimeRange`. Sun sides resolve per date at the farm's coordinates in
+  the engine (`resolveWindow`, availability.js). Source:
+  `src/pages/Availability.jsx`.
 - **NeedsCoverCard** · New (round 5) · ONE card per scheduled time off (or
   per event putting the farm a man down), covering EVERY block it
   overlaps — replaces the per-chore AttentionCard leak + CoverSheet + the
@@ -268,15 +279,16 @@ Each: STATUS · what · use/not · canonical source.
   eyebrow). Title: the block's name (one block), the capitalized window
   phrase + "· Sat, Jul 4" (several — the small mid-dot, round 6), or
   "All day · Fri, Jul 3". Body:
-  "[person] is [off-site|on a break|out|off] [from X to Y|until X|after
-  X|all day]." / "[event] puts us a man down …". A "N chores"
-  EditedTag-language dropdown lists the affected work — grouped under
-  per-block mini-headings when more than one block is hit. The button
-  ("[person] covers" / "Cover accepted") is the SINGLE confirmation: one
-  write (the reservation's `source_ref.cover`, or an event-keyed override
-  delta) resolves every overlapped block. Renders above the block header
-  row, below the confirm/+ Add row. Source: `src/pages/Schedule.jsx`
-  (`NeedsCoverCard`).
+  "[person] is [off-site|on a break|out|off] [9 AM–1 PM|until X|after
+  X|all day]." — the compact range, not "from X to Y" (F10). A "N
+  chores" EditedTag-language dropdown lists the affected work — grouped
+  under per-block mini-headings when more than one block is hit. The
+  button ("[person] will cover" / "Cover accepted", F9) is the SINGLE
+  confirmation — compact and right-aligned, not a full-width slab
+  (F10): one write (the reservation's `source_ref.cover`, or an
+  event-keyed override delta) resolves every overlapped block. Renders
+  above the block header row, below the confirm/+ Add row. Source:
+  `src/pages/Schedule.jsx` (`NeedsCoverCard`).
 - **NobodyCard** · New (round 6) · when uncovered units from DIFFERENT
   people overlap (an event always counts as its own person — someone
   must be there), nobody can cover: the overlapping units' cards
@@ -285,7 +297,8 @@ Each: STATUS · what · use/not · canonical source.
   every span where ≥2 of the group are out at once (a sweep over the
   unit windows) as "From X to Y · Sat, Jul 18 · 1 h" (duration always
   stated). Body lists each part bold: "**[who]** — event, 9 AM–12 PM" /
-  "**[who]** — off all day". The button is **"Acknowledged"** — there is
+  "**[who]** — off all day". The button is **"Got it"** (F9 — plain
+  conventional language; compact right-aligned, F10) — there is
   no coverer; it writes an `{ack:true, at}` cover to EVERY unit in the
   group (same write path as cover acceptance), and the covered
   read-backs (stat row, spine, This Week) say "acknowledged" instead of
@@ -486,11 +499,18 @@ Each: STATUS · what · use/not · canonical source.
   all-day/part, hours/off), native date/time inputs; saved entries =
   `bg-surface border` rows that WRAP on the phone (no fixed grids), value
   text `text-dim`, ghost Pencil/X icon actions right, past/paused rows
-  dimmed `opacity-55` (kept, not hidden). The weekly-hours grid is the
-  sanctioned `gap-px bg-line` hairline-divider stack (7 rows, Sun..Sat),
-  each row editable in place, "(default)" in `text-faint` when no row
-  exists. Availability introduces NO new components — Pane / BTN_* /
-  AlertStrip + these shapes cover all three lists. Sources:
+  dimmed `opacity-55` (kept, not hidden). EVERY saved row is editable
+  in place (Phase-1 sweep, F13/F16/F17): time-off rows reopen their
+  form prefilled, exception rows swap to the inline WindowEditor,
+  break rows reopen the BreakForm (name included). Time off adds a
+  per-person Segmented filter (Everyone · names). The weekly-hours
+  grid is the sanctioned `gap-px bg-line` hairline-divider stack
+  (7 rows, Sun..Sat); a day with NO saved row renders its whole window
+  in `text-faint` — the dimness IS the "default" signal; the word
+  "(default)" is retired (F14). Sun-anchorable windows use TimePoint /
+  AnchoredRange (F15, see Components). Availability adds only those
+  two small field components — Pane / BTN_* / AlertStrip + these
+  shapes cover all three lists. Sources:
   `src/components/ChoresBlocksTab.jsx`, `src/pages/Availability.jsx`.
 - **Master–detail** (Schedule desktop) — left load rail · center detail ·
   right week sidebar (→ one WeekStrip). PAGE HEADER (42.3 round 4): the
@@ -607,7 +627,6 @@ Each: STATUS · what · use/not · canonical source.
   accent Globe icon. Engine: `lib/docdata/liveDoc.js` (shim,
   injection, lockState — TDD'd); data: `useDocData`. Source:
   `src/components/LiveDocViewer.jsx`.
-
 ## Consolidation backlog (the bounded-options payoff)
 
 **App-wide flush-flip propagation (2026-06-30) — DONE for the page layer.**

@@ -2,7 +2,27 @@
 // availability = working hours ∩ not-time-off ∩ not-break.
 
 import { isoDateLocal } from "../calendarMath.js";
+import { sunMinutesOfDay } from "../sunTimes.js";
 import { subtractIntervals } from "./partition.js";
+
+// F15 — resolve one side of a window row for `date`: a sun anchor
+// (startSun/endSun = 'sunrise' | 'sunset') wins over fixed minutes.
+function resolveSide(sun, fixedMin, date) {
+  return sun ? sunMinutesOfDay(date, sun) : fixedMin;
+}
+
+// Resolve a { startMin, endMin, startSun?, endSun? } row to concrete
+// minutes for `date`. Null when either side is unset or the resolved
+// window is empty/inverted (a sunset-anchored window can invert in
+// summer — treat it as absent rather than carving garbage).
+function resolveWindow(row, date) {
+  const startMin = resolveSide(row.startSun, row.startMin, date);
+  const endMin = resolveSide(row.endSun, row.endMin, date);
+  if (startMin == null || endMin == null || endMin <= startMin) {
+    return null;
+  }
+  return { startMin, endMin };
+}
 
 // App-level default when a person has no working_hours rows for a
 // day: 9:00-17:00 (F51 — "default e.g. 9-5").
@@ -23,8 +43,7 @@ export function workingWindow(person, date, hoursRows) {
       (r) => r.person === person && r.weekday === date.getDay()
     );
   if (!row) return { ...DEFAULT_WORKING_WINDOW };
-  if (row.startMin == null) return null; // day off
-  return { startMin: row.startMin, endMin: row.endMin };
+  return resolveWindow(row, date); // null = day off
 }
 
 // The person's actual availability on `date`: the working window with
@@ -36,7 +55,10 @@ export function availableWindows(person, date, ctx = {}) {
   if (!working) return [];
   const holes = [
     ...timeOffWindows(person, date, ctx.timeOff),
-    ...(ctx.breaks ?? []).filter((b) => b.isActive !== false),
+    ...(ctx.breaks ?? [])
+      .filter((b) => b.isActive !== false)
+      .map((b) => resolveWindow(b, date))
+      .filter(Boolean),
   ].map((w) => ({ s: w.startMin, e: w.endMin }));
   return subtractIntervals(
     { s: working.startMin, e: working.endMin }, holes

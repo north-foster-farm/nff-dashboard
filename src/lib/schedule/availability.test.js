@@ -18,6 +18,8 @@ import {
   outAllDay,
 } from "./availability.js";
 
+import { sunMinutesOfDay } from "../sunTimes.js";
+
 const d = (y, m, day) => new Date(y, m - 1, day);
 
 // 2026-07-01 is a Wednesday (weekday 3).
@@ -387,5 +389,62 @@ describe("outAllDay — no availability at all on the date (F46)", () => {
       timeOff: [timeOff("James", "2026-07-01", "2026-07-01")],
     };
     expect(outAllDay("Jim", A_WEDNESDAY, away)).toBe(false);
+  });
+});
+
+// F15 — sunrise/sunset as first-class time options. A working_hours
+// or breaks row may anchor either side to the sun (startSun / endSun
+// = 'sunrise' | 'sunset'); the engine resolves it per date at the
+// farm's coordinates, so the same row means 5:15 AM in June and
+// 7:10 AM in December.
+describe("sun-anchored windows (F15)", () => {
+  const sunriseThatDay = sunMinutesOfDay(A_WEDNESDAY, "sunrise");
+  const sunsetThatDay = sunMinutesOfDay(A_WEDNESDAY, "sunset");
+
+  it("a sunrise-to-fixed working day starts at that date's sunrise", () => {
+    const dawnStart = {
+      ...weekdayDefault("James", 3, null, FIVE_PM),
+      startSun: "sunrise",
+    };
+    expect(workingWindow("James", A_WEDNESDAY, [dawnStart]))
+      .toEqual({ startMin: sunriseThatDay, endMin: FIVE_PM });
+  });
+
+  it("a fixed-to-sunset working day ends at that date's sunset", () => {
+    const duskEnd = {
+      ...weekdayDefault("James", 3, NINE_AM, null),
+      endSun: "sunset",
+    };
+    expect(workingWindow("James", A_WEDNESDAY, [duskEnd]))
+      .toEqual({ startMin: NINE_AM, endMin: sunsetThatDay });
+  });
+
+  it("null minutes WITHOUT a sun anchor still mean a day off", () => {
+    const dayOff = dateException("James", "2026-07-01", null, null);
+    expect(workingWindow("James", A_WEDNESDAY, [dayOff])).toBeNull();
+  });
+
+  it("a sun-anchored break carves that date's resolved window", () => {
+    const duskBreak = {
+      ...breakWindow("Dusk chores pause", null, FIVE_PM),
+      startSun: "sunset",
+    };
+    const allDay = [dateException("James", "2026-07-01", 0, 1439)];
+    const windows = availableWindows(
+      "James", A_WEDNESDAY, { hours: allDay, timeOff: [], breaks: [duskBreak] }
+    );
+    // Break resolves sunset→5 PM; sunset is AFTER 5 PM in July, so the
+    // window is inverted → empty → carves nothing.
+    expect(windows).toEqual([{ startMin: 0, endMin: 1439 }]);
+    const winterDay = d(2026, 12, 21); // a Monday; sunset ~4:20 PM
+    const winterHours = [dateException("James", "2026-12-21", 0, 1439)];
+    const winterSunset = sunMinutesOfDay(winterDay, "sunset");
+    expect(availableWindows(
+      "James", winterDay,
+      { hours: winterHours, timeOff: [], breaks: [duskBreak] }
+    )).toEqual([
+      { startMin: 0, endMin: winterSunset },
+      { startMin: FIVE_PM, endMin: 1439 },
+    ]);
   });
 });

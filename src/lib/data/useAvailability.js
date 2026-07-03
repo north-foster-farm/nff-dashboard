@@ -18,13 +18,17 @@ import { realtimeChannel, supabase } from "../supabase.js";
 //     loading, error,
 //     addTimeOff({ person, startDate, endDate, startMin, endMin,
 //                  note }) -> row,
+//     updateTimeOff(id, patch) -> row,   // F13 edit-in-place
 //     deleteTimeOff(id),
-//     setWorkingHours({ person, weekday | onDate, startMin, endMin })
-//       -> row,       // upserts the (person, weekday/date) slot
+//     setWorkingHours({ person, weekday | onDate, startMin, endMin,
+//       startSun, endSun }) -> row, // upserts the (person, slot) row
 //     clearWorkingHours(id),   // back to the 9-5 default
-//     createBreak({ name, startMin, endMin }) -> row,
+//     createBreak({ name, startMin, endMin, startSun, endSun }) -> row,
 //     updateBreak(id, patch), deleteBreak(id),
 //   }
+//
+// hours and breaks rows also carry startSun / endSun ('sunrise' |
+// 'sunset' | null, F15) — a set anchor wins over that side's minutes.
 //
 // Mutations apply optimistically and revert on persistence failure,
 // matching useChoreBlocks.
@@ -32,8 +36,10 @@ import { realtimeChannel, supabase } from "../supabase.js";
 const TIME_OFF_COLS =
   "id, person, start_date, end_date, start_minutes, end_minutes, note";
 const HOURS_COLS =
-  "id, person, weekday, on_date, start_minutes, end_minutes";
-const BREAKS_COLS = "id, name, start_minutes, end_minutes, is_active";
+  "id, person, weekday, on_date, start_minutes, end_minutes, " +
+  "start_sun, end_sun";
+const BREAKS_COLS =
+  "id, name, start_minutes, end_minutes, start_sun, end_sun, is_active";
 
 function useTable(table, cols, order) {
   const instanceId = useId();
@@ -106,6 +112,8 @@ export function useAvailability() {
       onDate: r.on_date,
       startMin: r.start_minutes,
       endMin: r.end_minutes,
+      startSun: r.start_sun,
+      endSun: r.end_sun,
     })),
     [hoursT.rows]
   );
@@ -116,6 +124,8 @@ export function useAvailability() {
       name: r.name,
       startMin: r.start_minutes,
       endMin: r.end_minutes,
+      startSun: r.start_sun,
+      endSun: r.end_sun,
       isActive: r.is_active,
     })),
     [breaksT.rows]
@@ -148,6 +158,26 @@ export function useAvailability() {
     return created;
   }, [timeOffT.setRows]);
 
+  // F13 — edit an existing entry in place. `patch` uses the hook's
+  // camelCase field names; only the keys present are written.
+  const updateTimeOff = useCallback(async (id, patch) => {
+    const dbPatch = {};
+    if ("person" in patch) dbPatch.person = patch.person;
+    if ("startDate" in patch) dbPatch.start_date = patch.startDate;
+    if ("endDate" in patch) dbPatch.end_date = patch.endDate;
+    if ("startMin" in patch) dbPatch.start_minutes = patch.startMin;
+    if ("endMin" in patch) dbPatch.end_minutes = patch.endMin;
+    if ("note" in patch) dbPatch.note = patch.note?.trim() || null;
+    const { data: saved, error: err } = await supabase
+      .from("time_off").update(dbPatch).eq("id", id)
+      .select(TIME_OFF_COLS).single();
+    if (err) throw err;
+    timeOffT.setRows((prev) =>
+      prev ? prev.map((r) => (r.id === id ? saved : r)) : prev
+    );
+    return saved;
+  }, [timeOffT.setRows]);
+
   const deleteTimeOff = useCallback(async (id) => {
     const prev = timeOffT.rows ? [...timeOffT.rows] : null;
     timeOffT.setRows((cur) =>
@@ -173,6 +203,8 @@ export function useAvailability() {
       on_date: onDate,
       start_minutes: input.startMin ?? null,
       end_minutes: input.endMin ?? null,
+      start_sun: input.startSun ?? null,
+      end_sun: input.endSun ?? null,
     };
     const existing = (hoursT.rows ?? []).find((r) =>
       r.person === person &&
@@ -203,14 +235,17 @@ export function useAvailability() {
   }, [hoursT.rows, hoursT.setRows]);
 
   // ── breaks ──────────────────────────────────────────────────────
-  const createBreak = useCallback(async ({ name, startMin, endMin }) => {
+  const createBreak = useCallback(async (input) => {
+    const { name, startMin, endMin, startSun, endSun } = input;
     if (!name?.trim()) throw new Error("A break needs a name.");
     const { data: created, error: err } = await supabase
       .from("breaks")
       .insert({
         name: name.trim(),
-        start_minutes: startMin,
-        end_minutes: endMin,
+        start_minutes: startMin ?? null,
+        end_minutes: endMin ?? null,
+        start_sun: startSun ?? null,
+        end_sun: endSun ?? null,
       })
       .select(BREAKS_COLS)
       .single();
@@ -222,12 +257,10 @@ export function useAvailability() {
   const updateBreak = useCallback(async (id, patch) => {
     const dbPatch = {};
     if (typeof patch.name === "string") dbPatch.name = patch.name.trim();
-    if (typeof patch.startMin === "number") {
-      dbPatch.start_minutes = patch.startMin;
-    }
-    if (typeof patch.endMin === "number") {
-      dbPatch.end_minutes = patch.endMin;
-    }
+    if ("startMin" in patch) dbPatch.start_minutes = patch.startMin;
+    if ("endMin" in patch) dbPatch.end_minutes = patch.endMin;
+    if ("startSun" in patch) dbPatch.start_sun = patch.startSun;
+    if ("endSun" in patch) dbPatch.end_sun = patch.endSun;
     if (typeof patch.isActive === "boolean") {
       dbPatch.is_active = patch.isActive;
     }
@@ -261,6 +294,7 @@ export function useAvailability() {
       breaksT.rows === null,
     error: timeOffT.error ?? hoursT.error ?? breaksT.error ?? null,
     addTimeOff,
+    updateTimeOff,
     deleteTimeOff,
     setWorkingHours,
     clearWorkingHours,

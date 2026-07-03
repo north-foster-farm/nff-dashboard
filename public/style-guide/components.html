@@ -912,14 +912,28 @@
 
   <h3 class="ds-h3">CoveredBadge <span class="ds-status new">New</span></h3>
   <p>
-    The muted "cover accepted" mark (round 5): a
-    <span class="mono">CircleAlert</span> in <span class="mono">
-    text-muted</span> that replaces the warn conflict triangle once a
-    needs-cover unit is accepted. Hover (BadgeHint cue) says what was
-    covered, who accepted, when. Surfaces: the day-load stat row, the
-    day-spine block rows, the This Week day symbols — a day with covered
-    + unresolved conflicts shows BOTH icons. In
-    <span class="mono">ui.jsx</span>.
+    The "cover accepted" mark (round 5; restyled F10): a
+    <span class="mono">CircleCheck</span> in <span class="mono">
+    text-accent</span> — a small success cue — that replaces the warn
+    conflict triangle once a needs-cover unit is accepted. Hover
+    (BadgeHint cue) leads with the coverage ("Jim covers — …") and names
+    the block; the accept timestamp is deliberately NOT shown (F9).
+    Surfaces: the day-load stat row, the day-spine block rows, the This
+    Week day symbols — a day with covered + unresolved conflicts shows
+    BOTH icons. In <span class="mono">ui.jsx</span>.
+  </p>
+
+  <h3 class="ds-h3">TimePoint / AnchoredRange
+    <span class="ds-status new">New</span></h3>
+  <p>
+    A sun-anchorable time field (F15, Availability page): a select of
+    <em>Clock time · Sunrise · Sunset</em> plus a
+    <span class="mono">type="time"</span> input that shows only for
+    clock times. <span class="mono">AnchoredRange</span> pairs two
+    TimePoints with a "to" joiner — working-hours windows and breaks
+    use it; time off keeps plain TimeRange (no sun columns). Row labels
+    read "Sunrise – 5 PM" via <span class="mono">rowWindowLabel</span>.
+    In <span class="mono">src/pages/Availability.jsx</span>.
   </p>
 
   <h3 class="ds-h3">DayRailSpine — time-off row

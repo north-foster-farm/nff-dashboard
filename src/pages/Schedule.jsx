@@ -234,6 +234,15 @@ function BufferSection({
   );
 }
 
+// F3 — an event location is an object ({ name, address }) or a plain
+// string; rendering the object raw is a React crash, so every surface
+// goes through this.
+function locationText(location) {
+  if (!location) return "";
+  if (typeof location === "string") return location;
+  return [location.name, location.address].filter(Boolean).join(" · ");
+}
+
 function EventEntry({
   occ, isOpen, onToggle,
   buffers, onToggleBufferItem, onRemoveBuffer, onEditTime,
@@ -295,7 +304,7 @@ function EventEntry({
           {occ.location && (
             <div className="flex items-center gap-2 text-[13px] text-dim">
               <MapPin size={14} className="shrink-0 text-faint" />
-              <span>{occ.location}</span>
+              <span>{locationText(occ.location)}</span>
             </div>
           )}
           {occ.subtitle && (
@@ -644,8 +653,9 @@ function coverPhrase(w, allDay) {
   if ((w.endMin ?? 0) >= 1440) {
     return `after ${formatMinutesOfDay(w.startMin)}`;
   }
-  return `from ${formatMinutesOfDay(w.startMin)}`
-    + ` to ${formatMinutesOfDay(w.endMin)}`;
+  // F10 — the compact range every other surface uses, not
+  // "from 9 AM to 1 PM".
+  return `${formatMinutesOfDay(w.startMin)}–${formatMinutesOfDay(w.endMin)}`;
 }
 
 function NeedsCoverCard({ unit, dateShort, onCover }) {
@@ -663,7 +673,10 @@ function NeedsCoverCard({ unit, dateShort, onCover }) {
     ? `${unit.label} puts us a man down ${phrase}.`
     : `${unit.person} is ${COVER_KIND_WORD[w.kind] ?? "off"} ${phrase}.`;
   const grouped = unit.allDay || unit.blocks.length > 1;
-  const action = unit.coverer ? `${unit.coverer} covers` : "Cover accepted";
+  // F9 — the button is the confirmation: plain future-tense language.
+  const action = unit.coverer
+    ? `${unit.coverer} will cover`
+    : "Cover accepted";
   return (
     <div
       className="mb-3 border"
@@ -725,13 +738,17 @@ function NeedsCoverCard({ unit, dateShort, onCover }) {
             )}
           </div>
         )}
-        <button
-          type="button"
-          onClick={onCover}
-          className="w-full mt-2.5 bg-warn text-on-accent border-0 py-2.5 cursor-pointer font-ui text-[12px] font-bold uppercase tracking-[0.1em]"
-        >
-          {action}
-        </button>
+        {/* F10 — a compact right-aligned confirm, not a full-width
+            slab; the card header already carries the urgency. */}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onCover}
+            className="mt-2.5 bg-warn text-on-accent border-0 px-4 py-1.5 cursor-pointer font-ui text-[11px] font-bold uppercase tracking-[0.1em]"
+          >
+            {action}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -794,13 +811,15 @@ function NobodyCard({ group, dateShort, onAck }) {
             </div>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={onAck}
-          className="w-full mt-2.5 bg-warn text-on-accent border-0 py-2.5 cursor-pointer font-ui text-[12px] font-bold uppercase tracking-[0.1em]"
-        >
-          Acknowledged
-        </button>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onAck}
+            className="mt-2.5 bg-warn text-on-accent border-0 px-4 py-1.5 cursor-pointer font-ui text-[11px] font-bold uppercase tracking-[0.1em]"
+          >
+            Got it
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2559,14 +2578,14 @@ export default function Schedule({ data }) {
           <Tooltip
             tip={<>
               {uncoveredUnits.map((u, i) => (
-                <span key={"u" + i} className="block">
+                <span key={"u" + i} className="block pl-3 -indent-3">
                   <b className="text-fg font-semibold">{unitName(u)}</b>
                   {" — "}{unitWhen(u)}
                 </span>
               ))}
               {todayConflicts.filter((c) => c.type !== "cover")
                 .map((c, i) => (
-                  <span key={"c" + i} className="block">
+                  <span key={"c" + i} className="block pl-3 -indent-3">
                     <b className="text-fg font-semibold">{c.label}</b>
                     {c.detail ? ` — ${c.detail}` : ""}
                   </span>
@@ -2600,12 +2619,19 @@ export default function Schedule({ data }) {
             size={14}
             cue
             tip={coveredUnits.map((u, i) => (
-              <span key={i} className="block">
-                <b className="text-fg font-semibold">{unitName(u)}</b>
-                {" — "}{unitWhen(u)}
-                {u.cover?.by ? ` — ${u.cover.by} covers`
-                  : u.cover?.ack ? " — acknowledged" : " — covered"}
-                {u.cover?.at ? ` · ${fmtStamp(u.cover.at)}` : ""}
+              // F9 — coverage, who, and which block(s); the accept
+              // TIMESTAMP is deliberately not shown (it was noise, and
+              // batch-accepted covers all carried the same minute).
+              <span key={i} className="block pl-3 -indent-3">
+                <b className="text-fg font-semibold">
+                  {u.cover?.by
+                    ? `${u.cover.by} covers`
+                    : "Acknowledged"}
+                </b>
+                {` — ${unitName(u)}, ${unitWhen(u)}`}
+                {u.blocks?.length
+                  ? ` · ${u.blocks.map((b) => b.name).join(", ")}`
+                  : ""}
               </span>
             ))}
           />
@@ -3655,7 +3681,7 @@ export default function Schedule({ data }) {
                   <button
                     type="button"
                     onClick={() => navigate(`/rounds/${b.bucket}`)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium text-on-accent bg-accent hover:brightness-110 border-b border-line cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-medium text-accent bg-transparent hover:bg-row-hover border-b border-line cursor-pointer"
                   >
                     <ListChecks size={15} />
                     Open rounds

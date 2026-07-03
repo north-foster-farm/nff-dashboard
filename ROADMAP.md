@@ -4494,7 +4494,34 @@ color; clock-arrow overnight icons). Build refs in
   - Known follow-ups: phase-level attachment UI; a
     same-key-conflict banner if simultaneous same-key editing ever
     bites in practice.
-
+- **42.9 — walkthrough phase-1 sweep. `v0.10.86-alpha` (2026-07-02);
+  migration 0046 (applied to prod, backed up first).** The S-size
+  fixes triaged from the 2026-07-02 walkthrough (F3, F9, F10,
+  F13–F17, F28).
+  - F3: event-badge click crash fixed — EventEntry rendered the
+    location OBJECT raw (React throw); new `locationText()`; the
+    focused EventEntry is the read-only event view.
+  - F9/F10 cover language: tooltips lead with the coverage
+    ("«who» covers — …, window · blocks"), accept timestamp dropped
+    (noise; batch-accepts share a minute); buttons "«X» will cover" /
+    "Got it", compact right-aligned; Open rounds lightened;
+    CoveredBadge → accent CircleCheck (success cue); hanging-indent
+    tooltip entries.
+  - F13/F16/F17: time off, working-hours exceptions, and breaks
+    (name included) all editable in place; per-person time-off
+    filter; `updateTimeOff` added to useAvailability.
+  - F14: "(default)" label retired — an unset weekday renders its
+    window dimmed; intro copy trimmed.
+  - F15 (0046): sunrise/sunset as first-class time options on
+    working hours + breaks (`start_sun`/`end_sun`; engine
+    `resolveWindow` resolves per date via sunTimes; TimePoint /
+    AnchoredRange fields; TDD'd).
+  - F28: "flock" → "layer group" in the eggs sheet; the Rounds X
+    now finishes the run then closes (Cancel still abandons).
+  - Docs: CoveredBadge restyle, TimePoint/AnchoredRange, editor-list
+    edit-in-place — both library faces.
+  - Known follow-ups: Rounds header layout ("sliver") + who's-here
+    presentation go to the design brackets (F1/F4/F6/F8/F12).
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

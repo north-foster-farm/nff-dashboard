@@ -60,15 +60,18 @@ function compactRange(startMin, endMin) {
   return compactTime(startMin) + "–" + compactTime(endMin);
 }
 
-// The covered tooltip body: what was covered, who accepted, when.
-// (Round 6) an `ack` cover — the "Nobody at the farm" acknowledgement —
-// reads "acknowledged", not "covered".
+// The covered tooltip body (F9): lead with the coverage — who covers —
+// then what. (Round 6) an `ack` cover — the "Nobody at the farm"
+// acknowledgement — reads "acknowledged", not "covered". The hanging
+// indent keeps a wrapped entry visually one line, not two entries.
 function coveredTip(covered) {
   return (covered ?? []).map((c, i) => (
-    <span key={i} className="block">
-      <b className="text-fg font-semibold">{c.label}</b>
-      {c.by ? ` — ${c.by} covers`
-        : c.ack ? " — acknowledged" : " — covered"}
+    <span key={i} className="block pl-3 -indent-3">
+      <b className="text-fg font-semibold">
+        {c.by ? `${c.by} covers`
+          : c.ack ? "Acknowledged" : "Covered"}
+      </b>
+      {` — ${c.label}`}
     </span>
   ));
 }

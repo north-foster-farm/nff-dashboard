@@ -45,7 +45,7 @@ const FORM_BOX =
 export default function Availability() {
   const {
     timeOff, hours, breaks, loading, error,
-    addTimeOff, deleteTimeOff,
+    addTimeOff, updateTimeOff, deleteTimeOff,
     setWorkingHours, clearWorkingHours,
     createBreak, updateBreak, deleteBreak,
   } = useAvailability();
@@ -73,6 +73,7 @@ export default function Availability() {
       <TimeOffPane
         timeOff={timeOff}
         onAdd={addTimeOff}
+        onUpdate={updateTimeOff}
         onDelete={deleteTimeOff}
       />
       <WorkingHoursPane
@@ -153,6 +154,47 @@ function TimeRange({ start, end, onStart, onEnd }) {
   );
 }
 
+// F15 — one side of a sun-anchorable window: a clock time, or the
+// sun itself. `value` is { sun: null|'sunrise'|'sunset', time: "HH:MM" }.
+function TimePoint({ value, onChange, ariaLabel }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <select
+        value={value.sun ?? "clock"}
+        onChange={(e) => onChange({
+          ...value,
+          sun: e.target.value === "clock" ? null : e.target.value,
+        })}
+        aria-label={ariaLabel}
+        className={INPUT}
+      >
+        <option value="clock">Clock time</option>
+        <option value="sunrise">Sunrise</option>
+        <option value="sunset">Sunset</option>
+      </select>
+      {!value.sun && (
+        <input
+          type="time"
+          value={value.time}
+          onChange={(e) => onChange({ ...value, time: e.target.value })}
+          className={INPUT}
+        />
+      )}
+    </span>
+  );
+}
+
+// Both sides of a sun-anchorable window (working hours, breaks).
+function AnchoredRange({ start, end, onStart, onEnd }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 flex-wrap">
+      <TimePoint value={start} onChange={onStart} ariaLabel="Start" />
+      <span className="text-[11px] text-faint">to</span>
+      <TimePoint value={end} onChange={onEnd} ariaLabel="End" />
+    </span>
+  );
+}
+
 function FormError({ children }) {
   if (!children) return null;
   return <div className="text-[11px] text-warn">{children}</div>;
@@ -173,6 +215,25 @@ function windowLabel(startMin, endMin) {
   return `${formatMinutesOfDay(startMin)} – ${formatMinutesOfDay(endMin)}`;
 }
 
+// Label a sun-anchorable row's window: "Sunrise – 5 PM" (F15).
+function sideText(sun, min) {
+  if (sun === "sunrise") return "Sunrise";
+  if (sun === "sunset") return "Sunset";
+  return formatMinutesOfDay(min);
+}
+function rowWindowLabel(row) {
+  return `${sideText(row.startSun, row.startMin)} – ` +
+    sideText(row.endSun, row.endMin);
+}
+
+// Form state for one sun-anchorable side.
+function sideState(sun, min, fallbackMin) {
+  return {
+    sun: sun ?? null,
+    time: minutesOfDayToTimeInput(min ?? fallbackMin),
+  };
+}
+
 // Parse + order-check a start/end time-input pair. Returns
 // { startMin, endMin } or { err }.
 function parseWindow(start, end) {
@@ -187,19 +248,38 @@ function parseWindow(start, end) {
   return { startMin, endMin };
 }
 
+// Same, for a pair of TimePoint values that may be sun-anchored. Sun
+// sides carry no minutes; order is only checkable when both sides are
+// clock times (the engine treats a day-inverted window as absent).
+function parseAnchoredWindow(start, end) {
+  const startMin = start.sun ? null : parseMinutesOfDay(start.time);
+  const endMin = end.sun ? null : parseMinutesOfDay(end.time);
+  if ((!start.sun && startMin == null) || (!end.sun && endMin == null)) {
+    return { err: "Set both times." };
+  }
+  if (!start.sun && !end.sun && endMin <= startMin) {
+    return { err: "The end time needs to come after the start." };
+  }
+  return { startMin, endMin, startSun: start.sun, endSun: end.sun };
+}
+
 // ── Time off (F50) ──────────────────────────────────────────────────
 
-function TimeOffPane({ timeOff, onAdd, onDelete }) {
+function TimeOffPane({ timeOff, onAdd, onUpdate, onDelete }) {
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [who, setWho] = useState("all"); // F13 per-person filter
   const [actErr, setActErr] = useState(null);
   const today = isoDateLocal(new Date());
 
   const sorted = useMemo(
-    () => [...timeOff].sort((a, b) =>
-      a.startDate === b.startDate
-        ? a.person.localeCompare(b.person)
-        : (a.startDate < b.startDate ? -1 : 1)),
-    [timeOff]
+    () => timeOff
+      .filter((r) => who === "all" || r.person === who)
+      .sort((a, b) =>
+        a.startDate === b.startDate
+          ? a.person.localeCompare(b.person)
+          : (a.startDate < b.startDate ? -1 : 1)),
+    [timeOff, who]
   );
 
   const del = async (id) => {
@@ -222,27 +302,52 @@ function TimeOffPane({ timeOff, onAdd, onDelete }) {
         know who's here.
       </p>
 
+      {timeOff.length > 0 && (
+        <div className="mb-3">
+          <Segmented
+            options={[
+              { id: "all", label: "Everyone" },
+              ...PERSON_OPTIONS,
+            ]}
+            value={who}
+            onChange={setWho}
+          />
+        </div>
+      )}
+
       {adding && (
         <TimeOffForm
-          onAdd={onAdd}
+          onSave={onAdd}
           onClose={() => setAdding(false)}
         />
       )}
 
       {sorted.length === 0 && !adding ? (
         <div className="text-[12px] text-faint">
-          No time off scheduled. Add an entry when someone will be
-          away.
+          {who === "all"
+            ? "No time off scheduled. Add an entry when someone " +
+              "will be away."
+            : `No time off for ${who}.`}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           {sorted.map((row) => (
-            <TimeOffRow
-              key={row.id}
-              row={row}
-              past={(row.endDate ?? row.startDate) < today}
-              onDelete={del}
-            />
+            editingId === row.id ? (
+              <TimeOffForm
+                key={row.id}
+                initial={row}
+                onSave={(patch) => onUpdate(row.id, patch)}
+                onClose={() => setEditingId(null)}
+              />
+            ) : (
+              <TimeOffRow
+                key={row.id}
+                row={row}
+                past={(row.endDate ?? row.startDate) < today}
+                onEdit={() => setEditingId(row.id)}
+                onDelete={del}
+              />
+            )
           ))}
         </div>
       )}
@@ -251,7 +356,7 @@ function TimeOffPane({ timeOff, onAdd, onDelete }) {
   );
 }
 
-function TimeOffRow({ row, past, onDelete }) {
+function TimeOffRow({ row, past, onEdit, onDelete }) {
   const range =
     row.endDate && row.endDate !== row.startDate
       ? `${dateLabel(row.startDate)} – ${dateLabel(row.endDate)}`
@@ -272,29 +377,50 @@ function TimeOffRow({ row, past, onDelete }) {
           {row.note}
         </span>
       )}
-      <button
-        onClick={() => onDelete(row.id)}
-        className={ICON_BTN + " ml-auto"}
-        aria-label="Delete time off"
-      >
-        <X size={13} />
-      </button>
+      <span className="ml-auto inline-flex items-center">
+        <button
+          onClick={onEdit}
+          className={ICON_BTN}
+          aria-label="Edit time off"
+        >
+          <Pencil size={12} />
+        </button>
+        <button
+          onClick={() => onDelete(row.id)}
+          className={ICON_BTN}
+          aria-label="Delete time off"
+        >
+          <X size={13} />
+        </button>
+      </span>
     </div>
   );
 }
 
-function TimeOffForm({ onAdd, onClose }) {
-  const [person, setPerson] = useState(PARTITION_ADMINS[0]);
-  const [fromDate, setFromDate] = useState(isoDateLocal(new Date()));
-  const [toDate, setToDate] = useState("");
-  const [span, setSpan] = useState("all"); // "all" | "part"
-  const [start, setStart] = useState(
-    minutesOfDayToTimeInput(DEFAULT_WORKING_WINDOW.startMin)
+// Create (no `initial`) or edit (F13) a time-off entry. `onSave`
+// receives the full field set either way.
+function TimeOffForm({ initial, onSave, onClose }) {
+  const [person, setPerson] = useState(
+    initial?.person ?? PARTITION_ADMINS[0]
   );
-  const [end, setEnd] = useState(
-    minutesOfDayToTimeInput(DEFAULT_WORKING_WINDOW.endMin)
+  const [fromDate, setFromDate] = useState(
+    initial?.startDate ?? isoDateLocal(new Date())
   );
-  const [note, setNote] = useState("");
+  const [toDate, setToDate] = useState(
+    initial && initial.endDate !== initial.startDate
+      ? initial.endDate
+      : ""
+  );
+  const [span, setSpan] = useState(
+    initial?.startMin != null ? "part" : "all"
+  );
+  const [start, setStart] = useState(minutesOfDayToTimeInput(
+    initial?.startMin ?? DEFAULT_WORKING_WINDOW.startMin
+  ));
+  const [end, setEnd] = useState(minutesOfDayToTimeInput(
+    initial?.endMin ?? DEFAULT_WORKING_WINDOW.endMin
+  ));
+  const [note, setNote] = useState(initial?.note ?? "");
   const [err, setErr] = useState(null);
 
   const submit = async () => {
@@ -312,7 +438,7 @@ function TimeOffForm({ onAdd, onClose }) {
       ({ startMin, endMin } = w);
     }
     try {
-      await onAdd({
+      await onSave({
         person,
         startDate: fromDate,
         endDate: toDate || fromDate,
@@ -390,7 +516,7 @@ function TimeOffForm({ onAdd, onClose }) {
       <FormError>{err}</FormError>
       <div className="flex items-center gap-2">
         <button onClick={submit} className={BTN_ACCENT}>
-          Add time off
+          {initial ? "Save changes" : "Add time off"}
         </button>
         <button onClick={onClose} className={BTN_GHOST}>
           Cancel
@@ -424,13 +550,12 @@ function WorkingHoursPane({ hours, onSet, onClear }) {
   return (
     <Pane title="Working hours">
       <p className="text-[12px] text-dim m-0 mb-4 leading-relaxed">
-        Each person's default day, per weekday. A day without a saved
-        window runs the default,{" "}
+        Each person's usual week. Dimmed days just run the standard{" "}
         {windowLabel(
           DEFAULT_WORKING_WINDOW.startMin,
           DEFAULT_WORKING_WINDOW.endMin
-        )}
-        . Add an exception to change one specific date.
+        )}{" "}
+        day; edit a day to set its own hours.
       </p>
       <div className="flex flex-col gap-5">
         {PARTITION_ADMINS.map((p) => (
@@ -508,21 +633,20 @@ function WeekdayRow({
       <span className="text-[12px] font-medium text-fg w-20 shrink-0">
         {name}
       </span>
-      <span className="text-[12px] text-dim">
-        {row == null ? (
-          <>
-            {windowLabel(
-              DEFAULT_WORKING_WINDOW.startMin,
-              DEFAULT_WORKING_WINDOW.endMin
-            )}{" "}
-            <span className="text-faint">(default)</span>
-          </>
-        ) : row.startMin == null ? (
-          "Off"
-        ) : (
-          windowLabel(row.startMin, row.endMin)
-        )}
-      </span>
+      {row == null ? (
+        <span className="text-[12px] text-faint">
+          {windowLabel(
+            DEFAULT_WORKING_WINDOW.startMin,
+            DEFAULT_WORKING_WINDOW.endMin
+          )}
+        </span>
+      ) : (
+        <span className="text-[12px] text-dim">
+          {row.startMin == null && !row.startSun
+            ? "Off"
+            : rowWindowLabel(row)}
+        </span>
+      )}
       <button
         onClick={onEdit}
         className={ICON_BTN + " ml-auto"}
@@ -534,30 +658,35 @@ function WeekdayRow({
   );
 }
 
-// Inline hours-or-off editor shared by the weekday rows and the
-// exception form. `initial` is a working_hours row (or null →
-// default window prefilled). Saves { startMin, endMin } (null pair =
-// off); `onClear` (optional) drops the row back to the default.
+// Inline hours-or-off editor shared by the weekday rows, exception
+// rows, and the exception form. `initial` is a working_hours row (or
+// null → default window prefilled). Saves { startMin, endMin,
+// startSun, endSun } (all null = off); `onClear` (optional) drops the
+// row back to the default.
 function WindowEditor({ initial, onSave, onCancel, onClear }) {
-  const off = initial != null && initial.startMin == null;
+  const off = initial != null
+    && initial.startMin == null && !initial.startSun;
+  const win = off ? null : initial;
   const [mode, setMode] = useState(off ? "off" : "hours");
-  const [start, setStart] = useState(minutesOfDayToTimeInput(
-    !off && initial ? initial.startMin : DEFAULT_WORKING_WINDOW.startMin
+  const [start, setStart] = useState(sideState(
+    win?.startSun, win?.startMin, DEFAULT_WORKING_WINDOW.startMin
   ));
-  const [end, setEnd] = useState(minutesOfDayToTimeInput(
-    !off && initial ? initial.endMin : DEFAULT_WORKING_WINDOW.endMin
+  const [end, setEnd] = useState(sideState(
+    win?.endSun, win?.endMin, DEFAULT_WORKING_WINDOW.endMin
   ));
   const [err, setErr] = useState(null);
 
   const submit = async () => {
     setErr(null);
-    let win = { startMin: null, endMin: null };
+    let next = {
+      startMin: null, endMin: null, startSun: null, endSun: null,
+    };
     if (mode === "hours") {
-      const w = parseWindow(start, end);
+      const w = parseAnchoredWindow(start, end);
       if (w.err) { setErr(w.err); return; }
-      win = { startMin: w.startMin, endMin: w.endMin };
+      next = w;
     }
-    try { await onSave(win); }
+    try { await onSave(next); }
     catch { /* surfaced by the pane's guard */ }
   };
 
@@ -572,7 +701,7 @@ function WindowEditor({ initial, onSave, onCancel, onClear }) {
         onChange={setMode}
       />
       {mode === "hours" && (
-        <TimeRange
+        <AnchoredRange
           start={start}
           end={end}
           onStart={setStart}
@@ -597,6 +726,7 @@ function WindowEditor({ initial, onSave, onCancel, onClear }) {
 
 function ExceptionList({ rows, onSet, onClear }) {
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const today = isoDateLocal(new Date());
   return (
     <div>
@@ -629,18 +759,42 @@ function ExceptionList({ rows, onSet, onClear }) {
               <span className="text-[12px] text-dim">
                 {dateLabel(row.onDate)}
               </span>
-              <span className="text-[12px] text-dim">
-                {row.startMin == null
-                  ? "Off"
-                  : windowLabel(row.startMin, row.endMin)}
-              </span>
-              <button
-                onClick={() => onClear(row.id)}
-                className={ICON_BTN + " ml-auto"}
-                aria-label="Delete exception"
-              >
-                <X size={13} />
-              </button>
+              {editingId === row.id ? (
+                <WindowEditor
+                  initial={row}
+                  onCancel={() => setEditingId(null)}
+                  onSave={async (win) => {
+                    await onSet({
+                      person: row.person, onDate: row.onDate, ...win,
+                    });
+                    setEditingId(null);
+                  }}
+                />
+              ) : (
+                <>
+                  <span className="text-[12px] text-dim">
+                    {row.startMin == null && !row.startSun
+                      ? "Off"
+                      : rowWindowLabel(row)}
+                  </span>
+                  <span className="ml-auto inline-flex items-center">
+                    <button
+                      onClick={() => setEditingId(row.id)}
+                      className={ICON_BTN}
+                      aria-label="Edit exception"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      onClick={() => onClear(row.id)}
+                      className={ICON_BTN}
+                      aria-label="Delete exception"
+                    >
+                      <X size={13} />
+                    </button>
+                  </span>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -696,6 +850,7 @@ function ExceptionForm({ onSet, onClose }) {
 
 function BreaksPane({ breaks, onCreate, onUpdate, onDelete }) {
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [actErr, setActErr] = useState(null);
 
   const guard = (fn) => async (...args) => {
@@ -718,7 +873,7 @@ function BreaksPane({ breaks, onCreate, onUpdate, onDelete }) {
         dinner. Pause a break to keep it without applying it.
       </p>
       {adding && (
-        <BreakForm onCreate={onCreate} onClose={() => setAdding(false)} />
+        <BreakForm onSave={onCreate} onClose={() => setAdding(false)} />
       )}
       {breaks.length === 0 && !adding ? (
         <div className="text-[12px] text-faint">
@@ -727,6 +882,14 @@ function BreaksPane({ breaks, onCreate, onUpdate, onDelete }) {
       ) : (
         <div className="flex flex-col gap-2">
           {breaks.map((b) => (
+            editingId === b.id ? (
+              <BreakForm
+                key={b.id}
+                initial={b}
+                onSave={(patch) => onUpdate(b.id, patch)}
+                onClose={() => setEditingId(null)}
+              />
+            ) : (
             <div
               key={b.id}
               className={ROW + (b.isActive ? "" : " opacity-55")}
@@ -735,7 +898,7 @@ function BreaksPane({ breaks, onCreate, onUpdate, onDelete }) {
                 {b.name}
               </span>
               <span className="text-[12px] text-dim">
-                {windowLabel(b.startMin, b.endMin)}
+                {rowWindowLabel(b)}
               </span>
               {!b.isActive && (
                 <span className="text-[11px] text-faint">Paused</span>
@@ -750,6 +913,13 @@ function BreaksPane({ breaks, onCreate, onUpdate, onDelete }) {
                   {b.isActive ? "Pause" : "Resume"}
                 </button>
                 <button
+                  onClick={() => setEditingId(b.id)}
+                  className={ICON_BTN}
+                  aria-label={`Edit ${b.name}`}
+                >
+                  <Pencil size={12} />
+                </button>
+                <button
                   onClick={() => guard(onDelete)(b.id)}
                   className={ICON_BTN}
                   aria-label={`Delete ${b.name}`}
@@ -758,6 +928,7 @@ function BreaksPane({ breaks, onCreate, onUpdate, onDelete }) {
                 </button>
               </span>
             </div>
+            )
           ))}
         </div>
       )}
@@ -766,21 +937,24 @@ function BreaksPane({ breaks, onCreate, onUpdate, onDelete }) {
   );
 }
 
-function BreakForm({ onCreate, onClose }) {
-  const [name, setName] = useState("");
-  const [start, setStart] = useState("12:00");
-  const [end, setEnd] = useState("12:30");
+// Create (no `initial`) or edit (F17 — name included) a break.
+function BreakForm({ initial, onSave, onClose }) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [start, setStart] = useState(sideState(
+    initial?.startSun, initial?.startMin, 12 * 60
+  ));
+  const [end, setEnd] = useState(sideState(
+    initial?.endSun, initial?.endMin, 12 * 60 + 30
+  ));
   const [err, setErr] = useState(null);
 
   const submit = async () => {
     setErr(null);
     if (!name.trim()) { setErr("The break needs a name."); return; }
-    const w = parseWindow(start, end);
+    const w = parseAnchoredWindow(start, end);
     if (w.err) { setErr(w.err); return; }
     try {
-      await onCreate({
-        name, startMin: w.startMin, endMin: w.endMin,
-      });
+      await onSave({ name, ...w });
       onClose();
     } catch (e) {
       setErr(e?.message ?? "Save failed.");
@@ -800,7 +974,7 @@ function BreakForm({ onCreate, onClose }) {
           />
         </Field>
         <Field label="Window">
-          <TimeRange
+          <AnchoredRange
             start={start}
             end={end}
             onStart={setStart}
@@ -811,7 +985,7 @@ function BreakForm({ onCreate, onClose }) {
       <FormError>{err}</FormError>
       <div className="flex items-center gap-2">
         <button onClick={submit} className={BTN_ACCENT}>
-          Add break
+          {initial ? "Save changes" : "Add break"}
         </button>
         <button onClick={onClose} className={BTN_GHOST}>
           Cancel

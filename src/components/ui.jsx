@@ -10,7 +10,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import {
-  Check, AlertTriangle, CircleAlert, ClockAlert, Moon, UserX, X,
+  Check, AlertTriangle, CircleCheck, ClockAlert, Moon, UserX, X,
 } from "lucide-react";
 
 // ── form controls ──────────────────────────────────────────────────────
@@ -531,13 +531,14 @@ export const hatchConflict = (cssVar, warnStrength = 100, kindStrength = 100) =>
   `color-mix(in srgb, var(--c-warn) ${warnStrength}%, transparent) 0 3px,` +
   `color-mix(in srgb, var(${cssVar}) ${kindStrength}%, transparent) 3px 10px)`;
 
-// The muted "covered" mark (round 5): a conflict whose cover was accepted
-// turns from the warn triangle into this quiet circle-alert. `tip` carries
-// what was covered + who accepted and when; sidebars wrap it in the
-// BadgeHint cue via `cue`.
+// The "covered" mark (round 5; restyled F10): a conflict whose cover
+// was accepted turns from the warn triangle into a quiet accent
+// circle-check — a small success cue, not another alert. `tip` carries
+// what was covered + who accepted; sidebars wrap it in the BadgeHint
+// cue via `cue`.
 export function CoveredBadge({ tip, size = 13, cue = false, className = "" }) {
   const glyph = (
-    <CircleAlert size={size} className={"shrink-0 text-muted " + className} />
+    <CircleCheck size={size} className={"shrink-0 text-accent " + className} />
   );
   if (!tip) return glyph;
   return (
@@ -1163,10 +1164,12 @@ export function WeekStrip({
                   size={14}
                   cue
                   tip={covered.map((c, i) => (
-                    <span key={i} className="block">
-                      <b className="text-fg font-semibold">{c.label}</b>
-                      {c.by ? ` — ${c.by} covers`
-                        : c.ack ? " — acknowledged" : ""}
+                    <span key={i} className="block pl-3 -indent-3">
+                      <b className="text-fg font-semibold">
+                        {c.by ? `${c.by} covers`
+                          : c.ack ? "Acknowledged" : "Covered"}
+                      </b>
+                      {` — ${c.label}`}
                     </span>
                   ))}
                 />

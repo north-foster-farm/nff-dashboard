@@ -767,8 +767,8 @@ function MortalitySheet({
 }
 
 // ── Eggs sheet (Batch 26.1) ───────────────────────────────────────────
-// Field capture for "how many eggs did this flock just give us." Only
-// layer flocks (species whose purpose mentions eggs) are offered as
+// Field capture for "how many eggs did this group just give us." Only
+// layer groups (species whose purpose mentions eggs) are offered as
 // candidates. One submit queues two outbox ops: an eggs_collected
 // activity row (the feed / Observations record) and a structured
 // egg_collections insert (what the metrics engine reads).
@@ -820,8 +820,8 @@ function EggsSheet({
     return out;
   }, [placementsByPlaceId, layerGroups]);
 
-  // Flock candidates: scoped to the picked place's subtree when one is
-  // set, otherwise every layer flock on the farm.
+  // Layer-group candidates (F28 — "flock" was the wrong unit): scoped to the picked place's subtree when one is
+  // set, otherwise every layer group on the farm.
   const candidates = useMemo(() => {
     if (placeId) {
       const subtree = descendantIds(placeId, childrenByParent);
@@ -832,7 +832,7 @@ function EggsSheet({
           label: layerGroups.get(pl.occupantId)?.label ?? pl.occupantId,
           count: layerGroups.get(pl.occupantId)?.count,
         }));
-      // A place with no layer flock in it still gets the full list —
+      // A place with no layer group in it still gets the full list —
       // eggs get carried around; don't make the user fight the picker.
       if (inPlace.length > 0) return inPlace;
     }
@@ -843,7 +843,7 @@ function EggsSheet({
     }));
   }, [placeId, layerPlacements, childrenByParent, layerGroups]);
 
-  // Single candidate → preselect it (the common one-flock-farm case).
+  // Single candidate → preselect it (the common one-group-farm case).
   useEffect(() => {
     if (candidates.length === 1) setGroupId(candidates[0].id);
   }, [candidates]);
@@ -894,13 +894,13 @@ function EggsSheet({
         />
         {candidates.length === 0 && (
           <div className="text-[12px] text-faint leading-relaxed">
-            No layer flocks on the farm yet.
+            No layer groups on the farm yet.
           </div>
         )}
         {candidates.length > 0 && (
           <div className="flex flex-col gap-2">
             <label className="text-[10px] uppercase tracking-[0.16em] text-muted font-semibold">
-              Flock
+              Layer group
             </label>
             <div className="flex flex-col gap-1">
               {candidates.map(c => {

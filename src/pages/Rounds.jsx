@@ -835,10 +835,17 @@ function DoingSurface({
               >
                 Finish
               </button>
+              {/* F28 — closing IS finishing: the X performs the same
+                  end-run action as Finish instead of leaving the run
+                  hanging for a separate step. Cancel remains the way
+                  to abandon a run without a record. */}
               <button
-                onClick={onClose}
+                onClick={async () => {
+                  await onFinishRun();
+                  onClose();
+                }}
                 className="text-muted hover:text-fg p-2 cursor-pointer bg-transparent border-0"
-                title="Exit (run keeps going — resume from Now)"
+                title="Finish this round and close"
               >
                 <X size={16} />
               </button>
