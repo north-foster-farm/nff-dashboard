@@ -4630,6 +4630,24 @@ color; clock-arrow overnight icons). Build refs in
     orphan processing events stay editable and just can't be resolved
     until assigned.
 
+- **42.15 — cut sizes as uploaded files (F22d).
+  `v0.10.92-alpha` (2026-07-03); migration 0048 (additive).** The
+  processing-day "Cut sheet" free-text field becomes file uploads
+  attached to the day — a PDF / spreadsheet / photo of the cut plan.
+  - New `event_attachments` table (migration 0048), series-scoped,
+    mirroring `project_attachments` (0017). Objects share the existing
+    `project-files` Storage bucket under an `events/<seriesId>/` prefix;
+    the bucket's policies are bucket-scoped to admins, so no new bucket
+    or storage policy is needed.
+  - New `useEventAttachments(seriesId)` hook (upload / remove / signed
+    URL) + a shared pure `attachmentStoragePath` helper
+    (src/lib/attachments.js, TDD'd: filename sanitization, slash /
+    traversal safety). The Processing workspace renders the existing
+    `AttachmentsBlock` in place of the textarea.
+  - Fold-and-delete: `payload.cut_sheet` is no longer written (all prod
+    values were already null); packed_crates / final_count / notes
+    unchanged (F22e). Closes the F22 processing-workspace slice.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

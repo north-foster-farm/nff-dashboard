@@ -8,6 +8,8 @@ import { useBatchAssignments } from "../lib/data/useBatchAssignments.js";
 import BatchPicker, {
   useBatchCandidates, useSeriesBatchLink, syncBatchLink,
 } from "../components/BatchPicker.jsx";
+import { AttachmentsBlock } from "../components/ProjectBits.jsx";
+import { useEventAttachments } from "../lib/data/useEventAttachments.js";
 import { navigate, pathForBatch } from "../lib/router.js";
 import { processingBatchMissing } from "../lib/processes.js";
 
@@ -17,12 +19,12 @@ import { processingBatchMissing } from "../lib/processes.js";
 // though the app is single-page — App.jsx state holds the active
 // series id.
 //
-// Owns four fields stored on `event_series.payload` for the series:
-//   * cut_sheet           free-text instructions for the
-//                         processor (cut sizes, packaging notes)
+// Owns three fields stored on `event_series.payload` for the series:
 //   * packed_crates       number of crates packed
 //   * final_count         number of birds processed
 //   * notes               free-text post-processing notes
+// Cut-size sheets (F22d) are uploaded files in event_attachments, not a
+// payload field — see useEventAttachments + the "Cut sheet" section.
 // Plus a `resolved` toggle (with `resolved_at` timestamp) marking
 // the day's batch close. Resolution doesn't yet touch
 // livestock_groups directly — that integration ships with the
@@ -43,6 +45,8 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
   const batchMissing = processingBatchMissing({
     kindId: "processing_days", batchId: linkedBatchId,
   });
+  // F22d: cut sizes are uploaded files attached to the day, not text.
+  const cutSheetFiles = useEventAttachments(seriesId);
   const series = seriesId ? seriesById.get(seriesId) : null;
   const occurrence = useMemo(
     () => (occurrences ?? []).find(o => o.occursOn === occursOn) ?? null,
@@ -53,7 +57,6 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
     () => deriveFields(series, occurrence),
     [series, occurrence]
   );
-  const [cutSheet, setCutSheet] = useState(initial.cutSheet);
   const [packedCrates, setPackedCrates] = useState(initial.packedCrates);
   const [finalCount, setFinalCount] = useState(initial.finalCount);
   const [notes, setNotes] = useState(initial.notes);
@@ -63,7 +66,6 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
   const [savedAt, setSavedAt] = useState(null);
 
   useEffect(() => {
-    setCutSheet(initial.cutSheet);
     setPackedCrates(initial.packedCrates);
     setFinalCount(initial.finalCount);
     setNotes(initial.notes);
@@ -88,7 +90,6 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
     try {
       const payload = composePayload({
         existing: series.payload,
-        cutSheet,
         packedCrates,
         finalCount,
         notes,
@@ -167,13 +168,12 @@ export default function Processing({ seriesId, occursOn, data, onClose }) {
         onAssigned={refreshBatchLink}
       />
 
-      <Section title="Cut sheet" subtitle="Cut sizes, packaging, anything the processor needs ahead of the day.">
-        <textarea
-          value={cutSheet}
-          onChange={(e) => setCutSheet(e.target.value)}
-          rows={5}
-          className="bg-surface border border-line text-fg text-[13px] px-3 py-2 outline-none focus:border-accent font-[inherit] w-full resize-y"
-          placeholder="e.g. Whole birds vs. cut-up split 60/40. Wing tips off. Vacuum seal in 1lb bags. Two heads in the trailer cooler."
+      <Section title="Cut sheet" subtitle="Upload the cut-size sheet(s) for the processor — a PDF, spreadsheet, or photo of the plan.">
+        <AttachmentsBlock
+          attachments={cutSheetFiles.attachments}
+          onUpload={cutSheetFiles.upload}
+          onRemove={cutSheetFiles.remove}
+          getUrl={cutSheetFiles.getUrl}
         />
       </Section>
 
@@ -358,7 +358,6 @@ function deriveFields(series, occurrence) {
   const overridePl = occurrence?.payloadOverride ?? {};
   const merged = { ...seriesPl, ...overridePl };
   return {
-    cutSheet: merged.cut_sheet ?? "",
     packedCrates: typeof merged.packed_crates === "number" ? merged.packed_crates : null,
     finalCount: typeof merged.final_count === "number" ? merged.final_count : null,
     notes: merged.notes ?? "",
@@ -367,11 +366,10 @@ function deriveFields(series, occurrence) {
 }
 
 function composePayload({
-  existing, cutSheet, packedCrates, finalCount, notes, resolved, resolvedAt,
+  existing, packedCrates, finalCount, notes, resolved, resolvedAt,
 }) {
   return {
     ...(existing && typeof existing === "object" ? existing : {}),
-    cut_sheet: cutSheet?.trim() || null,
     packed_crates: typeof packedCrates === "number" ? packedCrates : null,
     final_count: typeof finalCount === "number" ? finalCount : null,
     notes: notes?.trim() || null,
