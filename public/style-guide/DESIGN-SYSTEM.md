@@ -264,6 +264,15 @@ Each: STATUS · what · use/not · canonical source.
   carry the same minute). Surfaces: the day-load stat row, the
   day-spine block rows, the This Week day symbols (`coveredByISO`).
   Source: `src/components/ui.jsx` (`CoveredBadge`).
+- **Species icons** · New (F27) · one central species→glyph map
+  (`iconForSpecies`) so the sidebar, command palette, and any animal
+  surface draw the SAME mark for a species — layers `Egg`, broilers
+  `Bird`, sheep the custom `Sheep` glyph — instead of each call site
+  hardcoding its own (a sheep batch used to wear a `Bird` in the
+  palette). lucide has no sheep, so `Sheep` is a house glyph in
+  lucide's stroke language (24×24, currentColor, 2px round joins);
+  unknown species fall back to a neutral `PawPrint`. Source:
+  `src/components/animalIcons.jsx`.
 - **TimePoint / AnchoredRange** · New (F15) · the sun-anchorable time
   field: a select (Clock time · Sunrise · Sunset) + a `type="time"`
   input shown only for clock times; `AnchoredRange` pairs two with a

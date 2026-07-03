@@ -4540,6 +4540,41 @@ color; clock-arrow overnight icons). Build refs in
     project- and step-level.
   - Docs: "Project URLs & attachment deep links" pattern — both
     library faces.
+- **42.11 — animal records: editable, deduped, sheep-aware.
+  `v0.10.88-alpha` (2026-07-02); pure frontend, no migration.** The
+  first slice of the animals cluster (Phase 1.5) — the walkthrough's
+  clean, self-contained fixes. F21 (multi-place batches) needed no
+  work: it already shipped with migration 0039 (BatchPage renders and
+  edits the placement set).
+  - F25: the per-animal chore LISTS are gone — the SpeciesPage
+    "Chores" tab and the BatchPage "Chores for this batch" pane both
+    removed. Chores live in Chores. (The brooder-cleanout chore is
+    still resolved on BatchPage — it's a lifecycle date, not a
+    listing.)
+  - F27 editability: the batch record — name, live count, arrival
+    date, and an optional known-age snapshot (N weeks as of a date) —
+    is editable from the batch header (pencil → inline form →
+    `livestock_groups` update; the realtime channel refreshes in
+    place). A group with no starting count adopts the entered one as
+    its `placed_count` so metrics get a denominator. Covers layers,
+    broilers, and sheep (all open the batch page).
+  - F27 sheep lifecycle: the arrival→pasture→processing→cleanout strip
+    is the MEAT-bird arc, so it's now gated to `isMeatSpecies` — hidden
+    for sheep (pets) and layers. Layers' own lifecycle rules come with
+    the layer-process work.
+  - F27 icons: one central `iconForSpecies` map + a house `Sheep`
+    glyph (lucide has none) — fixes the sidebar sheep (was `PawPrint`)
+    and the command palette (every batch drew a `Bird`; now
+    species-aware via a `speciesId` on the search entry).
+  - F22g: the add-batch arrival date defaults to the LOCAL calendar
+    day (`isoDateLocal`), not `toISOString().slice(0,10)` whose UTC
+    rollover recorded an evening add as the next day.
+  - Docs: Species icons component — both library faces.
+  - Roadmap: next in the cluster — F22 batch-detail bugs
+    (weeks-remaining math, tombstoned-milestone editing, implicit
+    batch link, cut-sizes as a file upload), then F20 (layer lifecycle
+    via processes + egg averaging) with the F26 "Automations→process"
+    rename. Sheep's dedicated barn→stall→sheep pass stays deferred.
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.

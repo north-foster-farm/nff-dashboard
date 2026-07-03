@@ -4,6 +4,7 @@ import {
   Users, Tag, Store, Cog, Truck, MessageCircleQuestion, Receipt, X,
 } from "lucide-react";
 import { SECTIONS } from "../sections.jsx";
+import { iconForSpecies } from "./animalIcons.jsx";
 import { navigate, pathForSection } from "../lib/router.js";
 import { useSearchIndex, SEARCH_TYPE_LABEL } from "../lib/data/useSearchIndex.js";
 
@@ -174,7 +175,13 @@ export default function CommandPalette({ open, onClose, data }) {
             </div>
           ) : (
             results.map((entry, i) => {
-              const Icon = entry.icon ?? TYPE_ICON[entry.type] ?? ArrowRight;
+              // A batch draws its species glyph (F27); everything else
+              // uses its section icon or the per-type default.
+              const Icon = entry.icon
+                ?? (entry.type === "batch" && entry.speciesId
+                  ? iconForSpecies(entry.speciesId)
+                  : TYPE_ICON[entry.type])
+                ?? ArrowRight;
               const isActive = i === active;
               return (
                 <button

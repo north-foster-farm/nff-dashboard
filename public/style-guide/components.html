@@ -923,6 +923,22 @@
     BOTH icons. In <span class="mono">ui.jsx</span>.
   </p>
 
+  <h3 class="ds-h3">Species icons <span class="ds-status new">New</span></h3>
+  <p>
+    One central species→glyph map (<span class="mono">
+    iconForSpecies</span>) so the sidebar, command palette, and any
+    animal surface draw the SAME mark for a species — layers an
+    <span class="mono">Egg</span>, broilers a <span class="mono">
+    Bird</span>, sheep the custom <span class="mono">Sheep</span>
+    glyph (F27) — instead of each call site hardcoding its own (which
+    is how a sheep batch wore a Bird in the palette). lucide has no
+    sheep, so <span class="mono">Sheep</span> is a house glyph authored
+    in lucide's stroke language (24×24, currentColor, 2px round joins)
+    to sit as a sibling of the others. Unknown species fall back to a
+    neutral <span class="mono">PawPrint</span>. In
+    <span class="mono">src/components/animalIcons.jsx</span>.
+  </p>
+
   <h3 class="ds-h3">TimePoint / AnchoredRange
     <span class="ds-status new">New</span></h3>
   <p>

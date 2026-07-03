@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft, ArrowUpRight, Bird, CalendarRange, MapPin, Plus, Sparkles,
-  Trash2, TriangleAlert, X,
+  ArrowLeft, ArrowUpRight, CalendarRange, Check, MapPin, Pencil, Plus,
+  Sparkles, Trash2, TriangleAlert, X,
 } from "lucide-react";
 import { useSites } from "../lib/data/useSites.js";
 import { placeSelectOptions } from "../components/ChoreFieldsEditor.jsx";
@@ -9,7 +9,7 @@ import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useEventLinks } from "../lib/data/useEventLinks.js";
 import { supabase } from "../lib/supabase.js";
 import { computeAge, formatDate } from "../lib/dates.js";
-import { batchLifecycle, BATCH_STATES } from "../lib/metrics.js";
+import { batchLifecycle, BATCH_STATES, isMeatSpecies } from "../lib/metrics.js";
 import { navigate, pathForSection } from "../lib/router.js";
 import BatchMetricsSection from "../components/BatchMetrics.jsx";
 import BatchStatePill from "../components/BatchStatePill.jsx";
@@ -52,6 +52,18 @@ export default function BatchPage({
   const [error, setError] = useState(null);
   const [addPlaceId, setAddPlaceId] = useState("");
   const [placeBusy, setPlaceBusy] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
+
+  // F27 — the batch's own record (name / count / arrival / age) is
+  // editable. A raw update; the livestock_groups realtime channel in
+  // useReferenceData refreshes `data` (and this `batch`) in place.
+  const saveDetails = async (patch) => {
+    setError(null);
+    const { error: err } = await supabase
+      .from("livestock_groups").update(patch).eq("id", batch.id);
+    if (err) { setError(err); return false; }
+    return true;
+  };
 
   // Current placements → "where is this batch right now". A batch can
   // occupy several places at once (a broiler batch split across the
@@ -102,26 +114,16 @@ export default function BatchPage({
     }
   };
 
-  // Chores tied to this batch: the auto cleanout chore + anything
-  // anchored to the batch.
+  // The batch's brooder-cleanout chore drives the lifecycle strip's
+  // cleanout pill. (The per-batch chore LIST was retired — chores live
+  // in Chores, F25 — but the cleanout milestone is a lifecycle date,
+  // not a chore listing, so we still resolve it here.)
   const batchChores = useMemo(
     () => (definitions ?? []).filter(
       (c) => c.id === `auto_cleanout_${batch?.id}`
         || c.anchorBatchId === batch?.id
     ),
     [definitions, batch?.id]
-  );
-
-  // Chores the batch inherits from its species anchor — every
-  // species-anchored chore applies to every batch of that species, so
-  // they belong on this page too (shown as "inherited").
-  const inheritedChores = useMemo(
-    () => (definitions ?? []).filter(
-      (c) => c.anchorSpeciesId === species?.id
-        && c.anchorBatchId !== batch?.id
-        && !c.retiredAt
-    ),
-    [definitions, species?.id, batch?.id]
   );
   const cleanoutChore = batchChores.find(
     (c) => c.frequency?.type === "once"
@@ -372,18 +374,41 @@ export default function BatchPage({
               <div className="text-[12px] text-dim mt-1">{species.breed}</div>
             )}
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <HeaderStat label="Count" value={batch.count ?? "—"} />
-            <HeaderStat label="Age" value={age ?? "—"} />
-            <HeaderStat
-              label="Arrived"
-              value={formatDate(batch.arrivalDate) || "—"}
-            />
+          <div className="flex items-start gap-3">
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <HeaderStat label="Count" value={batch.count ?? "—"} />
+              <HeaderStat label="Age" value={age ?? "—"} />
+              <HeaderStat
+                label="Arrived"
+                value={formatDate(batch.arrivalDate) || "—"}
+              />
+            </div>
+            {!editingDetails && (
+              <button
+                onClick={() => setEditingDetails(true)}
+                title="Edit this batch's details"
+                className="shrink-0 bg-transparent border-0 p-1 text-dim hover:text-accent-deep cursor-pointer"
+              >
+                <Pencil size={14} />
+              </button>
+            )}
           </div>
         </div>
+        {editingDetails && (
+          <BatchDetailsForm
+            batch={batch}
+            onSave={saveDetails}
+            onClose={() => setEditingDetails(false)}
+          />
+        )}
       </div>
 
       {/* ── lifecycle strip ── */}
+      {/* The arrival→pasture→processing→cleanout arc is the MEAT-bird
+          lifecycle (F27). Layers and pet species (sheep) don't get
+          processed, so it's hidden for them — their own lifecycle
+          rules arrive with the layer-process work. */}
+      {isMeatSpecies(species) && (
       <Pane title="Lifecycle" icon={CalendarRange}>
         {linksLoading ? (
           <div className="text-[12px] text-dim italic">Loading…</div>
@@ -425,6 +450,7 @@ export default function BatchPage({
           event editor.
         </p>
       </Pane>
+      )}
 
       {/* ── metrics: performance / production + capture (Batch 26.1) ── */}
       <BatchMetricsSection
@@ -435,8 +461,8 @@ export default function BatchPage({
         lifecycle={life}
       />
 
-      {/* ── where + chores ── */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      {/* ── where ── */}
+      <div>
         <Pane title="Where" icon={MapPin}>
           {sitesLoading ? (
             <div className="text-[12px] text-dim italic">Loading…</div>
@@ -502,34 +528,6 @@ export default function BatchPage({
                   <Plus size={13} /> Add
                 </button>
               </div>
-            </div>
-          )}
-        </Pane>
-
-        <Pane title="Chores for this batch" icon={Bird}>
-          {/* Batch-specific chores + the ones inherited from the
-              species anchor (2026-06 chore-ux fixes): a broiler batch
-              does every species-anchored broiler chore, so both belong
-              on this page. */}
-          {batchChores.length === 0 && inheritedChores.length === 0 ? (
-            <div className="text-[12px] text-dim italic">
-              No chores anchored to this batch or its species.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {batchChores.length > 0 && (
-                <ChoreNameList
-                  title="This batch only"
-                  chores={batchChores}
-                />
-              )}
-              {inheritedChores.length > 0 && (
-                <ChoreNameList
-                  title={`Inherited from ${species.name.toLowerCase()}`}
-                  chores={inheritedChores}
-                  dim
-                />
-              )}
             </div>
           )}
         </Pane>
@@ -652,6 +650,141 @@ function HeaderStat({ label, value }) {
   );
 }
 
+const DETAIL_INPUT =
+  "bg-surface-alt border border-line px-2 py-1.5 text-[13px] text-fg " +
+  "font-[inherit] outline-none focus:border-accent";
+
+// F27 — edit the batch's own record: name, live count, arrival date,
+// and an optional known-age snapshot (N weeks as of a date; blank =
+// age derives from arrival). Saving persists to livestock_groups and
+// realtime refreshes the page.
+function BatchDetailsForm({ batch, onSave, onClose }) {
+  const [label, setLabel] = useState(batch.label ?? "");
+  const [count, setCount] = useState(
+    batch.count == null ? "" : String(batch.count));
+  const [arrival, setArrival] = useState(batch.arrivalDate ?? "");
+  const [ageWeeks, setAgeWeeks] = useState(
+    batch.knownAge?.weeks == null ? "" : String(batch.knownAge.weeks));
+  const [ageAsOf, setAgeAsOf] = useState(batch.knownAge?.asOfDate ?? "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const submit = async () => {
+    const trimmed = label.trim();
+    if (!trimmed) { setErr("The batch needs a name."); return; }
+    const weeksNum = ageWeeks === "" ? null : Number(ageWeeks);
+    if (weeksNum != null && (Number.isNaN(weeksNum) || !ageAsOf)) {
+      setErr("For a known age, set both the weeks and the as-of date.");
+      return;
+    }
+    const countNum = count === "" ? null : Number(count);
+    const patch = {
+      label: trimmed,
+      count: countNum,
+      arrival_date: arrival || null,
+      known_age: weeksNum == null
+        ? null
+        : { weeks: weeksNum, asOfDate: ageAsOf },
+    };
+    // A group that never had a starting count adopts this one, so the
+    // egg / performance metrics have a denominator (placed_count is
+    // otherwise the immutable as-placed count).
+    if (batch.placedCount == null && countNum != null) {
+      patch.placed_count = countNum;
+    }
+    setErr(null);
+    setSaving(true);
+    const ok = await onSave(patch);
+    setSaving(false);
+    if (ok) onClose();
+    else setErr("Couldn't save — try again.");
+  };
+
+  return (
+    <div className="border border-line px-4 py-4 mt-3">
+      <div className="flex items-end gap-4 flex-wrap">
+        <DetailField label="Name">
+          <input
+            autoFocus
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            className={DETAIL_INPUT + " w-[180px]"}
+          />
+        </DetailField>
+        <DetailField label="Count">
+          <input
+            type="number"
+            min={0}
+            value={count}
+            onChange={(e) => setCount(e.target.value)}
+            placeholder="—"
+            className={DETAIL_INPUT + " w-[90px]"}
+          />
+        </DetailField>
+        <DetailField label="Arrival date">
+          <input
+            type="date"
+            value={arrival}
+            onChange={(e) => setArrival(e.target.value)}
+            className={DETAIL_INPUT}
+          />
+        </DetailField>
+      </div>
+      <div className="flex items-end gap-4 flex-wrap mt-3">
+        <DetailField label="Known age">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              value={ageWeeks}
+              onChange={(e) => setAgeWeeks(e.target.value)}
+              placeholder="—"
+              className={DETAIL_INPUT + " w-[70px]"}
+            />
+            <span className="text-[11px] text-dim">weeks as of</span>
+            <input
+              type="date"
+              value={ageAsOf}
+              onChange={(e) => setAgeAsOf(e.target.value)}
+              className={DETAIL_INPUT}
+            />
+          </div>
+        </DetailField>
+      </div>
+      {err && <div className="text-[11px] text-warn mt-2.5">{err}</div>}
+      <div className="text-[11px] text-faint mt-3 leading-relaxed">
+        Leave the age blank to show age counted from the arrival date.
+      </div>
+      <div className="flex items-center gap-2 mt-3">
+        <button
+          onClick={submit}
+          disabled={saving || !label.trim()}
+          className="inline-flex items-center gap-1.5 bg-accent text-on-accent border-0 font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3.5 py-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Check size={13} /> {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={onClose}
+          className="bg-transparent text-dim border border-line font-[inherit] text-[11px] font-semibold uppercase tracking-[0.12em] px-3.5 py-1.5 cursor-pointer hover:text-fg"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DetailField({ label, children }) {
+  return (
+    <div>
+      <div className="text-[9px] text-faint uppercase tracking-[0.12em] mb-1.5">
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // One lifecycle milestone: name (click → EventEditor), the date as an
 // editable input, a relative time label, and status treatment (done /
 // skipped / ended events render dimmed).
@@ -724,39 +857,6 @@ function MilestonePill({ label, link, onOpen, onReschedule, onCreate }) {
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-// Titled list of chore names for the batch-chores card — shared by the
-// "this batch only" and "inherited from <species>" groups.
-function ChoreNameList({ title, chores, dim = false }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="font-ui text-[10px] uppercase tracking-[0.14em] font-semibold text-muted">
-        {title}
-      </div>
-      <ul className="m-0 p-0 list-none flex flex-col gap-2">
-        {chores.map((c) => (
-          <li
-            key={c.id}
-            className={
-              "text-[13px] flex items-center gap-2 " +
-              (dim ? "text-dim" : "text-fg")
-            }
-          >
-            {(c.automationEmissionId || c.processExpansionId) && (
-              <Sparkles size={12} className="shrink-0 text-accent-deep" />
-            )}
-            <span>{c.title}</span>
-            {c.frequency?.type === "once" && c.frequency.date && (
-              <span className="text-[11px] text-dim">
-                · {formatDate(c.frequency.date)}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

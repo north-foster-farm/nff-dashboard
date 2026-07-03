@@ -82,12 +82,16 @@ export function useSearchIndex(data) {
   const entries = useMemo(() => {
     const out = [];
 
-    // Batches → real deep link.
+    // Batches → real deep link. `speciesId` rides along so the palette
+    // draws the batch's species glyph (F27), not a blanket Bird.
     for (const sp of data?.livestock?.species ?? []) {
       for (const g of sp.groups ?? []) {
-        out.push(entry(
-          g.id, "batch", g.label, sp.name,
-          pathForBatch(sp.id, g.id), sp.id));
+        out.push({
+          ...entry(
+            g.id, "batch", g.label, sp.name,
+            pathForBatch(sp.id, g.id), sp.id),
+          speciesId: sp.id,
+        });
       }
     }
 

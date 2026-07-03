@@ -9,13 +9,10 @@ import BatchStatePill from "../components/BatchStatePill.jsx";
 import { computeStageCost } from "../lib/feedCost.js";
 import { describeConsumption } from "../lib/feedConsumption.js";
 import { supabase } from "../lib/supabase.js";
+import { isoDateLocal } from "../lib/calendarMath.js";
 import { navigate, pathForBatch, pathForSection } from "../lib/router.js";
-import {
-  getAllChoreDefinitions, describeFrequency, describeChoreAnchor,
-  describeChoreSchedule,
-} from "../lib/chores.js";
+import { getAllChoreDefinitions } from "../lib/chores.js";
 import { useSites } from "../lib/data/useSites.js";
-import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import ActivityRow from "../components/ActivityRow.jsx";
@@ -29,8 +26,6 @@ import { BTN_ACCENT } from "../components/ui.jsx";
 //                   group actually lives (placements), age, count.
 //   Feed schedule — read view of the species' feed programs, linking
 //                   to the Manage feed editor.
-//   Chores        — chore definitions tagged for / anchored to this
-//                   species.
 //   Activity log  — activity_log rows that touch this species: chore
 //                   completions, mortality, MASH intakes, notes at
 //                   places its batches live, cohort moves.
@@ -39,6 +34,9 @@ import { BTN_ACCENT } from "../components/ui.jsx";
 
 export default function SpeciesPage({ species, data }) {
   const [tab, setTab] = useState("groups");
+  // Chores that touch this species — now used only to FILTER the
+  // activity log (the per-species Chores tab was retired: chores live
+  // in Chores, F25).
   const speciesChores = useMemo(
     () => getAllChoreDefinitions(data).filter(c =>
       (c.tags ?? []).includes(species.id)
@@ -53,7 +51,6 @@ export default function SpeciesPage({ species, data }) {
   const tabs = [
     { id: "groups", label: `Groups · ${species.groups.length}` },
     { id: "feed", label: `Feed schedule · ${speciesSchedules.length}` },
-    { id: "chores", label: `Chores · ${speciesChores.length}` },
     // Automation rules that fire for this species (Batch 27.5 —
     // relocated here from the Settings page).
     { id: "automations", label: "Automations" },
@@ -80,9 +77,6 @@ export default function SpeciesPage({ species, data }) {
           schedules={speciesSchedules}
           feeds={data.feeds}
         />
-      )}
-      {tab === "chores" && (
-        <SpeciesChoresTab species={species} chores={speciesChores} />
       )}
       {tab === "automations" && (
         <AutomationsPanel
@@ -199,9 +193,10 @@ function AddBatchForm({ species }) {
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
   const [count, setCount] = useState("");
-  const [arrival, setArrival] = useState(
-    () => new Date().toISOString().slice(0, 10)
-  );
+  // Local calendar date — NOT toISOString().slice(0,10), whose UTC
+  // rollover recorded a batch added late in the evening as the next
+  // day (F22g, "batch created 12 to 1 a.m.").
+  const [arrival, setArrival] = useState(() => isoDateLocal(new Date()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -609,68 +604,6 @@ function StageReadRow({ stage }) {
           {stage.notes}
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Chores tab ────────────────────────────────────────────────────────
-function SpeciesChoresTab({ species, chores }) {
-  const { choreCtx } = useSites();
-  const { blockById } = useChoreBlocks();
-  if (chores.length === 0) {
-    return (
-      <div className="border border-line px-6 py-8 text-center">
-        <div className="text-[12px] text-muted">
-          No chores tagged for {species.name.toLowerCase()}.
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-3.5">
-      <div className="text-[11px] text-muted leading-relaxed">
-        Recurring chore definitions tagged for or anchored to{" "}
-        {species.name.toLowerCase()}.
-      </div>
-      <div className="flex flex-col gap-px bg-line border border-line">
-        {chores.map(c => (
-          <SpeciesChoreRow
-            key={c.id} chore={c} choreCtx={choreCtx} blockById={blockById}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SpeciesChoreRow({ chore, choreCtx, blockById }) {
-  return (
-    <div className="bg-surface px-4 py-3">
-      <div className="flex items-baseline justify-between gap-2.5 mb-1.5 flex-wrap">
-        <div className="font-heading text-[14px] font-semibold text-fg">
-          {chore.title}
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {(chore.tags ?? []).map(tag => (
-            <span
-              key={tag}
-              className="text-[9px] text-dim bg-surface-alt border border-line px-1.5 py-0.5 uppercase tracking-[0.08em]"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-      {chore.description && (
-        <div className="text-[12px] text-dim leading-relaxed mb-2">
-          {chore.description}
-        </div>
-      )}
-      <div className="text-[11px] text-muted">
-        {describeChoreAnchor(chore, choreCtx)}
-        {" · "}{describeChoreSchedule(chore, blockById)}
-        {" · "}{describeFrequency(chore)}
-      </div>
     </div>
   );
 }
