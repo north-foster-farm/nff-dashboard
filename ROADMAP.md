@@ -4744,6 +4744,28 @@ color; clock-arrow overnight icons). Build refs in
     10px count-run style); flagged for a visual pass with James — he
     may want the progress larger / relocated.
 
+- **42.21 — bucket-B Schedule quick-wins: focus recall + conflicts
+  count. `v0.10.98-alpha` (2026-07-03); pure frontend, no migration.**
+  Two audit findings (2026-06-28 bucket B), after de-tainting the whole
+  bucket against main (most were already shipped).
+  - F45 (block-focus across day nav): extracted the open-block resolver
+    to a tested pure `resolveFocusBucket` (src/lib/schedule/focus.js) —
+    a concrete bucket carried from another day (blocks differ
+    day-to-day, e.g. overnight) that isn't present on the current day
+    now falls back to the first block instead of leaving focus dangling.
+    Also routed `jumpToNow`'s cross-day jump through `goToDay` so the
+    day you leave keeps its remembered focus (it was calling setToday
+    directly and dropping it). Per-day focus memory itself already
+    existed.
+  - F23 (conflicts affordance): the header conflicts entry was gated to
+    render only when conflicts existed and showed an icon (+ ×N). It now
+    always reads as a count — "0 conflicts" muted but still clickable
+    with hover, "N conflicts" emphasized in warn with the alert glyph.
+  - De-taint result (bucket B): F9, F15, F20, F22, F29, F31, F47 were
+    already DONE on main; F32 (proportional left-pane bars) left OPEN —
+    it contradicts the current deliberate equal-height-rows design, so
+    it needs a design call, not a quick fix.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

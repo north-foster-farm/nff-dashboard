@@ -55,6 +55,7 @@ import { useRunHistory } from "../lib/data/useRunHistory.js";
 import { isActiveProject } from "../lib/projects.js";
 import { nextRankedStep } from "../lib/schedule/reflow.js";
 import { segmentForStart, buildDaySegments } from "../lib/schedule/placement.js";
+import { resolveFocusBucket } from "../lib/schedule/focus.js";
 import {
   overnightWindow, inOvernight, OVERNIGHT_LEAD, OVERNIGHT_TRAIL,
   PARTITION_ADMINS,
@@ -1894,15 +1895,15 @@ export default function Schedule({ data }) {
   // whole-day overview is a toggle state, not a landing — F28 follow-up).
   // Follow-now with nothing current (now is past/before the day's blocks —
   // `nowEdge`): land on the nearest block instead of the retired overview.
-  const focus = focusSel === null
-    ? (nowBucket
-      ?? (nowEdge === "after"
-        ? blockRows[blockRows.length - 1]?.bucket
-        : blockRows[0]?.bucket)
-      ?? null)
-    : focusSel === "overview" ? null
-    : focusSel === "first" ? (blockRows[0]?.bucket ?? null)
-    : focusSel;
+  // Resolved against THIS day's buckets so a block remembered from
+  // another day (blocks differ day-to-day, e.g. overnight) can't leave
+  // focus pointing at a block that isn't here (F45).
+  const focus = resolveFocusBucket({
+    focusSel,
+    buckets: blockRows.map((b) => b.bucket),
+    nowBucket,
+    nowEdge,
+  });
   const focusRef = useRef(null);
 
   // Picking a block opens it; re-picking the open one is a no-op — the
@@ -1983,8 +1984,10 @@ export default function Schedule({ data }) {
 
   const showJump = !viewingToday || focus !== nowBucket;
   const jumpToNow = () => {
-    if (!viewingToday) setToday(new Date());
-    setFocusSel(null);
+    // Route the day change through goToDay so the day we're leaving keeps
+    // its focus in the per-day memory (F45); on today just follow now.
+    if (!viewingToday) goToDay(new Date(), null);
+    else setFocusSel(null);
     focusRef.current?.scrollIntoView?.({
       behavior: REDUCED_MOTION ? "auto" : "smooth", block: "center",
     });
@@ -2603,46 +2606,49 @@ export default function Schedule({ data }) {
         ? ` · ${nText(dayLoadCounts.events, "event")}` : ""}
       {(farm.warming.warn.length + farm.warming.due.length) > 0 && " · "}
       <WarmingBadge warn={farm.warming.warn} due={farm.warming.due} cue />
-      {todayConflicts.length > 0 && (
-        <>
-          {" · "}
-          <Tooltip
-            tip={<>
-              {uncoveredUnits.map((u, i) => (
-                <span key={"u" + i} className="block pl-3 -indent-3">
-                  <b className="text-fg font-semibold">{unitName(u)}</b>
-                  {" — "}{unitWhen(u)}
-                </span>
-              ))}
-              {todayConflicts.filter((c) => c.type !== "cover")
-                .map((c, i) => (
-                  <span key={"c" + i} className="block pl-3 -indent-3">
-                    <b className="text-fg font-semibold">{c.label}</b>
-                    {c.detail ? ` — ${c.detail}` : ""}
+      {/* F23 — the conflicts affordance always reads as a COUNT, even at
+          zero ("0 conflicts", muted but still clickable + hover); with
+          conflicts it emphasizes in warn with the alert glyph. */}
+      {(() => {
+        const n = todayConflicts.length;
+        return (
+          <>
+            {" · "}
+            <Tooltip
+              tip={n > 0 ? (<>
+                {uncoveredUnits.map((u, i) => (
+                  <span key={"u" + i} className="block pl-3 -indent-3">
+                    <b className="text-fg font-semibold">{unitName(u)}</b>
+                    {" — "}{unitWhen(u)}
                   </span>
                 ))}
-            </>}
-            className="cursor-pointer"
-          >
-            <button
-              type="button"
-              onClick={() => setShowConflicts(true)}
-              aria-label="Open the conflict list"
-              className="flex flex-col items-center gap-[2px] cursor-pointer"
+                {todayConflicts.filter((c) => c.type !== "cover")
+                  .map((c, i) => (
+                    <span key={"c" + i} className="block pl-3 -indent-3">
+                      <b className="text-fg font-semibold">{c.label}</b>
+                      {c.detail ? ` — ${c.detail}` : ""}
+                    </span>
+                  ))}
+              </>) : "No conflicts today"}
+              className="cursor-pointer"
             >
-              <span className="inline-flex items-center gap-0.5 text-warn">
-                <AlertTriangle size={14} />
-                {todayConflicts.length > 1 && (
-                  <span className="font-ui text-[10px] font-semibold leading-none">
-                    ×{todayConflicts.length}
-                  </span>
-                )}
-              </span>
-              <span className="w-full border-b border-dotted border-faint" />
-            </button>
-          </Tooltip>
-        </>
-      )}
+              <button
+                type="button"
+                onClick={() => setShowConflicts(true)}
+                aria-label="Open the conflict list"
+                className="flex flex-col items-center gap-[2px] cursor-pointer"
+              >
+                <span className={"inline-flex items-center gap-0.5 "
+                  + (n > 0 ? "text-warn font-semibold" : "text-faint")}>
+                  {n > 0 && <AlertTriangle size={12} className="shrink-0" />}
+                  {nText(n, "conflict")}
+                </span>
+                <span className="w-full border-b border-dotted border-faint" />
+              </button>
+            </Tooltip>
+          </>
+        );
+      })()}
       {coveredUnits.length > 0 && (
         <>
           {" · "}
