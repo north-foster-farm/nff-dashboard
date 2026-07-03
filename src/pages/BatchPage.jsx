@@ -9,7 +9,9 @@ import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useEventLinks } from "../lib/data/useEventLinks.js";
 import { supabase } from "../lib/supabase.js";
 import { computeAge, formatDate } from "../lib/dates.js";
-import { batchLifecycle, BATCH_STATES, isMeatSpecies } from "../lib/metrics.js";
+import {
+  batchLifecycle, BATCH_STATES, isMeatSpecies, liveProcessingISO,
+} from "../lib/metrics.js";
 import { navigate, pathForSection } from "../lib/router.js";
 import BatchMetricsSection from "../components/BatchMetrics.jsx";
 import BatchStatePill from "../components/BatchStatePill.jsx";
@@ -141,14 +143,14 @@ export default function BatchPage({
     }));
   }, [links]);
 
-  // The scheduled processing date (if any) — the metrics section uses
-  // it for FCR's feed window and the weeks-remaining countdown.
+  // The LIVE processing date (if any) — the metrics section uses it for
+  // FCR's feed window and the weeks-remaining countdown, and it decides
+  // processed/active. A removed processing event (skipped occurrence)
+  // resolves to null so weeks-remaining falls back to the species
+  // target instead of counting toward a deleted day (F22f).
   const processingISO = useMemo(() => {
     const link = milestoneLinks.find((m) => m.role === "processing")?.link;
-    const occ = link?.series?.occurrences.find(
-      (o) => o.status !== "skipped"
-    ) ?? link?.series?.occurrences[0];
-    return occ?.occursOn ?? null;
+    return liveProcessingISO(link?.series);
   }, [milestoneLinks]);
 
   // Links that aren't lifecycle milestones (e.g. a processing event
@@ -192,14 +194,20 @@ export default function BatchPage({
     if (!link?.series || !newDate) return;
     setError(null);
     try {
-      const live = link.series.occurrences.find(
-        (o) => o.status !== "skipped"
-      ) ?? link.series.occurrences[0];
+      const series = link.series;
+      // A REMOVED milestone (its series was ended / its only occurrence
+      // skipped) comes back when you give it a new date — that's how you
+      // re-edit a "removed" processing day (F22a).
+      const removed = series.status === "ended"
+        || (series.occurrences ?? []).every((o) => o.status === "skipped");
+      const live = series.occurrences.find((o) => o.status !== "skipped")
+        ?? series.occurrences[0];
       if (live) {
+        const patch = { occurs_on: newDate };
+        // Revive a skipped occurrence — but never downgrade a done one.
+        if (live.status === "skipped") patch.status = "scheduled";
         const { error: err } = await supabase
-          .from("event_occurrences")
-          .update({ occurs_on: newDate })
-          .eq("id", live.id);
+          .from("event_occurrences").update(patch).eq("id", live.id);
         if (err) throw err;
       } else {
         const { error: err } = await supabase
@@ -213,11 +221,11 @@ export default function BatchPage({
       }
       // Keep the series anchor consistent (one-off events derive
       // display fields from the occurrence, but dtstart shouldn't
-      // contradict it).
+      // contradict it); un-end it if it was removed.
+      const seriesPatch = { dtstart: `${newDate}T00:00:00+00:00` };
+      if (removed) seriesPatch.status = "active";
       const { error: sErr } = await supabase
-        .from("event_series")
-        .update({ dtstart: `${newDate}T00:00:00+00:00` })
-        .eq("id", link.seriesId);
+        .from("event_series").update(seriesPatch).eq("id", link.seriesId);
       if (sErr) throw sErr;
       await refresh();
     } catch (e) {
@@ -802,7 +810,7 @@ function MilestonePill({ label, link, onOpen, onReschedule, onCreate }) {
       className={
         "border px-3.5 py-3 flex flex-col gap-1.5 " +
         (tombstoned
-          ? "border-line bg-surface-alt opacity-50"
+          ? "border-dashed border-line bg-surface-alt"
           : done
             ? "border-resolved/50 bg-surface-alt"
             : "border-line bg-surface-alt")
@@ -826,17 +834,20 @@ function MilestonePill({ label, link, onOpen, onReschedule, onCreate }) {
       </button>
       {series ? (
         <>
+          {/* A removed milestone stays editable — setting a date
+              restores it (F22a). */}
           <input
             type="date"
             value={date ?? ""}
-            disabled={tombstoned}
             onChange={(e) => {
               if (e.target.value) onReschedule(e.target.value);
             }}
-            className="bg-surface border border-line text-fg text-[12px] px-2 py-1 outline-none focus:border-accent font-[inherit] w-full disabled:opacity-60"
+            className="bg-surface border border-line text-fg text-[12px] px-2 py-1 outline-none focus:border-accent font-[inherit] w-full"
           />
           <div className="text-[10px] text-dim">
-            {tombstoned ? "removed" : done ? "done" : relativeDays(date)}
+            {tombstoned
+              ? "removed — set a date to restore"
+              : done ? "done" : relativeDays(date)}
           </div>
         </>
       ) : (

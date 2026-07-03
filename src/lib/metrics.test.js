@@ -32,6 +32,7 @@ import {
   isLayerSpecies,
   isMeatSpecies,
   batchLifecycle,
+  liveProcessingISO,
 } from "./metrics.js";
 
 // ── fixtures ─────────────────────────────────────────────────────────
@@ -604,6 +605,45 @@ describe("weeksTimeline", () => {
     expect(out.weeksOnFarm).toBeCloseTo(3, 10);
     expect(out.weeksRemaining).toBeNull();
     expect(out.caveats[0]).toMatch(/No processing event/);
+  });
+});
+
+// The batch's live processing date drives weeks-remaining and the
+// processed/active state. A processing event that was REMOVED shows up
+// as a series whose only occurrence is `skipped` — it must NOT be
+// treated as a real processing date (F22f: batch 5's "4.7 weeks
+// remaining" was counting toward an Aug 4 event the user had deleted).
+describe("liveProcessingISO", () => {
+  const series = (occurrences) => ({ id: "s", occurrences });
+
+  it("is null without a series", () => {
+    expect(liveProcessingISO(null)).toBeNull();
+    expect(liveProcessingISO(undefined)).toBeNull();
+  });
+
+  it("returns a scheduled occurrence's date", () => {
+    expect(liveProcessingISO(series([
+      { occursOn: "2026-08-04", status: "scheduled" },
+    ]))).toBe("2026-08-04");
+  });
+
+  it("still counts a DONE processing (the batch was processed)", () => {
+    expect(liveProcessingISO(series([
+      { occursOn: "2026-08-04", status: "done" },
+    ]))).toBe("2026-08-04");
+  });
+
+  it("is null when the only occurrence was skipped — a REMOVED event", () => {
+    expect(liveProcessingISO(series([
+      { occursOn: "2026-08-04", status: "skipped" },
+    ]))).toBeNull();
+  });
+
+  it("prefers a live occurrence over a skipped one", () => {
+    expect(liveProcessingISO(series([
+      { occursOn: "2026-08-04", status: "skipped" },
+      { occursOn: "2026-08-18", status: "scheduled" },
+    ]))).toBe("2026-08-18");
   });
 });
 

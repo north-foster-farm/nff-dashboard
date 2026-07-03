@@ -329,6 +329,18 @@ export function feedConversionRatio(group, samples, ctx, asOfISO) {
   };
 }
 
+// The batch's live processing date from its processing event series,
+// or null. A removed processing event survives as a series whose only
+// occurrence is `skipped`; that is NOT a real date — returning it made
+// weeks-remaining count toward a deleted day and mislabeled the batch
+// (F22f). The first non-skipped occurrence (scheduled OR done) wins.
+export function liveProcessingISO(series) {
+  const occ = (series?.occurrences ?? []).find(
+    (o) => o.status !== "skipped"
+  );
+  return occ?.occursOn ?? null;
+}
+
 // Weeks-on-farm / weeks-remaining.
 //   processingISO (a scheduled processing event date) wins when set;
 //   otherwise arrival + species.targetProcessWeeks.

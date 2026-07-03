@@ -4575,6 +4575,27 @@ color; clock-arrow overnight icons). Build refs in
     batch link, cut-sizes as a file upload), then F20 (layer lifecycle
     via processes + egg averaging) with the F26 "Automations→process"
     rename. Sheep's dedicated barn→stall→sheep pass stays deferred.
+- **42.12 — batch lifecycle page: honest processing date, restorable
+  milestones. `v0.10.89-alpha` (2026-07-02); pure frontend, no
+  migration.** The batch-page half of F22 (F22f + F22a).
+  - F22f: a REMOVED processing event (its series ended, its only
+    occurrence `skipped`) no longer drives the countdown. The old
+    `processingISO` fell back to the skipped occurrence's date, so
+    "weeks remaining" counted toward a day the user had deleted (batch
+    5's bogus "4.7 weeks"). New tested pure helper
+    `liveProcessingISO(series)` returns the first non-skipped
+    (scheduled OR done) occurrence, else null — and null falls back to
+    the species' target weeks. It also feeds `batchLifecycle`, so a
+    batch with a deleted processing event reads active, not phantom-
+    processed.
+  - F22a: a removed milestone pill is editable again — it renders
+    dashed with "removed — set a date to restore", and picking a date
+    REVIVES it (`rescheduleMilestone` un-skips the occurrence and
+    un-ends the series when it was removed, but never downgrades a
+    done occurrence).
+  - Deferred to the processing-workspace slice: F22c (implicit batch
+    link on a processing event), F22d (cut sizes as a file upload,
+    not a text field), F22b (verify the "N chore changes" badge).
 
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
