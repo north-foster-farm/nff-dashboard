@@ -238,6 +238,18 @@ export function occurrenceIsCurrent(occursOn, today = new Date()) {
   return occursOn >= formatISODate(startOfDayUTC(today));
 }
 
+// F20: a process may be scoped to a single livestock species. Because
+// both broiler and layer arrival events share the batch_milestones
+// kind, the kind link alone can't tell them apart — this predicate
+// gates expansion on the anchor batch's species. An unscoped process
+// (speciesId null) applies to any anchor, including one with no batch
+// (e.g. a farmers-market event); a scoped process needs a concrete
+// matching species, so it never fires on a batch-less anchor.
+export function processAppliesToSpecies(process, speciesId) {
+  if (!process?.speciesId) return true;
+  return process.speciesId === speciesId;
+}
+
 // F22c invariant: a processing day can't exist without a batch — the
 // event *is* the processing of some batch. Returns true when a
 // processing-kind event still lacks a batch, so callers can block the

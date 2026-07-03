@@ -8,7 +8,7 @@ import {
   planExpansions, expansionKey, expansionSummary, stepDateFor, splitSteps,
   describeOffset, expansionProjectTitle, processChoreId, resolveChoreAnchor,
   processChoreRow, occurrenceIsCurrent, classifyProcessWork,
-  processingBatchMissing,
+  processingBatchMissing, processAppliesToSpecies,
 } from "./processes.js";
 
 function process(over = {}) {
@@ -426,6 +426,29 @@ describe("processingBatchMissing", () => {
   it("never blocks a non-processing event kind", () => {
     expect(processingBatchMissing({ kindId: "batch_milestones", batchId: null }))
       .toBe(false);
+  });
+});
+
+describe("processAppliesToSpecies", () => {
+  // F20: processes link to event *kinds*, but both broiler and layer
+  // arrivals share the batch_milestones kind. A species-scoped process
+  // must only expand for the matching species so the broiler lifecycle
+  // process never fires on a layer arrival (and vice versa).
+  const broilerLifecycle = { id: "p1", speciesId: "broilers" };
+  const unscopedProcess = { id: "p2", speciesId: null };
+
+  it("expands only for its own species when scoped", () => {
+    expect(processAppliesToSpecies(broilerLifecycle, "broilers")).toBe(true);
+    expect(processAppliesToSpecies(broilerLifecycle, "layers")).toBe(false);
+  });
+
+  it("does not expand a species-scoped process for an anchor with no species", () => {
+    expect(processAppliesToSpecies(broilerLifecycle, null)).toBe(false);
+  });
+
+  it("expands for any species (incl. none) when unscoped", () => {
+    expect(processAppliesToSpecies(unscopedProcess, "layers")).toBe(true);
+    expect(processAppliesToSpecies(unscopedProcess, null)).toBe(true);
   });
 });
 

@@ -21,8 +21,8 @@ import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 // realtime plumbing.
 
 const PROCESS_COLS =
-  "id, title, description, is_active, lookahead_days, created_by, " +
-  "created_at, updated_at";
+  "id, title, description, is_active, lookahead_days, species_id, " +
+  "created_by, created_at, updated_at";
 const STEP_COLS =
   "id, process_id, title, body_md, offset_days, kind, target_chore_id, " +
   "modifier_action, modifier_text, modifier_priority, sort_order, " +
@@ -47,6 +47,7 @@ function shapeProcess(r) {
     description: r.description,
     isActive: r.is_active,
     lookaheadDays: r.lookahead_days ?? 60,
+    speciesId: r.species_id ?? null,
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -182,6 +183,7 @@ function processPatch(patch) {
   if ("description" in patch) out.description = patch.description;
   if ("isActive" in patch) out.is_active = patch.isActive;
   if ("lookaheadDays" in patch) out.lookahead_days = patch.lookaheadDays;
+  if ("speciesId" in patch) out.species_id = patch.speciesId;
   return out;
 }
 

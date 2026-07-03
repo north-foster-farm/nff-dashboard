@@ -4648,6 +4648,25 @@ color; clock-arrow overnight icons). Build refs in
     values were already null); packed_crates / final_count / notes
     unchanged (F22e). Closes the F22 processing-workspace slice.
 
+- **42.16 — species-scoped processes (F20.1).
+  `v0.10.93-alpha` (2026-07-03); migration 0049 (additive).** Foundation
+  for the layer lifecycle. Processes link to event *kinds*, but broiler
+  and layer arrivals share the `batch_milestones` kind — so the
+  "Broiler pasture (lifecycle)" process was only *implicitly*
+  broiler-scoped (layers had no arrival events). Before adding layer
+  arrivals, that implicit scope had to become explicit or both
+  lifecycle processes would fire on both species.
+  - Migration 0049: nullable `processes.species_id` (FK
+    livestock_species, on delete set null); backfills the existing
+    `Broiler %` processes to `broilers`. null = any anchor (unchanged
+    for market/pop-up + generic processing-prep).
+  - New tested pure predicate `processAppliesToSpecies(process,
+    speciesId)` (processes.js). useProcessRunner now resolves the
+    anchor batch + species up front (hoisted out of the chore loop into
+    resolveBatchLink/resolveSpecies helpers) and skips a scoped process
+    whose anchor is a different species before writing any expansion.
+  - useProcesses shapes/patches the new `speciesId` field.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

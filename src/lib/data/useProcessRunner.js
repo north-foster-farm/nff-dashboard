@@ -3,6 +3,7 @@ import { supabase } from "../supabase.js";
 import { useProcessTables } from "./useProcesses.js";
 import {
   planExpansions, splitSteps, processChoreRow, occurrenceIsCurrent,
+  processAppliesToSpecies,
 } from "../processes.js";
 
 // The process expansion engine (Batch 23; reworked in the 0025
@@ -75,6 +76,18 @@ export function useProcessRunner(data) {
 async function expandOne(plan) {
   const { process, steps, occurrence } = plan;
 
+  // ── 0. resolve the anchor batch + species ───────────────────────────
+  // A process may be scoped to one species (F20). Both broiler and
+  // layer arrivals share the batch_milestones kind, so the kind link
+  // can't distinguish them — resolve the anchor batch's species and
+  // skip before writing anything if a scoped process doesn't match.
+  // (These are also the anchor context the chore steps need.)
+  const batchLink = await resolveBatchLink(occurrence.instanceId);
+  const speciesId = batchLink
+    ? await resolveSpecies(batchLink.targetId)
+    : null;
+  if (!processAppliesToSpecies(process, speciesId)) return;
+
   // ── 1. idempotency guard ────────────────────────────────────────────
   const { data: expansion, error: expErr } = await supabase
     .from("process_expansions")
@@ -97,30 +110,9 @@ async function expandOne(plan) {
 
   // ── 2. one-time chores ──────────────────────────────────────────────
   if (chores.length > 0) {
-    // The anchor context comes from the event: its batch link (so the
-    // chores show on the batch page and in batch-scoped rounds) and that
-    // batch's species, used when a step authored a 'batch'/'species'
-    // anchor. Processing days created with the batch picker carry one.
-    const { data: batchLinks } = await supabase
-      .from("event_links")
-      .select("id, target_id")
-      .eq("series_id", occurrence.instanceId)
-      .eq("target_type", "batch")
-      .limit(1);
-    const batchLink = batchLinks?.[0]
-      ? { targetId: batchLinks[0].target_id }
-      : null;
-
-    let speciesId = null;
-    if (batchLink) {
-      const { data: grp } = await supabase
-        .from("livestock_groups")
-        .select("species_id")
-        .eq("id", batchLink.targetId)
-        .maybeSingle();
-      speciesId = grp?.species_id ?? null;
-    }
-
+    // The anchor context (batchLink + species, resolved in step 0) lets
+    // a step's 'batch'/'species' anchor resolve to a concrete id so the
+    // chores show on the batch page and in batch-scoped rounds.
     // Floor for the never-null block_id guarantee (Phase 0 soft policy).
     const { data: morningBlock } = await supabase
       .from("chore_blocks")
@@ -203,4 +195,26 @@ async function expandOne(plan) {
     .update({ created })
     .eq("id", expansion.id);
   if (doneErr) throw doneErr;
+}
+
+// The batch this event anchors to (event_links, target_type 'batch').
+// Processing days created with the batch picker and arrival events both
+// carry one; calendar events like a farmers market do not.
+async function resolveBatchLink(seriesId) {
+  const { data } = await supabase
+    .from("event_links")
+    .select("id, target_id")
+    .eq("series_id", seriesId)
+    .eq("target_type", "batch")
+    .limit(1);
+  return data?.[0] ? { targetId: data[0].target_id } : null;
+}
+
+async function resolveSpecies(batchId) {
+  const { data } = await supabase
+    .from("livestock_groups")
+    .select("species_id")
+    .eq("id", batchId)
+    .maybeSingle();
+  return data?.species_id ?? null;
 }
