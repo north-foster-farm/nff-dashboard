@@ -1,5 +1,5 @@
 import {
-  Home, Bird, Egg, Wrench, Truck, Wheat,
+  Home, Egg, Wrench, Truck, Wheat,
   Calendar, CalendarCheck, ListChecks, Tent, Sparkles, Package, Tag, Boxes, Activity,
   FolderKanban, Workflow, NotebookPen, MessageCircleQuestion,
   Receipt, PackagePlus, Banknote, Users, ShoppingBag, Scissors,
@@ -8,7 +8,7 @@ import {
   Lightbulb, ChartLine, Palette, Bot
 } from "lucide-react";
 import { isActiveProject } from "./lib/projects.js";
-import { Sheep } from "./components/animalIcons.jsx";
+import { Sheep, Chicken } from "./components/animalIcons.jsx";
 
 // Updates flagged as needing attention — anything sitting in or past review.
 // Surfaced as the counter on both Farm updates and Content calendar.
@@ -110,7 +110,7 @@ export const SECTIONS = [
   { id: "point_of_sale", group: "Sales", label: "Point of sale", icon: Banknote, kind: "action", description: "Record a sale on the spot at a market or event — drains inventory FIFO. Opens the Products page's Sell tab.", getCount: () => null },
 
   { id: "livestock_layers", group: "Animals", label: "Layers", icon: Egg, getCount: () => null },
-  { id: "livestock_broilers", group: "Animals", label: "Broilers", icon: Bird, getCount: () => null },
+  { id: "livestock_broilers", group: "Animals", label: "Broilers", icon: Chicken, getCount: () => null },
   { id: "livestock_sheep", group: "Animals", label: "Sheep", icon: Sheep, getCount: () => null },
   { id: "manage_feed_schedule", group: "Animals", label: "Manage feed", icon: Wheat, kind: "action", description: "The feed programs by species — what each group eats, how much per day, and when the amounts change as the animals age. The Feed page's reorder projections run on these numbers.", getCount: () => null },
 

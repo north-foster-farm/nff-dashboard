@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Clock, CheckCircle2, ArrowUpRight, ArrowRight,
   FolderKanban, Receipt, Newspaper, Activity as ActivityIcon,
-  MapPin, User, CloudOff, Workflow, Bird,
+  MapPin, User, CloudOff, Workflow,
   Sun, CloudSun, Cloud, CloudRain, CloudSnow,
 } from "lucide-react";
+import { Chicken } from "../components/animalIcons.jsx";
 import { T } from "../theme.js";
 import { formatDate, formatTime12h } from "../lib/dates.js";
 import { getEventOccurrences } from "../lib/recurrence.js";
@@ -1023,7 +1024,7 @@ function BroilerWeeksCard({ data }) {
   if (rows.length === 0) return null;
 
   return (
-    <Pane title="Broilers" icon={Bird} subtitle="weeks to processing">
+    <Pane title="Broilers" icon={Chicken} subtitle="weeks to processing">
       <div className="flex flex-col">
         {rows.map(({ speciesId, batch, life, weeks }) => {
           const arriving = life.state === "arriving";

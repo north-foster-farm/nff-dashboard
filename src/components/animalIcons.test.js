@@ -6,15 +6,16 @@
 // up wearing a Bird in the command palette).
 import { describe, it, expect } from "vitest";
 import { Egg, Bird, PawPrint } from "lucide-react";
-import { Sheep, iconForSpecies } from "./animalIcons.jsx";
+import { Sheep, Chicken, iconForSpecies } from "./animalIcons.jsx";
 
 describe("iconForSpecies", () => {
   it("gives layers an egg", () => {
     expect(iconForSpecies("layers")).toBe(Egg);
   });
 
-  it("gives broilers a bird", () => {
-    expect(iconForSpecies("broilers")).toBe(Bird);
+  it("gives broilers the chicken glyph, freeing Bird for other uses", () => {
+    expect(iconForSpecies("broilers")).toBe(Chicken);
+    expect(iconForSpecies("broilers")).not.toBe(Bird);
   });
 
   it("gives sheep the sheep glyph, not a bird or a paw", () => {

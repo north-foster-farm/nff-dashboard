@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import {
-  ArrowLeft, ChevronRight, MapPin, CalendarRange, Check, Cog, Bird,
+  ArrowLeft, ChevronRight, MapPin, CalendarRange, Check, Cog,
 } from "lucide-react";
+import { iconForSpecies } from "../components/animalIcons.jsx";
 import { useSites } from "../lib/data/useSites.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
@@ -354,7 +355,7 @@ function OccupantRow({
   const group = isBatch ? groupsById?.get(o.occupantId) : null;
   const species = group ? speciesById?.get(group.speciesId) : null;
   const machine = !isBatch ? machinesById?.get(o.occupantId) : null;
-  const Icon = isBatch ? Bird : Cog;
+  const Icon = isBatch ? iconForSpecies(group?.speciesId) : Cog;
   const name = isBatch
     ? group?.label ?? o.occupantId
     : machine

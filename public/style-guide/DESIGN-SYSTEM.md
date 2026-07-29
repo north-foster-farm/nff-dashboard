@@ -267,12 +267,16 @@ Each: STATUS · what · use/not · canonical source.
 - **Species icons** · New (F27) · one central species→glyph map
   (`iconForSpecies`) so the sidebar, command palette, and any animal
   surface draw the SAME mark for a species — layers `Egg`, broilers
-  `Bird`, sheep the custom `Sheep` glyph — instead of each call site
-  hardcoding its own (a sheep batch used to wear a `Bird` in the
-  palette). lucide has no sheep, so `Sheep` is a house glyph in
-  lucide's stroke language (24×24, currentColor, 2px round joins);
-  unknown species fall back to a neutral `PawPrint`. Source:
-  `src/components/animalIcons.jsx`.
+  the custom `Chicken` glyph, sheep the custom `Sheep` glyph —
+  instead of each call site hardcoding its own (a sheep batch used to
+  wear a `Bird` in the palette). lucide has no sheep or chicken, so
+  both are house glyphs in lucide's stroke language (24×24,
+  currentColor, 2px round joins): `Sheep` a woolly back on two legs,
+  `Chicken` a plump hen — one silhouette from tail point through a
+  jagged comb to a closed beak, eye dot, two legs. lucide's `Bird` is
+  freed for generic non-species bird surfaces (e.g. the command
+  palette's no-species batch fallback). Unknown species fall back to
+  a neutral `PawPrint`. Source: `src/components/animalIcons.jsx`.
 - **TimePoint / AnchoredRange** · New (F15) · the sun-anchorable time
   field: a select (Clock time · Sunrise · Sunset) + a `type="time"`
   input shown only for clock times; `AnchoredRange` pairs two with a

@@ -4766,6 +4766,25 @@ color; clock-arrow overnight icons). Build refs in
     it contradicts the current deliberate equal-height-rows design, so
     it needs a design call, not a quick fix.
 
+- **42.22 — broilers wear the house Chicken glyph. `v0.10.99-alpha`
+  (2026-07-29); pure frontend, no migration.** F27 follow-through:
+  broilers drew lucide's generic `Bird` on every surface. lucide has
+  no chicken, so `Chicken` joins `Sheep` as a house glyph in lucide's
+  stroke language (a plump hen — one silhouette from tail point
+  through a jagged comb to a closed beak, eye dot, two legs).
+  - `iconForSpecies` maps broilers → Chicken; test asserts it is
+    explicitly not Bird anymore.
+  - Call sites stop hardcoding Bird: the sidebar section entry,
+    Overview's BroilerWeeksCard, and Processing's batch-assign row
+    use Chicken; Metrics' comparison panes and PlacePage's occupant
+    rows now resolve through `iconForSpecies`, so each species
+    renders its own mark.
+  - lucide's `Bird` is freed for genuinely non-species bird surfaces;
+    its one remaining use is the command palette's no-species batch
+    fallback.
+  - Both design-library faces updated: revised species-icons entry
+    plus a rendered Egg · Chicken · Sheep example row.
+
 Features cut from the plan — kept so the reasoning isn't lost.
 Batch numbers are retired with them, leaving gaps in Upcoming.
 

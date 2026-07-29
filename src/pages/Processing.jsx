@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ChevronLeft, Save, CheckCircle2, Bird, ArrowUpRight,
+  ChevronLeft, Save, CheckCircle2, ArrowUpRight,
 } from "lucide-react";
+import { Chicken } from "../components/animalIcons.jsx";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
 import { useBatchAssignments } from "../lib/data/useBatchAssignments.js";
@@ -280,7 +281,7 @@ function BatchAssignSection({ seriesId, data, batchId, onAssigned }) {
       subtitle="Which batch is being processed this day. Assigning links the event to the batch's lifecycle page."
     >
       <div className="flex items-center gap-3 flex-wrap">
-        <Bird size={15} className="text-dim shrink-0" />
+        <Chicken size={15} className="text-dim shrink-0" />
         <BatchPicker
           candidates={candidates}
           value={assignedBatchId}

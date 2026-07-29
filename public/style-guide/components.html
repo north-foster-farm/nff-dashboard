@@ -928,16 +928,54 @@
     One central species→glyph map (<span class="mono">
     iconForSpecies</span>) so the sidebar, command palette, and any
     animal surface draw the SAME mark for a species — layers an
-    <span class="mono">Egg</span>, broilers a <span class="mono">
-    Bird</span>, sheep the custom <span class="mono">Sheep</span>
-    glyph (F27) — instead of each call site hardcoding its own (which
-    is how a sheep batch wore a Bird in the palette). lucide has no
-    sheep, so <span class="mono">Sheep</span> is a house glyph authored
-    in lucide's stroke language (24×24, currentColor, 2px round joins)
-    to sit as a sibling of the others. Unknown species fall back to a
-    neutral <span class="mono">PawPrint</span>. In
+    <span class="mono">Egg</span>, broilers the custom
+    <span class="mono">Chicken</span> glyph, sheep the custom
+    <span class="mono">Sheep</span> glyph (F27) — instead of each call
+    site hardcoding its own (which is how a sheep batch wore a Bird in
+    the palette). lucide has no sheep or chicken, so both are house
+    glyphs authored in lucide's stroke language (24×24, currentColor,
+    2px round joins) to sit as siblings of the others:
+    <span class="mono">Sheep</span> a woolly back on two legs,
+    <span class="mono">Chicken</span> a plump hen — one silhouette from
+    tail point through a jagged comb to a closed beak, eye dot, two
+    legs. lucide's <span class="mono">Bird</span> is freed for generic
+    non-species bird surfaces (the command palette's no-species batch
+    fallback). Unknown species fall back to a neutral
+    <span class="mono">PawPrint</span>. In
     <span class="mono">src/components/animalIcons.jsx</span>.
   </p>
+  <div class="ds-example">
+    <div class="ds-example-stage">
+      <div style="display:flex;align-items:center;gap:18px;padding:6px">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M12 2C8 2 4 8 4 14a8 8 0 0 0 16 0c0-6-4-12-8-12"/>
+        </svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M4.8 5.8Q9.4 7.4 14.2 7Q15 6.4 15.2 5.2L15.5
+            3.4L16.5 4.5L17.5 3.6L18.5 5.2Q19.5 6.5 19.7 7.3L22
+            8.1L19.5 9Q19.2 10.6 18.4 11.2A6.6 6.6 0 1 1 5.7 9Z"/>
+          <path d="M15.9 7.5h.01"/>
+          <path d="M10.8 18.2v2.3M13.8 18.2v2.3"/>
+        </svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M6 12.5a2.2 2.2 0 0 1 1-4.1 2.2 2.2 0 0 1
+            3.5-2.2 2.2 2.2 0 0 1 3.9 0 2.2 2.2 0 0 1 3.4 2.4"/>
+          <path d="M6 12.5A3.5 3.5 0 0 0 9.5 18H13"/>
+          <circle cx="17" cy="12" r="3"/>
+          <path d="m19.3 10.1 1.3-1.1"/>
+          <path d="M9 18v2.5M12.5 18v2.5"/>
+        </svg>
+      </div>
+    </div>
+    <div class="ds-example-meta">layers · broilers · sheep — the two
+      house glyphs beside lucide's Egg</div>
+  </div>
 
   <h3 class="ds-h3">TimePoint / AnchoredRange
     <span class="ds-status new">New</span></h3>

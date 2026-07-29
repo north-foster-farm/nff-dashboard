@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { ArrowUpRight, Bird, BookOpen, Egg } from "lucide-react";
+import { ArrowUpRight, BookOpen } from "lucide-react";
+import { iconForSpecies } from "../components/animalIcons.jsx";
 import { useMetricDefinitions } from "../lib/data/useMetricDefinitions.js";
 import { useWeightSamples } from "../lib/data/useWeightSamples.js";
 import { useEggCollections } from "../lib/data/useEggCollections.js";
@@ -142,7 +143,7 @@ function BroilerComparison({
   return (
     <Pane
       title={`${species.name} — batch comparison`}
-      icon={Bird}
+      icon={iconForSpecies(species.id)}
       subtitle={`${rows.length} batch${rows.length === 1 ? "" : "es"}`}
     >
       <ComparisonTable
@@ -224,7 +225,7 @@ function LayerComparison({
   return (
     <Pane
       title={`${species.name} — flock comparison`}
-      icon={Egg}
+      icon={iconForSpecies(species.id)}
       subtitle={`${rows.length} flock${rows.length === 1 ? "" : "s"}`}
     >
       <ComparisonTable

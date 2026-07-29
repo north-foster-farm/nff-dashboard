@@ -1,11 +1,11 @@
-import { Egg, Bird, PawPrint } from "lucide-react";
+import { Egg, PawPrint } from "lucide-react";
 
 // Animal iconography (F27). One species→glyph map, so every surface —
 // the sidebar, the command palette, batch headers — draws the same
 // mark for a species instead of each call site hardcoding its own.
-// lucide has no sheep, so `Sheep` below is a house glyph in lucide's
-// stroke language (24×24, currentColor, round joins) to sit cleanly
-// beside Egg and Bird.
+// lucide has no sheep or chicken, so `Sheep` and `Chicken` below are
+// house glyphs in lucide's stroke language (24×24, currentColor,
+// round joins) to sit cleanly beside Egg.
 
 // A woolly body on two legs with a head to the right. Authored to match
 // lucide's line weight so it reads as a sibling of the other icons.
@@ -39,11 +39,47 @@ export function Sheep({ size = 18, className = "", ...props }) {
   );
 }
 
+// A plump hen facing right: one silhouette from tail point over the
+// back, up the neck into a jagged comb, around the face to a closed
+// beak, then a chin-to-tail belly sweep; eye dot and two legs. Like
+// Sheep, authored in lucide's stroke language.
+export function Chicken({ size = 18, className = "", ...props }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      {/* tail -> back -> neck -> comb -> face -> beak -> chin -> belly */}
+      <path
+        d="M4.8 5.8Q9.4 7.4 14.2 7Q15 6.4 15.2 5.2L15.5 3.4L16.5
+           4.5L17.5 3.6L18.5 5.2Q19.5 6.5 19.7 7.3L22 8.1L19.5
+           9Q19.2 10.6 18.4 11.2A6.6 6.6 0 1 1 5.7 9Z"
+      />
+      {/* eye */}
+      <path d="M15.9 7.5h.01" />
+      {/* legs */}
+      <path d="M10.8 18.2v2.3M13.8 18.2v2.3" />
+    </svg>
+  );
+}
+
 // The per-species glyph. Unknown species fall back to a generic animal
 // paw (better a neutral animal mark than the wrong species' icon).
+// Broilers wear the house Chicken, not lucide's Bird — Bird is reserved
+// for non-chicken bird surfaces.
 const BY_SPECIES = {
   layers: Egg,
-  broilers: Bird,
+  broilers: Chicken,
   sheep: Sheep,
 };
 
