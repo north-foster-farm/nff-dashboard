@@ -30,7 +30,7 @@
 //   { id, occursOn, startTime, endTime, locationOverride, status,
 //     notesOverride, payloadOverride }
 
-import { RRule, rrulestr } from "rrule";
+import { rrulestr } from "rrule";
 import { parseISODate, formatISODate } from "./dates.js";
 
 const ZERO_OFFSETS = ["00:00", "00:00:00"];
@@ -228,7 +228,3 @@ export function getEventOccurrences(eventsData, fromDate, toDate, filters) {
   );
   return all;
 }
-
-// Convenience exports for callers that want to roll their own
-// expansion (e.g. the future EventEditor preview pane).
-export { RRule, rrulestr };

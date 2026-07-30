@@ -68,10 +68,7 @@ export default function Sidebar({ current, onSelect, onOpenRounds, data }) {
         className="w-50 max-w-50 border-r border-line shrink-0 bg-surface flex flex-col"
       >
         <div className="py-5 flex-1 overflow-y-auto no-scrollbar">
-        {SECTIONS.map((s, idx) => {
-          if (s.kind === "spacer") {
-            return <div key={`spacer-${idx}`} className="h-3.5" />;
-          }
+        {SECTIONS.map((s) => {
           if (s.kind === "hidden") return null;
           const showHeader = s.group !== lastGroup && s.group !== null;
           lastGroup = s.group;

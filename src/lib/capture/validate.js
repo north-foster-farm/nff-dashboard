@@ -19,10 +19,6 @@ function validator(schemaId, version) {
   return v;
 }
 
-export function isValid(schemaId, version, doc) {
-  return validator(schemaId, version)(doc);
-}
-
 // Throws a descriptive error if `doc` is invalid against (schemaId, version).
 export function assertValid(schemaId, version, doc) {
   const v = validator(schemaId, version);

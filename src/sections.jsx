@@ -28,7 +28,6 @@ function countUpdatesNeedingAttention(d) {
 //
 // `kind`:
 //   "page"    → normal navigation item (default)
-//   "spacer"  → renders only as a vertical gap
 //   "action"  → renders with an arrow indicator (action-style item)
 //   "flyout"  → renders with a chevron; opens a submenu pane with `children`
 //   "takeover"→ custom full-screen surface (Rounds)
@@ -151,7 +150,6 @@ export const SECTIONS = [
 
 export function findSection(id) {
   for (const s of SECTIONS) {
-    if (s.kind === "spacer") continue;
     if (s.id === id) return s;
     if (s.children) {
       const c = s.children.find(ch => ch.id === id);
@@ -178,11 +176,3 @@ export function getEventKindFromSectionId(id, data) {
   return data.events.kinds.find(k => k.id === id.replace("events_", "")) ?? null;
 }
 
-export function resolveSectionDescription(section, data) {
-  if (section.description) return section.description;
-  const sp = getSpeciesFromSectionId(section.id, data);
-  if (sp) return `${sp.purpose} · Tracked by ${sp.trackingModel}`;
-  const ek = getEventKindFromSectionId(section.id, data);
-  if (ek) return ek.description;
-  return "";
-}

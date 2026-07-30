@@ -37,7 +37,7 @@ export function blockIcon(block, date = new Date()) {
 // the largest text-density setting (body zoom 1.4+) the old boxed
 // treatment read as loudly as the chore title itself; an icon-only
 // glyph stays subordinate at every zoom.
-export default function BlockBadge({
+function BlockBadge({
   block, tone = "default", size = 11, className = "",
 }) {
   const Icon = blockIcon(block);
