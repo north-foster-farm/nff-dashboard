@@ -23,6 +23,7 @@ import {
   resolveAssignee,
   expandChoreForDay,
   getChoresForDay,
+  choresRemainingToday,
   describeFrequency,
   choreDaysRemaining,
   displayDeadlineDateShort,
@@ -505,6 +506,30 @@ describe("expandChoreForDay / getChoresForDay", () => {
   it("getChoresForDay with no data falls back to the built-in CHORE_SEEDS (never throws)", () => {
     expect(() => getChoresForDay({}, d(2026, 6, 1))).not.toThrow();
     expect(Array.isArray(getChoresForDay({}, d(2026, 6, 1)))).toBe(true);
+  });
+});
+
+describe("choresRemainingToday (the Chores sidebar badge)", () => {
+  const monday = d(2026, 6, 1);
+  const farmData = { chores: { definitions: [
+    chore({ id: "feed-layers", frequency: { type: "daily" } }),
+    chore({ id: "move-tractors", frequency: { type: "daily" } }),
+    chore({ id: "wed-only", frequency: { type: "weekly", days: [3] } }),
+  ] } };
+
+  it("counts every due chore while nothing is completed", () => {
+    const dueOnMonday = 2; // wed-only doesn't fire
+    expect(choresRemainingToday(farmData, monday, new Set()))
+      .toBe(dueOnMonday);
+  });
+
+  it("drops a chore once any completion is logged for it today", () => {
+    const completed = new Set(["feed-layers"]);
+    expect(choresRemainingToday(farmData, monday, completed)).toBe(1);
+  });
+
+  it("treats a missing completed set (completions still loading) as none", () => {
+    expect(choresRemainingToday(farmData, monday)).toBe(2);
   });
 });
 

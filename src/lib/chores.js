@@ -32,6 +32,18 @@ export function getAllChoreDefinitions(data) {
   return fromData.length > 0 ? fromData : CHORE_SEEDS;
 }
 
+// The Chores sidebar badge: how many chores due today have no
+// completion logged yet. Chore-level and deliberately place-blind — a
+// fanned-out chore (2 of 3 coops done) stops counting at its first
+// completion; the per-place truth lives in Rounds and the Chores tab,
+// not in a nav badge. A missing set means completions are still
+// loading: count everything due.
+export function choresRemainingToday(data, date, completedChoreIds) {
+  const done = completedChoreIds ?? new Set();
+  return getChoresForDay(data, date)
+    .filter((inst) => !done.has(inst.choreId)).length;
+}
+
 // Day-of-week in local time, Sun=0…Sat=6 (matches stored frequency values).
 export function dayOfWeek(date) {
   return date.getDay();

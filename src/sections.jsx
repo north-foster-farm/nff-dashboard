@@ -8,6 +8,7 @@ import {
   Lightbulb, ChartLine, Palette, Bot
 } from "lucide-react";
 import { isActiveProject } from "./lib/projects.js";
+import { choresRemainingToday } from "./lib/chores.js";
 import { Sheep, Chicken } from "./components/animalIcons.jsx";
 
 // Updates flagged as needing attention — anything sitting in or past review.
@@ -77,12 +78,11 @@ export const SECTIONS = [
     ]
   },
   { id: "chores", group: "Planning", label: "Chores", icon: ListChecks, description: "Recurring scheduled work and the activity log",
-    // Badge count. NOTE: still the Batch-4 fallback — the TOTAL number
-    // of chore definitions, not "chores left to do today", even though
-    // chore_completions has existed since 0002. Wiring this to the real
-    // remaining-today count needs the completions slice in the sections
-    // registry (it only gets `data`).
-    getCount: (d) => d.chores.definitions.length },
+    // "Chores left to do today": due today minus anything with a
+    // completion logged (chore-level; Sidebar passes the ctx). Without
+    // ctx (loading, or a caller that has none) everything due counts.
+    getCount: (d, ctx) =>
+      choresRemainingToday(d, ctx?.today ?? new Date(), ctx?.completedChoreIds) },
   // Custom takeover entry: clicking this opens the full-screen Rounds
   // surface, bypassing the normal layout. Sidebar.jsx detects
   // `kind: "takeover"` and renders a custom item with a live label.

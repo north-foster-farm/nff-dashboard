@@ -1,13 +1,28 @@
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronRight, ExternalLink, X } from "lucide-react";
 import { SECTIONS, findFlyoutParentForChild } from "../sections.jsx";
 import RoundsSidebarItem from "./RoundsSidebarItem.jsx";
+import { useChoreCompletions } from "../lib/data/useChoreCompletions.js";
 
 // Duration of the flyout enter/exit keyframe — must match the animation
 // declared in index.html (`nff-flyout-in` / `nff-flyout-out`).
 const FLYOUT_ANIM_MS = 140;
 
 export default function Sidebar({ current, onSelect, onOpenRounds, data }) {
+  // Today's completion log, for the Chores badge (chores left today).
+  // Chore-level: the set holds every chore id with at least one
+  // completion logged today, any place. Server rows + synced outbox
+  // ops; a not-yet-synced offline tick updates the badge on sync.
+  const today = useMemo(() => new Date(), []);
+  const completions = useChoreCompletions(today);
+  const countCtx = useMemo(() => {
+    const completedChoreIds = new Set();
+    for (const key of completions.completions?.keys() ?? []) {
+      completedChoreIds.add(key.split("|")[0]);
+    }
+    return { today, completedChoreIds };
+  }, [today, completions.completions]);
+
   const [openFlyoutId, setOpenFlyoutId] = useState(null);
   const [closing, setClosing] = useState(false);
   const flyoutRef = useRef(null);
@@ -82,7 +97,8 @@ export default function Sidebar({ current, onSelect, onOpenRounds, data }) {
           }
           // A flyout-parent counts as "active" when one of its children is current.
           const active = s.id === current || (s.kind === "flyout" && flyoutParent?.id === s.id);
-          const count = typeof s.getCount === "function" ? s.getCount(data) : null;
+          const count = typeof s.getCount === "function"
+            ? s.getCount(data, countCtx) : null;
           return (
             <div key={s.id}>
               {showHeader && <GroupLabel>{s.group}</GroupLabel>}
@@ -212,7 +228,8 @@ const FlyoutPane = forwardRef(function FlyoutPane({ parent, current, data, onSel
           key={child.id}
           child={child}
           active={child.id === current}
-          count={typeof child.getCount === "function" ? child.getCount(data) : null}
+          count={typeof child.getCount === "function"
+            ? child.getCount(data, countCtx) : null}
           onSelect={onSelect}
         />
       ))}
