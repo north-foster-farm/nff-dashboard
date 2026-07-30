@@ -22,7 +22,12 @@
 // history, bundles, and the record-a-sale + sales-over-time
 // surface), "Inventory and point of sale" (Batches 28.1–28.2 —
 // lot-based inventory with the movement audit trail, and the Sell
-// tab register with FIFO draw-down and the family-sale flow).
+// tab register with FIFO draw-down and the family-sale flow),
+// "Orders" (Batches 29.1–29.3 — orders backend + CRUD, the open →
+// ready → fulfilled lifecycle, and shipments), "App-wide search"
+// (Batch 33 — the cmd-K palette; it is client-side, never a
+// tsvector index), "iPhone-friendly" (Batch 35 — the mobile pass +
+// the PWA install prompt).
 //
 // Graveyarded (cut from the plan, not shipped — see ROADMAP.md →
 // Graveyard): "Bookmarks", "Voice control" (both 2026-06-02).
@@ -36,11 +41,6 @@ const ITEMS = [
       "Google Calendar reaches). The dashboard stays the source of " +
       "truth for edits — the phone copy is intentionally read-only so " +
       "there's no risk of two clocks disagreeing.",
-  },
-  {
-    title: "Orders",
-    body: "Manual order entry, in-flight edits in collaboration with " +
-      "the customer, and shipments created directly from an order.",
   },
   {
     title: "Stripe, Venmo, QuickBooks",
@@ -62,16 +62,6 @@ const ITEMS = [
     body: "Capture what we learn from the farm's repeating events " +
       "and have those lessons resurface automatically the next time " +
       "the schedule heads toward the same kind of event.",
-  },
-  {
-    title: "App-wide search",
-    body: "Cmd-K palette over every entity in the app, backed by a " +
-      "Postgres full-text index.",
-  },
-  {
-    title: "iPhone-friendly",
-    body: "Every page audited at iPhone widths. Add to Home Screen via " +
-      "a PWA install prompt.",
   },
   {
     title: "Works offline",
