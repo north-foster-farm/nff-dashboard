@@ -76,6 +76,21 @@ never loosen to make a commit pass:
   chore block reference and farm-map binding resolves. Run it after
   anything that touches blocks, deadlines, places, or the map SVG.
 
+## Branch & merge — THIS REPO OVERRIDES the global flow (2026-07-30)
+
+Since deploys fire on anything reaching main, main is gated by a
+GitHub ruleset (James's H5 call): **no direct pushes**. The global
+squash/fast-forward-push strategy does not apply here.
+
+- Work on a feature branch; squash to atomic commits as usual.
+- Open a PR; the `check` workflow (`.github/workflows/check.yml`)
+  must pass — it's the required status.
+- Merge with GitHub's **"Rebase and merge"** (keeps history linear;
+  commits get new SHAs; the PR shows Merged natively — the old
+  force-push-then-fast-forward dance is retired for this repo).
+- Delete the branch after merge. Netlify deploys the merge — so a
+  deploy can only ever be a checked commit.
+
 ## Commit style
 
 Every commit on this repo follows one consistent shape. Match it.
