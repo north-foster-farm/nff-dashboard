@@ -92,15 +92,17 @@ export function getRollupAssignee(rollup, dayDate, ruleOpts) {
 // chore blocks) derived by the ribbon partitioner — ordered, non-overlapping
 // Project blocks, each carrying structured who's-free availability. It is a
 // separate field (not folded into `choreRollups`) so the load-bearing chore
-// assembly stays untouched; the trailing after-last gap is Overnight, added
-// in a later batch and not emitted here.
+// assembly stays untouched; the trailing after-last gap is Overnight,
+// composed by Schedule from `partition.js`'s `overnightWindow` and not
+// emitted here.
 //
 // `deltas` is the seam for schedule-local commitment overrides
-// (placements, reassignments, pulled should-chores). None exist yet — they
-// arrive in S6 — so this is an identity fold today. It is orphan-tolerant
-// BY CONTRACT: a delta that points at a source no longer emitted by the
-// derived day must be skipped, never throw (the derive-and-fold merge is
-// the feature's richest bug surface; S6 fills `foldDeltas` accordingly).
+// (placements, reassignments, pulled should-chores), folded in by
+// `foldDeltas` below (S6). With no deltas it degrades to an identity
+// fold. It is orphan-tolerant BY CONTRACT: a delta that points at a
+// source no longer emitted by the derived day must be skipped, never
+// throw (the derive-and-fold merge is the feature's richest bug
+// surface).
 export function deriveDay({ data, dayDate, dayUTC, dayISO, ruleOpts, deltas = [] }) {
   // Round 5 BUG FIX: the zero-width range (dayUTC..dayUTC) only matched
   // occurrences at exactly midnight — an event with a real start time

@@ -1,9 +1,10 @@
-// The ribbon partitioner — Project blocks (and, later, Overnight).
+// The ribbon partitioner — Project blocks + Overnight.
 //
 // Derives the day's NEGATIVE space — the time between chore blocks — into
 // Project segments. A Project block is the available time in a gap BETWEEN
 // chore blocks, or BEFORE the first one (the window AFTER the last chore
-// block is Overnight, added in a later batch — not here).
+// block is Overnight — see the Overnight section below, not
+// `projectGaps`).
 //
 // Pure + tolerant: bad input yields fewer segments, never throws. Computed
 // client-side from chore-block DEFINITIONS (occurrence-based) + sun-times, so
@@ -157,7 +158,8 @@ export function inOvernight(win, minutes, side) {
 
 // Derive the Project segments for a day. Returns ordered segments:
 //   { kind:'project', startMin, endMin, durationMin, who:{freeCount,who} }
-// Excludes the after-last-block window (that is Overnight, added later).
+// Excludes the after-last-block window (that is Overnight —
+// `overnightWindow`).
 // When `availability` (the { hours, timeOff, breaks } ctx from
 // useAvailability) is passed, the band derives from working hours —
 // retiring the magic 8a-6p defaults (F51) — active breaks carve holes

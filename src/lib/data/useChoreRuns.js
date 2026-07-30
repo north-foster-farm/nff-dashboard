@@ -5,7 +5,8 @@ import {
   enqueueOp, initOutbox, outboxOps, subscribeOutbox,
 } from "../outbox.js";
 
-// Loads chore_runs for today + a rolling history window and exposes
+// Loads block-run commitments (`commitments`,
+// `source_type='chore_block'`) for today + a rolling history window and exposes
 // lifecycle mutations for the Rounds takeover.
 //
 // "Today" is the calendar date in the user's local timezone. A run
@@ -557,7 +558,7 @@ export function useChoreRuns({ blocks, historyDays = 7 } = {}) {
   };
 }
 
-// Local-date YYYY-MM-DD (not UTC). chore_runs.run_date is a `date`
+// Local-date YYYY-MM-DD (not UTC). The commitment's run_date is a `date`
 // column, no timezone, so we want the user's day.
 function isoLocalDate(d) {
   const y = d.getFullYear();

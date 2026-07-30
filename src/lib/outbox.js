@@ -3,7 +3,7 @@ import { supabase } from "./supabase.js";
 // Device-local, append-only outbox (Batch 16.2; run lifecycle 17).
 //
 // Every field write (chore completions, run events, mortality counts,
-// egg collections, chore_runs lifecycle) is appended here first; a
+// egg collections, block-run lifecycle) is appended here first; a
 // sync engine then
 // pushes ops to Supabase in FIFO order. The UI reads pending ops as an
 // overlay on top of server state, so a tick in a dead zone applies

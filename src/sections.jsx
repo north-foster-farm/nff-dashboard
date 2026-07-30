@@ -78,9 +78,11 @@ export const SECTIONS = [
     ]
   },
   { id: "chores", group: "Planning", label: "Chores", icon: ListChecks, description: "Recurring scheduled work and the activity log",
-    // "Chores left to do today". With no completion log modeled yet, fall back to the
-    // total count of chore definitions (i.e. nothing has been logged as done yet).
-    // 0 when there are no chores at all.
+    // Badge count. NOTE: still the Batch-4 fallback — the TOTAL number
+    // of chore definitions, not "chores left to do today", even though
+    // chore_completions has existed since 0002. Wiring this to the real
+    // remaining-today count needs the completions slice in the sections
+    // registry (it only gets `data`).
     getCount: (d) => d.chores.definitions.length },
   // Custom takeover entry: clicking this opens the full-screen Rounds
   // surface, bypassing the normal layout. Sidebar.jsx detects

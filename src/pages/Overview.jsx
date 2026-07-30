@@ -897,7 +897,7 @@ function UpcomingPlaceRow({ choreId, placeId, placesById, completions }) {
   );
 }
 
-// ─── Projects, orders, updates (empty-state placeholders) ────────────────────
+// ─── Projects, orders, updates ───────────────────────────────────────────────
 
 function ProjectsInProgressCard({ data }) {
   // Active = in its [start, target] window and not completed — the same

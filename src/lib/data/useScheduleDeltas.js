@@ -167,10 +167,11 @@ export function useScheduleDeltas(dateISO) {
         project_id: node.projectId, step_id: node.stepId ?? null,
         title: node.title, project_title: node.projectTitle ?? null,
         block_id: blockId ?? null,
-        // `origin: "auto"` marks a placement written by the scheduling
-        // engine's reflow, so a later reflow can replace only its own
-        // placements and leave manual (origin absent) ones untouched.
-        // Rides source_ref jsonb — no schema/outbox change.
+        // `origin: "auto"` marked a placement written by the retired
+        // reflow engine, which used it to replace only its own
+        // placements. The engine is gone (42.4); the field is written
+        // through for the historical rows only — nothing reads it to
+        // decide anything. Rides source_ref jsonb.
         origin: node.origin ?? null,
       },
       clockTime: clockTime ?? null,

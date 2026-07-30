@@ -199,7 +199,7 @@ export function quantile(values, q) {
 
 // ── Date plumbing ───────────────────────────────────────────────────
 
-// Parse a chore_runs.run_date (YYYY-MM-DD, no timezone) into a local
+// Parse a run's `run_date` (YYYY-MM-DD, no timezone) into a local
 // Date for sun-event resolution. We anchor at noon to avoid the DST
 // "spring forward" hour producing a sunrise on the previous day.
 function parseRunDate(run) {

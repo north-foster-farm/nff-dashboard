@@ -203,7 +203,8 @@ export default function Rounds({ data, initialBlockId, onClose }) {
 
   // Active run — the main doing surface. The run state derives from
   // completions: when every chore in the block is checked, we
-  // auto-flip chore_runs.state to 'done'; un-checking flips it back.
+  // auto-flip the run commitment's `state` to 'done'; un-checking
+  // flips it back.
   return (
     <DoingSurface
       data={data}

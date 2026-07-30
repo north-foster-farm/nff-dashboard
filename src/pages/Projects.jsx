@@ -24,7 +24,8 @@ import { formatDateRange } from "../lib/projects.js";
 //   • Unprioritized bucket — scoped-but-not-yet-actionable / one-line
 //     ideas, with an optional plain-text timing note. Replaces "on hold".
 //   • Lock-to-date — the escape hatch to jump the queue; a locked project
-//     stays put and (a later batch) the schedule flows around it.
+//     stays put; nothing yet flows the day's other work around it (the
+//     reflow engine that would have was retired in 42.4).
 // Done is completedAt; archived is archivedAt — both orthogonal to the
 // queue. The old status-as-priority model is gone.
 

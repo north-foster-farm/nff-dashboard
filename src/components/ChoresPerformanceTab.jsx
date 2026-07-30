@@ -11,7 +11,7 @@ import { displayBlockSide } from "../lib/sunTimes.js";
 // showing run history aggregated over the last 30 days. No per-user
 // splits, no predictive nudges, no reason prompts — just data.
 //
-// Reads chore_runs via useRunHistory. Sun-event blocks resolve their
+// Reads block-run commitments via useRunHistory. Sun-event blocks resolve their
 // nominal window per run-date (so a run from three weeks ago is
 // compared against THAT day's sunrise/sunset, not today's).
 

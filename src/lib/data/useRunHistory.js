@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { realtimeChannel, supabase } from "../supabase.js";
 
 // Read-only history hook for the Performance sub-tab. Pulls
-// chore_runs for the last `days` calendar days (defaults to 30 — the
+// block-run commitments for the last `days` calendar days (defaults to 30 — the
 // window the spec calls for). Realtime-subscribed so a freshly-ended
 // run shows up in the histogram without a reload. No mutations —
 // useChoreRuns owns those.

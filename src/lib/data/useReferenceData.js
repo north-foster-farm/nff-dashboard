@@ -685,8 +685,9 @@ async function loadProjects() {
   const phases = phaseRes.error ? [] : (phaseRes.data ?? []);
   const steps = stepRes.error ? [] : (stepRes.data ?? []);
   return projRes.data.map(p => {
-    // Steps hydrated with title + sortOrder so the Schedule can offer them as
-    // schedulable nodes and auto-pull the next one (nextProjectStep). The
+    // Steps hydrated with title + sortOrder so the Schedule can offer
+    // them as schedulable nodes for the manual quick-add ("Add next
+    // task", via nextRankedStep in lib/schedule/reflow.js). The
     // realtime channel above already watches project_steps, so these stay live.
     const mySteps = steps
       .filter(st => st.project_id === p.id)
@@ -710,9 +711,12 @@ async function loadProjects() {
       notes: p.notes,
       createdAt: p.created_at,
       sortOrder: p.sort_order ?? 0,
-      // Queue fields ride along so the Schedule can run the reflow
-      // engine (staleness + sync-now + auto-fallback) off this
-      // app-wide slice (F59/F60).
+      // Queue fields ride along so the Schedule + Now surface can
+      // read the ranked project queue (rankedActiveProjects /
+      // nextRankedStep in lib/schedule/reflow.js) off this app-wide
+      // slice. The auto-seeding reflow engine that used to consume
+      // them was retired in 42.4 (NO-LEGACY) — placement is manual
+      // quick-add now.
       queueState: p.queue_state ?? "ranked",
       lockedDate: p.locked_date,
       steps: mySteps,
