@@ -60,11 +60,16 @@ const REST = `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1`;
 const headers = { apikey: SECRET, Authorization: `Bearer ${SECRET}` };
 
 // Tables we most care about not losing, surfaced first in the summary.
+// Kept in step with CLAUDE.md's data-safety list — corrected 2026-07-30:
+// `chore_runs` was dropped from prod by migration 0036, and the schedule
+// tables that superseded it were missing here entirely. They hold every
+// confirmed day and every reservation, so they belong at the top.
 const PRIORITY = new Set([
   "event_series", "event_occurrences", "event_links", "event_instances",
   "automations", "gcal_pushes",
-  "chore_definitions", "chore_blocks", "chore_modifiers", "chore_runs",
+  "chore_definitions", "chore_blocks", "chore_modifiers",
   "chore_completions", "chore_assignment_rules", "chore_messages",
+  "commitments", "captures", "capture_schemas",
   "activity_log", "activity_log_condition_states",
 ]);
 
