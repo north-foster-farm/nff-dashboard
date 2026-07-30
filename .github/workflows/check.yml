@@ -12,6 +12,11 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # The suite resolves sun-anchored windows (suncalc) in local
+      # time; in UTC the farm's sunset lands past midnight and the
+      # F15 tests fail. Farm time is the domain's timezone.
+      TZ: America/New_York
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
