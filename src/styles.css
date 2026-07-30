@@ -1,4 +1,4 @@
-@import url("tailwindcss");
+@import "tailwindcss";
 
 /* Theme switching is driven by `data-theme` on <html> (set by the boot
    script in index.html). Wire that into Tailwind's dark variant so we can

@@ -16,6 +16,12 @@ export default {
         "variant",
       ],
     }],
+    // Tailwind 4 only processes `@import "tailwindcss"` in the bare
+    // string form — stylelint's default `url()` notation (and its
+    // autofix) silently turns it into a plain external import, which
+    // builds a stylesheet with ZERO generated utilities. Never allow
+    // url() notation here.
+    "import-notation": "string",
     // Token names mirror src/theme.js camelCase-derived names and
     // Tailwind's own generated properties — not kebab-case.
     "custom-property-pattern": null,
