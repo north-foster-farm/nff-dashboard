@@ -652,20 +652,6 @@ export function choreDaysRemaining(chore, now = new Date(), blocks = []) {
   return { kind: "today" };
 }
 
-// Short label for the days-remaining pill, e.g. "due today" /
-// "3 days left" / "overran". Returns "" when no pill applies.
-export function displayDaysRemaining(chore, now, blocks) {
-  const r = choreDaysRemaining(chore, now, blocks);
-  if (!r) return "";
-  if (r.kind === "today") return "due today";
-  if (r.kind === "overran") return "overran";
-  if (r.kind === "days") {
-    if (r.days === 1) return "1 day left";
-    return `${r.days} days left`;
-  }
-  return "";
-}
-
 const MON_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -915,13 +901,6 @@ export function obligationPlaceIds(chore, ctx = {}) {
     default:
       return [null];
   }
-}
-
-// True when a chore's anchor currently resolves to zero obligations —
-// no active animals (winter, between batches), no places with the
-// anchored kind_tag, or a dangling anchor whose target was deleted.
-export function choreIsDormant(chore, ctx) {
-  return obligationPlaceIds(chore, ctx).length === 0;
 }
 
 // Human-readable label for what a chore belongs to. `ctx` additionally

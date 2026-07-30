@@ -8,12 +8,10 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   parseISODate,
   formatISODate,
-  isSameDay,
   todayUTC,
   formatDate,
   formatLongDate,
   formatTime12h,
-  DAY_NAMES,
   computeAge,
   formatAge,
 } from "./dates.js";
@@ -58,26 +56,6 @@ describe("formatISODate", () => {
 
   it("round-trips with parseISODate", () => {
     expect(formatISODate(parseISODate("2025-12-31"))).toBe("2025-12-31");
-  });
-});
-
-describe("isSameDay", () => {
-  it("two instants on the same UTC day match, whatever the time", () => {
-    const a = new Date("2026-06-03T01:00:00Z");
-    const b = new Date("2026-06-03T23:59:59Z");
-    expect(isSameDay(a, b)).toBe(true);
-  });
-
-  it("instants on adjacent UTC days do not match", () => {
-    const a = new Date("2026-06-03T23:30:00Z");
-    const b = new Date("2026-06-04T00:30:00Z");
-    expect(isSameDay(a, b)).toBe(false);
-  });
-
-  it("compares in UTC — a month/year boundary splits cleanly", () => {
-    const a = new Date("2025-12-31T23:00:00Z");
-    const b = new Date("2026-01-01T01:00:00Z");
-    expect(isSameDay(a, b)).toBe(false);
   });
 });
 
@@ -157,14 +135,6 @@ describe("formatTime12h", () => {
 
   it("handles the last minute of the day", () => {
     expect(formatTime12h("23:59")).toBe("11:59 PM");
-  });
-});
-
-describe("DAY_NAMES", () => {
-  it("is the 7 English day names, Sunday-first (getDay order)", () => {
-    expect(DAY_NAMES).toHaveLength(7);
-    expect(DAY_NAMES[0]).toBe("Sunday");
-    expect(DAY_NAMES[6]).toBe("Saturday");
   });
 });
 

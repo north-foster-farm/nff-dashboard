@@ -8,14 +8,6 @@ export function formatISODate(d) {
   return d.toISOString().slice(0, 10);
 }
 
-export function isSameDay(a, b) {
-  return (
-    a.getUTCFullYear() === b.getUTCFullYear() &&
-    a.getUTCMonth() === b.getUTCMonth() &&
-    a.getUTCDate() === b.getUTCDate()
-  );
-}
-
 export function todayUTC() {
   const t = new Date();
   return new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()));
@@ -55,16 +47,6 @@ export function formatTime12h(hhmm) {
     ? `${h12}${period === "PM" ? " PM" : " AM"}`
     : `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
-
-export const DAY_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday"
-];
 
 export function computeAge(knownAge) {
   if (!knownAge || knownAge.weeks == null || !knownAge.asOfDate) return "Unknown";

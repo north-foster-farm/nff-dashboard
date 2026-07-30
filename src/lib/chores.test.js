@@ -24,10 +24,8 @@ import {
   getChoresForDay,
   describeFrequency,
   choreDaysRemaining,
-  displayDaysRemaining,
   displayDeadlineDateShort,
   obligationPlaceIds,
-  choreIsDormant,
   describeChoreAnchor,
   CHORE_BLOCK_IDS,
 } from "./chores.js";
@@ -664,33 +662,6 @@ describe("choreDaysRemaining — misc guards", () => {
   });
 });
 
-describe("displayDaysRemaining", () => {
-  it("renders each countdown kind as the expected label", () => {
-    const today = chore({ blockId: undefined, deadline: {}, frequency: { type: "daily" } });
-    expect(displayDaysRemaining(today, d(2026, 6, 1, 9), [])).toBe("due today");
-
-    const overran = chore({
-      deadline: {}, frequency: { type: "once", date: "2026-06-01" },
-    });
-    expect(displayDaysRemaining(overran, d(2026, 6, 5, 9), [])).toBe("overran");
-
-    const oneDay = chore({
-      deadline: {}, frequency: { type: "once", date: "2026-06-02" },
-    });
-    expect(displayDaysRemaining(oneDay, d(2026, 6, 1, 9), [])).toBe("1 day left");
-
-    const manyDays = chore({
-      deadline: {}, frequency: { type: "once", date: "2026-06-08" },
-    });
-    expect(displayDaysRemaining(manyDays, d(2026, 6, 1, 9), [])).toBe("7 days left");
-  });
-
-  it("returns '' when the pill doesn't apply", () => {
-    const c = chore({ blockId: BID.morning, deadline: {}, frequency: { type: "daily" } });
-    expect(displayDaysRemaining(c, d(2026, 6, 1, 9), FIVE_BLOCKS)).toBe("");
-  });
-});
-
 describe("displayDeadlineDateShort", () => {
   it("formats the resolved deadline date as 'Dow Mon D' only for multi-day countdowns", () => {
     // The formatted date comes from computeDeadline, so the chore needs
@@ -904,19 +875,6 @@ describe("obligationPlaceIds — anchorType:'former_occupancy' (clean-out-after-
 
   it("returns [] with no anchorBatchId set", () => {
     expect(obligationPlaceIds(chore({ anchorType: "former_occupancy" }), makeCtx())).toEqual([]);
-  });
-});
-
-describe("choreIsDormant", () => {
-  it("is true exactly when obligationPlaceIds resolves to zero places", () => {
-    expect(choreIsDormant(chore({ anchorType: "species", anchorSpeciesId: "sheep" }), makeCtx()))
-      .toBe(true);
-    expect(choreIsDormant(chore({ anchorType: "place", placeId: "house" }), makeCtx()))
-      .toBe(false);
-  });
-
-  it("is FALSE for anchorType:'none' — a whole-farm chore is never dormant ([null] has length 1)", () => {
-    expect(choreIsDormant(chore({ anchorType: "none" }), makeCtx())).toBe(false);
   });
 });
 

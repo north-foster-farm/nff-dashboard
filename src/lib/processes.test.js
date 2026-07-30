@@ -6,7 +6,7 @@
 import { describe, it, expect } from "vitest";
 import {
   planExpansions, expansionKey, expansionSummary, stepDateFor, splitSteps,
-  describeOffset, expansionProjectTitle, processChoreId, resolveChoreAnchor,
+  describeOffset, processChoreId, resolveChoreAnchor,
   processChoreRow, occurrenceIsCurrent, classifyProcessWork,
   processingBatchMissing, processAppliesToSpecies,
 } from "./processes.js";
@@ -254,16 +254,6 @@ describe("describeOffset", () => {
   it("uses the singular 'day' only for exactly ±1", () => {
     expect(describeOffset(-1)).toBe("1 day before");
     expect(describeOffset(-2)).toBe("2 days before");
-  });
-});
-
-describe("expansionProjectTitle (legacy — pre-0025 expansions only)", () => {
-  it("composes '<process> — <event> (<date>)'", () => {
-    const title = expansionProjectTitle(
-      { title: "Processing day prep" },
-      { instanceLabel: "Batch 1 processing", date: "2026-06-10" });
-    expect(title).toContain("Processing day prep");
-    expect(title).toContain("Batch 1 processing");
   });
 });
 

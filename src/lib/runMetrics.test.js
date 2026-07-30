@@ -7,8 +7,8 @@ import { describe, it, expect } from "vitest";
 import {
   runStartMinutes, runEndMinutes, runDurationMinutes,
   nominalStartMinutes, nominalEndMinutes, runIsLate,
-  runOverrunMinutes, runOverran, summarizeRuns, histogramBins,
-  median, quantile, formatHourLabel, formatMinutesShort,
+  runOverrunMinutes, summarizeRuns, histogramBins,
+  median, quantile, formatHourLabel,
   formatDurationMinutes, formatRate,
 } from "./runMetrics.js";
 import { sunMinutesOfDay } from "./sunTimes.js";
@@ -163,13 +163,11 @@ describe("runIsLate", () => {
   });
 });
 
-describe("runOverrunMinutes / runOverran", () => {
+describe("runOverrunMinutes", () => {
   it("counts minutes past the nominal end, 0 when inside the window", () => {
     const over = run({ endedAt: new Date(2026, 5, 20, 7, 30) });
     expect(runOverrunMinutes(over, FIXED_BLOCK)).toBe(30);
-    expect(runOverran(over, FIXED_BLOCK)).toBe(true);
     expect(runOverrunMinutes(run(), FIXED_BLOCK)).toBe(0); // ends 6:45
-    expect(runOverran(run(), FIXED_BLOCK)).toBe(false);
   });
 
   it("ending exactly at the nominal end is 0 overrun", () => {
@@ -200,7 +198,6 @@ describe("runOverrunMinutes / runOverran", () => {
     });
     // end unwraps to 1500; nominal end 1490 -> 10 minutes over.
     expect(runOverrunMinutes(r, lateBlock)).toBe(10);
-    expect(runOverran(r, lateBlock)).toBe(true);
   });
 
   it("a day run that ends after midnight reports the full overrun", () => {
@@ -218,7 +215,7 @@ describe("runOverrunMinutes / runOverran", () => {
       .toBeNull();
     expect(runOverrunMinutes(run({ runDate: null }), FIXED_BLOCK))
       .toBeNull();
-    expect(runOverran(run(), null)).toBeNull();
+    expect(runOverrunMinutes(run(), null)).toBeNull();
   });
 });
 
@@ -381,13 +378,6 @@ describe("format helpers", () => {
     expect(formatHourLabel(375)).toBe("6AM");   // minutes dropped
     expect(formatHourLabel(null)).toBe("");
     expect(formatHourLabel(NaN)).toBe("");
-  });
-
-  it("formatMinutesShort: shows minutes only when nonzero", () => {
-    expect(formatMinutesShort(360)).toBe("6 AM");
-    expect(formatMinutesShort(810)).toBe("1:30 PM");
-    expect(formatMinutesShort(5)).toBe("12:05 AM");
-    expect(formatMinutesShort(Infinity)).toBe("");
   });
 
   it("formatDurationMinutes: m / h / h+m forms, dash for junk", () => {

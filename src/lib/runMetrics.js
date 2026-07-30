@@ -76,12 +76,6 @@ export function runOverrunMinutes(run, block) {
   return endedMin - nominalEnd;
 }
 
-// True when the run overran (>0 minutes past nominal end).
-export function runOverran(run, block) {
-  const m = runOverrunMinutes(run, block);
-  return m === null ? null : m > 0;
-}
-
 // Aggregate stats for a list of runs against a block. Only runs in
 // the 'done' state with both start + end stamps participate. Returns:
 //   {
@@ -226,19 +220,6 @@ export function formatHourLabel(minutes) {
   const period = h24 < 12 ? "AM" : "PM";
   const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
   return `${h12}${period}`;
-}
-
-// Format minutes-of-day with optional minutes shown ("6 AM", "1:30 PM").
-export function formatMinutesShort(minutes) {
-  if (typeof minutes !== "number" || !Number.isFinite(minutes)) return "";
-  const m = ((minutes % 1440) + 1440) % 1440;
-  const h24 = Math.floor(m / 60);
-  const min = m % 60;
-  const period = h24 < 12 ? "AM" : "PM";
-  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
-  return min === 0
-    ? `${h12} ${period}`
-    : `${h12}:${String(min).padStart(2, "0")} ${period}`;
 }
 
 // Format a duration in minutes as "1h 12m" / "47m".

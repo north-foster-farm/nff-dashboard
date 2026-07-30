@@ -151,14 +151,6 @@ export function describeOffset(offsetDays) {
   return n < 0 ? `${abs} ${unit} before` : `${abs} ${unit} after`;
 }
 
-// The project title an expansion creates. Legacy — pre-0025 expansions
-// created projects; kept so old expansion rows still describe
-// themselves in the Processes page log.
-export function expansionProjectTitle(process, occurrence) {
-  return `${process.title} — ${occurrence.instanceLabel}` +
-    ` (${formatDate(occurrence.date)})`;
-}
-
 // ── Expansion → chores (0025 automations rework; Phase 1 template) ───
 // Chore-kind steps become one-time chores, not project steps. Chore ids
 // are deterministic per (expansion, step) so a re-run after a partial

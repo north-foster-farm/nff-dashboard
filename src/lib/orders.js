@@ -21,10 +21,6 @@ export const ORDER_STATUSES = [
   { id: "cancelled", label: "Cancelled" },
 ];
 
-export function orderStatusLabel(status) {
-  return ORDER_STATUSES.find(s => s.id === status)?.label ?? status;
-}
-
 // ── fulfillment ────────────────────────────────────────────────────────
 export const FULFILLMENT_METHODS = [
   { id: "pickup", label: "Farm pick-up" },

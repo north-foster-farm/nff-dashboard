@@ -4,7 +4,7 @@
 // the ids staying stable.
 import { describe, it, expect } from "vitest";
 import {
-  ORDER_STATUSES, orderStatusLabel,
+  ORDER_STATUSES,
   FULFILLMENT_METHODS, fulfillmentLabel, saleChannelForOrder,
   PAYMENT_METHODS, paymentMethodLabel,
   EMPTY_ADDRESS, formatAddress, cleanAddress, stateAllowed,
@@ -20,14 +20,6 @@ describe("order statuses", () => {
       { id: "fulfilled", label: "Fulfilled" },
       { id: "cancelled", label: "Cancelled" },
     ]);
-  });
-
-  it("orderStatusLabel maps every id and echoes unknowns back", () => {
-    expect(orderStatusLabel("open")).toBe("Open");
-    expect(orderStatusLabel("ready")).toBe("Ready");
-    expect(orderStatusLabel("fulfilled")).toBe("Fulfilled");
-    expect(orderStatusLabel("cancelled")).toBe("Cancelled");
-    expect(orderStatusLabel("archived")).toBe("archived"); // fallback
   });
 });
 
