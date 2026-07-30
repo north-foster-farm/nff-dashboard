@@ -16,8 +16,10 @@ import DateTyperPopover from "../components/DateTyperPopover.jsx";
 import { BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
 import { usePersistedState } from "../lib/router.js";
 
-// Schedule (Batch 14.1). Single page hosting the four-up Day / Week
-// / Month / Agenda view toggle, the clickable date-typer header,
+// Calendar (Batch 14.1; renamed from "Schedule" in the 41.4
+// vocabulary settlement — Schedule is now the day plan). Single page
+// hosting the four-up Day / Week / Month / Agenda view toggle, the
+// clickable date-typer header,
 // the kind filter chips, and the "+ New event" button. Delegates
 // rendering to CalendarViews.
 //
@@ -40,7 +42,7 @@ export default function Calendar({
     return t;
   }, []);
   // Preset instances (per-kind sidebar children / events_all) force
-  // their own view + filter; the plain Schedule screen persists what
+  // their own view + filter; the plain Calendar screen persists what
   // the user last picked across navigation + reload.
   const isPreset = !!(initialView || initialFilter);
 
@@ -57,7 +59,7 @@ export default function Calendar({
   // Filters: every kind starts on by default. When the parent passes
   // `initialFilter` (e.g. clicking a per-kind preset in the sidebar),
   // start with only that kind enabled — the user can re-enable
-  // others via the chip strip. The plain Schedule persists its filter
+  // others via the chip strip. The plain Calendar persists its filter
   // selection for the session.
   const kinds = data.events?.kinds ?? [];
   const [localFilters, setLocalFilters] = useState(() => {

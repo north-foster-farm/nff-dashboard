@@ -487,16 +487,20 @@ retirement (`reflow.js:11`).
   (`scripts/backup-db.mjs:64`) and still named in `CLAUDE.md`'s
   "must never be lost" events list — which overstates its importance
   and understates `commitments`', which is absent from that list.
-- **Stale references to promoted docs.** `src/lib/capture/registry.js:8`
-  and the header comments of `0029_…sql:5` and `0030_…sql:5` point at
-  `docs/specs/versioned-capture-substrate.md`; the file
-  now lives at `docs/specs/versioned-capture-substrate.md`.
-- **Stale post-rename vocabulary in comments.** `Calendar.jsx:18`
-  still opens "Schedule (Batch 14.1)" and its inline comments call the
-  page "the plain Schedule screen"; `sections.jsx:65`/`:70`/`:75`
-  describe event sub-items as "Schedule with the Agenda view selected";
-  `SectionContent.jsx:62` says "folded into Schedule's Agenda view".
-  All four mean **Calendar** since 41.4.
+- **Stale references to promoted docs.** The header comments of
+  `0029_…sql:5` and `0030_…sql:5` point at the old
+  `.ignored/schedule-feature/` paths; the file now lives at
+  `docs/specs/versioned-capture-substrate.md`. Record-only — applied
+  migrations are never edited. (`src/lib/capture/registry.js:8` had
+  the same drift; fixed in H3.)
+- **Stale post-rename vocabulary in comments** (fixed in H3):
+  `Calendar.jsx` opened "Schedule (Batch 14.1)" and called the page
+  "the plain Schedule screen"; `sections.jsx:65`/`:70` described event
+  sub-items as "Schedule with the Agenda view selected";
+  `SectionContent.jsx:62` said "folded into Schedule's Agenda view".
+  All meant **Calendar** since 41.4. (`sections.jsx:75` was once
+  listed here too, in error — its "regular weekly schedule" is plain
+  English about market cadence, not the page.)
 - **`monthView.js` is the only untested schedule module.**
 - The coverage audit's structural fork 3a is **resolved, not open** —
   see the 2026-06-25 entry. Anyone mining

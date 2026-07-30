@@ -18,7 +18,7 @@ import { formatLongDate, formatTime12h, parseISODate } from "../lib/dates.js";
 //   onResizeOccurrence({ occurrence, newStartTime, newEndTime })
 //   onCreateAt({ date, startTime })
 //
-// The parent (Schedule) wires these to useEventMutator + the
+// The parent (Calendar) wires these to useEventMutator + the
 // EventEditor seed flow. Drag math is pure pixel → minute conversion
 // using calendarMath helpers; commit values snap to 15 minutes.
 
