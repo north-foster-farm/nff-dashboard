@@ -27,7 +27,9 @@
 // ready → fulfilled lifecycle, and shipments), "App-wide search"
 // (Batch 33 — the cmd-K palette; it is client-side, never a
 // tsvector index), "iPhone-friendly" (Batch 35 — the mobile pass +
-// the PWA install prompt).
+// the PWA install prompt), "The big audit" (Batches 39–40 — the
+// code-side design review, then the recorded walkthroughs; ~200
+// findings fixed. Tails 39.2/40.2 live in ROADMAP.md).
 //
 // Graveyarded (cut from the plan, not shipped — see ROADMAP.md →
 // Graveyard): "Bookmarks", "Voice control" (both 2026-06-02).
@@ -78,14 +80,6 @@ const ITEMS = [
       "pastures are occupied or recovering on any given day, then " +
       "commit a movement plan that schedules the chore moves " +
       "automatically.",
-  },
-  {
-    title: "The big audit",
-    body: "A full pass over everything that's shipped: a code-side " +
-      "review of the app's component architecture and design system, " +
-      "then a recorded walkthrough of the whole app — every bug, rough " +
-      "edge, and design inconsistency goes on one list and gets fixed " +
-      "in order.",
   },
   {
     title: "Mileage tracker",
