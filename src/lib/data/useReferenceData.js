@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { realtimeChannel, supabase } from "../supabase.js";
-import NFF_DATA from "../../data/nff-data.json";
 import { progressOf } from "../projects.js";
 
 // Loads every migrated reference table in parallel and returns them keyed
@@ -423,15 +422,12 @@ async function loadChores() {
       automationEmissionId: c.automation_emission_id,
       processExpansionId: c.process_expansion_id,
     })),
-    completions: [],
-    modelNotes: []
+    completions: []
   };
 }
 
 // Events: kinds + flat instance list, re-nested into kind.instances to
-// match the JSON shape the UI reads from. We preserve the `modelNotes`
-// array by returning it from the static JSON via the merge fallback — it
-// isn't migrated because it's display-only prose.
+// match the JSON shape the UI reads from.
 // Read events through the new event_series + event_occurrences shape
 // (Batch 13.1). The migration in 0013 backfills every legacy
 // event_instances row into a series with either an RRULE string
@@ -541,11 +537,7 @@ async function loadEvents() {
       label: k.label,
       description: k.description,
       instances: instancesByKind.get(k.id) ?? []
-    })),
-    // modelNotes is display-only prose; carry it forward from the JSON
-    // so the merge at App.jsx replaces `data.events` wholesale without
-    // losing the notes section on Schedule / AllEvents.
-    modelNotes: NFF_DATA.events?.modelNotes ?? []
+    }))
   };
 }
 

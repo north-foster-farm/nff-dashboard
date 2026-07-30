@@ -126,12 +126,7 @@
   ],
   "chores": {
     "definitions": [],
-    "completions": [],
-    "modelNotes": [
-      "A chore definition describes a recurring activity. Each occurrence is an instance, and a completion is a ChoreCompletionLog entry.",
-      "Edit scopes adopt the Google Calendar pattern: this instance / this and following / all instances. Past completions are immutable.",
-      "Recurrence model supports specific times, ranges, multiple times/ranges, sunrise/sunset anchors, and conditional state-based recurrence."
-    ]
+    "completions": []
   },
   "events": {
     "kinds": [
@@ -184,25 +179,6 @@
           { "id": "processing_2026_10_06", "label": "Broiler processing day", "date": "2026-10-06", "startTime": "04:00", "endTime": "16:00", "location": { "name": "Pat's Pastured", "address": "830 South Road, East Greenwich, RI 02818" }, "processing": { "batchId": null, "batchSize": 275, "breed": "Cornish Cross", "birdsPerCrate": 9, "cratesPacked": null, "finalCount": null, "cutSheetDocumentId": null, "resourcesRequired": [{ "type": "trailer", "id": "flatbed_trailer" }] } }
         ]
       }
-    ],
-    "modelNotes": [
-      "'Event' in NFF's domain language means a bounded farm occasion — sales events (markets, pop-ups, egg drops, deliveries, pick-ups), processing days, and farm visits. Reserved word; never used for log entries.",
-      "Recurring instances carry a recurrence pattern; single instances carry an explicit date.",
-      "Event kinds can carry kind-specific payloads on each instance (e.g. processing.batchSize, processing.cratesPacked, processing.resourcesRequired). Generic fields (date/time/location) are always present; kind-specific fields live under a kind-named sub-object."
-    ]
-  },
-  "schedule": {
-    "modelNotes": [
-      "Aggregator over chores, scheduled projects, and event instances — anything date-bound.",
-      "Sync to Google Calendar is push-only.",
-      "Prototype scope: month-grid calendar, chronological timeline, filter chips, click-to-detail. Drag-and-drop, in-place editing, GCal API call deferred."
-    ]
-  },
-  "logging": {
-    "modelNotes": [
-      "Polymorphic discriminated union with `type` field. Base: { type, id, logTime, actor, subjects }.",
-      "Subtypes: ChoreCompletionLog, TemperatureLog, FeedLog, MortalityLog, EggCollectionLog, WeightLog.",
-      "'Event' must NOT appear in log type names. Storage architecture open — see thread_log_storage."
     ]
   },
   "productKinds": [
@@ -316,21 +292,7 @@
       "marginNote": "Target gross margin per SKU not yet defined — see thread_pricing_targets. Once set, the Products page will surface recommended price ranges anchored to known cost floor."
     }
   },
-  "inventory": {
-    "eggLots": [],
-    "chickenLots": [],
-    "modelNotes": [
-      "Egg lots are FIFO by collectionDate; eggs sit in the fridge in cartons.",
-      "Chicken lots are FIFO by processingDate within each (productKindId, sizeBracketId); each lot lives in a freezer.",
-      "Egg inventory is currently created by counting cartons just before going to a market — see thread_egg_inventory_model.",
-      "Chicken inventory is created on broiler-processing day as a final step of that process."
-    ]
-  },
   "projects": [],
-  "processes": [],
-  "notes": [],
-  "customers": [],
-  "customerLists": [],
   "updates": [],
   "threads": [
     { "id": "thread_customers_in_admin", "title": "Customers: same app or separate app?", "question": "Will customers log in to this same admin app to see their orders, or get a separate customer-facing app?", "status": "open" },

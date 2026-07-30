@@ -296,6 +296,9 @@ tracked path:
   subtle grey fill or the dividers stop showing).
 - `schedule-coverage-audit.md` — the 2026-06-25 story-coverage audit
   of the shipped Schedule.
+- `prototype-model-notes.md` — the prototype-era `modelNotes` prose
+  promoted out of `src/data/nff-data.json` when H3 deleted the dead
+  keys that carried it (nothing ever rendered them).
 
 Related promoted material lives in `docs/specs/` (design specs),
 `docs/workshops/` (the playbooks and their worked runs),
