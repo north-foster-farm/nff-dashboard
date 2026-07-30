@@ -65,7 +65,7 @@ export function useScheduleDeltas(dateISO) {
     return () => { cancelled = true; unsub(); };
   }, []);
 
-  const allDeltas = useMemo(() => {
+  const deltas = useMemo(() => {
     const byId = new Map((serverRows ?? []).map((r) => [r.id, r]));
     for (const op of outboxOps()) {
       if (op.status === "done") continue;
@@ -101,15 +101,6 @@ export function useScheduleDeltas(dateISO) {
     }
     return [...byId.values()];
   }, [serverRows, outboxTick, dateISO]);
-
-  // Tombstoned project placements (source_ref.origin:'removed') were the
-  // retired reflow engine's removal record. The engine is gone (round 5 —
-  // auto-seeding was dropped for manual quick-add), but tombstone rows
-  // still exist in the data; they stay invisible to every surface.
-  const isTombstone = (d) =>
-    d.source_type === "project_node" && d.source_ref?.origin === "removed";
-  const deltas = useMemo(
-    () => allDeltas.filter((d) => !isTombstone(d)), [allDeltas]);
 
   // The day(s) an add targets. Defaults to the viewed day; a non-empty
   // `dates` array (S34 — add the same item to several days at once) fans the
@@ -167,12 +158,6 @@ export function useScheduleDeltas(dateISO) {
         project_id: node.projectId, step_id: node.stepId ?? null,
         title: node.title, project_title: node.projectTitle ?? null,
         block_id: blockId ?? null,
-        // `origin: "auto"` marked a placement written by the retired
-        // reflow engine, which used it to replace only its own
-        // placements. The engine is gone (42.4); the field is written
-        // through for the historical rows only — nothing reads it to
-        // decide anything. Rides source_ref jsonb.
-        origin: node.origin ?? null,
       },
       clockTime: clockTime ?? null,
     }));
@@ -220,7 +205,7 @@ export function useScheduleDeltas(dateISO) {
   // itself — source_ref.cover = { by, at } — which resolves every block
   // the window overlaps. The history entry records the acceptance.
   const acceptCover = (id, cover, entry) => {
-    const d = allDeltas.find((x) => x.id === id);
+    const d = deltas.find((x) => x.id === id);
     if (!d) return;
     enqueueOp("commitment_update", {
       id,

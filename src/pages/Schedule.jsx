@@ -1446,7 +1446,6 @@ export default function Schedule({ data }) {
         if (cancelled) return;
         const m = new Map();
         for (const r of res.data ?? []) {
-          if (r.source_ref?.origin === "removed") continue; // tombstones
           if (!m.has(r.run_date)) m.set(r.run_date, []);
           m.get(r.run_date).push(r);
         }
