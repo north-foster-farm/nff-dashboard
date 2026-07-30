@@ -1,0 +1,1297 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Schedule — Minimalist (single-open accordion) · NFF</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)', surface: 'var(--surface)',
+          'surface-alt': 'var(--surface-alt)', line: 'var(--line)',
+          fg: 'var(--fg)', dim: 'var(--dim)', muted: 'var(--muted)',
+          faint: 'var(--faint)', accent: 'var(--accent)',
+          'accent-deep': 'var(--accent-deep)', warn: 'var(--warn)',
+          resolved: 'var(--resolved)', 'on-accent': 'var(--on-accent)',
+          'cat-fm': 'var(--cat-fm)', 'cat-egg': 'var(--cat-egg)',
+          'cat-processing': 'var(--cat-processing)',
+          'cat-chore': 'var(--cat-chore)',
+        },
+        fontFamily: {
+          heading: ['Lora', 'Georgia', 'serif'],
+          ui: ['Inter', 'system-ui', 'sans-serif'],
+          body: ['Nacelle', 'system-ui', '-apple-system', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  /* Real app tokens — dark theme (index.html). */
+  :root, html[data-theme="dark"] {
+    --bg: #101614; --surface: #151a15; --surface-alt: #1d231e;
+    --line: #3e473d; --fg: #f2efe4; --dim: #c4bfad; --muted: #8e8877;
+    --faint: #6a6658; --accent: #adc8ad; --accent-deep: #297d5a;
+    --warn: #e6b85a; --resolved: #4cba85; --on-accent: #0d1410;
+    --cat-fm: #5dd585; --cat-egg: #68d5fd; --cat-processing: #ff3347;
+    --cat-chore: #c4bfad;
+    --row-active: rgba(173,200,173,0.12);
+    --row-active-dim: rgba(255,255,255,0.05);
+    --row-hover: rgba(173,200,173,0.07);
+  }
+  body { background: var(--bg); color: var(--fg);
+    font-family: 'Nacelle', system-ui, -apple-system, sans-serif; }
+
+  /* The app draws sharp-cornered cards; the device bezel is the only
+     rounded thing on the page. */
+  .frame {
+    background: var(--bg); border: 1px solid var(--line);
+    border-radius: 34px; padding: 8px;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,.7);
+  }
+  .screen {
+    background: var(--bg); border-radius: 26px; overflow: hidden;
+    height: 760px; display: flex; flex-direction: column;
+    position: relative;
+  }
+  .screen-scroll { overflow-y: auto; flex: 1; }
+  .screen-scroll::-webkit-scrollbar { width: 0; }
+  .row-active-dim { background: var(--row-active-dim); }
+
+  /* Accordion panel — the single-open mechanic. Height animates; the
+     collapse IS the forward-focus gesture. */
+  .panel { max-height: 0; overflow: hidden;
+    transition: max-height .34s cubic-bezier(.4,0,.2,1),
+                opacity .2s ease; opacity: 0; }
+  .block.open > .panel { opacity: 1; }
+
+  /* Flow-first graft: the seal. Last tick stamps the worked window and
+     the block folds shut. */
+  @keyframes seal-flash {
+    0% { background: var(--row-active); }
+    100% { background: transparent; }
+  }
+  .sealing { animation: seal-flash .5s ease; }
+  @keyframes count-bump {
+    0% { transform: scale(1); } 35% { transform: scale(1.22); }
+    100% { transform: scale(1); }
+  }
+  .bump { animation: count-bump .26s ease; display: inline-block; }
+
+  /* tick→seal: the box fill is instant + optimistic. */
+  .cbox { transition: background-color .12s ease, border-color .12s ease; }
+
+  .icon { width: 1em; height: 1em; display: inline-block;
+    vertical-align: -0.125em; stroke: currentColor; fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Should→must box. Border weight encodes nearness to the deadline. */
+  .should-box { border: 2px solid var(--accent-deep);
+    box-shadow: inset 0 0 0 1px rgba(41,125,90,.25); }
+
+  /* Week fullness silhouette. */
+  .silo { display: flex; align-items: flex-end; gap: 3px; height: 26px; }
+  .silo b { width: 7px; background: var(--accent-deep); display: block;
+    border-radius: 1px; opacity: .85; }
+  .silo b.warn { background: var(--warn); }
+  .silo b.should { background: var(--accent); }
+  .silo b.proc { background: var(--cat-processing); opacity: .7; }
+  .silo b.light { opacity: .4; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel { transition: none !important; }
+    .sealing, .bump { animation: none !important; }
+    .cbox { transition: none !important; }
+    .sheet, .jump { transition: none !important; }
+  }
+
+  .sheet { transition: transform .3s cubic-bezier(.4,0,.2,1); }
+  .jump { transition: opacity .2s ease, transform .2s ease; }
+
+  /* Gallery chrome. */
+  .anchor-nav a { color: var(--dim); }
+  .anchor-nav a:hover { color: var(--fg); }
+  .kbd { font-family: 'Inter'; font-size: 11px;
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 1px 6px; color: var(--dim); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body class="font-body text-fg">
+
+<!-- ============================ GALLERY HEADER ===================== -->
+<header class="max-w-[1240px] mx-auto px-6 pt-12 pb-8">
+  <div class="text-[11px] font-ui font-semibold uppercase tracking-[0.22em]
+              text-accent-deep mb-3">North Foster Farm · Schedule</div>
+  <h1 class="font-heading text-[34px] leading-tight mb-3">
+    The single-open accordion</h1>
+  <p class="text-dim text-[15px] max-w-[680px] leading-relaxed">
+    Exactly one block is open at a time — "now" decides which. The dense
+    market day's forty obligations read as four quiet lines plus the one
+    block you can actually act on. Everything else folds away until you
+    reach it.</p>
+  <nav class="anchor-nav flex flex-wrap gap-x-6 gap-y-2 mt-6 text-[13px]
+              font-ui">
+    <a href="#s1">1 · Phone Today</a>
+    <a href="#s2">2 · Desktop spine + week</a>
+    <a href="#s3">3 · Confirm + man-down</a>
+    <a href="#s4">4 · Search-to-add</a>
+    <a href="#s5">5 · Empty day</a>
+  </nav>
+</header>
+
+<!-- ============================ ICON SPRITE ======================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-check" viewBox="0 0 24 24">
+      <polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24">
+      <polyline points="9 18 15 12 9 6"/></symbol>
+    <symbol id="i-chev-d" viewBox="0 0 24 24">
+      <polyline points="6 9 12 15 18 9"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24">
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0
+        1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    <symbol id="i-sunrise" viewBox="0 0 24 24">
+      <path d="M12 2v8M4.93 10.93l1.41 1.41M2 18h2M20 18h2M17.66
+        12.34l1.41-1.41M22 22H2M8 6l4-4 4 4M16 18a4 4 0 0 0-8 0"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41
+        1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41
+        1.41"/></symbol>
+    <symbol id="i-sunset" viewBox="0 0 24 24">
+      <path d="M12 10V2M4.93 10.93l1.41 1.41M2 18h2M20 18h2M17.66
+        12.34l1.41-1.41M22 22H2M16 6l-4 4-4-4M16 18a4 4 0 0 0-8
+        0"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+    <symbol id="i-cloud-off" viewBox="0 0 24 24">
+      <path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8
+        8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3"/>
+      <line x1="1" y1="1" x2="23" y2="23"/></symbol>
+    <symbol id="i-cover" viewBox="0 0 24 24">
+      <polyline points="15 10 20 15 15 20"/>
+      <path d="M4 4v7a4 4 0 0 0 4 4h12"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <polyline points="19 12 12 19 5 12"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  </defs>
+</svg>
+
+<!-- ============================ 1 · PHONE TODAY ==================== -->
+<section id="s1" class="max-w-[1240px] mx-auto px-6 py-10
+         border-t border-line">
+  <div class="flex flex-col lg:flex-row gap-10">
+    <div class="lg:w-[300px] shrink-0">
+      <div class="text-[11px] font-ui font-semibold uppercase
+                  tracking-[0.2em] text-faint mb-2">Hero 1</div>
+      <h2 class="font-heading text-[24px] mb-3">Phone — Today</h2>
+      <p class="text-dim text-[14px] leading-relaxed mb-5">
+        The field tier. The confirmed market day at 9:40 a.m. Midmorning
+        is open because it's now; Morning sealed at 8:10; everything after
+        is one line. Tap any line to peek; tap a box to tick.</p>
+      <div class="space-y-3 text-[13px]">
+        <div class="flex items-center gap-2">
+          <span class="text-faint w-[88px]">Live here:</span>
+          <span class="text-dim">tick → seal, jump-to-now, peek</span>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <button id="t-state"
+            class="px-3 py-1.5 border border-line text-[12px] font-ui
+            hover:border-fg">View as draft</button>
+          <button id="t-net"
+            class="px-3 py-1.5 border border-line text-[12px] font-ui
+            hover:border-fg">Go offline</button>
+        </div>
+        <p class="text-faint text-[12px] leading-relaxed pt-1">
+          Tick the six remaining Midmorning chores to watch the block seal
+          and Early afternoon rise into focus.</p>
+      </div>
+    </div>
+
+    <div class="flex-1 flex justify-center">
+      <div class="frame w-[392px]">
+        <div class="screen" id="phone-today">
+          <!-- header -->
+          <div class="px-5 pt-5 pb-3 border-b border-line bg-surface">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="text-[11px] font-ui font-semibold uppercase
+                  tracking-[0.16em] text-faint">Today</div>
+                <h3 class="font-heading text-[22px] leading-tight mt-0.5">
+                  Tue · Jun 24</h3>
+              </div>
+              <div id="confirm-stamp" class="text-right">
+                <div class="inline-flex items-center gap-1.5 text-[12px]
+                  font-ui text-resolved">
+                  <svg class="icon text-[14px]"><use href="#i-check"/></svg>
+                  <span>Confirmed 6:08a</span>
+                </div>
+              </div>
+            </div>
+            <div class="text-[13px] text-dim mt-1.5">
+              Market day · James &amp; Jim on</div>
+          </div>
+
+          <!-- source-changed-after-confirm ribbon -->
+          <button id="change-ribbon"
+            class="w-full flex items-center gap-2 px-5 py-2.5 text-left
+            border-b border-line bg-[color:var(--row-active-dim)]
+            hover:bg-[color:var(--row-active)]">
+            <svg class="icon text-[15px] text-warn shrink-0">
+              <use href="#i-alert"/></svg>
+            <span class="text-[12.5px] text-fg flex-1">
+              1 change since you confirmed — feed delivery moved to today
+            </span>
+            <span class="text-[12px] font-ui text-accent">Review</span>
+            <svg class="icon text-[13px] text-accent"><use href="#i-chev-r"/>
+              </svg>
+          </button>
+
+          <!-- the accordion -->
+          <div class="screen-scroll" id="today-list"></div>
+
+          <!-- jump-to-now FAB + add -->
+          <div class="absolute right-4 bottom-5 flex flex-col gap-3 items-end">
+            <button id="jump-now"
+              class="jump opacity-0 pointer-events-none inline-flex
+              items-center gap-1.5 px-3 py-2 bg-surface-alt border
+              border-line text-[12px] font-ui text-dim shadow-lg
+              hover:text-fg">
+              <svg class="icon text-[14px]"><use href="#i-down"/></svg>
+              Jump to now</button>
+            <button class="w-12 h-12 bg-accent-deep text-on-accent
+              inline-flex items-center justify-center shadow-lg
+              hover:brightness-110" aria-label="Add to today">
+              <svg class="icon text-[20px]"><use href="#i-plus"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 2 · DESKTOP ======================== -->
+<section id="s2" class="max-w-[1240px] mx-auto px-6 py-10
+         border-t border-line">
+  <div class="text-[11px] font-ui font-semibold uppercase tracking-[0.2em]
+       text-faint mb-2">Hero 2</div>
+  <h2 class="font-heading text-[24px] mb-1">Desktop — the spine + the week</h2>
+  <p class="text-dim text-[14px] leading-relaxed mb-6 max-w-[760px]">
+    The phone screen, unchanged, with a thin day-rail spine pinned beside
+    it (the whole day's shape, always in view) and the week as a day-list
+    of fullness silhouettes — not a seven-column grid. The week answers the
+    one fair charge against this direction: the day's shape is one glance,
+    one tap away.</p>
+
+  <div class="frame !rounded-[18px] !p-3">
+  <div class="bg-bg rounded-[10px] overflow-hidden border border-line">
+    <!-- desktop top bar -->
+    <div class="flex items-center justify-between px-5 py-3 border-b
+         border-line bg-surface">
+      <div class="flex items-center gap-3">
+        <span class="font-heading text-[18px]">Schedule</span>
+        <span class="text-faint text-[13px]">Tue, June 24</span>
+      </div>
+      <div class="flex items-center gap-1 font-ui text-[12px]">
+        <span class="px-3 py-1 bg-surface-alt border border-line">Day</span>
+        <span class="px-3 py-1 border border-transparent text-dim">Week</span>
+        <span class="px-3 py-1 border border-transparent text-dim">Month</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-[64px_minmax(0,1fr)_360px]">
+      <!-- DAY-RAIL SPINE -->
+      <div class="border-r border-line py-5 flex flex-col items-center
+           gap-1" style="background:var(--surface)">
+        <div class="text-[9px] font-ui uppercase tracking-[0.14em]
+             text-faint mb-1">Day</div>
+        <div id="spine" class="flex flex-col items-center gap-1.5"></div>
+      </div>
+
+      <!-- center accordion (static mirror of phone) -->
+      <div class="py-4 px-6 max-w-[560px]">
+        <div class="flex items-center justify-between mb-3">
+          <div class="inline-flex items-center gap-1.5 text-[12px] font-ui
+               text-resolved">
+            <svg class="icon text-[14px]"><use href="#i-check"/></svg>
+            Confirmed 6:08a</div>
+          <div class="text-[12px] text-dim">3 of 38 done · 9:40a</div>
+        </div>
+        <div id="desk-list"></div>
+      </div>
+
+      <!-- WEEK day-list with fullness silhouettes -->
+      <div class="border-l border-line py-5 px-4"
+           style="background:var(--surface)">
+        <div class="text-[10px] font-ui font-semibold uppercase
+             tracking-[0.16em] text-faint mb-4">This week</div>
+        <div id="week-list" class="space-y-1"></div>
+        <div class="mt-5 pt-4 border-t border-line space-y-2
+             text-[11px] text-faint font-ui">
+          <div class="flex items-center gap-2">
+            <span class="silo"><b style="height:8px"></b>
+              <b style="height:18px"></b></span>
+            taller bar = heavier block</div>
+          <div class="flex items-center gap-3">
+            <span class="inline-flex items-center gap-1 text-warn">
+              <svg class="icon text-[12px]"><use href="#i-alert"/></svg>
+              needs cover</span>
+            <span class="inline-flex items-center gap-1 text-accent">▣
+              should</span>
+            <span class="inline-flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-cat-fm"></span>market</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ============================ 3 · CONFIRM + MAN-DOWN ============= -->
+<section id="s3" class="max-w-[1240px] mx-auto px-6 py-10
+         border-t border-line">
+  <div class="text-[11px] font-ui font-semibold uppercase tracking-[0.2em]
+       text-faint mb-2">Hero 3</div>
+  <h2 class="font-heading text-[24px] mb-1">Confirm + man-down</h2>
+  <p class="text-dim text-[14px] leading-relaxed mb-6 max-w-[760px]">
+    Left: the morning draft — one bottom bar names the deal; confirming
+    collapses it to the header timestamp. Right: the man-down. James is at
+    the market till 1:00 but is assigned Wash eggs at 1:00; it leaks one
+    warn line into the collapsed Early-afternoon row, and Cover opens a
+    sheet where Jim acknowledges.</p>
+
+  <div class="flex flex-wrap gap-12 justify-center">
+    <!-- DRAFT → CONFIRM frame -->
+    <div>
+      <div class="text-center text-[12px] font-ui text-faint mb-3">
+        Draft → one-tap confirm</div>
+      <div class="frame w-[360px]">
+        <div class="screen !h-[600px]" id="confirm-screen">
+          <div class="px-5 pt-5 pb-3 border-b border-line bg-surface">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="text-[11px] font-ui font-semibold uppercase
+                  tracking-[0.16em] text-warn" id="cf-eyebrow">Draft</div>
+                <h3 class="font-heading text-[22px] leading-tight mt-0.5">
+                  Tue · Jun 24</h3>
+              </div>
+              <div id="cf-stamp" class="text-[12px] font-ui text-faint
+                opacity-0">Confirmed —</div>
+            </div>
+            <div class="text-[13px] text-dim mt-1.5">
+              Market day · James &amp; Jim on</div>
+          </div>
+          <div class="screen-scroll px-5 py-4 space-y-3">
+            <p class="text-[13px] text-dim leading-relaxed">
+              Today auto-built from chores, the market event, and Jim's
+              clearing project. Musts are locked; confirming agrees the
+              discretionary work and drops the day's accountability anchor.
+            </p>
+            <div class="border border-line divide-y divide-line">
+              <div class="flex items-center justify-between px-3 py-2.5">
+                <span class="text-[13px]">Morning · 7 chores</span>
+                <span class="text-[12px] text-faint font-ui">locked</span>
+              </div>
+              <div class="flex items-center justify-between px-3 py-2.5">
+                <span class="text-[13px]">Farmers market · 9:00a</span>
+                <span class="text-[12px] text-faint font-ui">+ buffer 8–9
+                  </span>
+              </div>
+              <div class="flex items-center justify-between px-3 py-2.5">
+                <span class="text-[13px]">Midmorning · 9 chores</span>
+                <span class="text-[12px] text-accent font-ui">1 should</span>
+              </div>
+              <div class="flex items-center justify-between px-3 py-2.5">
+                <span class="text-[13px]">Clearing · D pasture</span>
+                <span class="text-[12px] text-faint font-ui">Jim · ~1.5h
+                  </span>
+              </div>
+            </div>
+            <p class="text-[12px] text-faint">Tap below to lock the plan
+              for James &amp; Jim.</p>
+          </div>
+          <!-- Sunsama-style confirm bar -->
+          <div id="confirm-bar" class="border-t border-line p-3 bg-surface">
+            <button id="do-confirm"
+              class="w-full py-3 bg-accent-deep text-on-accent font-ui
+              font-semibold text-[14px] hover:brightness-110 flex
+              items-center justify-center gap-2">
+              Confirm today — 5 blocks · 38 chores · 1 market</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAN-DOWN frame -->
+    <div>
+      <div class="text-center text-[12px] font-ui text-faint mb-3">
+        Man-down → cover &amp; acknowledge</div>
+      <div class="frame w-[360px]">
+        <div class="screen !h-[600px]" id="md-screen">
+          <div class="px-5 pt-5 pb-3 border-b border-line bg-surface">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="text-[11px] font-ui font-semibold uppercase
+                  tracking-[0.16em] text-faint">Today</div>
+                <h3 class="font-heading text-[22px] leading-tight mt-0.5">
+                  Tue · Jun 24</h3>
+              </div>
+              <div class="inline-flex items-center gap-1.5 text-[12px]
+                font-ui text-resolved">
+                <svg class="icon text-[14px]"><use href="#i-check"/></svg>
+                Confirmed 6:08a</div>
+            </div>
+          </div>
+          <div class="screen-scroll py-2">
+            <!-- collapsed Midmorning -->
+            <div class="flex items-center gap-3 px-5 py-3.5 border-b
+                 border-line text-muted">
+              <svg class="icon text-[17px] text-faint"><use href="#i-sun"/>
+                </svg>
+              <span class="text-[14px] flex-1">Midmorning</span>
+              <span class="text-[12px] font-ui">now · 3 of 9</span>
+              <svg class="icon text-[14px] text-faint"><use href="#i-chev-r"/>
+                </svg>
+            </div>
+            <!-- collapsed Early afternoon WITH the man-down leak -->
+            <div class="border-b border-line">
+              <button id="md-head"
+                class="w-full flex items-center gap-3 px-5 pt-3.5 pb-2.5
+                text-left hover:bg-[color:var(--row-hover)]">
+                <svg class="icon text-[17px] text-faint">
+                  <use href="#i-sun"/></svg>
+                <span class="text-[14px] flex-1 text-dim">Early afternoon
+                  </span>
+                <span class="text-[12px] font-ui text-faint">1:00p · 0/8
+                  </span>
+              </button>
+              <!-- the ONE-line man-down leak -->
+              <button id="md-leak"
+                class="w-full flex items-center gap-2 pl-[52px] pr-5 pb-3.5
+                -mt-1 text-left">
+                <svg class="icon text-[14px] text-warn shrink-0">
+                  <use href="#i-alert"/></svg>
+                <span class="text-[12.5px] text-warn flex-1" id="md-leak-txt">
+                  Wash eggs needs cover — James off-site till 1:00</span>
+                <span class="text-[11px] font-ui uppercase tracking-wide
+                  text-warn border border-warn px-1.5 py-0.5"
+                  id="md-leak-pill">Cover</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-3 px-5 py-3.5 border-b
+                 border-line">
+              <svg class="icon text-[17px] text-faint"><use href="#i-sunset"/>
+                </svg>
+              <span class="text-[14px] flex-1 text-dim">Late afternoon</span>
+              <span class="text-[12px] font-ui text-faint">4:00p · 0/11</span>
+            </div>
+            <div class="flex items-center gap-3 px-5 py-3.5">
+              <svg class="icon text-[17px] text-faint"><use href="#i-moon"/>
+                </svg>
+              <span class="text-[14px] flex-1 text-dim">End of day</span>
+              <span class="text-[12px] font-ui text-faint">7:00p · 0/9</span>
+            </div>
+          </div>
+
+          <!-- cover sheet -->
+          <div id="md-sheet"
+            class="sheet absolute inset-x-0 bottom-0 translate-y-full
+            bg-surface border-t border-line p-5">
+            <div class="flex items-start justify-between mb-3">
+              <h4 class="font-heading text-[18px]">Cover this chore?</h4>
+              <button id="md-close" class="text-faint hover:text-fg">
+                <svg class="icon text-[18px]"><use href="#i-x"/></svg>
+              </button>
+            </div>
+            <div class="flex items-center gap-3 px-3 py-3 bg-surface-alt
+                 border border-line mb-4">
+              <svg class="icon text-[16px] text-warn"><use href="#i-alert"/>
+                </svg>
+              <div class="flex-1">
+                <div class="text-[14px] font-medium">Wash eggs · House</div>
+                <div class="text-[12px] text-dim">Early afternoon, 1:00p ·
+                  assigned James</div>
+              </div>
+            </div>
+            <p class="text-[13px] text-dim leading-relaxed mb-4">
+              James is at the market until 1:00. Jim is on and free after
+              his 12:00–12:30 break. Assign Jim and notify him to
+              acknowledge.</p>
+            <div class="flex gap-2">
+              <button id="md-cover"
+                class="flex-1 py-3 bg-accent-deep text-on-accent font-ui
+                font-semibold text-[14px] hover:brightness-110">
+                Jim covers — send</button>
+              <button id="md-cancel"
+                class="px-4 py-3 border border-line font-ui text-[13px]
+                text-dim hover:text-fg">Not now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 4 · SEARCH-TO-ADD ================== -->
+<section id="s4" class="max-w-[1240px] mx-auto px-6 py-10
+         border-t border-line">
+  <div class="text-[11px] font-ui font-semibold uppercase tracking-[0.2em]
+       text-faint mb-2">Hero 4</div>
+  <h2 class="font-heading text-[24px] mb-1">Search-to-add</h2>
+  <p class="text-dim text-[14px] leading-relaxed mb-6 max-w-[760px]">
+    One field, the app's command palette. A chore name appears once across
+    its places; pick it, then narrow to the place. Tasks, project nodes,
+    and events share the same list — flat, no concept Dad has to learn.</p>
+
+  <div class="flex flex-wrap gap-12 justify-center">
+    <!-- step 1: dedup results -->
+    <div>
+      <div class="text-center text-[12px] font-ui text-faint mb-3">
+        Type → deduped results</div>
+      <div class="frame w-[360px]">
+        <div class="screen !h-[560px]">
+          <div class="px-4 pt-4 pb-3 border-b border-line bg-surface">
+            <div class="flex items-center gap-2 px-3 py-2.5 bg-surface-alt
+                 border border-line">
+              <svg class="icon text-[16px] text-faint"><use href="#i-search"/>
+                </svg>
+              <span class="text-[14px]">fill wat<span
+                class="inline-block w-px h-4 bg-accent align-middle ml-0.5
+                animate-pulse"></span></span>
+              <span class="ml-auto kbd">esc</span>
+            </div>
+          </div>
+          <div class="screen-scroll py-2">
+            <div class="px-4 py-1.5 text-[10px] font-ui font-semibold
+                 uppercase tracking-[0.16em] text-faint">Chores</div>
+            <button id="dedup-row"
+              class="w-full flex items-center gap-3 px-4 py-3 text-left
+              border-b border-line hover:bg-[color:var(--row-hover)]">
+              <span class="w-7 h-7 border-2 border-line shrink-0"></span>
+              <div class="flex-1">
+                <div class="text-[14px] font-medium">Fill waterer</div>
+                <div class="text-[12px] text-faint">5 places · pick one</div>
+              </div>
+              <span class="text-[11px] font-ui text-accent">Narrow</span>
+              <svg class="icon text-[13px] text-accent">
+                <use href="#i-chev-r"/></svg>
+            </button>
+            <button class="w-full flex items-center gap-3 px-4 py-3 text-left
+              border-b border-line hover:bg-[color:var(--row-hover)]">
+              <span class="w-7 h-7 border-2 border-line shrink-0"></span>
+              <div class="flex-1">
+                <div class="text-[14px] font-medium">Fill water barrels</div>
+                <div class="text-[12px] text-faint">Cold storage</div>
+              </div>
+            </button>
+            <div class="px-4 py-1.5 mt-1 text-[10px] font-ui font-semibold
+                 uppercase tracking-[0.16em] text-faint">One-off task</div>
+            <button class="w-full flex items-center gap-3 px-4 py-3 text-left
+              border-b border-line hover:bg-[color:var(--row-hover)]">
+              <svg class="icon text-[16px] text-faint"><use href="#i-plus"/>
+                </svg>
+              <div class="flex-1 text-[14px]">Add "fill wat…" as a task
+                </div>
+            </button>
+            <div class="px-4 py-1.5 mt-1 text-[10px] font-ui font-semibold
+                 uppercase tracking-[0.16em] text-faint">Project</div>
+            <button class="w-full flex items-center gap-3 px-4 py-3 text-left
+              hover:bg-[color:var(--row-hover)]">
+              <span class="text-cat-egg text-[13px]">◆</span>
+              <div class="flex-1">
+                <div class="text-[14px]">Waterline repair · D pasture</div>
+                <div class="text-[12px] text-faint">Clearing project</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- step 2: place narrow -->
+    <div>
+      <div class="text-center text-[12px] font-ui text-faint mb-3">
+        Pick the chore → narrow to a place</div>
+      <div class="frame w-[360px]">
+        <div class="screen !h-[560px]">
+          <div class="px-4 pt-4 pb-3 border-b border-line bg-surface">
+            <button class="flex items-center gap-1.5 text-[12px] font-ui
+                 text-dim mb-3 hover:text-fg">
+              <svg class="icon text-[13px] rotate-180"><use href="#i-chev-r"/>
+                </svg>Back</button>
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 bg-resolved border-2 border-resolved
+                text-on-accent inline-flex items-center justify-center
+                shrink-0">
+                <svg class="icon text-[15px]" style="stroke-width:3">
+                  <use href="#i-check"/></svg></span>
+              <div>
+                <div class="text-[15px] font-medium">Fill waterer</div>
+                <div class="text-[12px] text-faint">Which place?</div>
+              </div>
+            </div>
+          </div>
+          <div class="screen-scroll py-2">
+            <button class="w-full flex items-center gap-3 px-4 py-3.5
+              text-left border-b border-line
+              hover:bg-[color:var(--row-hover)]">
+              <span class="text-[14px] flex-1">Chicken Tractors</span>
+              <span class="text-[12px] text-faint">broilers · 3 on pasture
+                </span></button>
+            <button class="w-full flex items-center gap-3 px-4 py-3.5
+              text-left border-b border-line
+              hover:bg-[color:var(--row-hover)]">
+              <span class="text-[14px] flex-1">Mobile Coop 1</span>
+              <span class="text-[12px] text-faint">layers</span></button>
+            <button class="w-full flex items-center gap-3 px-4 py-3.5
+              text-left border-b border-line
+              hover:bg-[color:var(--row-hover)]">
+              <span class="text-[14px] flex-1">Mobile Coop 2</span>
+              <span class="text-[12px] text-faint">layers</span></button>
+            <button class="w-full flex items-center gap-3 px-4 py-3.5
+              text-left border-b border-line
+              hover:bg-[color:var(--row-hover)]">
+              <span class="text-[14px] flex-1">Brooder 1</span>
+              <span class="text-[12px] text-faint">chicks</span></button>
+            <button class="w-full flex items-center gap-3 px-4 py-3.5
+              text-left hover:bg-[color:var(--row-hover)]">
+              <span class="text-[14px] flex-1">Sheep · barn</span>
+              <span class="text-[12px] text-faint">flock</span></button>
+            <div class="px-4 pt-4">
+              <div class="text-[12px] text-dim">Adds to <span
+                class="text-fg">Midmorning</span> · today. Same write as
+                Rounds.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 5 · EMPTY DAY ====================== -->
+<section id="s5" class="max-w-[1240px] mx-auto px-6 py-10
+         border-t border-line">
+  <div class="text-[11px] font-ui font-semibold uppercase tracking-[0.2em]
+       text-faint mb-2">State</div>
+  <h2 class="font-heading text-[24px] mb-1">The empty-but-valid day</h2>
+  <p class="text-dim text-[14px] leading-relaxed mb-6 max-w-[760px]">
+    A rare day with no chores, no events, nothing pulled. Not an error —
+    an invitation. The accordion has nothing to open, so it says so and
+    offers the one action.</p>
+  <div class="flex justify-center">
+    <div class="frame w-[360px]">
+      <div class="screen !h-[480px]">
+        <div class="px-5 pt-5 pb-3 border-b border-line bg-surface">
+          <div class="text-[11px] font-ui font-semibold uppercase
+            tracking-[0.16em] text-faint">Today</div>
+          <h3 class="font-heading text-[22px] leading-tight mt-0.5">
+            Sun · Jun 29</h3>
+          <div class="text-[13px] text-dim mt-1.5">Jim on · James off</div>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center
+             text-center px-8">
+          <svg class="icon text-[40px] text-faint mb-4"><use href="#i-sun"/>
+            </svg>
+          <h4 class="font-heading text-[18px] mb-2">Nothing on today</h4>
+          <p class="text-[13px] text-dim leading-relaxed mb-6">
+            No chores, no market, no project work scheduled. Add something,
+            or pull a should-chore forward.</p>
+          <button class="inline-flex items-center gap-2 px-4 py-2.5
+            bg-accent-deep text-on-accent font-ui font-semibold text-[13px]
+            hover:brightness-110">
+            <svg class="icon text-[16px]"><use href="#i-plus"/></svg>
+            Add to today</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="max-w-[1240px] mx-auto px-6 py-12 border-t border-line
+        text-[12px] text-faint">
+  Coded hi-fi mockup · Schedule Design Bracket Round 2 · Minimalist
+  direction. Tokens, fonts, and row feel pulled from the live app
+  (src/styles.css, index.html, Rounds.jsx). Reduced-motion honored.
+</footer>
+
+<script>
+/* ============================================================
+   THE REAL DAY (Part F) as data. One source for phone + desktop.
+   ============================================================ */
+const DAY = [
+  { id:'morning', name:'Morning', glyph:'i-sunrise', state:'done',
+    meta:'Jim · 6:08a', window:'sealed 6:08–8:10a', done:7, total:7 },
+  { id:'market', name:'Farmers market', glyph:'i-event', state:'event',
+    meta:'9:00a · James off-site', kind:'event' },
+  { id:'midmorning', name:'Midmorning', glyph:'i-sun', state:'now',
+    meta:'now · 9:40a', start:'9:00a',
+    items:[
+      { t:'Fill waterer', p:'Brooder 1', done:true },
+      { t:'Fill feeder', p:'Brooder 1', done:true },
+      { t:'Collect eggs', p:'Mobile Coop 2', done:true, queued:true },
+      { t:'Fill waterer', p:'Chicken Tractors', done:false },
+      { t:'Fill feeder', p:'Chicken Tractors', done:false },
+      { t:'Fill waterer', p:'Mobile Coop 1', done:false },
+      { t:'Fill feeder', p:'Mobile Coop 1', done:false },
+      { t:'Clean egg washer', p:'House', done:false },
+      { t:'Pressure wash nest boxes and coop interior', p:'Mobile Coops',
+        done:false, should:true,
+        why:'last clean before processing Thu' },
+    ] },
+  { id:'earlyaft', name:'Early afternoon', glyph:'i-sun', state:'future',
+    meta:'1:00p', manDown:'Wash eggs needs cover',
+    items:[
+      { t:'Fill waterers', p:'Mobile Coops', done:false },
+      { t:'Fill feeders', p:'Mobile Coops', done:false },
+      { t:'Wash eggs', p:'House', done:false, manDown:true },
+      { t:'Clearing — remove brush piles', p:'D pasture · Jim ~1.5h',
+        done:false, project:true },
+    ], done:0, total:8 },
+  { id:'lateaft', name:'Late afternoon', glyph:'i-sunset', state:'future',
+    meta:'4:00p', done:0, total:11,
+    items:[
+      { t:'Collect eggs', p:'Mobile Coops', done:false },
+      { t:'Raise perches', p:'Mobile Coops', done:false },
+      { t:'Fill grit', p:'Mobile Coops', done:false },
+      { t:'Fill oyster shell', p:'Mobile Coops', done:false },
+      { t:'Fill feeder', p:'Chicken Tractors', done:false },
+      { t:'Wash eggs', p:'House', done:false },
+    ] },
+  { id:'endofday', name:'End of day', glyph:'i-moon', state:'future',
+    meta:'7:00p', done:0, total:9,
+    items:[
+      { t:'Close mobile coop', p:'Mobile Coops', done:false },
+      { t:'Lower perches', p:'Mobile Coops', done:false },
+      { t:'Pack eggs into cartons', p:'House', done:false },
+      { t:'Refrigerate eggs', p:'Cold storage', done:false },
+    ] },
+];
+
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ICON = (id, cls='') =>
+  `<svg class="icon ${cls}"><use href="#${id}"/></svg>`;
+
+/* ---- count helpers ---- */
+function blockDone(b){ return (b.items||[]).filter(i=>i.done).length; }
+function blockTotal(b){ return (b.items||[]).length || b.total || 0; }
+function blockRemaining(b){
+  return (b.items||[]).filter(i=>!i.done).length;
+}
+
+/* ============================================================
+   PHONE TODAY — the live accordion.
+   ============================================================ */
+let openId = 'midmorning';
+let offline = true;   // Coop 2 tick is queued → start offline-ish
+const listEl = document.getElementById('today-list');
+
+function metaFor(b){
+  if(b.state==='done') return b.window || b.meta;
+  if(b.kind==='event') return b.meta;
+  const d = blockDone(b), t = blockTotal(b);
+  if(b.id===openId) return `${b.meta}`;
+  return `${b.meta} · ${d}/${t}`;
+}
+
+function renderToday(){
+  listEl.innerHTML = '';
+  DAY.forEach(b => {
+    const block = document.createElement('div');
+    block.className = 'block border-b border-line' +
+      (b.id===openId ? ' open' : '');
+    block.dataset.id = b.id;
+
+    const isOpen = b.id===openId;
+    const dim = b.state==='done' ? 'text-muted'
+      : (isOpen ? 'text-fg' : 'text-dim');
+
+    /* ---- the collapsed line (always visible) ---- */
+    const head = document.createElement('button');
+    head.className =
+      'w-full flex items-center gap-3 px-5 ' +
+      (isOpen ? 'pt-4 pb-2 bg-[color:var(--row-active)]'
+              : 'py-3.5 hover:bg-[color:var(--row-hover)]') +
+      ' text-left';
+    const glyphCls = b.state==='done' ? 'text-faint'
+      : (isOpen ? 'text-accent' : 'text-faint');
+    const nowDot = b.state==='now' && isOpen
+      ? '<span class="w-1.5 h-1.5 rounded-full bg-resolved"></span>' : '';
+    let glyphHtml;
+    if(b.kind==='event'){
+      glyphHtml = '<span class="w-[17px] inline-flex justify-center">' +
+        '<span class="w-2.5 h-2.5 rounded-full" ' +
+        'style="background:var(--cat-fm)"></span></span>';
+    } else {
+      glyphHtml = ICON(b.glyph, `text-[17px] ${glyphCls}`);
+    }
+    head.innerHTML =
+      glyphHtml +
+      `<span class="flex-1 flex items-center gap-2">
+        <span class="${isOpen?'font-heading text-[18px]':'text-[14px]'}
+          ${dim}">${b.name}</span>${nowDot}
+       </span>
+       <span class="text-[12px] font-ui ${b.state==='now'&&!isOpen
+          ?'text-accent':'text-faint'}">${metaFor(b)}</span>` +
+      (b.items ? ICON(isOpen?'i-chev-d':'i-chev-r',
+          'text-[14px] text-faint') : '');
+    head.onclick = () => toggleBlock(b.id);
+    block.appendChild(head);
+
+    /* ---- the one-line man-down leak (collapsed only) ---- */
+    if(b.manDown && !isOpen){
+      const leak = document.createElement('div');
+      leak.className =
+        'flex items-center gap-2 pl-[52px] pr-5 pb-3 -mt-1';
+      leak.innerHTML =
+        ICON('i-alert','text-[14px] text-warn shrink-0') +
+        `<span class="text-[12.5px] text-warn flex-1">${b.manDown}</span>
+         <span class="text-[10px] font-ui uppercase tracking-wide
+           text-warn border border-warn px-1.5 py-0.5">Cover</span>`;
+      block.appendChild(leak);
+    }
+
+    /* ---- the panel ---- */
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    if(b.items){
+      const inner = document.createElement('div');
+      inner.className = 'pb-3';
+      b.items.forEach((it, idx) => inner.appendChild(rowEl(b, it, idx)));
+      // footer count
+      const foot = document.createElement('div');
+      foot.className =
+        'px-5 pt-2 text-[12px] text-dim font-ui flex items-center ' +
+        'justify-between';
+      foot.innerHTML =
+        `<span><span class="count">${blockDone(b)}</span> of
+          ${blockTotal(b)} done</span>` +
+        (b.id===openId
+          ? `<button class="text-accent" onclick="openRounds()">Open
+             Rounds ${'›'}</button>` : '');
+      inner.appendChild(foot);
+      panel.appendChild(inner);
+    } else if(b.kind==='event'){
+      panel.appendChild(eventPanel());
+    }
+    block.appendChild(panel);
+    listEl.appendChild(block);
+
+    if(isOpen) requestAnimationFrame(()=>setMax(panel, true));
+  });
+}
+
+function rowEl(b, it, idx){
+  const li = document.createElement('div');
+  const boxed = it.should;
+  li.className =
+    'flex items-start gap-3 px-5 py-3 ' +
+    (it.done ? 'row-active-dim ' : '') +
+    (boxed ? 'mx-4 my-1.5 px-3 should-box' : 'border-b border-line ' +
+      'last:border-b-0');
+
+  const box = document.createElement('button');
+  box.className =
+    'cbox shrink-0 w-7 h-7 border-2 inline-flex items-center ' +
+    'justify-center mt-0.5 ' +
+    (it.done ? 'bg-resolved border-resolved text-on-accent'
+             : 'bg-bg border-line text-transparent hover:border-fg');
+  box.innerHTML = ICON('i-check','text-[15px]');
+  box.style.strokeWidth = '3';
+  box.setAttribute('aria-pressed', it.done);
+  box.onclick = (e) => { e.stopPropagation(); tick(b, it, li, box); };
+
+  const body = document.createElement('div');
+  body.className = 'flex-1 min-w-0';
+  const queued = it.queued && offline;
+  body.innerHTML =
+    `<div class="flex items-center gap-2 flex-wrap ${it.done
+       ?'text-muted line-through':(boxed?'text-fg font-medium'
+       :'text-fg font-medium')} text-[14px]">
+       <span>${it.t}</span>` +
+    (it.should
+      ? `<span class="text-[10px] font-ui font-semibold uppercase
+          tracking-[0.12em] px-1.5 py-0.5 border border-accent-deep
+          text-accent">should</span>` : '') +
+    (queued ? ICON('i-cloud-off','text-[13px] text-warn') : '') +
+    `</div>` +
+    (it.project
+      ? `<div class="text-[12px] text-faint italic mt-0.5">${it.p}</div>`
+      : `<div class="text-[11px] text-faint mt-0.5">${it.p}</div>`) +
+    (it.why
+      ? `<div class="text-[12px] text-accent mt-1">why today: ${it.why}
+         <span class="text-warn">· due Thu</span></div>` : '') +
+    (it.manDown
+      ? `<div class="text-[12px] text-warn mt-1 flex items-center gap-1">
+         ${ICON('i-alert','text-[12px]')} James off-site till 1:00 —
+         needs cover</div>` : '');
+
+  li.appendChild(box);
+  li.appendChild(body);
+  return li;
+}
+
+function eventPanel(){
+  const d = document.createElement('div');
+  d.className = 'px-5 pb-4 pt-1';
+  d.innerHTML =
+    `<div class="flex items-center gap-2 px-3 py-2 mb-3 border border-line
+       bg-surface-alt text-[12px] text-dim">
+       ${ICON('i-clock','text-[14px] text-faint')}
+       Buffer reserved 8:00–9:00 — market setup</div>
+     <div class="text-[11px] font-ui uppercase tracking-[0.14em]
+       text-faint mb-2">Load market equipment</div>
+     <ul class="text-[13px] text-dim space-y-1.5 mb-3">
+       <li class="flex items-center gap-2">${ICON('i-check',
+         'text-[13px] text-resolved')} Tent &amp; tables</li>
+       <li class="flex items-center gap-2">${ICON('i-check',
+         'text-[13px] text-resolved')} Egg crates &amp; coolers</li>
+       <li class="flex items-center gap-2 text-faint">
+         <span class="w-3.5 h-3.5 border border-line inline-block"></span>
+         Cash box</li>
+     </ul>
+     <div class="text-[12px] text-warn flex items-center gap-1.5">
+       ${ICON('i-alert','text-[13px]')} James off-site 8:00–1:00</div>`;
+  return d;
+}
+
+/* ---- panel height control ---- */
+function setMax(panel, open){
+  if(open){
+    panel.style.maxHeight = reduce ? 'none'
+      : panel.firstElementChild.offsetHeight + 40 + 'px';
+  } else {
+    panel.style.maxHeight = '0px';
+  }
+}
+
+/* ---- single-open toggle ---- */
+function toggleBlock(id){
+  if(openId === id){ // close it → nothing open
+    const prev = listEl.querySelector(`.block[data-id="${id}"]`);
+    openId = null;
+    if(prev){ prev.classList.remove('open');
+      setMax(prev.querySelector('.panel'), false); }
+    renderToday();
+    return;
+  }
+  openId = id;
+  renderToday();
+  scrollOpenIntoView();
+}
+
+function scrollOpenIntoView(){
+  const el = listEl.querySelector('.block.open');
+  if(el) el.scrollIntoView({ behavior: reduce?'auto':'smooth',
+    block:'start' });
+}
+
+/* ============================================================
+   tick → seal (Flow-first graft).
+   ============================================================ */
+function tick(b, it, li, box){
+  it.done = !it.done;
+  // optimistic instant fill
+  if(it.done){
+    box.className = box.className
+      .replace('bg-bg border-line text-transparent hover:border-fg',
+        'bg-resolved border-resolved text-on-accent');
+    li.classList.add('row-active-dim');
+    const title = li.querySelector('.flex-1 > div');
+    if(title) title.classList.add('text-muted','line-through');
+  } else {
+    box.className = box.className
+      .replace('bg-resolved border-resolved text-on-accent',
+        'bg-bg border-line text-transparent hover:border-fg');
+    li.classList.remove('row-active-dim');
+    const title = li.querySelector('.flex-1 > div');
+    if(title) title.classList.remove('text-muted','line-through');
+  }
+  box.setAttribute('aria-pressed', it.done);
+
+  // animate the count
+  const block = listEl.querySelector(`.block[data-id="${b.id}"]`);
+  const countEl = block.querySelector('.count');
+  if(countEl){
+    countEl.textContent = blockDone(b);
+    if(!reduce){ countEl.classList.remove('bump');
+      void countEl.offsetWidth; countEl.classList.add('bump'); }
+  }
+  // keep the open panel sized to its new content
+  const panel = block.querySelector('.panel');
+  if(b.id===openId) setMax(panel, true);
+
+  // seal when the block is cleared
+  if(b.items && blockRemaining(b)===0 && b.state!=='done'){
+    setTimeout(()=>sealBlock(b), reduce?0:420);
+  }
+}
+
+function sealBlock(b){
+  b.state = 'done';
+  b.window = 'sealed ' + (b.id==='midmorning' ? '9:04–9:58a' : 'now');
+  const block = listEl.querySelector(`.block[data-id="${b.id}"]`);
+  if(block && !reduce) block.classList.add('sealing');
+  // open the next actionable block
+  const order = DAY.map(x=>x.id);
+  const i = order.indexOf(b.id);
+  let next = null;
+  for(let k=i+1;k<DAY.length;k++){
+    if(DAY[k].items){ next = DAY[k].id; break; }
+  }
+  openId = next;
+  setTimeout(()=>{ renderToday(); scrollOpenIntoView(); },
+    reduce?0:120);
+}
+
+function openRounds(){
+  // faked — would launch the Rounds takeover (initialBlockId deep-link)
+  alert('Opens the Rounds takeover for this block (faked in the mockup).');
+}
+
+/* ---- jump-to-now ---- */
+const jumpBtn = document.getElementById('jump-now');
+const scroller = listEl;
+scroller.addEventListener('scroll', ()=>{
+  const open = listEl.querySelector('.block.open');
+  if(!open){ showJump(false); return; }
+  const r = open.getBoundingClientRect();
+  const sr = scroller.getBoundingClientRect();
+  showJump(r.top < sr.top + 8 || r.top > sr.bottom - 40);
+});
+function showJump(on){
+  jumpBtn.style.opacity = on ? '1' : '0';
+  jumpBtn.style.pointerEvents = on ? 'auto' : 'none';
+  jumpBtn.style.transform = on ? 'translateY(0)' : 'translateY(6px)';
+}
+jumpBtn.onclick = ()=>{ if(!openId){ openId='midmorning'; renderToday(); }
+  scrollOpenIntoView(); };
+
+/* ---- state toggles ---- */
+document.getElementById('t-state').onclick = function(){
+  const stamp = document.getElementById('confirm-stamp');
+  const ribbon = document.getElementById('change-ribbon');
+  if(this.textContent.includes('draft')){
+    stamp.innerHTML =
+      `<span class="text-[11px] font-ui font-semibold uppercase
+        tracking-[0.16em] text-warn">Draft</span>`;
+    ribbon.style.display = 'none';
+    this.textContent = 'View as confirmed';
+  } else {
+    stamp.innerHTML =
+      `<span class="inline-flex items-center gap-1.5 text-[12px]
+        font-ui text-resolved">${ICON('i-check','text-[14px]')}
+        Confirmed 6:08a</span>`;
+    ribbon.style.display = '';
+    this.textContent = 'View as draft';
+  }
+};
+document.getElementById('t-net').onclick = function(){
+  offline = !offline;
+  this.textContent = offline ? 'Go online' : 'Go offline';
+  renderToday();
+};
+document.getElementById('change-ribbon').onclick = ()=>
+  alert('Opens the 1-change review: feed delivery moved to today. ' +
+        'Surfaced, never auto-applied (faked).');
+
+renderToday();
+
+/* ============================================================
+   DESKTOP — spine + static accordion mirror + week list.
+   ============================================================ */
+const spine = document.getElementById('spine');
+DAY.filter(b=>b.id!=='market').forEach(b=>{
+  const seg = document.createElement('div');
+  const isNow = b.state==='now';
+  const h = b.id==='lateaft' ? 56 : b.id==='endofday' ? 46
+    : b.id==='earlyaft' ? 44 : 40;
+  seg.title = b.name;
+  seg.style.height = h+'px';
+  seg.className = 'w-3 ' +
+    (isNow ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg' : '');
+  seg.style.background = b.state==='done' ? 'rgba(76,186,133,0.55)'
+    : isNow ? 'var(--accent)' : 'var(--line)';
+  spine.appendChild(seg);
+  if(isNow){
+    const lbl = document.createElement('div');
+    lbl.className = 'text-[9px] font-ui text-accent -rotate-90 ' +
+      'h-8 flex items-center';
+    lbl.textContent = 'now';
+    spine.appendChild(lbl);
+  }
+});
+
+// static desktop accordion (reuse render but simpler — clone the phone)
+const deskList = document.getElementById('desk-list');
+function renderDesk(){
+  deskList.innerHTML='';
+  DAY.forEach(b=>{
+    const open = b.id==='midmorning';
+    const wrap=document.createElement('div');
+    wrap.className='border-b border-line';
+    const dim = b.state==='done'?'text-muted':(open?'text-fg':'text-dim');
+    let glyph;
+    if(b.kind==='event'){
+      glyph='<span class="w-2.5 h-2.5 rounded-full inline-block" '+
+        'style="background:var(--cat-fm)"></span>';
+    } else glyph=ICON(b.glyph,'text-[16px] '+(open?'text-accent':
+      'text-faint'));
+    wrap.innerHTML =
+      `<div class="flex items-center gap-3 px-1 ${open?'py-3':'py-3'}">
+        ${glyph}
+        <span class="flex-1 ${open?'font-heading text-[18px]':'text-[14px]'}
+          ${dim}">${b.name}</span>
+        <span class="text-[12px] font-ui text-faint">${
+          b.state==='done'?b.window:metaForDesk(b)}</span>
+      </div>`;
+    if(open){
+      const p=document.createElement('div');
+      p.className='pb-3';
+      b.items.forEach((it,idx)=>{
+        const r=rowEl(b,it,idx);
+        p.appendChild(r);
+      });
+      wrap.appendChild(p);
+    }
+    if(b.manDown && !open){
+      const leak=document.createElement('div');
+      leak.className='flex items-center gap-2 pl-[34px] pb-2.5 -mt-1';
+      leak.innerHTML=ICON('i-alert','text-[13px] text-warn')+
+        `<span class="text-[12px] text-warn">${b.manDown}</span>`;
+      wrap.appendChild(leak);
+    }
+    deskList.appendChild(wrap);
+  });
+}
+function metaForDesk(b){
+  if(b.kind==='event') return b.meta;
+  if(b.state==='now') return 'now · 3/9';
+  const t=blockTotal(b); return `${b.meta} · 0/${t}`;
+}
+renderDesk();
+
+/* ---- WEEK fullness silhouettes ---- */
+const WEEK = [
+  { d:'Mon', n:23, loads:[3,4,2,3,2], flags:[] },
+  { d:'Tue', n:24, loads:[7,9,8,11,9], flags:['market','should','warn'],
+    today:true },
+  { d:'Wed', n:25, loads:[6,7,5,6,5], flags:[] },
+  { d:'Thu', n:26, loads:[6,8,12,10,7], flags:['proc'] },
+  { d:'Fri', n:27, loads:[5,6,5,6,5], flags:[] },
+  { d:'Sat', n:28, loads:[7,9,7,9,8], flags:['market'] },
+  { d:'Sun', n:29, loads:[3,3,2,3,2], flags:[] },
+];
+const weekEl = document.getElementById('week-list');
+const MAXL = 12;
+WEEK.forEach(w=>{
+  const row=document.createElement('button');
+  row.className='w-full flex items-center gap-3 px-2 py-2 text-left '+
+    (w.today?'bg-[color:var(--row-active)] border-l-2 border-accent'
+      :'hover:bg-[color:var(--row-hover)] border-l-2 border-transparent');
+  // silhouette: 5 bars, colored by which block carries a flag
+  const bars = w.loads.map((l,i)=>{
+    const h = Math.max(3, Math.round(l/MAXL*24));
+    let cls='';
+    if(w.flags.includes('warn') && i===2) cls='warn';      // early aft
+    else if(w.flags.includes('should') && i===1) cls='should'; // midmorn
+    else if(w.flags.includes('proc') && i===2) cls='proc';
+    else if(l<=3) cls='light';
+    return `<b class="${cls}" style="height:${h}px"></b>`;
+  }).join('');
+  const flagGlyphs = [
+    w.flags.includes('warn')
+      ? `<span class="text-warn">${ICON('i-alert','text-[12px]')}</span>`:'',
+    w.flags.includes('should') ? '<span class="text-accent">▣</span>':'',
+    w.flags.includes('market')
+      ? '<span class="w-2 h-2 rounded-full bg-cat-fm inline-block"></span>':'',
+    w.flags.includes('proc')
+      ? '<span class="w-2 h-2 rounded-full bg-cat-processing inline-block">'+
+        '</span>':'',
+  ].join('');
+  const total = w.loads.reduce((a,b)=>a+b,0);
+  row.innerHTML =
+    `<div class="w-9 shrink-0">
+       <div class="text-[12px] font-ui ${w.today?'text-fg font-semibold'
+         :'text-dim'}">${w.d}</div>
+       <div class="text-[11px] text-faint">${w.n}</div>
+     </div>
+     <div class="silo flex-1">${bars}</div>
+     <div class="flex items-center gap-1.5 w-12 justify-end">${flagGlyphs}
+       </div>`;
+  row.onclick=()=>{ if(w.today)
+    document.getElementById('s1').scrollIntoView({behavior:'smooth'});
+    else alert(`Opens ${w.d} Jun ${w.n} — ${total} obligations (faked).`); };
+  weekEl.appendChild(row);
+});
+
+/* ============================================================
+   CONFIRM frame.
+   ============================================================ */
+document.getElementById('do-confirm').onclick = ()=>{
+  document.getElementById('cf-eyebrow').textContent='Confirmed';
+  document.getElementById('cf-eyebrow').className=
+    'text-[11px] font-ui font-semibold uppercase tracking-[0.16em] '+
+    'text-resolved';
+  const stamp=document.getElementById('cf-stamp');
+  stamp.textContent='Confirmed 9:41a';
+  stamp.classList.remove('opacity-0');
+  const bar=document.getElementById('confirm-bar');
+  bar.style.transition='opacity .25s ease, max-height .3s ease';
+  bar.style.overflow='hidden';
+  bar.style.maxHeight='0'; bar.style.opacity='0';
+  bar.style.padding='0';
+};
+
+/* ============================================================
+   MAN-DOWN sheet.
+   ============================================================ */
+const sheet=document.getElementById('md-sheet');
+function openSheet(){ sheet.style.transform=
+  reduce?'translateY(0)':'translateY(0)';
+  sheet.classList.remove('translate-y-full'); }
+function closeSheet(){ sheet.classList.add('translate-y-full'); }
+document.getElementById('md-leak').onclick=openSheet;
+document.getElementById('md-close').onclick=closeSheet;
+document.getElementById('md-cancel').onclick=closeSheet;
+document.getElementById('md-cover').onclick=()=>{
+  closeSheet();
+  const txt=document.getElementById('md-leak-txt');
+  const pill=document.getElementById('md-leak-pill');
+  txt.textContent='Wash eggs — Jim covering, sent for acknowledgment';
+  txt.className='text-[12.5px] text-dim flex-1';
+  pill.textContent='Sent';
+  pill.className='text-[11px] font-ui uppercase tracking-wide text-resolved '+
+    'border border-resolved px-1.5 py-0.5';
+  document.getElementById('md-leak').previousElementSibling
+    .querySelector('svg use').setAttribute('href','#i-cover');
+};
+</script>
+</body>
+</html>

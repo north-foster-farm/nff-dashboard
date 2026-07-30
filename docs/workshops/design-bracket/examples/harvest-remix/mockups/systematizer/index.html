@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Systematizer — one vocabulary, four surfaces</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet" />
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   TOKENS — the exact Round-2 brief values, keyed off html[data-theme].
+   Light is the default (James's app default); dark via the toggle.
+   ───────────────────────────────────────────────────────────────────── */
+html[data-theme="light"]{
+  --c-bg:#f6f6f6; --c-surface:#ffffff; --c-surface-alt:#ececec; --c-border:#d6d6d6;
+  --c-text:#14180f; --c-text-dim:#2f3329; --c-text-muted:#4d4a3e; --c-text-faint:#6f6b5d;
+  --c-accent:#297d5a; --c-accent-deep:#1d5a40; --c-warn:#a06d10; --c-resolved:#297d5a;
+  --c-project:#3f6da3; --c-on-accent:#ffffff;
+  --c-cat-processing:#99000f; --c-cat-fm:#2aa252; --c-cat-egg:#0295ca; --c-cat-pickups:#21ab4f;
+}
+html[data-theme="dark"]{
+  --c-bg:#101614; --c-surface:#151a15; --c-surface-alt:#1d231e; --c-border:#3e473d;
+  --c-text:#f2efe4; --c-text-dim:#c4bfad; --c-text-muted:#8e8877; --c-text-faint:#6a6658;
+  --c-accent:#adc8ad; --c-accent-deep:#297d5a; --c-warn:#e6b85a; --c-resolved:#4cba85;
+  --c-project:#7d9ec9; --c-on-accent:#0d1410;
+  --c-cat-processing:#ff3347; --c-cat-fm:#5dd585; --c-cat-egg:#68d5fd; --c-cat-pickups:#65cda2;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;}
+body{
+  background:var(--c-bg); color:var(--c-text);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:14px; line-height:1.4; -webkit-font-smoothing:antialiased;
+}
+[data-num]{font-variant-numeric:tabular-nums;}
+
+/* ── PRIMITIVE: Eyebrow — Inter, uppercase, wide tracking. ONE label idiom. */
+.eyebrow{
+  font-family:"Inter",system-ui,sans-serif; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.14em; font-size:10px;
+  color:var(--c-text-faint); display:flex; align-items:center; gap:7px;
+}
+.eyebrow.bold{color:var(--c-text); }
+.eyebrow .spacer{margin-left:auto;}
+
+/* ── PRIMITIVE: Heading — Lora, tight tracking. ONE title idiom. */
+.heading{
+  font-family:"Lora",Georgia,serif; font-weight:600; letter-spacing:-0.01em;
+  color:var(--c-text); margin:0; line-height:1.15;
+}
+.heading.hero{font-weight:700; letter-spacing:-0.02em; font-size:34px;}
+.heading.lg{font-size:19px;}
+.heading.md{font-size:15px;}
+
+/* ── PRIMITIVE: Pane — FLUSH. border on --c-bg, never raised surface.
+      The single biggest app-wide lever. Replaces the raised Card. */
+.pane{
+  background:var(--c-bg); border:1px solid var(--c-border);
+  padding:16px 20px; display:flex; flex-direction:column; min-width:0;
+}
+.pane > .eyebrow:first-child{margin-bottom:12px;}
+.pane .surface-tag{
+  margin-left:auto; font-family:"Inter",sans-serif; font-weight:600;
+  font-size:9px; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--c-text-muted); border:1px solid var(--c-border);
+  padding:2px 6px;
+}
+
+/* ── PRIMITIVE: EventRow — left color-bar (inset shadow) + functional tint.
+      Converges Overview.TimelineRow + the arc's EventBand into ONE row. */
+.eventrow{
+  display:flex; align-items:center; gap:10px; padding:8px 12px;
+  font-size:13px; color:var(--c-text-dim);
+  box-shadow:inset 3px 0 0 0 var(--cat,var(--c-accent));
+  background:color-mix(in srgb, var(--cat,var(--c-accent)) 9%, transparent);
+}
+.eventrow .t{flex:1; min-width:0; color:var(--c-text); font-weight:500;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.eventrow .meta{color:var(--c-text-muted); font-size:11.5px; flex-shrink:0;}
+
+/* ── PRIMITIVE: CheckTarget — the 28px box factored out of ChoreCheckRow. */
+.checkrow{
+  display:flex; align-items:center; gap:12px;
+  padding:9px 4px; border-bottom:1px solid var(--c-border);
+  font-size:14px; color:var(--c-text);
+}
+.checkrow:last-child{border-bottom:0;}
+.check{
+  width:28px; height:28px; flex-shrink:0; border:2px solid var(--c-border);
+  background:var(--c-bg); display:inline-flex; align-items:center;
+  justify-content:center; color:transparent; cursor:pointer;
+  transition:border-color .1s;
+}
+.check:hover{border-color:var(--c-text);}
+.check svg{width:16px; height:16px; stroke:currentColor; stroke-width:3;
+  fill:none;}
+.checkrow.done .check{background:var(--c-resolved); border-color:var(--c-resolved);
+  color:var(--c-on-accent);}
+.checkrow.done .label{color:var(--c-text-muted); text-decoration:line-through;}
+.checkrow .body{flex:1; min-width:0;}
+.checkrow .label{display:flex; align-items:center; gap:8px; min-width:0;}
+.checkrow .label .name{overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap;}
+.checkrow .sub{font-size:11px; color:var(--c-text-faint); margin-top:2px;}
+.pill{
+  font-family:"Inter",sans-serif; font-weight:600; font-size:9px;
+  letter-spacing:0.12em; text-transform:uppercase; padding:1px 5px;
+  border:1px solid var(--c-border); color:var(--c-text-faint);
+  flex-shrink:0;
+}
+.pill.must{color:var(--c-warn); border-color:color-mix(in srgb,var(--c-warn) 45%,transparent);}
+.cloud{color:var(--c-warn); flex-shrink:0; display:inline-flex;}
+.cloud svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;}
+
+/* ── PRIMITIVE: Hole / AttentionCard — the ONE amber-hatch obligation.
+      Flush warn fill + inset hairline + 45° hatch. Supersedes the raised
+      border-l-2 bg-warn/5 escalation tint app-wide. */
+.hole{
+  position:relative; padding:12px 14px;
+  background:color-mix(in srgb, var(--c-warn) 6%, var(--c-bg));
+  box-shadow:inset 0 0 0 1.5px var(--c-warn);
+  background-image:repeating-linear-gradient(45deg,
+    color-mix(in srgb,var(--c-warn) 14%,transparent) 0 5px,
+    transparent 5px 11px);
+}
+.hole .eyebrow{color:var(--c-warn); margin-bottom:5px;}
+.hole .work{font-family:"Lora",serif; font-weight:600; font-size:14px;
+  color:var(--c-text); letter-spacing:-0.01em;}
+.hole .where{font-size:11.5px; color:var(--c-text-muted); margin-top:1px;}
+.hole .reason{font-size:12.5px; color:var(--c-text-dim); margin-top:7px;
+  line-height:1.45;}
+.hole .act{
+  margin-top:10px; align-self:flex-start; border:0; cursor:pointer;
+  background:var(--c-warn); color:var(--c-on-accent);
+  font-family:"Inter",sans-serif; font-weight:700; font-size:11px;
+  letter-spacing:0.1em; text-transform:uppercase; padding:8px 12px;
+  display:inline-flex;
+}
+.hole .note{font-size:10px; color:var(--c-text-faint); margin-top:6px;}
+/* compact one-line Hole used inside lists (Chores overran row) */
+.hole.row{display:flex; align-items:center; gap:12px; background-image:none;
+  background:color-mix(in srgb,var(--c-warn) 7%, var(--c-bg));}
+.hole.row .work{flex:1;}
+
+/* ── PRIMITIVE: NowRule — green hairline + dot + glow + "Now ·" eyebrow. */
+.nowrule{position:relative; height:1.5px; background:var(--c-resolved);
+  margin:13px 0 13px; }
+.nowrule::before{content:""; position:absolute; left:0; top:50%;
+  width:7px; height:7px; border-radius:50%;
+  background:var(--c-resolved);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--c-resolved) 28%,transparent);
+  margin-top:-3.5px;}
+.nowrule .lbl{position:absolute; top:-9px; left:14px; background:var(--c-bg);
+  padding:0 6px; font-family:"Inter",sans-serif; font-weight:700;
+  font-size:9px; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--c-resolved);}
+
+/* ── PRIMITIVE: LoadSpine — count-driven height bars. ALWAYS populated
+      (block item count is real on every surface). The person-lane is an
+      overlay only (.spine.lanes), never the default. */
+.spine{display:flex; align-items:flex-end; gap:3px; height:46px;
+  border-bottom:1px solid var(--c-border); padding-bottom:0;}
+.spine .bar{flex:1; min-height:6px; background:var(--c-accent-deep);
+  position:relative;}
+.spine .bar.done{background:var(--c-resolved);}
+.spine .bar.hole{background:transparent;
+  box-shadow:inset 0 0 0 1.5px var(--c-warn);
+  background-image:repeating-linear-gradient(45deg,
+    color-mix(in srgb,var(--c-warn) 22%,transparent) 0 4px,transparent 4px 8px);}
+.spine-labels{display:flex; gap:3px; margin-top:4px;}
+.spine-labels span{flex:1; text-align:center; font-size:9px;
+  color:var(--c-text-faint); font-family:"Inter",sans-serif;
+  letter-spacing:0.04em; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap;}
+/* conditional person-lane overlay — only drawn when assignment data exists */
+.lanes{margin-top:10px; display:none; flex-direction:column; gap:4px;}
+.lane{display:flex; align-items:center; gap:8px;}
+.lane .who{width:42px; flex-shrink:0; font-family:"Inter",sans-serif;
+  font-weight:600; font-size:11px; color:var(--c-text-dim);}
+.lane .track{flex:1; height:14px; position:relative;
+  border:1px solid var(--c-border);
+  background:color-mix(in srgb,var(--c-surface-alt) 40%,transparent);}
+.lane .seg{position:absolute; top:1px; bottom:1px;}
+.lane .seg.committed{background:var(--c-accent-deep);}
+.lane .seg.done{background:var(--c-resolved);}
+.lane .seg.event{background:repeating-linear-gradient(45deg,var(--c-cat-fm) 0 7px,
+  color-mix(in srgb,var(--c-cat-fm) 70%,transparent) 7px 9px);}
+.lane .seg.hole{box-shadow:inset 0 0 0 1.5px var(--c-warn);
+  background-image:repeating-linear-gradient(45deg,
+  color-mix(in srgb,var(--c-warn) 22%,transparent) 0 4px,transparent 4px 8px);}
+
+/* ── PRIMITIVE: SealStamp — celadon ✓ "Sealed · who · window · 7/7". */
+.seal{display:inline-flex; align-items:center; gap:9px;
+  font-family:"Inter",sans-serif; font-weight:600; font-size:12px;
+  color:var(--c-resolved); }
+.seal .mark{width:22px; height:22px; flex-shrink:0;
+  border:1.5px solid var(--c-resolved); display:inline-flex;
+  align-items:center; justify-content:center;}
+.seal .mark svg{width:13px;height:13px;stroke:var(--c-resolved);
+  stroke-width:3;fill:none;}
+.seal .meta{color:var(--c-text-muted); font-weight:500;}
+
+/* ── PRIMITIVE: WeekStrip — the SINGLE week (spines + heat + day footer).
+      Replaces the duplicate center WeekSpines + sidebar WeekList. */
+.weekstrip .days{display:grid; grid-template-columns:repeat(7,1fr); gap:8px;}
+.weekstrip .day{display:flex; flex-direction:column; align-items:center;
+  gap:5px; cursor:pointer; background:none; border:0; padding:0;
+  font:inherit; color:inherit;}
+.weekstrip .day .dow{font-family:"Inter",sans-serif; font-size:11px;
+  color:var(--c-text-dim);}
+.weekstrip .day.today .dow{color:var(--c-resolved);}
+.weekstrip .day.sel .dow{color:var(--c-resolved); font-weight:700;}
+.weekstrip .col{width:100%; height:54px; border:1px solid var(--c-border);
+  display:flex; align-items:flex-end; justify-content:center; gap:2px;
+  padding:5px 3px;
+  background:color-mix(in srgb,var(--c-surface) 35%,transparent);}
+.weekstrip .day.sel .col{border:2px solid var(--c-resolved);}
+.weekstrip .day.today .col{border-color:color-mix(in srgb,var(--c-resolved) 50%,var(--c-border));}
+.weekstrip .col i{width:6px; background:var(--c-accent-deep); display:block;}
+.weekstrip .day .tot{font-family:"Inter",sans-serif; font-size:10px;
+  color:var(--c-text-faint);}
+.weekstrip .heat-lbl{margin-top:12px;}
+.weekstrip .heat{display:grid; grid-template-columns:repeat(7,1fr); gap:8px;
+  margin-top:6px;}
+.weekstrip .heat span{height:10px; display:block;}
+.weekstrip .footer{margin-top:14px; padding-top:12px;
+  border-top:1px solid var(--c-border);}
+.weekstrip .footer .row{display:flex; gap:14px; font-size:12px;
+  color:var(--c-text-dim); margin-top:6px;}
+.weekstrip .footer .row b{color:var(--c-text); font-weight:600;}
+
+/* ── ConfirmCard — the day-confirm anchor: draft (flush accent) → sealed. */
+.confirm{display:flex; align-items:center; gap:16px; padding:12px 18px;
+  background:color-mix(in srgb,var(--c-accent-deep) 10%,var(--c-bg));
+  border:1px solid color-mix(in srgb,var(--c-accent-deep) 45%,var(--c-border));}
+.confirm .txt{flex:1;}
+.confirm .txt .t{font-family:"Lora",serif; font-weight:600; font-size:15px;
+  letter-spacing:-0.01em;}
+.confirm .txt .s{font-size:12px; color:var(--c-text-muted); margin-top:2px;}
+.confirm .go{border:0; cursor:pointer; background:var(--c-accent);
+  color:var(--c-on-accent); font-family:"Inter",sans-serif; font-weight:700;
+  font-size:11px; letter-spacing:0.12em; text-transform:uppercase;
+  padding:10px 16px;}
+.confirm.sealed{background:var(--c-bg);
+  border-color:var(--c-border);}
+
+/* progress bar (Rounds) */
+.prog{height:6px; background:var(--c-surface-alt); margin-top:8px;
+  overflow:hidden;}
+.prog i{display:block; height:100%; background:var(--c-accent);}
+
+/* ── AlertStrip — the one flush warn strip (offline / source-changed). */
+.alertstrip{display:flex; align-items:center; gap:10px; padding:8px 14px;
+  font-size:12px; color:var(--c-text-dim);
+  background:color-mix(in srgb,var(--c-warn) 6%,var(--c-bg));
+  border:1px solid color-mix(in srgb,var(--c-warn) 40%,var(--c-border));}
+.alertstrip .dot{width:7px;height:7px;border-radius:50%;
+  background:var(--c-warn);flex-shrink:0;}
+.alertstrip b{color:var(--c-text);font-weight:600;}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PAGE CHROME — control bar, thesis, layout
+   ───────────────────────────────────────────────────────────────────── */
+.controlbar{position:sticky; top:0; z-index:50;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:10px 22px; background:var(--c-surface);
+  border-bottom:1px solid var(--c-border);}
+.controlbar .brand{font-family:"Lora",serif; font-weight:700; font-size:15px;
+  letter-spacing:-0.01em; margin-right:6px;}
+.controlbar .brand small{font-family:"Inter",sans-serif; font-weight:600;
+  font-size:9px; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--c-text-faint); display:block;}
+.seg{display:inline-flex; border:1px solid var(--c-border);}
+.seg button{border:0; background:var(--c-bg); color:var(--c-text-muted);
+  font-family:"Inter",sans-serif; font-weight:600; font-size:11px;
+  letter-spacing:0.04em; padding:6px 11px; cursor:pointer;
+  border-right:1px solid var(--c-border);}
+.seg button:last-child{border-right:0;}
+.seg button.on{background:var(--c-accent); color:var(--c-on-accent);}
+.controlbar .grp{display:flex; align-items:center; gap:7px;}
+.controlbar .grp > span{font-family:"Inter",sans-serif; font-weight:700;
+  font-size:9px; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--c-text-faint);}
+
+.wrap{max-width:1280px; margin:0 auto; padding:22px;}
+.thesis{margin-bottom:20px;}
+.thesis .heading{font-size:23px;}
+.thesis p{margin:8px 0 0; max-width:760px; color:var(--c-text-muted);
+  font-size:13.5px;}
+.thesis .underline{color:var(--c-text); font-weight:600;
+  box-shadow:inset 0 -6px 0 color-mix(in srgb,var(--c-accent) 22%,transparent);}
+
+.layout{display:grid; grid-template-columns:200px 1fr; gap:22px;
+  align-items:start;}
+
+/* primitive index rail — the specimen catalog, makes the thesis literal */
+.rail{position:sticky; top:74px; border:1px solid var(--c-border);
+  background:var(--c-bg);}
+.rail h3{margin:0; padding:11px 14px; border-bottom:1px solid var(--c-border);}
+.rail ol{list-style:none; margin:0; padding:6px 0;}
+.rail li{display:flex; gap:9px; align-items:baseline; padding:5px 14px;
+  font-size:12px; color:var(--c-text-dim); cursor:default;}
+.rail li b{font-family:"Inter",sans-serif; font-variant-numeric:tabular-nums;
+  font-size:10px; color:var(--c-text-faint); width:16px; flex-shrink:0;}
+.rail li.on{background:color-mix(in srgb,var(--c-accent) 10%,transparent);
+  color:var(--c-text);}
+.rail .note{padding:9px 14px; border-top:1px solid var(--c-border);
+  font-size:10.5px; color:var(--c-text-faint); line-height:1.5;}
+
+/* primitive index superscripts — toggled visible */
+.pidx{display:none; font-family:"Inter",sans-serif;
+  font-variant-numeric:tabular-nums; font-size:8.5px; font-weight:700;
+  color:var(--c-on-accent); background:var(--c-accent);
+  padding:0 3px; margin-left:5px; vertical-align:super; line-height:1.4;}
+body.show-index .pidx{display:inline-block; align-self:flex-start;}
+
+.canvas{display:flex; flex-direction:column; gap:18px;}
+.quad{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+.quad .pane{min-height:0;}
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr;}
+  .rail{position:static;}
+  .quad{grid-template-columns:1fr;}
+}
+
+.lede{font-size:11px; color:var(--c-text-faint); margin:-4px 0 14px;}
+.list{display:flex; flex-direction:column;}
+.kv{display:flex; gap:6px; align-items:baseline; font-size:12px;
+  color:var(--c-text-muted);}
+.kv b{font-family:"Lora",serif; font-size:22px; font-weight:600;
+  color:var(--c-text); letter-spacing:-0.01em;}
+.statgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
+  background:var(--c-border); border:1px solid var(--c-border);}
+.stat{background:var(--c-bg); padding:10px 12px;}
+.stat .v{font-family:"Lora",serif; font-size:24px; font-weight:600;
+  letter-spacing:-0.01em; line-height:1;}
+.stat .l{font-family:"Inter",sans-serif; font-size:9px; font-weight:600;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--c-text-faint);
+  margin-top:5px;}
+.stat.warn .v{color:var(--c-warn);}
+
+/* mobile tier preview */
+.tier{display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;}
+.phone{width:300px; border:1px solid var(--c-border); background:var(--c-bg);
+  padding:12px;}
+.phone .pane{padding:12px 13px;}
+
+/* migration ledger */
+.ledger{border:1px solid var(--c-border); background:var(--c-bg);}
+.ledger table{width:100%; border-collapse:collapse; font-size:12px;}
+.ledger th,.ledger td{text-align:left; padding:8px 12px;
+  border-bottom:1px solid var(--c-border);}
+.ledger th{font-family:"Inter",sans-serif; font-size:9px; font-weight:700;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--c-text-faint);}
+.ledger td:first-child{font-weight:600;}
+.tag{font-family:"Inter",sans-serif; font-size:9px; font-weight:700;
+  letter-spacing:0.08em; text-transform:uppercase; padding:2px 6px;
+  display:inline-block;}
+.tag.step1{background:var(--c-accent); color:var(--c-on-accent);}
+.tag.defer{border:1px solid var(--c-border); color:var(--c-text-muted);}
+
+.section-h{display:flex; align-items:baseline; gap:12px; margin-bottom:2px;}
+.section-h .heading{font-size:16px;}
+.section-h .eyebrow{margin-left:auto;}
+</style>
+</head>
+<body class="show-index">
+
+<div class="controlbar">
+  <div class="brand">NFF<small>Systematizer</small></div>
+  <div class="grp">
+    <span>Theme</span>
+    <div class="seg" id="themeSeg">
+      <button data-theme-btn="light" class="on">Light</button>
+      <button data-theme-btn="dark">Dark</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span>State</span>
+    <div class="seg" id="stateSeg">
+      <button data-state-btn="normal" class="on">Normal</button>
+      <button data-state-btn="mandown">Man-down</button>
+      <button data-state-btn="overdue">Overdue</button>
+      <button data-state-btn="offline">Offline</button>
+      <button data-state-btn="dense">Dense</button>
+      <button data-state-btn="sparse">Sparse</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span>Index</span>
+    <div class="seg" id="idxSeg">
+      <button data-idx-btn="on" class="on">Show</button>
+      <button data-idx-btn="off">Hide</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="thesis">
+    <h1 class="heading">One vocabulary, four surfaces.</h1>
+    <p>Ten primitives distilled from the Rethinker arc, promoted once, then
+    repointed everywhere. Dashboard, Chores, Rounds and Schedule below are
+    built from the <span class="underline">same numbered components wearing the
+    same chrome</span> — flush panes on the page, Lora headings, Inter
+    eyebrows, one Hole, one NowRule, one count-driven LoadSpine. Toggle the
+    index to see a primitive appear by the same number on more than one
+    surface. The argument is that the app finally reads as one typeface.</p>
+  </div>
+
+  <div class="layout">
+
+    <!-- PRIMITIVE INDEX RAIL — the specimen catalog -->
+    <aside class="rail">
+      <h3 class="eyebrow bold">Primitive index</h3>
+      <ol>
+        <li><b>1</b>Pane (flush)</li>
+        <li><b>2</b>Eyebrow</li>
+        <li><b>3</b>Heading</li>
+        <li><b>4</b>NowRule</li>
+        <li><b>5</b>LoadSpine</li>
+        <li><b>6</b>EventRow</li>
+        <li><b>7</b>Hole / Attention</li>
+        <li><b>8</b>SealStamp</li>
+        <li><b>9</b>CheckTarget</li>
+        <li><b>10</b>WeekStrip</li>
+      </ol>
+      <div class="note">Same number, more than one surface = the consistency
+      win. Person-lanes (overlay on&nbsp;5) draw only when assignment data
+      is real — sparse by default, so cut as a system primitive.</div>
+    </aside>
+
+    <div class="canvas">
+
+      <!-- DAY-CONFIRM ANCHOR (ConfirmCard relocated; draft -> sealed) -->
+      <div id="confirmSlot"></div>
+
+      <!-- THE QUAD — four surfaces that finally match -->
+      <div class="section-h">
+        <h2 class="heading">The quad</h2>
+        <span class="eyebrow">desktop · lead tier</span>
+      </div>
+
+      <div class="quad">
+        <section class="pane" id="paneDashboard"></section>
+        <section class="pane" id="paneChores"></section>
+        <section class="pane" id="paneRounds"></section>
+        <section class="pane" id="paneSchedule"></section>
+      </div>
+
+      <!-- THE SINGLE RESOLVED WEEK -->
+      <div class="section-h">
+        <h2 class="heading">The one week view</h2>
+        <span class="eyebrow">replaces center WeekSpines + sidebar WeekList</span>
+      </div>
+      <section class="pane weekstrip" id="paneWeek"></section>
+
+      <!-- MOBILE TIER (de-emphasized; same primitives, narrower) -->
+      <div class="section-h">
+        <h2 class="heading">Phone tier</h2>
+        <span class="eyebrow">same primitives, smaller</span>
+      </div>
+      <div class="tier" id="tierMobile"></div>
+
+      <!-- MIGRATION LEDGER (cheapest-first graft made explicit) -->
+      <div class="section-h">
+        <h2 class="heading">Migration ledger</h2>
+        <span class="eyebrow">cheapest-first → deferrable</span>
+      </div>
+      <div class="ledger">
+        <table data-num>
+          <thead><tr><th>Move</th><th>Touches</th><th>When</th></tr></thead>
+          <tbody>
+            <tr><td>Card → Pane (the lone flush-flip)</td>
+              <td>1 component, ~1 line</td>
+              <td><span class="tag step1">Step 1 · entry</span></td></tr>
+            <tr><td>ChoreCheckRow escalation → Hole</td>
+              <td>1 file, used by Chores + Rounds</td>
+              <td><span class="tag step1">Step 1</span></td></tr>
+            <tr><td>NowMarker / pool NowRule → one NowRule</td>
+              <td>collapse 2 copies</td>
+              <td><span class="tag step1">Step 1</span></td></tr>
+            <tr><td>StatTile → flush stat grid</td>
+              <td>Overview + Metrics</td>
+              <td><span class="tag defer">Deferrable</span></td></tr>
+            <tr><td>PlaceSection bg-surface → Pane</td>
+              <td>Rounds, multi-section</td>
+              <td><span class="tag defer">Deferrable</span></td></tr>
+            <tr><td>DayRibbon two-lane → LoadSpine + overlay</td>
+              <td>Schedule only</td>
+              <td><span class="tag defer">Deferrable</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="lede" style="margin-top:4px">Floating overlays (Rounds doing-sheet,
+      modals) deliberately keep a raised surface — figure over scrim needs it.
+      The flush rule is for in-page panes only.</p>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ───────────────────────────────────────────────────────────────────────
+   ICONS (inline SVG)
+   ─────────────────────────────────────────────────────────────────────── */
+const I = {
+  check:'<svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>',
+  cloud:'<svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M6 17a4 4 0 0 1 .9-7.9 5 5 0 0 1 9.2-1.3"/><path d="M19 14a3 3 0 0 1-1 5H8"/></svg>',
+};
+
+/* ───────────────────────────────────────────────────────────────────────
+   MODEL — real content, one object per state. The surfaces are RENDERED
+   from this, so the hard states are real, not described.
+   ─────────────────────────────────────────────────────────────────────── */
+const BLOCKS = ["Morning","Midmorn","Early-aft","Late-aft","Evening"];
+const CAT = {fm:"var(--c-cat-fm)", egg:"var(--c-cat-egg)",
+  proc:"var(--c-cat-processing)", pick:"var(--c-cat-pickups)",
+  routine:"var(--c-accent)"};
+
+// each state customises a base model
+function model(state){
+  // spine: per-block {count,state}; person-lane overlay only when laneOn
+  const base = {
+    title:"Tuesday · Jun 24",
+    spine:[{c:6,s:"done"},{c:8,s:"committed"},{c:4,s:"committed"},
+           {c:5,s:"committed"},{c:3,s:"committed"}],
+    items:42, musts:6, blocksN:5, done:18,
+    confirm:"sealed",            // draft | sealed
+    laneOn:false, offline:false, hole:null,
+    heat:[0,0,0.2,0.45,1,0,0],   // should-escalation toward Thu
+    heatTop:"Pressure-wash nest boxes", heatPeak:"Thu 26",
+    week:[7,11,18,14,17,9,11],   // item counts per day
+    weekDone:true,
+    // chore rows (Chores list + Rounds), category-coloured
+    chores:[
+      {n:"Fill waterers", p:"Coops", cat:"routine", done:true},
+      {n:"Collect eggs", p:"Chicken tractor 1", cat:"egg", done:true},
+      {n:"Pressure-wash nest boxes", p:"Coops", cat:"routine", done:false,
+        should:true},
+      {n:"Wash eggs", p:"Egg room", cat:"egg", done:false},
+    ],
+    // dashboard timeline (EventRows)
+    timeline:[
+      {n:"Farmers market", meta:"9:00–1:00 · off-site (Jim)", cat:"fm"},
+      {n:"Collect eggs", meta:"Chicken tractor 1", cat:"egg"},
+      {n:"__now__"},
+      {n:"Midmorning round", meta:"2 / 8", cat:"routine"},
+      {n:"Wash eggs", meta:"Egg room", cat:"egg"},
+    ],
+  };
+
+  if(state==="mandown"){
+    base.hole = {
+      work:"Wash eggs · Egg room",
+      reason:"James off-site at market til 1:00p. Jim can cover before the "
+        +"midday pickup — acknowledging it IS the record, no reassignment "
+        +"paperwork.",
+      coverer:"Jim",
+    };
+    base.spine[1] = {c:8,s:"hole"};        // midmorning carries the hole
+    base.laneOn = true;                     // assignment data EXISTS here
+    base.timeline[4] = {n:"Wash eggs", meta:"⚠ needs cover", cat:"egg",
+      flag:"hole"};
+  }
+  if(state==="overdue"){
+    base.chores[2] = {n:"Pressure-wash nest boxes", p:"Coops",
+      cat:"routine", done:false, overran:true};
+    base.musts = 7;
+    base.heat = [0,0,0.4,0.7,1,0,0];
+    base.timeline[3] = {n:"Midmorning round", meta:"2 / 8 · 1 overran",
+      cat:"routine"};
+  }
+  if(state==="offline"){
+    base.offline = true;
+    base.chores[0].queued = true;
+    base.chores[1].queued = true;
+    base.confirm = "sealed";
+  }
+  if(state==="dense"){
+    base.spine=[{c:9,s:"done"},{c:14,s:"committed"},{c:11,s:"committed"},
+                {c:13,s:"committed"},{c:8,s:"committed"}];
+    base.items=78; base.musts=11; base.done=31;
+    base.heat=[0.3,0.5,0.7,0.9,1,0.4,0.2];
+    base.week=[14,22,31,27,33,19,21];
+    base.chores=base.chores.concat([
+      {n:"Move chicken tractor 1", p:"Chicken tractor 1", cat:"routine", done:true},
+      {n:"Process broilers", p:"House", cat:"proc", done:false, should:true},
+      {n:"Egg pickup — café", p:"Egg room", cat:"pick", done:false},
+      {n:"Refill brooder feed", p:"Mobile Brooder", cat:"routine", done:false},
+    ]);
+  }
+  if(state==="sparse"){
+    base.title="Sunday · Jun 22 — quiet day";
+    base.spine=[{c:2,s:"done"},{c:3,s:"committed"},{c:1,s:"committed"},
+                {c:2,s:"committed"},{c:1,s:"committed"}];
+    base.items=9; base.musts=1; base.done=2; base.blocksN=5;
+    base.heat=[0,0,0,0,0,0,0];           // nothing warming -> heat suppressed
+    base.heatTop=null;
+    base.week=[7,11,18,14,17,9,9];
+    base.chores=[
+      {n:"Fill waterers", p:"Coops", cat:"routine", done:true},
+      {n:"Collect eggs", p:"Chicken tractor 1", cat:"egg", done:false},
+      {n:"Lock up coops", p:"Coops", cat:"routine", done:false},
+    ];
+    base.timeline=[
+      {n:"Collect eggs", meta:"Chicken tractor 1", cat:"egg"},
+      {n:"__now__"},
+      {n:"Lock up coops", meta:"Coops · evening", cat:"routine"},
+    ];
+  }
+  return base;
+}
+
+/* ───────────────────────────────────────────────────────────────────────
+   RENDERERS — every surface from the same primitives
+   ─────────────────────────────────────────────────────────────────────── */
+const px = n => n; // identity helper for readability
+const idx = n => `<span class="pidx">${n}</span>`;
+
+function renderSpine(m, compact){
+  const max = Math.max(...m.spine.map(b=>b.c));
+  const bars = m.spine.map((b,i)=>{
+    const h = Math.max(12, Math.round(b.c/max*100));
+    return `<div class="bar ${b.s}" style="height:${h}%"
+      title="${BLOCKS[i]} · ${b.c} items"></div>`;
+  }).join("");
+  const labels = compact ? "" :
+    `<div class="spine-labels">${BLOCKS.map(b=>`<span>${b}</span>`).join("")}</div>`;
+  // conditional person-lane overlay
+  let lanes = "";
+  if(m.laneOn){
+    lanes = `<div class="lanes" style="display:flex">
+      <div class="lane"><span class="who">James</span><div class="track">
+        <div class="seg event" style="left:38%;width:40%"
+          title="Farmers market 9:00–1:00"></div>
+        <div class="seg hole" style="left:30%;width:8%"
+          title="Wash eggs — uncovered"></div></div></div>
+      <div class="lane"><span class="who">Jim</span><div class="track">
+        <div class="seg done" style="left:4%;width:24%"></div>
+        <div class="seg committed" style="left:30%;width:18%"
+          title="picks up Wash eggs"></div></div></div>
+    </div>`;
+  }
+  return `<div class="spine" data-num>${bars}</div>${labels}${lanes}`;
+}
+
+function renderHole(h, inrun){
+  if(!h) return "";
+  return `<div class="hole">
+    <div class="eyebrow">⚠ Needs cover ${idx(7)}</div>
+    <div class="work">${h.work}</div>
+    <div class="reason">${h.reason}</div>
+    <button class="act">${h.coverer} covers — I've got it</button>
+    <div class="note">Acknowledgement is the record. No data is mutated until
+      you tap.</div>
+  </div>`;
+}
+
+function nowrule(t){
+  return `<div class="nowrule"><span class="lbl">Now · ${t}</span></div>`;
+}
+
+function renderTimeline(m){
+  return m.timeline.map(it=>{
+    if(it.n==="__now__") return nowrule(m.title.indexOf("Sunday")>-1?"4:15p":"9:40a");
+    const flag = it.flag==="hole"
+      ? ` <span class="pill must">cover</span>` : "";
+    return `<div class="eventrow" style="--cat:${CAT[it.cat]}">
+      <span class="t">${it.n}${flag}</span>
+      <span class="meta" data-num>${it.meta||""}</span></div>`;
+  }).join("");
+}
+
+/* DASHBOARD "schedule at a glance" */
+function renderDashboard(m){
+  const el = document.getElementById("paneDashboard");
+  el.innerHTML = `
+    <div class="eyebrow bold">Schedule at a glance ${idx(2)}
+      <span class="surface-tag">Dashboard</span></div>
+    <div class="lede" data-num>${m.title} · ${m.items} items · ${m.musts} musts</div>
+    ${renderSpine(m,false)}${idx(5)}
+    <div style="height:12px"></div>
+    ${m.hole ? renderHole(m.hole)+'<div style="height:10px"></div>' : ""}
+    <div class="list">${renderTimeline(m)}${idx(6)}${idx(4)}</div>`;
+}
+
+/* CHORES list — escalation as flush Hole, normal rows flush */
+function renderChores(m){
+  const el = document.getElementById("paneChores");
+  const rows = m.chores.map(c=>{
+    if(c.overran){
+      return `<div class="hole row">
+        <div class="check" style="border-color:var(--c-warn)"></div>
+        <div class="work">${c.n}
+          <span class="pill must">overran</span></div>
+        <div class="sub" data-num style="margin-top:0">${c.p} · should→must</div>
+      </div>`;
+    }
+    const cloud = c.queued
+      ? `<span class="cloud" title="Saved on device — not synced">${I.cloud}</span>` : "";
+    const should = c.should
+      ? `<span class="pill">optional today</span>` : "";
+    return `<div class="checkrow ${c.done?"done":""}">
+      <button class="check">${I.check}</button>
+      <div class="body">
+        <div class="label"><span class="name">${c.n}</span>${should}${cloud}</div>
+        <div class="sub" data-num>${c.p}</div>
+      </div></div>`;
+  }).join("");
+  el.innerHTML = `
+    <div class="eyebrow bold">Today's chores ${idx(9)}
+      <span class="surface-tag">Chores</span></div>
+    ${m.offline ? `<div class="alertstrip" style="margin-bottom:10px">
+      <span class="dot"></span><b>2 ticks queued</b> on this device — syncing
+      when you're back online.</div>` : ""}
+    <div class="list">${rows}${idx(7)}</div>`;
+}
+
+/* ROUNDS run — hero progress, flush PlaceSection, in-run Hole, SealStamp */
+function renderRounds(m){
+  const el = document.getElementById("paneRounds");
+  const pct = Math.round(m.done/m.items*100);
+  const sealed = m.confirm==="sealed";
+  const placeRows = m.chores.slice(0,3).map(c=>{
+    const cloud = c.queued
+      ? `<span class="cloud">${I.cloud}</span>` : "";
+    return `<div class="checkrow ${c.done?"done":""}">
+      <button class="check">${I.check}</button>
+      <div class="body"><div class="label"><span class="name">${c.n}</span>${cloud}</div></div>
+    </div>`;
+  }).join("");
+  el.innerHTML = `
+    <div class="eyebrow bold">Midmorning round ${idx(3)}
+      <span class="surface-tag">Rounds</span></div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin:4px 0 2px">
+      <span class="heading hero" data-num>${m.done}/${m.items}</span>
+      <span class="eyebrow">done</span></div>
+    <div class="prog"><i style="width:${pct}%"></i></div>
+    <div style="height:14px"></div>
+    ${m.hole ? renderHole(m.hole,true)+'<div style="height:12px"></div>' : ""}
+    <div class="eyebrow" style="margin-bottom:6px">Egg room ${idx(9)}</div>
+    <div class="list">${placeRows}</div>
+    <div style="height:14px"></div>
+    <div class="seal">${idx(8)}<span class="mark">${I.check}</span>
+      <span>Sealed</span>
+      <span class="meta" data-num>· Jim · 6:08–8:10a · 7/7</span></div>`;
+}
+
+/* SCHEDULE day view — LoadSpine + NowRule + EventRows (system, not ribbon) */
+function renderSchedule(m){
+  const el = document.getElementById("paneSchedule");
+  el.innerHTML = `
+    <div class="eyebrow bold">Day load ${idx(5)}
+      <span class="surface-tag">Schedule</span></div>
+    <div class="lede" data-num>${m.title}${m.laneOn
+      ? " · who's on what (lanes drawn — assignment data exists)"
+      : " · count-driven (lanes hidden — no assignment data)"}</div>
+    ${renderSpine(m,false)}
+    <div style="height:14px"></div>
+    <div class="list">${renderTimeline(m)}</div>`;
+}
+
+/* WEEKSTRIP — one resolved week (spine + heat + selected-day footer) */
+function renderWeek(m){
+  const el = document.getElementById("paneWeek");
+  const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const max = Math.max(...m.week);
+  const sel = m.title.indexOf("Sunday")>-1 ? 0 : 2;
+  const days = m.week.map((tot,i)=>{
+    const cls = (i===2?"today ":"")+(i===sel?"sel ":"");
+    const h = Math.max(10, Math.round(tot/max*44));
+    return `<button class="day ${cls}">
+      <span class="dow">${DOW[i]} ${22+i}</span>
+      <span class="col"><i style="height:${h}px"></i></span>
+      <span class="tot" data-num>${tot}</span></button>`;
+  }).join("");
+  const showHeat = m.heatTop && m.heat.some(h=>h>0);
+  const heat = showHeat ? `
+    <div class="eyebrow heat-lbl">Should-escalation · "${m.heatTop}" · warming
+      toward ${m.heatPeak}</div>
+    <div class="heat">${m.heat.map((h,i)=>{
+      let bg;
+      if(i===4) bg="var(--c-cat-processing)";            // deadline burn
+      else if(h<=0) bg="var(--c-surface-alt)";
+      else bg=`color-mix(in srgb,var(--c-warn) ${Math.round(15+h*45)}%,transparent)`;
+      return `<span style="background:${bg}"></span>`;
+    }).join("")}</div>` : `
+    <div class="eyebrow heat-lbl" style="color:var(--c-text-faint)">
+      Nothing escalating this week — heat row suppressed</div>`;
+  const selName = sel===0?"Sun 22":"Tue 24";
+  el.innerHTML = `
+    <div class="eyebrow bold">This week ${idx(10)}
+      <span class="surface-tag">one week, one place</span></div>
+    <div class="days" data-num>${days}</div>
+    ${heat}
+    <div class="footer">
+      <div class="eyebrow">${selName} · today</div>
+      <div class="row" data-num><span><b>${m.items}</b> items</span>
+        <span><b>${m.blocksN}</b> blocks</span>
+        <span><b>${m.musts}</b> musts</span>
+        <span>${m.weekDone
+          ? '<span class="seal"><span class="mark" style="width:16px;height:16px">'+I.check+'</span>Confirmed · Jim</span>'
+          : "Draft"}</span></div>
+    </div>`;
+}
+
+/* DAY-CONFIRM ANCHOR */
+function renderConfirm(m){
+  const el = document.getElementById("confirmSlot");
+  if(m.confirm==="draft"){
+    el.innerHTML = `<div class="confirm">
+      <div class="txt"><div class="t">Ready to plan ${m.title.split(" ·")[0]}?</div>
+        <div class="s" data-num>${m.items} items · ${m.musts} musts — non-negotiable</div></div>
+      <button class="go">Confirm the day</button></div>`;
+  } else {
+    el.innerHTML = `<div class="confirm sealed">
+      <div class="seal">${idx(8)}<span class="mark">${I.check}</span>
+        <span>Sealed</span>
+        <span class="meta" data-num>· James · 6:08–8:10a · planned ${m.title.split(" ·")[0]}</span></div>
+    </div>`;
+  }
+}
+
+/* MOBILE TIER — same primitives, narrower */
+function renderMobile(m){
+  const el = document.getElementById("tierMobile");
+  el.innerHTML = `
+    <div class="phone">
+      <section class="pane">
+        <div class="eyebrow bold">At a glance<span class="surface-tag">Today</span></div>
+        ${renderSpine(m,true)}
+        <div style="height:10px"></div>
+        ${m.hole ? renderHole(m.hole) : `<div class="list">${
+          m.timeline.slice(0,3).map(it=>it.n==="__now__"
+            ? nowrule("9:40a")
+            : `<div class="eventrow" style="--cat:${CAT[it.cat]}">
+                <span class="t">${it.n}</span></div>`).join("")}</div>`}
+      </section>
+    </div>
+    <div class="phone">
+      <section class="pane weekstrip">
+        <div class="eyebrow bold">This week<span class="surface-tag">nav</span></div>
+        <div class="days" data-num style="grid-template-columns:repeat(7,1fr);gap:4px">
+          ${["S","M","T","W","T","F","S"].map((d,i)=>{
+            const max=Math.max(...m.week);
+            const h=Math.max(8,Math.round(m.week[i]/max*30));
+            const cls=(i===2?"today ":"")+(i===2?"sel":"");
+            return `<button class="day ${cls}" style="gap:3px">
+              <span class="dow" style="font-size:10px">${d}</span>
+              <span class="col" style="height:34px"><i style="height:${h}px"></i></span>
+            </button>`;}).join("")}
+        </div>
+      </section>
+    </div>`;
+}
+
+/* ───────────────────────────────────────────────────────────────────────
+   WIRING
+   ─────────────────────────────────────────────────────────────────────── */
+let STATE = "normal";
+function render(){
+  const m = model(STATE);
+  // Sparse / dense days are unsealed drafts to show the confirm anchor;
+  // normal/man-down/offline are sealed.
+  if(STATE==="sparse"||STATE==="dense") m.confirm="draft";
+  renderConfirm(m);
+  renderDashboard(m);
+  renderChores(m);
+  renderRounds(m);
+  renderSchedule(m);
+  renderWeek(m);
+  renderMobile(m);
+  // highlight the primitives most active in this state, in the rail
+  const active = {
+    mandown:[7,5], overdue:[7,10], offline:[9],
+    dense:[5,10], sparse:[5,4], normal:[1,2,3],
+  }[STATE]||[];
+  document.querySelectorAll(".rail li").forEach((li,i)=>{
+    li.classList.toggle("on", active.includes(i+1));
+  });
+}
+
+document.getElementById("themeSeg").addEventListener("click", e=>{
+  const b=e.target.closest("[data-theme-btn]"); if(!b) return;
+  document.documentElement.dataset.theme = b.dataset.themeBtn;
+  document.querySelectorAll("#themeSeg button").forEach(x=>
+    x.classList.toggle("on", x===b));
+});
+document.getElementById("stateSeg").addEventListener("click", e=>{
+  const b=e.target.closest("[data-state-btn]"); if(!b) return;
+  STATE=b.dataset.stateBtn;
+  document.querySelectorAll("#stateSeg button").forEach(x=>
+    x.classList.toggle("on", x===b));
+  render();
+});
+document.getElementById("idxSeg").addEventListener("click", e=>{
+  const b=e.target.closest("[data-idx-btn]"); if(!b) return;
+  document.body.classList.toggle("show-index", b.dataset.idxBtn==="on");
+  document.querySelectorAll("#idxSeg button").forEach(x=>
+    x.classList.toggle("on", x===b));
+});
+
+render();
+</script>
+</body>
+</html>

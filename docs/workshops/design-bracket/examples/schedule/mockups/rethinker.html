@@ -1,0 +1,1292 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Schedule — Rethinker (load-silhouette spine)</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Map the REAL nff-dashboard dark-theme tokens (index.html +
+  // src/styles.css) onto Tailwind utilities so bg-surface / text-warn /
+  // border-line / text-resolved behave exactly like the app.
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: '#101614',
+          surface: '#151a15',
+          'surface-alt': '#1d231e',
+          line: '#3e473d',
+          fg: '#f2efe4',
+          dim: '#c4bfad',
+          muted: '#8e8877',
+          faint: '#6a6658',
+          accent: '#adc8ad',
+          'accent-deep': '#297d5a',
+          warn: '#e6b85a',
+          resolved: '#4cba85',
+          'on-accent': '#0d1410',
+          'cat-fm': '#5dd585',       // celadon-400 (market/events)
+          'cat-egg': '#68d5fd',      // sky-aqua-300
+          'cat-chore': '#c4bfad',
+          'cat-processing': '#ff3347',
+          'cat-deliveries': '#ffbf66',
+        },
+        fontFamily: {
+          body: ['Nacelle', 'system-ui', '-apple-system', 'sans-serif'],
+          heading: ['Lora', 'Georgia', 'serif'],
+          ui: ['Inter', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* ── Page chrome (the mockup harness, not app chrome) ──────────── */
+  body {
+    background: #0b100e;
+    color: #f2efe4;
+    font-family: 'Nacelle', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  .harness-note {
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Phone + desktop device frames. The app surface lives inside the
+     bezel; the bezel itself is harness chrome. */
+  .phone {
+    width: 390px;
+    border: 10px solid #05080620;
+    border-radius: 34px;
+    background: #101614;            /* --c-bg */
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,0.8),
+                0 0 0 1px rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+  .phone-screen {
+    height: 760px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #3e473d transparent;
+    position: relative;
+  }
+  .phone-screen::-webkit-scrollbar { width: 6px; }
+  .phone-screen::-webkit-scrollbar-thumb {
+    background: #3e473d; border-radius: 3px;
+  }
+  .desktop {
+    width: 1180px;
+    border: 1px solid #3e473d;
+    background: #101614;
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,0.8);
+  }
+
+  /* ── The new LOAD-METER component ─────────────────────────────────
+     A person's slice of a block, drawn as a fill on a fixed-capacity
+     track. Read length = "how heavy"; compare lanes = "who's slammed".
+       solid accent-deep  = committed work (locked)
+       hatched accent     = open / discretionary (a should pulled in)
+       solid resolved      = done (ticked)
+       celadon (cat-fm)    = an event reservation owning the lane
+       amber dashed        = a HOLE — assigned but the person's off-site
+  */
+  .lane { display: flex; align-items: center; gap: 8px; }
+  .lane-name {
+    width: 42px; flex-shrink: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    color: #8e8877;
+  }
+  .lane-track {
+    position: relative; flex: 1; height: 13px;
+    background: #1d231e;                 /* --c-surface-alt */
+    box-shadow: inset 0 0 0 1px #2a322a;
+    display: flex; overflow: hidden;
+  }
+  .seg { height: 100%; transition: width 320ms cubic-bezier(.4,0,.2,1); }
+  .seg-done      { background: #4cba85; }                 /* resolved */
+  .seg-committed { background: #297d5a; }                 /* accent-deep */
+  .seg-open {
+    background: repeating-linear-gradient(45deg,
+      rgba(173,200,173,0.55) 0 3px, rgba(173,200,173,0.16) 3px 7px);
+  }
+  .seg-event {
+    background: repeating-linear-gradient(45deg,
+      #5dd585 0 7px, #4cc278 7px 9px);
+  }
+  .seg-hole {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px #e6b85a;
+    /* dashed feel via a faint amber wash */
+    background-image: repeating-linear-gradient(45deg,
+      rgba(230,184,90,0.18) 0 4px, transparent 4px 8px);
+  }
+  .lane-meta {
+    flex-shrink: 0; min-width: 30px; text-align: right;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px; font-weight: 600; color: #c4bfad;
+  }
+
+  /* The 28px Rounds checkbox, ported verbatim from ChoreCheckRow. */
+  .cbox {
+    flex-shrink: 0; width: 28px; height: 28px;
+    border: 2px solid #3e473d; background: #101614;
+    color: transparent; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color 120ms ease, border-color 120ms ease,
+                transform 120ms ease;
+  }
+  .cbox:hover { border-color: #f2efe4; }
+  .cbox.done {
+    background: #4cba85; border-color: #4cba85; color: #0d1410;
+  }
+  .cbox svg { opacity: 0; transition: opacity 120ms ease; }
+  .cbox.done svg { opacity: 1; }
+  .cbox.pop { animation: cbox-pop 220ms ease; }
+  @keyframes cbox-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+
+  /* Block seal — collapses the open checklist + stamps a worked window. */
+  .checklist {
+    overflow: hidden;
+    transition: max-height 420ms cubic-bezier(.4,0,.2,1),
+                opacity 280ms ease;
+    max-height: 1400px;
+  }
+  .block.sealed .checklist { max-height: 0; opacity: 0; }
+  .seal-stamp {
+    display: none;
+    align-items: center; gap: 7px;
+    font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #4cba85;
+  }
+  .block.sealed .seal-stamp { display: inline-flex; animation: stamp-in 360ms ease; }
+  @keyframes stamp-in {
+    0% { transform: scale(0.82) rotate(-3deg); opacity: 0; }
+    60% { transform: scale(1.05) rotate(0.5deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); }
+  }
+  .block.sealed .open-only { display: none; }
+
+  /* Now-marker hairline. */
+  .now-rule {
+    position: relative; height: 0;
+    border-top: 1.5px solid #4cba85;
+  }
+  .now-rule::before {
+    content: ''; position: absolute; left: 0; top: -4px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #4cba85; box-shadow: 0 0 0 3px rgba(76,186,133,0.22);
+  }
+
+  .ow { font-variant-numeric: tabular-nums; }
+
+  /* Desktop ribbon scaffolding. */
+  .ribbon-grid {
+    position: relative;
+    background:
+      repeating-linear-gradient(to right,
+        transparent 0, transparent calc(7.6923% - 1px),
+        #1d231e calc(7.6923% - 1px), #1d231e 7.6923%);
+  }
+  .seg-abs {
+    position: absolute; top: 6px; bottom: 6px;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 0 9px; overflow: hidden;
+    font-family: 'Inter', sans-serif;
+  }
+  .now-vline {
+    position: absolute; top: -18px; bottom: -6px; width: 1.5px;
+    background: #4cba85; z-index: 20;
+  }
+  .now-vline::before {
+    content: 'NOW 9:40'; position: absolute; top: -16px; left: -26px;
+    font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 700;
+    letter-spacing: 0.08em; color: #4cba85; white-space: nowrap;
+  }
+
+  /* Week mini-spines + heat row. */
+  .spine-cell { width: 7px; transition: height 200ms ease; }
+
+  /* Floating jump-to-now pill inside the phone. */
+  .jump-now {
+    position: sticky; bottom: 14px; margin-left: auto;
+    width: max-content;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .seg, .checklist, .cbox, .cbox.pop, .block.sealed .seal-stamp {
+      transition: none !important; animation: none !important;
+    }
+  }
+
+  /* utility */
+  .eyebrow {
+    font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.14em;
+  }
+  [hidden] { display: none !important; }
+</style>
+</head>
+
+<body class="font-body">
+
+<!-- ════════════════════ HARNESS HEADER ════════════════════ -->
+<header class="max-w-[1240px] mx-auto px-8 pt-10 pb-6">
+  <div class="harness-note text-[12px] uppercase tracking-[0.2em] text-[#5dd585] font-semibold mb-2">
+    Schedule Design Bracket · Round 2 · Direction A
+  </div>
+  <h1 class="font-heading text-[40px] font-bold leading-tight text-fg m-0">
+    Rethinker — the load-silhouette spine
+  </h1>
+  <p class="text-[15px] text-dim mt-3 max-w-[760px] leading-relaxed">
+    The day's primary form is its <em>shape</em>: five farm blocks stacked as
+    a spine, each a split load-meter (Jim vs James, committed vs open). You
+    read <strong>how heavy the day is and who's slammed when</strong> in one
+    glance, and drill only into the block you're standing in. Real content is
+    the dense market Tuesday — now 9:40a, Jim started 6:08a, James off-site at
+    the market 8:00–1:00, day already confirmed with one change since.
+  </p>
+  <div class="harness-note text-[12px] text-muted mt-4 flex flex-wrap gap-x-5 gap-y-1">
+    <span>Tokens + fonts pulled from <code class="text-faint">src/styles.css</code> / <code class="text-faint">index.html</code></span>
+    <span>·</span>
+    <span>Tick a box, seal a block, flip Draft/Confirmed, ack the man-down — all live</span>
+  </div>
+</header>
+
+<!-- ════════════════════ 1 · PHONE — TODAY ════════════════════ -->
+<section class="max-w-[1240px] mx-auto px-8 py-8 border-t border-[#1d231e]">
+  <div class="flex items-baseline gap-3 mb-1">
+    <span class="eyebrow text-[#5dd585]">Hero 1</span>
+    <h2 class="font-heading text-[26px] font-bold text-fg m-0">Phone — Today</h2>
+  </div>
+  <p class="text-[14px] text-dim mb-6 max-w-[680px]">
+    The field tier and the screen that decides the winner. The spine is the
+    whole day; the now-block (Midmorning) is open into a Rounds checklist,
+    every other block collapses to its load bar.
+  </p>
+
+  <!-- Mockup state toggles (would be real app state). -->
+  <div class="harness-note flex flex-wrap items-center gap-2 mb-5 text-[12px]">
+    <span class="text-muted mr-1">Try the states:</span>
+    <button onclick="setConfirmed(false)" class="state-btn" id="btn-draft">Draft</button>
+    <button onclick="setConfirmed(true)" class="state-btn is-on" id="btn-conf">Confirmed</button>
+    <span class="text-faint">·</span>
+    <button onclick="toggleSource()" class="state-btn" id="btn-src">Source change</button>
+    <button onclick="toggleOffline()" class="state-btn is-on" id="btn-off">Offline tick</button>
+    <span class="text-faint">·</span>
+    <button onclick="setLoadMode('time')" class="state-btn is-on" id="btn-time">Load: time est.</button>
+    <button onclick="setLoadMode('count')" class="state-btn" id="btn-count">Load: item count</button>
+    <span class="text-faint">·</span>
+    <button onclick="resetPhone()" class="state-btn">Reset ticks</button>
+  </div>
+
+  <div class="phone">
+    <div class="phone-screen" id="phoneScreen">
+
+      <!-- ── App header ── -->
+      <div class="px-4 pt-4 pb-3 sticky top-0 z-30 bg-bg/95 backdrop-blur-sm border-b border-line">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div class="font-heading text-[26px] font-bold text-fg leading-none -tracking-[0.02em]">
+              Today
+            </div>
+            <div class="text-[12px] text-dim mt-1.5">
+              Tue Jun 24 · market day · James + Jim on
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- offline / outbox indicator (OutboxIndicator feel) -->
+            <span id="ph-outbox" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-warn whitespace-nowrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M5.8 5.8A8 8 0 0 0 8 19h10a4 4 0 0 0 1.3-7.8"/><path d="M12 6a8 8 0 0 1 4 1.5"/></svg>
+              <span>1 queued</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- ── DAY BAR: whole-day load silhouette + confirm anchor ── -->
+        <div class="mt-3">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="eyebrow text-faint text-[10px]">Day load</span>
+            <!-- CONFIRMED state -->
+            <span id="confirmed-pill" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-resolved">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Confirmed 6:08a
+            </span>
+          </div>
+          <!-- the day silhouette: 5 block segments, height encodes load,
+               split top=Jim bottom=James -->
+          <div class="flex items-end gap-1 h-9">
+            <!-- each block is a mini two-stack -->
+            <div class="flex-1 flex flex-col justify-end gap-px" title="Morning · done">
+              <div class="bg-resolved" style="height:18px"></div>
+              <div class="bg-resolved/40" style="height:7px"></div>
+            </div>
+            <div class="flex-1 flex flex-col justify-end gap-px" title="Midmorning · now">
+              <div class="bg-accent-deep" style="height:21px"></div>
+              <div style="height:14px;background:repeating-linear-gradient(45deg,#5dd585 0 5px,#4cc278 5px 7px)"></div>
+            </div>
+            <div class="flex-1 flex flex-col justify-end gap-px" title="Early afternoon · man-down">
+              <div class="bg-accent-deep" style="height:24px"></div>
+              <div style="height:9px;box-shadow:inset 0 0 0 1.5px #e6b85a"></div>
+            </div>
+            <div class="flex-1 flex flex-col justify-end gap-px" title="Late afternoon">
+              <div class="bg-accent-deep/80" style="height:19px"></div>
+              <div class="bg-accent-deep/80" style="height:13px"></div>
+            </div>
+            <div class="flex-1 flex flex-col justify-end gap-px" title="End of day">
+              <div class="bg-accent-deep/70" style="height:13px"></div>
+              <div class="bg-accent-deep/70" style="height:13px"></div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between mt-1.5 text-[10px] harness-note text-faint">
+            <span>Jim <span class="text-resolved">▷</span> 6:08a</span>
+            <span>James <span class="text-cat-fm">▷</span> market 8–1</span>
+            <span>5 blocks</span>
+          </div>
+        </div>
+
+        <!-- DRAFT state: Sunsama-style one-tap confirm banner (hidden when confirmed) -->
+        <button id="confirm-banner" hidden onclick="setConfirmed(true)"
+          class="w-full mt-3 flex items-center justify-between gap-3 bg-accent-deep text-on-accent px-3.5 py-2.5 cursor-pointer text-left">
+          <span class="text-[13px] font-semibold leading-snug">
+            Plan the day — 42 items across 5 blocks. Musts are locked.
+          </span>
+          <span class="eyebrow text-[11px] bg-on-accent/15 px-2.5 py-1 whitespace-nowrap">Confirm day</span>
+        </button>
+      </div>
+
+      <!-- ── Source-change review strip (the feed delivery moved to today) ── -->
+      <div id="src-strip" class="mx-4 mt-3 border border-warn/50 bg-[#1d231e]">
+        <button onclick="toggleSourceBody()" class="w-full flex items-center gap-2.5 px-3 py-2 text-left cursor-pointer">
+          <svg class="text-warn shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          <span class="text-[12.5px] text-fg font-medium flex-1">1 change since you confirmed</span>
+          <span class="eyebrow text-[10px] text-warn">Review</span>
+        </button>
+        <div id="src-body" hidden class="px-3 pb-3 pt-0.5 border-t border-warn/25">
+          <div class="text-[12px] text-dim leading-snug mt-2">
+            <span class="text-cat-deliveries font-semibold">Feed delivery</span>
+            moved to <span class="text-fg">today, ~2:00p</span> (was Thu). It
+            lands in James's Early-afternoon lane.
+          </div>
+          <div class="flex gap-2 mt-2.5">
+            <button onclick="acceptSource()" class="bg-accent text-on-accent border-0 px-3 py-1.5 cursor-pointer text-[10px] uppercase tracking-[0.12em] font-semibold">Add to today</button>
+            <button onclick="toggleSourceBody()" class="border border-line text-dim bg-transparent px-3 py-1.5 cursor-pointer text-[10px] uppercase tracking-[0.12em] font-semibold">Dismiss</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ THE SPINE ════ -->
+      <div class="px-4 pt-3 pb-2 space-y-2.5">
+
+        <!-- ── MORNING — collapsed, past, sealed ── -->
+        <div class="block border border-line bg-surface/40 opacity-70 px-3 py-2.5">
+          <div class="flex items-center gap-2">
+            <svg class="text-faint shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
+            <span class="text-[13px] font-semibold text-dim flex-1">Morning</span>
+            <span class="seal-stamp" style="display:inline-flex">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Sealed · Jim 6:08–8:10 · 7/7
+            </span>
+          </div>
+          <div class="mt-2 space-y-1">
+            <div class="lane"><span class="lane-name">Jim</span>
+              <div class="lane-track"><div class="seg seg-done" style="width:78%"></div></div>
+              <span class="lane-meta">7/7</span></div>
+            <div class="lane"><span class="lane-name">James</span>
+              <div class="lane-track"><div class="seg seg-done" style="width:30%"></div></div>
+              <span class="lane-meta text-faint">prep</span></div>
+          </div>
+        </div>
+
+        <!-- ── EVENT + BUFFER band ── -->
+        <div class="flex items-stretch gap-2">
+          <div class="w-1 bg-cat-fm shrink-0"></div>
+          <div class="flex-1 border border-cat-fm/40 bg-[#151a15] px-3 py-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[13px] font-semibold text-fg">Farmers market</span>
+              <span class="harness-note text-[11px] text-cat-fm font-semibold">9:00a</span>
+            </div>
+            <div class="text-[11px] text-dim mt-0.5 flex items-center gap-1.5">
+              <span class="harness-note text-faint">8:00–9:00 setup buffer reserved</span>
+              <span class="text-faint">·</span>
+              <span>James off-site → 1:00p</span>
+            </div>
+            <div class="text-[11px] text-faint mt-1 italic">
+              Load farmers market equipment ✓ — tent, crates, tables, cash
+              box, coolers
+            </div>
+          </div>
+        </div>
+
+        <!-- now marker -->
+        <div class="pt-1.5 pb-0.5">
+          <div class="now-rule"></div>
+          <div class="flex justify-between items-center mt-1.5">
+            <span class="eyebrow text-[10px] text-resolved">Now · 9:40a — forward focus</span>
+          </div>
+        </div>
+
+        <!-- ── MIDMORNING — the OPEN now-block ── -->
+        <div class="block border-2 border-resolved/55 bg-surface" id="block-mid" data-total="8">
+          <div class="px-3 py-2.5">
+            <div class="flex items-center gap-2">
+              <svg class="text-warn shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+              <span class="text-[14px] font-bold text-fg flex-1">Midmorning</span>
+              <span class="open-only inline-flex items-center gap-1.5">
+                <span class="harness-note text-[10px] font-bold uppercase tracking-[0.1em] text-resolved bg-resolved/12 px-2 py-0.5">◀ Now</span>
+              </span>
+              <span class="seal-stamp">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                Sealed · <span id="mid-window">9:04–10:21</span> · 8/8
+              </span>
+            </div>
+            <!-- split load bar: done vs remaining (committed) -->
+            <div class="mt-2.5 space-y-1">
+              <div class="lane"><span class="lane-name">Jim</span>
+                <div class="lane-track">
+                  <div class="seg seg-done" id="mid-jim-done" style="width:18%"></div>
+                  <div class="seg seg-committed" id="mid-jim-rem" style="width:42%"></div>
+                  <div class="seg seg-open" style="width:14%" title="Pressure-wash — open/discretionary"></div>
+                </div>
+                <span class="lane-meta"><span id="mid-count">2</span>/8</span></div>
+              <div class="lane"><span class="lane-name">James</span>
+                <div class="lane-track"><div class="seg seg-event" style="width:100%"></div></div>
+                <span class="lane-meta text-cat-fm">mkt</span></div>
+            </div>
+          </div>
+
+          <!-- the Rounds checklist (open-only) -->
+          <div class="checklist border-t border-line">
+            <!-- place section: Chicken Tractors -->
+            <div class="px-3 pt-2 pb-1">
+              <div class="harness-note text-[10px] uppercase tracking-[0.12em] text-faint">Chicken Tractors · on pasture</div>
+            </div>
+            <ul class="m-0 p-0 list-none">
+              <li class="flex items-center gap-3 px-3 py-2.5 border-b border-line">
+                <button class="cbox" onclick="tick(this)" aria-label="Mark done"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+                <span class="flex-1 text-[14px] text-fg font-medium">Fill waterer</span>
+              </li>
+              <li class="flex items-center gap-3 px-3 py-2.5 border-b border-line">
+                <button class="cbox" onclick="tick(this)" aria-label="Mark done"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+                <span class="flex-1 text-[14px] text-fg font-medium">Fill feeder</span>
+              </li>
+            </ul>
+            <!-- place section: Mobile Coops -->
+            <div class="px-3 pt-2.5 pb-1">
+              <div class="harness-note text-[10px] uppercase tracking-[0.12em] text-faint">Mobile Coops 1 &amp; 2 · layers</div>
+            </div>
+            <ul class="m-0 p-0 list-none">
+              <li class="flex items-center gap-3 px-3 py-2.5 border-b border-line">
+                <button class="cbox" onclick="tick(this)" aria-label="Mark done"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+                <span class="flex-1 text-[14px] text-fg font-medium">Fill waterers</span>
+              </li>
+              <li class="flex items-center gap-3 px-3 py-2.5 border-b border-line">
+                <button class="cbox" onclick="tick(this)" aria-label="Mark done"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+                <span class="flex-1 text-[14px] text-fg font-medium">Fill feeders</span>
+              </li>
+              <li class="flex items-center gap-3 px-3 py-2.5 border-b border-line">
+                <button class="cbox" onclick="tick(this)" aria-label="Mark done"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+                <span class="flex-1 text-[14px] text-fg font-medium">Collect eggs</span>
+              </li>
+              <!-- the offline / unsynced tick (already done, queued) -->
+              <li class="flex items-center gap-3 px-3 py-2.5 border-b border-line bg-[rgba(255,255,255,0.05)]" id="coop2-row">
+                <button class="cbox done" onclick="tick(this)" aria-label="Mark not done"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+                <span class="flex-1 text-[14px] text-muted line-through flex items-center gap-2">
+                  Collect eggs · Coop 2
+                  <span id="coop2-off" class="inline-flex items-center text-warn" title="Saved on this device — not synced yet">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M5.8 5.8A8 8 0 0 0 8 19h10a4 4 0 0 0 1.3-7.8"/><path d="M12 6a8 8 0 0 1 4 1.5"/></svg>
+                  </span>
+                </span>
+              </li>
+            </ul>
+            <!-- place section: House -->
+            <div class="px-3 pt-2.5 pb-1">
+              <div class="harness-note text-[10px] uppercase tracking-[0.12em] text-faint">House · egg room</div>
+            </div>
+            <ul class="m-0 p-0 list-none">
+              <li class="flex items-center gap-3 px-3 py-2.5 border-b border-line">
+                <button class="cbox" onclick="tick(this)" aria-label="Mark done"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+                <span class="flex-1 text-[14px] text-fg font-medium">Clean egg washer</span>
+              </li>
+            </ul>
+
+            <!-- should → must escalation: the ONE boxed row -->
+            <div class="mx-3 my-3 border-l-2 border-warn bg-[#1d231e] px-3 py-2.5">
+              <div class="flex items-start gap-2.5">
+                <button class="cbox mt-0.5" onclick="tick(this)" aria-label="Mark done"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-[14px] text-fg font-semibold">Pressure wash nest boxes &amp; coop interior</span>
+                    <span class="harness-note inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.12em] px-1.5 py-0.5 leading-none border border-warn text-warn bg-surface-alt">Should · due 2d</span>
+                  </div>
+                  <div class="text-[12px] text-warn mt-1 flex items-center gap-1.5">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+                    Why today: last clean before processing Thu
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── EARLY AFTERNOON — collapsed, MAN-DOWN hole in James's lane ── -->
+        <div class="block border border-line bg-surface px-3 py-2.5" id="block-ea">
+          <div class="flex items-center gap-2">
+            <svg class="text-faint shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/></svg>
+            <span class="text-[13px] font-semibold text-fg flex-1">Early afternoon</span>
+            <span class="harness-note text-[11px] text-faint">1:00p</span>
+          </div>
+          <div class="mt-2 space-y-1">
+            <div class="lane"><span class="lane-name">Jim</span>
+              <div class="lane-track">
+                <div class="seg seg-committed" style="width:52%"></div>
+                <div class="seg seg-open" style="width:22%" title="Project: Clearing — brush piles"></div>
+              </div>
+              <span class="lane-meta load-meta" data-count="0/8" data-time="~110m">0/8</span></div>
+            <div class="lane"><span class="lane-name">James</span>
+              <div class="lane-track" id="ea-james-track">
+                <div class="seg seg-event" style="width:30%" title="Market until 1:00"></div>
+                <div class="seg seg-hole" id="ea-hole" style="width:26%" title="Wash eggs — assigned to James, off-site"></div>
+              </div>
+              <span class="lane-meta text-warn" id="ea-james-meta">hole</span></div>
+          </div>
+          <!-- man-down leak: one line up, with cover -->
+          <div id="ea-mandown" class="mt-2.5 flex items-center gap-2.5 border border-warn/45 bg-[#1d231e] px-2.5 py-2">
+            <svg class="text-warn shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            <div class="flex-1 min-w-0">
+              <div class="text-[13px] text-fg font-medium">Wash eggs · House — needs cover</div>
+              <div class="text-[11px] text-dim">James at market until 1:00</div>
+            </div>
+            <button onclick="ackCover()" class="bg-warn text-on-accent border-0 px-2.5 py-1.5 cursor-pointer text-[10px] uppercase tracking-[0.12em] font-semibold whitespace-nowrap">Jim: I've got it</button>
+          </div>
+          <!-- project line (projects-only window) -->
+          <div class="mt-2 flex items-center gap-2 text-[12px] text-dim">
+            <svg class="text-accent shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20v14H2z"/><path d="m2 17 5 4 5-4"/></svg>
+            <span class="italic">Clearing — remove brush piles, D pasture</span>
+            <span class="text-faint">· Jim · ~1.5h</span>
+          </div>
+        </div>
+
+        <!-- ── LATE AFTERNOON — collapsed ── -->
+        <div class="block border border-line bg-surface px-3 py-2.5">
+          <div class="flex items-center gap-2">
+            <svg class="text-faint shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m16 6-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
+            <span class="text-[13px] font-semibold text-fg flex-1">Late afternoon</span>
+            <span class="harness-note text-[11px] text-faint">4:00p</span>
+          </div>
+          <div class="mt-2 space-y-1">
+            <div class="lane"><span class="lane-name">Jim</span>
+              <div class="lane-track"><div class="seg seg-committed" style="width:66%"></div></div>
+              <span class="lane-meta load-meta" data-count="0/11" data-time="~140m">0/11</span></div>
+            <div class="lane"><span class="lane-name">James</span>
+              <div class="lane-track"><div class="seg seg-committed" style="width:40%"></div></div>
+              <span class="lane-meta load-meta" data-count="0/5" data-time="~75m">0/5</span></div>
+          </div>
+        </div>
+
+        <!-- ── END OF DAY — collapsed ── -->
+        <div class="block border border-line bg-surface px-3 py-2.5">
+          <div class="flex items-center gap-2">
+            <svg class="text-faint shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            <span class="text-[13px] font-semibold text-fg flex-1">End of day</span>
+            <span class="harness-note text-[11px] text-faint">7:00p</span>
+          </div>
+          <div class="mt-2 space-y-1">
+            <div class="lane"><span class="lane-name">Jim</span>
+              <div class="lane-track"><div class="seg seg-committed" style="width:48%"></div></div>
+              <span class="lane-meta load-meta" data-count="0/9" data-time="~95m">0/9</span></div>
+            <div class="lane"><span class="lane-name">James</span>
+              <div class="lane-track"><div class="seg seg-committed" style="width:46%"></div></div>
+              <span class="lane-meta load-meta" data-count="0/7" data-time="~85m">0/7</span></div>
+          </div>
+          <div class="mt-2 text-[11px] text-faint flex items-center gap-1.5">
+            <span class="harness-note">Jim · break 12:00–12:30</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- jump-to-now floating pill -->
+      <div class="jump-now px-4 pb-4">
+        <button onclick="jumpToNow()" class="inline-flex items-center gap-2 bg-accent text-on-accent border-0 px-3.5 py-2 cursor-pointer text-[11px] font-semibold uppercase tracking-[0.1em] shadow-lg">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          Jump to now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOAD-METER ANATOMY / legend (so the encoding is unmistakable) -->
+  <div class="mt-6 max-w-[520px] border border-line bg-surface px-4 py-3.5">
+    <div class="eyebrow text-[10px] text-faint mb-2.5">Reading the load bar</div>
+    <div class="grid grid-cols-2 gap-x-5 gap-y-2 text-[12px] text-dim">
+      <div class="flex items-center gap-2"><span class="inline-block w-7 h-3 bg-resolved"></span> done (ticked)</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-7 h-3 bg-accent-deep"></span> committed (locked)</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-7 h-3" style="background:repeating-linear-gradient(45deg,rgba(173,200,173,0.55) 0 3px,rgba(173,200,173,0.16) 3px 7px)"></span> open / discretionary</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-7 h-3" style="background:repeating-linear-gradient(45deg,#5dd585 0 7px,#4cc278 7px 9px)"></span> event reservation</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-7 h-3" style="box-shadow:inset 0 0 0 1.5px #e6b85a"></span> hole — needs cover</div>
+      <div class="flex items-center gap-2 text-faint">bar length = how heavy · longer lane = who's slammed</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 2 · DESKTOP — TIMELINE + WEEK ════════════════════ -->
+<section class="max-w-[1240px] mx-auto px-8 py-8 border-t border-[#1d231e]">
+  <div class="flex items-baseline gap-3 mb-1">
+    <span class="eyebrow text-[#5dd585]">Hero 2</span>
+    <h2 class="font-heading text-[26px] font-bold text-fg m-0">Desktop — the two-lane ribbon + week</h2>
+  </div>
+  <p class="text-[14px] text-dim mb-6 max-w-[760px]">
+    On the wide tier the spine unfolds horizontally: one time axis (6a–8p),
+    two person-lanes. The market eats James's lane 8:00–1:00; the man-down is
+    a literal hole in his lane with a cover arrow into Jim's. The bottom
+    silhouette strip is the day's combined load.
+  </p>
+
+  <div class="desktop">
+    <!-- toolbar -->
+    <div class="flex items-center justify-between px-5 py-3 border-b border-line bg-surface/60">
+      <div class="flex items-center gap-3">
+        <span class="font-heading text-[20px] font-bold text-fg">Tue Jun 24</span>
+        <span class="harness-note text-[12px] text-dim">market day</span>
+        <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-resolved ml-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Confirmed
+        </span>
+      </div>
+      <div class="flex items-center gap-1 harness-note text-[12px]">
+        <span class="px-3 py-1.5 bg-surface-alt text-fg font-semibold">Day</span>
+        <span class="px-3 py-1.5 text-dim">Week</span>
+        <span class="px-3 py-1.5 text-dim">Month</span>
+        <span class="ml-2 px-3 py-1.5 border border-line text-dim flex items-center gap-1.5 cursor-pointer">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          Add
+        </span>
+      </div>
+    </div>
+
+    <!-- time-axis header -->
+    <div class="relative px-5 pt-7 pb-2">
+      <div class="grid grid-cols-13 text-[10px] harness-note text-faint border-b border-line pb-1">
+        <span>6a</span><span>7a</span><span>8a</span><span>9a</span><span>10a</span><span>11a</span><span>12p</span><span>1p</span><span>2p</span><span>3p</span><span>4p</span><span>5p</span><span>6p</span>
+      </div>
+    </div>
+
+    <!-- the two lanes -->
+    <div class="px-5 pb-4 space-y-2">
+      <!-- JIM lane -->
+      <div class="flex items-stretch gap-3">
+        <div class="w-16 shrink-0 flex items-center harness-note text-[12px] font-semibold text-dim">
+          Jim <span class="text-resolved ml-1.5 text-[10px]">▷6:08</span>
+        </div>
+        <div class="relative flex-1 h-12 ribbon-grid border border-line bg-surface/30">
+          <div class="now-vline" style="left:28.2%"></div>
+          <!-- morning done -->
+          <div class="seg-abs bg-resolved/85 text-on-accent" style="left:0%;width:16.5%">
+            <span class="text-[11px] font-semibold">Morning ✓ 7/7</span>
+          </div>
+          <!-- midmorning -->
+          <div class="seg-abs bg-accent-deep text-on-accent" style="left:23%;width:30.7%">
+            <span class="text-[11px] font-semibold">Midmorning · 2/8</span>
+            <span class="text-[9.5px] opacity-80">+ pressure-wash (should)</span>
+          </div>
+          <!-- early afternoon + project -->
+          <div class="seg-abs bg-accent-deep/85 text-on-accent" style="left:53.8%;width:23%">
+            <span class="text-[11px] font-semibold">Early afternoon</span>
+            <span class="text-[9.5px] opacity-80">+ Clearing brush · D pasture</span>
+          </div>
+          <!-- late afternoon -->
+          <div class="seg-abs bg-accent-deep/70 text-on-accent" style="left:76.9%;width:23%">
+            <span class="text-[11px] font-semibold">Late afternoon</span>
+          </div>
+          <!-- break notch -->
+          <div class="seg-abs" style="left:46.1%;width:3.8%;background:repeating-linear-gradient(45deg,#3e473d 0 4px,transparent 4px 8px)" title="break 12:00–12:30"></div>
+        </div>
+      </div>
+
+      <!-- JAMES lane -->
+      <div class="flex items-stretch gap-3">
+        <div class="w-16 shrink-0 flex items-center harness-note text-[12px] font-semibold text-dim">
+          James <span class="text-cat-fm ml-1.5 text-[10px]">▷mkt</span>
+        </div>
+        <div class="relative flex-1 h-12 ribbon-grid border border-line bg-surface/30">
+          <!-- morning prep -->
+          <div class="seg-abs bg-resolved/45 text-fg" style="left:0%;width:12.5%">
+            <span class="text-[10px] font-semibold">Prep ✓</span>
+          </div>
+          <!-- buffer 8-9 -->
+          <div class="seg-abs" style="left:15.4%;width:7.7%;background:repeating-linear-gradient(45deg,#5dd585 0 6px,transparent 6px 12px)" title="setup buffer 8–9">
+            <span class="text-[9px] text-cat-fm font-semibold">buffer</span>
+          </div>
+          <!-- market 9-1 (long segment) -->
+          <div class="seg-abs text-on-accent" style="left:23%;width:30.7%;background:repeating-linear-gradient(45deg,#5dd585 0 9px,#4cc278 9px 12px)">
+            <span class="text-[11px] font-bold text-[#0d1410]">Farmers market</span>
+            <span class="text-[9.5px] text-[#0d1410]/80">9:00–1:00 · off-site</span>
+          </div>
+          <!-- THE HOLE: early afternoon Wash eggs assigned to James -->
+          <div class="seg-abs" id="desk-hole" style="left:53.8%;width:13%;box-shadow:inset 0 0 0 1.5px #e6b85a;background-image:repeating-linear-gradient(45deg,rgba(230,184,90,0.16) 0 4px,transparent 4px 8px)">
+            <span class="text-[10px] font-semibold text-warn">Wash eggs</span>
+            <span class="text-[9px] text-warn/80">needs cover</span>
+          </div>
+          <!-- cover arrow -->
+          <svg id="cover-arrow" class="absolute text-warn" style="left:58%;top:-2px;z-index:25" width="20" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7v6a4 4 0 0 0 4 4h6"/><path d="m13 13 4 4-4 4"/></svg>
+          <!-- late afternoon james -->
+          <div class="seg-abs bg-accent-deep/60 text-on-accent" style="left:76.9%;width:23%">
+            <span class="text-[11px] font-semibold">Late afternoon</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DAY LOAD silhouette strip -->
+    <div class="px-5 pb-3">
+      <div class="harness-note text-[10px] uppercase tracking-[0.12em] text-faint mb-1.5">Day load — combined silhouette</div>
+      <div class="flex items-end gap-0.5 h-10 border-b border-line">
+        <!-- 13 hourly columns, height = combined load; amber tip where over capacity -->
+        <div class="flex-1 bg-resolved/70" style="height:60%"></div>
+        <div class="flex-1 bg-resolved/70" style="height:72%"></div>
+        <div class="flex-1 bg-cat-fm/60" style="height:46%"></div>
+        <div class="flex-1 bg-accent-deep" style="height:88%"></div>
+        <div class="flex-1 bg-accent-deep" style="height:80%"></div>
+        <div class="flex-1 bg-accent-deep" style="height:64%"></div>
+        <div class="flex-1 bg-accent-deep/60" style="height:30%"></div>
+        <div class="flex-1 bg-warn" style="height:96%" title="man-down — over capacity"></div>
+        <div class="flex-1 bg-accent-deep" style="height:70%"></div>
+        <div class="flex-1 bg-accent-deep/80" style="height:50%"></div>
+        <div class="flex-1 bg-accent-deep/80" style="height:62%"></div>
+        <div class="flex-1 bg-accent-deep/70" style="height:44%"></div>
+        <div class="flex-1 bg-accent-deep/60" style="height:36%"></div>
+      </div>
+    </div>
+
+    <!-- WEEK: mini-spines + should-escalation heat row -->
+    <div class="px-5 py-4 border-t border-line">
+      <div class="harness-note text-[10px] uppercase tracking-[0.12em] text-faint mb-3">This week — fullness spines + should-heat</div>
+      <div class="grid grid-cols-7 gap-3">
+        <!-- each day: a mini stacked spine (5 blocks) -->
+        <!-- Sun -->
+        <div>
+          <div class="harness-note text-[11px] text-dim mb-1.5 text-center">Sun 22</div>
+          <div class="flex items-end justify-center gap-1 h-16 border border-line bg-surface/30 py-1.5">
+            <div class="flex flex-col-reverse gap-px"><div class="spine-cell bg-accent-deep/50" style="height:8px"></div><div class="spine-cell bg-accent-deep/50" style="height:14px"></div><div class="spine-cell bg-accent-deep/50" style="height:7px"></div></div>
+          </div>
+        </div>
+        <!-- Mon -->
+        <div>
+          <div class="harness-note text-[11px] text-dim mb-1.5 text-center">Mon 23</div>
+          <div class="flex items-end justify-center gap-1 h-16 border border-line bg-surface/30 py-1.5">
+            <div class="flex flex-col-reverse gap-px"><div class="spine-cell bg-accent-deep/60" style="height:18px"></div><div class="spine-cell bg-accent-deep/60" style="height:22px"></div><div class="spine-cell bg-accent-deep/60" style="height:12px"></div></div>
+          </div>
+        </div>
+        <!-- Tue (today) -->
+        <div>
+          <div class="harness-note text-[11px] text-resolved font-bold mb-1.5 text-center">Tue 24 · today</div>
+          <div class="flex items-end justify-center gap-1 h-16 border-2 border-resolved/55 bg-surface py-1.5">
+            <div class="flex flex-col-reverse gap-px"><div class="spine-cell bg-resolved" style="height:24px"></div><div class="spine-cell bg-accent-deep" style="height:30px"></div><div class="spine-cell bg-cat-fm" style="height:18px" title="market"></div></div>
+            <div class="flex flex-col-reverse gap-px"><div class="spine-cell bg-accent-deep" style="height:20px"></div><div class="spine-cell bg-warn" style="height:14px" title="man-down"></div></div>
+          </div>
+        </div>
+        <!-- Wed -->
+        <div>
+          <div class="harness-note text-[11px] text-dim mb-1.5 text-center">Wed 25</div>
+          <div class="flex items-end justify-center gap-1 h-16 border border-line bg-surface/30 py-1.5">
+            <div class="flex flex-col-reverse gap-px"><div class="spine-cell bg-accent-deep/70" style="height:20px"></div><div class="spine-cell bg-accent-deep/70" style="height:24px"></div><div class="spine-cell bg-accent-deep/70" style="height:14px"></div></div>
+          </div>
+        </div>
+        <!-- Thu (processing) -->
+        <div>
+          <div class="harness-note text-[11px] text-cat-processing font-semibold mb-1.5 text-center">Thu 26 · proc.</div>
+          <div class="flex items-end justify-center gap-1 h-16 border border-cat-processing/40 bg-surface/30 py-1.5">
+            <div class="flex flex-col-reverse gap-px"><div class="spine-cell bg-accent-deep" style="height:26px"></div><div class="spine-cell bg-cat-processing/70" style="height:34px"></div><div class="spine-cell bg-accent-deep" style="height:16px"></div></div>
+          </div>
+        </div>
+        <!-- Fri -->
+        <div>
+          <div class="harness-note text-[11px] text-dim mb-1.5 text-center">Fri 27</div>
+          <div class="flex items-end justify-center gap-1 h-16 border border-line bg-surface/30 py-1.5">
+            <div class="flex flex-col-reverse gap-px"><div class="spine-cell bg-accent-deep/60" style="height:14px"></div><div class="spine-cell bg-accent-deep/60" style="height:18px"></div><div class="spine-cell bg-accent-deep/60" style="height:10px"></div></div>
+          </div>
+        </div>
+        <!-- Sat (market) -->
+        <div>
+          <div class="harness-note text-[11px] text-dim mb-1.5 text-center">Sat 28</div>
+          <div class="flex items-end justify-center gap-1 h-16 border border-line bg-surface/30 py-1.5">
+            <div class="flex flex-col-reverse gap-px"><div class="spine-cell bg-resolved/70" style="height:20px"></div><div class="spine-cell bg-cat-fm" style="height:26px"></div><div class="spine-cell bg-accent-deep/60" style="height:12px"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- should-escalation heat row -->
+      <div class="mt-3 grid grid-cols-7 gap-3 items-center">
+        <div class="col-span-7 harness-note text-[10px] uppercase tracking-[0.12em] text-faint">
+          Should-escalation · "Pressure wash nest boxes" warming toward Thu processing
+        </div>
+        <div class="h-2.5 bg-warn/15"></div>
+        <div class="h-2.5 bg-warn/25"></div>
+        <div class="h-2.5 bg-warn/40 ring-1 ring-warn/60" title="pulled onto today"></div>
+        <div class="h-2.5 bg-warn/55"></div>
+        <div class="h-2.5 bg-cat-processing/70" title="hard deadline — processing"></div>
+        <div class="h-2.5 bg-surface-alt"></div>
+        <div class="h-2.5 bg-surface-alt"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 3 · CONFIRM + MAN-DOWN MOMENT ════════════════════ -->
+<section class="max-w-[1240px] mx-auto px-8 py-8 border-t border-[#1d231e]">
+  <div class="flex items-baseline gap-3 mb-1">
+    <span class="eyebrow text-[#5dd585]">Hero 3</span>
+    <h2 class="font-heading text-[26px] font-bold text-fg m-0">Confirm + man-down moment</h2>
+  </div>
+  <p class="text-[14px] text-dim mb-6 max-w-[760px]">
+    Left: the morning <strong>draft</strong> — the day auto-populated, musts
+    locked, one tap to confirm. Right: a <strong>man-down</strong> in James's
+    lane and Jim's acknowledgment. Both are two static frames (the live
+    versions live in Hero 1 — flip "Draft" and press "Jim: I've got it").
+  </p>
+
+  <div class="flex flex-wrap gap-8">
+    <!-- DRAFT frame -->
+    <div>
+      <div class="harness-note text-[11px] uppercase tracking-[0.12em] text-faint mb-2">Morning · draft (not yet confirmed)</div>
+      <div class="phone" style="width:340px">
+        <div style="height:540px;overflow:hidden">
+          <div class="px-4 pt-4 pb-3 border-b border-line">
+            <div class="font-heading text-[24px] font-bold text-fg leading-none">Today</div>
+            <div class="text-[12px] text-dim mt-1.5">Tue Jun 24 · market day · James + Jim on</div>
+            <!-- DAY bar, draft tint -->
+            <div class="mt-3 flex items-end gap-1 h-8 opacity-90">
+              <div class="flex-1 flex flex-col justify-end gap-px"><div class="bg-accent-deep/60" style="height:16px"></div><div class="bg-accent-deep/30" style="height:7px"></div></div>
+              <div class="flex-1 flex flex-col justify-end gap-px"><div class="bg-accent-deep/60" style="height:20px"></div><div style="height:13px;background:repeating-linear-gradient(45deg,#5dd585 0 5px,transparent 5px 9px)"></div></div>
+              <div class="flex-1 flex flex-col justify-end gap-px"><div class="bg-accent-deep/60" style="height:22px"></div><div class="bg-accent-deep/30" style="height:9px"></div></div>
+              <div class="flex-1 flex flex-col justify-end gap-px"><div class="bg-accent-deep/50" style="height:18px"></div><div class="bg-accent-deep/30" style="height:12px"></div></div>
+              <div class="flex-1 flex flex-col justify-end gap-px"><div class="bg-accent-deep/40" style="height:12px"></div><div class="bg-accent-deep/30" style="height:12px"></div></div>
+            </div>
+            <div class="harness-note text-[11px] text-warn mt-2 font-semibold">Draft — recomputed from chores + projects + events</div>
+          </div>
+          <!-- Sunsama confirm banner -->
+          <div class="m-4 border border-accent-deep bg-accent-deep/12 p-3.5">
+            <div class="text-[14px] text-fg font-semibold leading-snug">Ready to plan Tuesday?</div>
+            <div class="text-[12px] text-dim mt-1.5 leading-snug">
+              42 items across 5 blocks. 6 musts are non-negotiable; the rest is
+              today's discretionary work. Confirming drops the accountability
+              anchor.
+            </div>
+            <button class="w-full mt-3 bg-accent text-on-accent border-0 py-2.5 cursor-pointer text-[12px] font-bold uppercase tracking-[0.12em]">Confirm the day</button>
+          </div>
+          <div class="px-4 space-y-2 opacity-50">
+            <div class="border border-line px-3 py-2 text-[12px] text-dim">☀ Morning · draft</div>
+            <div class="border border-line px-3 py-2 text-[12px] text-dim">◐ Midmorning · draft</div>
+            <div class="border border-line px-3 py-2 text-[12px] text-dim">☀ Early afternoon · draft</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAN-DOWN frame -->
+    <div>
+      <div class="harness-note text-[11px] uppercase tracking-[0.12em] text-faint mb-2">Early afternoon · man-down → Jim covers</div>
+      <div class="phone" style="width:340px">
+        <div style="height:540px;overflow:hidden" class="px-4 pt-4">
+          <div class="font-heading text-[20px] font-bold text-fg mb-3">Early afternoon</div>
+
+          <!-- the hole, before cover -->
+          <div class="border border-line bg-surface px-3 py-2.5 mb-4">
+            <div class="lane mb-1"><span class="lane-name">Jim</span>
+              <div class="lane-track"><div class="seg seg-committed" style="width:52%"></div><div class="seg seg-open" style="width:22%"></div></div>
+              <span class="lane-meta">0/8</span></div>
+            <div class="lane"><span class="lane-name">James</span>
+              <div class="lane-track"><div class="seg seg-event" style="width:30%"></div><div class="seg seg-hole" style="width:26%"></div></div>
+              <span class="lane-meta text-warn">hole</span></div>
+            <div class="text-[10px] text-faint mt-1.5 harness-note">James off-site until 1:00 — Wash eggs left uncovered</div>
+          </div>
+
+          <!-- the cover sheet -->
+          <div class="border border-warn/50 bg-[#1d231e]">
+            <div class="px-3 py-2.5 border-b border-warn/25 flex items-center gap-2">
+              <svg class="text-warn shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              <span class="text-[14px] font-semibold text-fg">Needs cover</span>
+            </div>
+            <div class="px-3 py-3">
+              <div class="text-[14px] text-fg font-medium">Wash eggs · House</div>
+              <div class="text-[12px] text-dim mt-1">Assigned to <span class="text-fg">James</span>, off-site at the market until 1:00p. The window opens 1:00–4:00.</div>
+              <div class="text-[12px] text-dim mt-2.5 harness-note">Who can cover?</div>
+              <div class="flex gap-2 mt-2">
+                <button class="flex-1 bg-warn text-on-accent border-0 py-2.5 cursor-pointer text-[12px] font-bold uppercase tracking-[0.1em]">Jim covers — I've got it</button>
+              </div>
+              <div class="text-[11px] text-faint mt-2.5 harness-note leading-snug">
+                Jim's acknowledgment is the record. The hole in James's lane
+                closes green in Jim's; James sees "Jim's got Wash eggs."
+              </div>
+            </div>
+          </div>
+
+          <!-- after-state preview -->
+          <div class="mt-4 border border-resolved/40 bg-surface px-3 py-2.5">
+            <div class="text-[11px] text-resolved font-semibold harness-note mb-1.5 flex items-center gap-1.5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              After Jim acks
+            </div>
+            <div class="lane"><span class="lane-name">Jim</span>
+              <div class="lane-track"><div class="seg seg-committed" style="width:52%"></div><div class="seg seg-done" style="width:18%" title="now covering Wash eggs"></div><div class="seg seg-open" style="width:22%"></div></div>
+              <span class="lane-meta">+1</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 4 · SEARCH-TO-ADD ════════════════════ -->
+<section class="max-w-[1240px] mx-auto px-8 py-8 border-t border-[#1d231e]">
+  <div class="flex items-baseline gap-3 mb-1">
+    <span class="eyebrow text-[#5dd585]">Hero 4</span>
+    <h2 class="font-heading text-[26px] font-bold text-fg m-0">Search-to-add</h2>
+  </div>
+  <p class="text-[14px] text-dim mb-6 max-w-[760px]">
+    The CommandPalette / PlaceSearch precedent. One field; a chore name like
+    "Fill waterer" <strong>dedups to a single entry, then narrows by place</strong>.
+    The matched row lands in the right block's open lane.
+  </p>
+
+  <div class="flex flex-wrap gap-8 items-start">
+    <!-- step 1: dedup result -->
+    <div class="phone" style="width:360px">
+      <div style="height:480px" class="bg-bg">
+        <div class="px-3.5 pt-3.5">
+          <div class="flex items-center gap-2.5 border border-accent/40 bg-surface px-3 py-2.5">
+            <svg class="text-accent shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <span class="text-[15px] text-fg flex-1">Fill waterer<span class="inline-block w-px h-4 bg-accent ml-0.5 align-middle animate-pulse"></span></span>
+            <span class="harness-note text-[10px] text-faint">esc</span>
+          </div>
+          <!-- grouped results -->
+          <div class="mt-2 harness-note text-[10px] uppercase tracking-[0.12em] text-faint px-1 pt-2 pb-1">Chore · dedup'd</div>
+          <button class="w-full flex items-center gap-3 px-3 py-2.5 bg-surface border border-line text-left">
+            <svg class="text-cat-chore shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span class="flex-1">
+              <span class="text-[14px] text-fg font-medium block">Fill waterer</span>
+              <span class="text-[11px] text-dim">appears at 5 places — pick one</span>
+            </span>
+            <svg class="text-faint" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="harness-note text-[10px] uppercase tracking-[0.12em] text-faint px-1 pt-3 pb-1">Other</div>
+          <button class="w-full flex items-center gap-3 px-3 py-2 text-left text-dim">
+            <svg class="text-faint shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            <span class="text-[13px]">Add one-off task "Fill waterer"</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- step 2: place narrowing -->
+    <div class="phone" style="width:360px">
+      <div style="height:480px" class="bg-bg">
+        <div class="px-3.5 pt-3.5">
+          <div class="flex items-center gap-2.5 border border-accent/40 bg-surface px-3 py-2.5">
+            <svg class="text-dim shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+            <span class="text-[14px] text-fg flex-1">Fill waterer<span class="text-faint"> · which place?</span></span>
+          </div>
+          <div class="mt-2 harness-note text-[10px] uppercase tracking-[0.12em] text-faint px-1 pt-2 pb-1">Pick a place</div>
+          <!-- PlaceTree-style narrowing -->
+          <div class="space-y-1">
+            <button class="w-full flex items-center gap-2.5 px-3 py-2.5 bg-surface border border-accent/40 text-left">
+              <span class="w-2 h-2 rounded-full bg-cat-chore"></span>
+              <span class="flex-1 text-[14px] text-fg">Chicken Tractors <span class="text-faint text-[11px]">· broilers · 3 occupied</span></span>
+              <span class="harness-note text-[10px] text-accent">Midmorning</span>
+            </button>
+            <button class="w-full flex items-center gap-2.5 px-3 py-2.5 bg-surface border border-line text-left">
+              <span class="w-2 h-2 rounded-full bg-cat-egg"></span>
+              <span class="flex-1 text-[14px] text-fg">Mobile Coops 1 &amp; 2 <span class="text-faint text-[11px]">· layers</span></span>
+            </button>
+            <button class="w-full flex items-center gap-2.5 px-3 py-2.5 bg-surface border border-line text-left">
+              <span class="w-2 h-2 rounded-full bg-cat-chore"></span>
+              <span class="flex-1 text-[14px] text-fg">Sheep <span class="text-faint text-[11px]">· at the barn</span></span>
+            </button>
+            <button class="w-full flex items-center gap-2.5 px-3 py-2.5 bg-surface border border-line text-left opacity-60">
+              <span class="w-2 h-2 rounded-full bg-cat-chore"></span>
+              <span class="flex-1 text-[14px] text-fg">Brooder 1</span>
+              <span class="harness-note text-[10px] text-faint">done</span>
+            </button>
+          </div>
+          <div class="mt-3 mx-1 text-[11px] text-faint harness-note leading-snug">
+            Picking a place adds it to that block's open lane — the load bar
+            grows, the count ticks up.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- empty-but-valid day -->
+    <div>
+      <div class="harness-note text-[11px] uppercase tracking-[0.12em] text-faint mb-2">Edge · empty-but-valid day</div>
+      <div class="phone" style="width:300px">
+        <div style="height:480px" class="bg-bg px-4 pt-4">
+          <div class="font-heading text-[22px] font-bold text-fg">Today</div>
+          <div class="text-[12px] text-dim mt-1.5">Sun Jun 29 · rest day · Jim on</div>
+          <div class="mt-3 flex items-end gap-1 h-7 opacity-60">
+            <div class="flex-1 bg-accent-deep/30" style="height:8px"></div>
+            <div class="flex-1 bg-accent-deep/20" style="height:5px"></div>
+            <div class="flex-1 bg-surface-alt" style="height:4px"></div>
+            <div class="flex-1 bg-surface-alt" style="height:4px"></div>
+            <div class="flex-1 bg-accent-deep/20" style="height:6px"></div>
+          </div>
+          <div class="mt-10 flex flex-col items-center text-center px-4">
+            <svg class="text-faint mb-3" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            <div class="text-[15px] text-dim font-medium">A light day</div>
+            <div class="text-[12.5px] text-faint mt-1.5 leading-snug">Only the morning + evening rounds. No events, no projects scheduled.</div>
+            <button class="mt-4 inline-flex items-center gap-2 border border-line text-dim bg-transparent px-3.5 py-2 cursor-pointer text-[11px] font-semibold uppercase tracking-[0.1em]">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              Add to today
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ 5 · ITEM-COUNT FALLBACK (the durations dependency) ════════════════════ -->
+<section class="max-w-[1240px] mx-auto px-8 py-8 border-t border-[#1d231e]">
+  <div class="flex items-baseline gap-3 mb-1">
+    <span class="eyebrow text-warn">Must-fix</span>
+    <h2 class="font-heading text-[26px] font-bold text-fg m-0">The two load-bar variants</h2>
+  </div>
+  <p class="text-[14px] text-dim mb-6 max-w-[820px]">
+    The load bar needs a per-commitment estimate. Hero 1's bars use plausible
+    fixed <strong>time estimates</strong>. If chore definitions ship without
+    durations, the bar falls back to <strong>item count</strong> — same
+    encoding, coarser truth. Both shown so James can judge the gap. (Toggle
+    Hero 1's "Load: time / item count" to see the live phone swap.)
+  </p>
+
+  <div class="flex flex-wrap gap-6">
+    <div class="border border-line bg-surface px-4 py-3.5 w-[360px]">
+      <div class="eyebrow text-[10px] text-accent mb-2.5">A · Time estimate (preferred)</div>
+      <div class="space-y-2">
+        <div class="lane"><span class="lane-name">Jim</span><div class="lane-track"><div class="seg seg-done" style="width:18%"></div><div class="seg seg-committed" style="width:42%"></div><div class="seg seg-open" style="width:14%"></div></div><span class="lane-meta">~95m</span></div>
+        <div class="lane"><span class="lane-name">James</span><div class="lane-track"><div class="seg seg-event" style="width:100%"></div></div><span class="lane-meta text-cat-fm">mkt</span></div>
+      </div>
+      <div class="text-[11px] text-faint mt-2.5 harness-note leading-snug">Length is wall-clock work. "Collect eggs" (slow) reads heavier than "Fill waterer" (fast). True load.</div>
+    </div>
+
+    <div class="border border-line bg-surface px-4 py-3.5 w-[360px]">
+      <div class="eyebrow text-[10px] text-warn mb-2.5">B · Item count (fallback)</div>
+      <div class="space-y-2">
+        <div class="lane"><span class="lane-name">Jim</span><div class="lane-track"><div class="seg seg-done" style="width:22%"></div><div class="seg seg-committed" style="width:45%"></div><div class="seg seg-open" style="width:11%"></div></div><span class="lane-meta">2/8</span></div>
+        <div class="lane"><span class="lane-name">James</span><div class="lane-track"><div class="seg seg-event" style="width:100%"></div></div><span class="lane-meta text-cat-fm">mkt</span></div>
+      </div>
+      <div class="text-[11px] text-faint mt-2.5 harness-note leading-snug">Every item = one equal slice. Ships with zero new data, but a 2-minute task looks as heavy as a 30-minute one.</div>
+    </div>
+  </div>
+  <p class="text-[13px] text-warn/90 mt-5 max-w-[820px] harness-note">
+    Scope flag (not solved here): the real build needs a per-commitment
+    time-estimate decision — a duration field on chore definitions, or a
+    block-level estimate. This mockup shows both so the call is informed, not
+    pretended.
+  </p>
+</section>
+
+<footer class="max-w-[1240px] mx-auto px-8 py-10 border-t border-[#1d231e] harness-note text-[12px] text-faint">
+  Rethinker direction · Schedule Design Bracket Round 2 · NFF Dashboard.
+  Tokens, fonts, and component feel ported from the live app
+  (src/styles.css, index.html, Rounds.jsx). Faked: realtime sync, drag,
+  actual routing into the Rounds takeover.
+</footer>
+
+<style>
+  .state-btn {
+    font-family: 'Inter', sans-serif; font-weight: 600;
+    padding: 4px 10px; border: 1px solid #3e473d; background: transparent;
+    color: #8e8877; cursor: pointer; letter-spacing: 0.02em;
+  }
+  .state-btn:hover { border-color: #6a6658; color: #c4bfad; }
+  .state-btn.is-on {
+    border-color: #297d5a; background: rgba(41,125,90,0.16); color: #adc8ad;
+  }
+  .grid-cols-13 { grid-template-columns: repeat(13, minmax(0, 1fr)); }
+</style>
+
+<script>
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ── tick → seal ──────────────────────────────────────────────────
+  function tick(btn) {
+    const becoming = !btn.classList.contains('done');
+    btn.classList.toggle('done', becoming);
+    btn.setAttribute('aria-label', becoming ? 'Mark not done' : 'Mark done');
+    if (becoming && !reduced) {
+      btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop');
+    }
+    // line-through the label
+    const label = btn.parentElement.querySelector('span');
+    if (label && !label.id) {
+      label.classList.toggle('line-through', becoming);
+      label.classList.toggle('text-muted', becoming);
+      label.classList.toggle('text-fg', !becoming);
+      label.classList.toggle('font-medium', !becoming);
+    }
+    updateMidBlock();
+  }
+
+  function countMid() {
+    const block = document.getElementById('block-mid');
+    const boxes = block.querySelectorAll('.checklist .cbox');
+    let done = 0;
+    boxes.forEach(b => { if (b.classList.contains('done')) done++; });
+    return { done, total: boxes.length };
+  }
+
+  function updateMidBlock() {
+    const block = document.getElementById('block-mid');
+    if (block.classList.contains('sealed')) return;
+    const { done, total } = countMid();
+    document.getElementById('mid-count').textContent = done;
+    // grow the done segment, shrink the remaining committed segment.
+    // committed span of the lane is 56% (done+remaining); open is 14%.
+    const span = 56;
+    const ratio = total ? done / total : 0;
+    document.getElementById('mid-jim-done').style.width = (span * ratio) + '%';
+    document.getElementById('mid-jim-rem').style.width = (span * (1 - ratio)) + '%';
+    if (done >= total) sealMid();
+  }
+
+  function sealMid() {
+    const block = document.getElementById('block-mid');
+    const doSeal = () => {
+      block.classList.add('sealed');
+      // everything's done — the discretionary (should) segment greens too,
+      // so the sealed lane reads fully worked, not half-hatched.
+      const open = block.querySelector('.seg-open');
+      if (open) { open.classList.remove('seg-open'); open.classList.add('seg-done'); }
+    };
+    if (reduced) doSeal();
+    else setTimeout(doSeal, 420);
+  }
+
+  function resetPhone() {
+    const block = document.getElementById('block-mid');
+    block.classList.remove('sealed');
+    block.querySelectorAll('.checklist .cbox').forEach((b, i) => {
+      // keep the Coop-2 offline tick done (it's a queued completion)
+      const isCoop2 = b.closest('#coop2-row');
+      const on = !!isCoop2;
+      b.classList.toggle('done', on);
+      const label = b.parentElement.querySelector('span');
+      if (label && !label.id) {
+        label.classList.toggle('line-through', on);
+        label.classList.toggle('text-muted', on);
+        label.classList.toggle('text-fg', !on);
+        label.classList.toggle('font-medium', !on);
+      }
+    });
+    updateMidBlock();
+  }
+
+  // ── draft ↔ confirmed ────────────────────────────────────────────
+  function setConfirmed(on) {
+    document.getElementById('confirmed-pill').hidden = !on;
+    document.getElementById('confirm-banner').hidden = on;
+    document.getElementById('btn-conf').classList.toggle('is-on', on);
+    document.getElementById('btn-draft').classList.toggle('is-on', !on);
+  }
+
+  // ── source-changed-after-confirm ─────────────────────────────────
+  let srcVisible = true;
+  function toggleSource() {
+    srcVisible = !srcVisible;
+    document.getElementById('src-strip').hidden = !srcVisible;
+    document.getElementById('btn-src').classList.toggle('is-on', srcVisible);
+  }
+  function toggleSourceBody() {
+    const b = document.getElementById('src-body');
+    b.hidden = !b.hidden;
+  }
+  function acceptSource() {
+    document.getElementById('src-strip').hidden = true;
+    srcVisible = false;
+    document.getElementById('btn-src').classList.remove('is-on');
+  }
+
+  // ── offline / unsynced ───────────────────────────────────────────
+  let offline = true;
+  function toggleOffline() {
+    offline = !offline;
+    document.getElementById('ph-outbox').style.display = offline ? '' : 'none';
+    document.getElementById('coop2-off').style.display = offline ? '' : 'none';
+    document.getElementById('btn-off').classList.toggle('is-on', offline);
+  }
+
+  // ── load mode: time estimate vs item count ───────────────────────
+  function setLoadMode(mode) {
+    const time = mode === 'time';
+    document.getElementById('btn-time').classList.toggle('is-on', time);
+    document.getElementById('btn-count').classList.toggle('is-on', !time);
+    // swap the collapsed planning blocks' right-hand readout between item
+    // count and time estimate. The bar widths in the mockup are tuned to
+    // the time estimate; section 5 shows the (coarser) count-driven bar.
+    document.querySelectorAll('.load-meta').forEach(el => {
+      el.textContent = time ? el.dataset.time : el.dataset.count;
+    });
+  }
+
+  // ── man-down cover ack ───────────────────────────────────────────
+  function ackCover() {
+    // close the hole green in James's lane → re-point to Jim.
+    const hole = document.getElementById('ea-hole');
+    hole.classList.remove('seg-hole');
+    hole.classList.add('seg-done');
+    hole.title = 'Covered by Jim';
+    document.getElementById('ea-james-meta').textContent = 'Jim ✓';
+    document.getElementById('ea-james-meta').classList.remove('text-warn');
+    document.getElementById('ea-james-meta').classList.add('text-resolved');
+    const md = document.getElementById('ea-mandown');
+    md.className = 'mt-2.5 flex items-center gap-2.5 border border-resolved/45 bg-[#1d231e] px-2.5 py-2';
+    md.innerHTML = '<svg class="text-resolved shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+      '<div class="flex-1 min-w-0"><div class="text-[13px] text-fg font-medium">Wash eggs — Jim\'s got it</div><div class="text-[11px] text-dim">Acknowledged · covers 1:00–4:00</div></div>';
+  }
+
+  // ── jump to now ──────────────────────────────────────────────────
+  function jumpToNow() {
+    const screen = document.getElementById('phoneScreen');
+    const block = document.getElementById('block-mid');
+    block.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+  }
+
+  // init: midmorning starts at 2 ticks done — the brooders were ticked
+  // in the morning; here Coop-2 (offline) is the pre-existing done.
+  // Mark Coop-2 done already handled in markup. Keep one more "done"
+  // so the count reads 2/6 to match Part F (brooders done earlier).
+  (function init() {
+    // brooder ticks happened in Morning; midmorning shows 1 done here
+    // (Coop 2 offline) + we pre-tick one tractor to land at 2/6.
+    const block = document.getElementById('block-mid');
+    const firstBox = block.querySelector('.checklist .cbox');
+    if (firstBox && !firstBox.classList.contains('done')) {
+      firstBox.classList.add('done');
+      const label = firstBox.parentElement.querySelector('span');
+      if (label && !label.id) {
+        label.classList.add('line-through','text-muted');
+        label.classList.remove('text-fg','font-medium');
+      }
+    }
+    updateMidBlock();
+    setLoadMode('time'); // bars are tuned to the time estimate by default
+  })();
+</script>
+</body>
+</html>

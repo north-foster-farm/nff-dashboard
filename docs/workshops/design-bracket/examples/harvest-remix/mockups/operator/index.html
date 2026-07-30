@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Operator — harvest remix (Round 2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&display=swap"
+  rel="stylesheet"
+/>
+<style>
+/* ============================================================
+   TOKENS — the exact app values, keyed off html[data-theme].
+   Light is James's default; dark via the toggle.
+   ============================================================ */
+html[data-theme="light"] {
+  --c-bg:#f6f6f6; --c-surface:#ffffff; --c-surface-alt:#ececec; --c-border:#d6d6d6;
+  --c-text:#14180f; --c-text-dim:#2f3329; --c-text-muted:#4d4a3e; --c-text-faint:#6f6b5d;
+  --c-accent:#297d5a; --c-accent-deep:#1d5a40; --c-warn:#a06d10; --c-resolved:#297d5a;
+  --c-project:#3f6da3; --c-on-accent:#ffffff;
+  --c-cat-processing:#99000f; --c-cat-fm:#2aa252; --c-cat-egg:#0295ca; --c-cat-pickups:#21ab4f;
+  --shadow-device:0 1px 0 rgba(0,0,0,.04), 0 24px 60px -28px rgba(0,0,0,.35);
+}
+html[data-theme="dark"] {
+  --c-bg:#101614; --c-surface:#151a15; --c-surface-alt:#1d231e; --c-border:#3e473d;
+  --c-text:#f2efe4; --c-text-dim:#c4bfad; --c-text-muted:#8e8877; --c-text-faint:#6a6658;
+  --c-accent:#adc8ad; --c-accent-deep:#297d5a; --c-warn:#e6b85a; --c-resolved:#4cba85;
+  --c-project:#7d9ec9; --c-on-accent:#0d1410;
+  --c-cat-processing:#ff3347; --c-cat-fm:#5dd585; --c-cat-egg:#68d5fd; --c-cat-pickups:#65cda2;
+  --shadow-device:0 1px 0 rgba(0,0,0,.4), 0 28px 70px -30px rgba(0,0,0,.85);
+}
+
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body {
+  background:var(--c-bg);
+  color:var(--c-text);
+  font-family:system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing:antialiased;
+  line-height:1.45;
+}
+.heading { font-family:"Lora", Georgia, serif; letter-spacing:-0.01em; }
+.ui { font-family:"Inter", system-ui, sans-serif; }
+.num { font-variant-numeric:tabular-nums; }
+.eyebrow {
+  font-family:"Inter", system-ui, sans-serif;
+  text-transform:uppercase; font-weight:600;
+  letter-spacing:0.14em; font-size:10px; line-height:1;
+  color:var(--c-text-faint);
+}
+
+/* ============================================================
+   CONTROL BAR
+   ============================================================ */
+.controls {
+  position:sticky; top:0; z-index:50;
+  display:flex; flex-wrap:wrap; align-items:center; gap:14px;
+  padding:12px 22px;
+  background:var(--c-bg);
+  border-bottom:1px solid var(--c-border);
+}
+.controls .brand { display:flex; align-items:baseline; gap:10px; margin-right:auto; }
+.controls .brand b { font-family:"Lora",serif; font-weight:700; font-size:16px; letter-spacing:-0.01em; }
+.controls .brand .eyebrow { color:var(--c-text-muted); }
+.seg { display:inline-flex; border:1px solid var(--c-border); background:var(--c-bg); }
+.seg button {
+  font-family:"Inter",sans-serif; font-size:10.5px; font-weight:600;
+  text-transform:uppercase; letter-spacing:0.1em;
+  padding:7px 11px; border:0; border-left:1px solid var(--c-border);
+  background:transparent; color:var(--c-text-muted); cursor:pointer;
+  white-space:nowrap;
+}
+.seg button:first-child { border-left:0; }
+.seg button[aria-pressed="true"] { background:var(--c-accent); color:var(--c-on-accent); }
+.seg.themes button[aria-pressed="true"] { background:var(--c-surface-alt); color:var(--c-text); }
+.ctl-label { color:var(--c-text-faint); }
+
+/* ============================================================
+   PAGE LAYOUT
+   ============================================================ */
+.page { padding:26px 22px 80px; max-width:1180px; margin:0 auto; }
+.tier-head { display:flex; align-items:baseline; gap:12px; margin:30px 2px 16px; }
+.tier-head:first-child { margin-top:6px; }
+.tier-head h2 { font-family:"Lora",serif; font-weight:700; font-size:19px; letter-spacing:-0.01em; margin:0; }
+.tier-head .lead { color:var(--c-accent); border-color:var(--c-accent); }
+.tier-tag {
+  font-family:"Inter",sans-serif; font-size:10px; font-weight:600; text-transform:uppercase;
+  letter-spacing:0.12em; padding:3px 7px; border:1px solid var(--c-border); color:var(--c-text-muted);
+}
+.tier-tag.lead { border-color:var(--c-accent); color:var(--c-accent); }
+.tier-note { font-size:12px; color:var(--c-text-muted); margin:0 2px 18px; max-width:60ch; }
+
+.phones { display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start; }
+
+/* ---- device frame (rounding allowed on the DEVICE, never on cards) ---- */
+.device {
+  width:390px; flex:0 0 390px; max-width:100%;
+  background:#0b0d0a; border-radius:38px; padding:11px;
+  box-shadow:var(--shadow-device);
+}
+.device .screen {
+  background:var(--c-bg); border-radius:28px; overflow:hidden;
+  border:1px solid rgba(255,255,255,.04);
+}
+.statusbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 20px 5px; font-family:"Inter",sans-serif; font-size:12px; font-weight:600;
+  color:var(--c-text);
+}
+.statusbar .dots { display:flex; gap:4px; align-items:center; color:var(--c-text-muted); }
+.device-cap { text-align:center; margin-top:10px; font-size:11px; color:var(--c-text-muted);
+  font-family:"Inter",sans-serif; letter-spacing:0.04em; }
+
+.app { padding:0; }
+.app-pad { padding:14px 16px; }
+
+/* ============================================================
+   SHARED PRIMITIVES (flush, border-on-bg — NEVER raised)
+   ============================================================ */
+.pane {
+  background:var(--c-bg); border:1px solid var(--c-border);
+}
+.pane + .pane { margin-top:12px; }
+.pane-head {
+  display:flex; align-items:baseline; gap:10px;
+  padding:11px 14px 9px;
+}
+.pane-head .title { font-family:"Lora",serif; font-weight:600; font-size:15px; letter-spacing:-0.01em; color:var(--c-text); }
+.pane-head .sub { margin-left:auto; font-size:11px; color:var(--c-text-muted); }
+
+/* NowRule — green hairline + dot + glow + eyebrow */
+.nowrule { position:relative; padding:9px 16px 4px; }
+.nowrule .rule { position:relative; height:0; border-top:1.5px solid var(--c-resolved); }
+.nowrule .dot {
+  position:absolute; top:-4px; left:0; width:7px; height:7px; border-radius:50%;
+  background:var(--c-resolved);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--c-resolved) 22%, transparent);
+}
+.nowrule .lbl { display:block; margin-top:6px;
+  font-family:"Inter",sans-serif; font-size:9px; font-weight:600; text-transform:uppercase;
+  letter-spacing:0.1em; color:var(--c-resolved); }
+
+/* AttentionCard — the one needs-cover / man-down primitive.
+   Amber-hatch "hole" + inset ring + ⚠ eyebrow + prose + ONE solid action. */
+.attn {
+  position:relative; margin:0 16px 4px;
+  border:1.5px solid color-mix(in srgb, var(--c-warn) 55%, var(--c-bg));
+  background-color:color-mix(in srgb, var(--c-warn) 9%, var(--c-bg));
+  background-image:repeating-linear-gradient(45deg,
+    color-mix(in srgb, var(--c-warn) 16%, transparent) 0 4px, transparent 4px 9px);
+}
+.attn .hd {
+  display:flex; align-items:center; gap:7px; padding:9px 12px 7px;
+  border-bottom:1px solid color-mix(in srgb, var(--c-warn) 30%, transparent);
+}
+.attn .warnglyph { color:var(--c-warn); font-size:14px; line-height:1; }
+.attn .hd .eyebrow { color:var(--c-warn); letter-spacing:0.16em; }
+.attn .bd { padding:10px 12px 12px; }
+.attn .work { font-size:14px; font-weight:600; color:var(--c-text); }
+.attn .reason { font-size:12px; color:var(--c-text-dim); margin-top:3px; line-height:1.4; }
+.attn .act {
+  display:block; width:100%; margin-top:11px; padding:13px 12px;
+  background:var(--c-warn); color:var(--c-on-accent); border:0; cursor:pointer;
+  font-family:"Inter",sans-serif; font-size:12.5px; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.1em;
+}
+.attn .rec { margin-top:8px; font-size:10.5px; color:var(--c-text-faint); line-height:1.4;
+  font-family:"Inter",sans-serif; }
+
+/* SealStamp — celadon ✓ Sealed · who · n/n */
+.seal {
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:"Inter",sans-serif; font-size:11px; font-weight:600; letter-spacing:0.02em;
+  color:var(--c-resolved);
+}
+.seal .tick { font-weight:800; }
+
+/* Day-load strip — ONE count-driven silhouette, never empty lanes */
+.dayload { padding:6px 16px 12px; }
+.dayload .cap { display:flex; align-items:baseline; gap:8px; margin-bottom:7px; }
+.dayload .cap .read { margin-left:auto; font-size:11px; color:var(--c-text-muted); font-family:"Inter",sans-serif; }
+.loadbars { display:flex; align-items:flex-end; gap:5px; height:48px; }
+.loadcol { flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%; }
+.loadcol .bar { width:100%; }
+.loadcol .tick { margin-top:5px; font-size:8.5px; text-transform:uppercase; letter-spacing:0.06em;
+  color:var(--c-text-faint); font-family:"Inter",sans-serif; text-align:center; white-space:nowrap; }
+.loadcol.over .tick { color:var(--c-warn); font-weight:700; }
+
+/* Block group (Today) */
+.blockgrp { border-top:1px solid var(--c-border); }
+.blockgrp .bh {
+  display:flex; align-items:baseline; gap:10px; padding:11px 16px 7px;
+}
+.blockgrp .bh .name { font-family:"Lora",serif; font-weight:600; font-size:15px; letter-spacing:-0.01em; }
+.blockgrp .bh .cnt { margin-left:auto; font-family:"Inter",sans-serif; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:0.12em; color:var(--c-text-muted); }
+.blockgrp.now .bh .name { }
+
+/* ChoreCheckRow — the real completion engine, restyled flush */
+.row {
+  display:flex; align-items:center; gap:12px; padding:11px 16px;
+  border-top:1px solid var(--c-border);
+}
+.row:first-of-type { border-top:0; }
+.box {
+  flex:0 0 auto; width:28px; height:28px; border:2px solid var(--c-border);
+  background:var(--c-surface); display:inline-flex; align-items:center; justify-content:center;
+  color:transparent; cursor:pointer; transition:border-color .1s, background .1s;
+  font-size:15px; font-weight:800; line-height:1;
+}
+.box:hover { border-color:var(--c-text); }
+.row.done .box { background:var(--c-resolved); border-color:var(--c-resolved); color:var(--c-on-accent); }
+.row .meat { flex:1; min-width:0; }
+.row .ttl { font-size:14px; color:var(--c-text); font-weight:500; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.row.done .ttl { color:var(--c-text-muted); text-decoration:line-through; }
+.row .place { font-size:11px; color:var(--c-text-faint); margin-top:2px; }
+.row .opt { font-size:11px; font-style:italic; color:var(--c-text-faint); }
+.row .cloud { color:var(--c-warn); font-size:12px; }
+
+/* escalation — flush warn (border-on-bg + faint hatch), NOT raised tint */
+.row.must {
+  box-shadow:inset 2px 0 0 0 var(--c-warn);
+  background-color:color-mix(in srgb, var(--c-warn) 7%, var(--c-bg));
+}
+.row.must .deadline { font-size:11px; color:var(--c-warn); margin-top:2px; font-weight:600; }
+.row.should-soon { box-shadow:inset 2px 0 0 0 var(--c-accent-deep);
+  background-color:color-mix(in srgb, var(--c-accent-deep) 6%, var(--c-bg)); }
+
+/* overdue banner — flush border-on-bg, supersedes raised bg-warn/5 */
+.banner {
+  margin:0 16px 4px; padding:9px 12px;
+  border:1px solid color-mix(in srgb, var(--c-warn) 45%, var(--c-bg));
+  background:color-mix(in srgb, var(--c-warn) 6%, var(--c-bg));
+  display:flex; align-items:center; gap:8px; font-size:12px; color:var(--c-text);
+}
+.banner .warnglyph { color:var(--c-warn); }
+
+/* deep-link to the doing surface */
+.golink {
+  display:flex; align-items:center; gap:8px; width:100%;
+  padding:12px 16px; border:0; border-top:1px solid var(--c-border);
+  background:transparent; color:var(--c-accent); cursor:pointer;
+  font-family:"Inter",sans-serif; font-size:12px; font-weight:600;
+  text-transform:uppercase; letter-spacing:0.1em; text-align:left;
+}
+.golink:hover { background:color-mix(in srgb, var(--c-accent) 6%, var(--c-bg)); }
+.golink .arr { margin-left:auto; }
+
+/* OutboxIndicator */
+.outbox {
+  display:none; align-items:center; gap:6px;
+  font-family:"Inter",sans-serif; font-size:11px; font-weight:600; color:var(--c-warn);
+  white-space:nowrap;
+}
+
+/* ============================================================
+   ROUNDS RUN (phone, doing surface)
+   ============================================================ */
+.runhdr { padding:12px 16px 10px; border-bottom:1px solid var(--c-border); }
+.runhdr .top { display:flex; align-items:center; gap:10px; }
+.runhdr .blk { font-family:"Inter",sans-serif; font-size:10px; font-weight:600; text-transform:uppercase;
+  letter-spacing:0.16em; color:var(--c-text-muted); }
+.runhdr .hero { font-family:"Lora",serif; font-weight:700; font-size:22px; letter-spacing:-0.02em; line-height:1.05; }
+.runhdr .hero small { font-family:"Inter",sans-serif; font-size:13px; font-weight:600; color:var(--c-text-muted); }
+.runhdr .clock { margin-left:auto; font-family:"Inter",sans-serif; font-size:11px; color:var(--c-text-muted); }
+.runhdr .clock.over { color:var(--c-warn); font-weight:700; }
+.runhdr .x { border:0; background:transparent; color:var(--c-text-muted); cursor:pointer; font-size:15px; padding:4px; }
+.progress { margin-top:10px; height:6px; background:var(--c-surface-alt); overflow:hidden; }
+.progress > span { display:block; height:100%; background:var(--c-accent); transition:width .25s; }
+
+.switcher { display:flex; gap:6px; padding:9px 16px; border-bottom:1px solid var(--c-border);
+  overflow-x:auto; background:var(--c-bg); }
+.chip {
+  flex:0 0 auto; font-family:"Inter",sans-serif; font-size:10.5px; font-weight:600;
+  text-transform:uppercase; letter-spacing:0.1em; padding:7px 11px;
+  border:1px solid var(--c-border); background:transparent; color:var(--c-text-dim); cursor:pointer; white-space:nowrap;
+}
+.chip[aria-pressed="true"] { background:var(--c-surface-alt); color:var(--c-text); border-color:var(--c-text); }
+
+/* PlaceSection — flush (border-on-bg), was raised bg-surface */
+.place-sec { margin:14px 16px 0; border:1px solid var(--c-border); }
+.place-sec .ph {
+  display:flex; align-items:baseline; gap:10px; padding:9px 14px; border-bottom:1px solid var(--c-border);
+}
+.place-sec .ph .nm { font-size:14px; font-weight:600; }
+.place-sec .ph .cnt { margin-left:auto; font-family:"Inter",sans-serif; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:0.12em; color:var(--c-text-muted); }
+.markall {
+  margin:14px 16px 18px; display:block; width:calc(100% - 32px);
+  padding:12px; background:transparent; border:1px solid var(--c-border); color:var(--c-text-dim);
+  font-family:"Inter",sans-serif; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em;
+  cursor:pointer;
+}
+.markall:hover { border-color:var(--c-text); color:var(--c-text); }
+
+/* seal wrap (revealed on completion) */
+.wrap { display:none; padding:46px 22px; text-align:center; }
+.wrap .eyebrow { display:block; color:var(--c-text-muted); margin-bottom:14px; }
+.wrap .big { font-family:"Lora",serif; font-weight:700; font-size:40px; letter-spacing:-0.02em; }
+.wrap .seal { margin-top:14px; font-size:13px; }
+.wrap .note { margin-top:16px; font-size:11px; color:var(--c-text-muted); line-height:1.5; }
+.wrap .reset { margin-top:22px; padding:11px 18px; border:1px solid var(--c-border); background:transparent;
+  color:var(--c-text-dim); font-family:"Inter",sans-serif; font-size:11px; font-weight:600;
+  text-transform:uppercase; letter-spacing:0.12em; cursor:pointer; }
+.run.sealed .runbody { display:none; }
+.run.sealed .wrap { display:block; }
+
+/* ============================================================
+   DESKTOP TIER (de-emphasized — smaller, secondary)
+   ============================================================ */
+.desktop {
+  border:1px solid var(--c-border); background:var(--c-bg);
+  max-width:980px; margin:0 auto; overflow:hidden;
+  opacity:.96;
+}
+.dt-chrome { display:flex; align-items:center; gap:8px; padding:9px 14px; border-bottom:1px solid var(--c-border);
+  background:var(--c-surface-alt); }
+.dt-chrome .lights { display:flex; gap:6px; }
+.dt-chrome .lights i { width:9px; height:9px; border-radius:50%; background:var(--c-border); display:block; }
+.dt-chrome .t { font-family:"Inter",sans-serif; font-size:11px; color:var(--c-text-muted); letter-spacing:0.04em; }
+.dt-grid { display:grid; grid-template-columns:1fr 250px; }
+.dt-main { padding:16px; border-right:1px solid var(--c-border); min-width:0; }
+.dt-side { padding:14px; }
+
+.dt-daytitle { display:flex; align-items:baseline; gap:10px; margin-bottom:4px; }
+.dt-daytitle h3 { font-family:"Lora",serif; font-weight:700; font-size:20px; letter-spacing:-0.02em; margin:0; }
+.dt-daytitle .meta { font-size:12px; color:var(--c-text-muted); }
+.killnote { font-size:11px; color:var(--c-text-faint); font-style:italic; margin:8px 0 14px; }
+
+/* timeline rows (dashboard "schedule at a glance" — relocated, shown muted) */
+.tl { border-top:1px solid var(--c-border); }
+.tlrow { display:grid; grid-template-columns:64px 1fr auto; align-items:center; gap:10px;
+  padding:7px 4px; font-size:13px; border-bottom:1px solid color-mix(in srgb,var(--c-border) 60%, transparent); }
+.tlrow .tm { font-variant-numeric:tabular-nums; color:var(--c-text-dim); font-size:12px; }
+.tlrow .dt { color:var(--c-text-muted); font-size:12px; }
+.tlrow.event { box-shadow:inset 2px 0 0 0 var(--c-cat-fm);
+  background:color-mix(in srgb, var(--c-cat-fm) 9%, transparent); }
+.tlrow.event .tt { font-weight:600; }
+.tlrow.proc { box-shadow:inset 2px 0 0 0 var(--c-cat-processing);
+  background:color-mix(in srgb, var(--c-cat-processing) 8%, transparent); }
+
+/* Week list — the SINGLE week. Spine + should-tick folded into each row. */
+.weeklist .wl-head { margin-bottom:8px; }
+.wlrow { display:grid; grid-template-columns:54px 22px 1fr 14px; align-items:center; gap:8px;
+  padding:7px 6px; border-top:1px solid color-mix(in srgb,var(--c-border) 70%, transparent); cursor:pointer; }
+.wlrow:hover { background:color-mix(in srgb, var(--c-accent) 5%, var(--c-bg)); }
+.wlrow .day { font-family:"Inter",sans-serif; font-size:11px; color:var(--c-text-dim); }
+.wlrow .n { font-variant-numeric:tabular-nums; font-size:12px; color:var(--c-text-muted); text-align:right; }
+.wlrow .spine { display:flex; align-items:flex-end; gap:2px; height:18px; }
+.wlrow .spine i { width:5px; background:color-mix(in srgb, var(--c-accent-deep) 55%, var(--c-bg)); display:block; }
+.wlrow.today { background:color-mix(in srgb, var(--c-resolved) 8%, var(--c-bg)); box-shadow:inset 2px 0 0 0 var(--c-resolved); }
+.wlrow.today .day { color:var(--c-resolved); font-weight:700; }
+.wlrow .sht { width:9px; height:9px; }            /* should-heat tick / glyph */
+.wlrow .sht.warm { background:color-mix(in srgb, var(--c-warn) 55%, var(--c-bg)); }
+.wlrow .sht.due  { background:var(--c-cat-processing); }
+.wlrow .marker { font-size:11px; color:var(--c-resolved); }
+
+/* desktop chores escalation list (flush) */
+.dt-sub { margin:16px 0 6px; }
+.crow { display:flex; align-items:center; gap:10px; padding:8px 4px;
+  border-top:1px solid color-mix(in srgb,var(--c-border) 70%, transparent); font-size:13px; }
+.crow .cb { width:22px; height:22px; border:2px solid var(--c-border); background:var(--c-surface); flex:0 0 auto; }
+.crow.done .cb { background:var(--c-resolved); border-color:var(--c-resolved); }
+.crow.must { box-shadow:inset 2px 0 0 0 var(--c-warn);
+  background:color-mix(in srgb, var(--c-warn) 7%, var(--c-bg)); }
+.crow . co { font-style:italic; color:var(--c-text-faint); font-size:11px; }
+.crow .due { color:var(--c-warn); font-size:11px; font-weight:600; }
+
+/* ============================================================
+   STATE-DRIVEN VISIBILITY
+   ============================================================ */
+[data-state="man-down"] .attn,
+[data-state="man-down"] .run-attn { display:block !important; }
+[data-state="overdue"] .banner,
+[data-state="overdue"] .run-overdue { display:flex !important; }
+[data-state="overdue"] .row.overdue-row { display:flex; }
+[data-state="offline"] .outbox { display:inline-flex !important; }
+
+/* sparse: cover/seal don't render; day reads light */
+[data-state="sparse"] .seal-morning { display:none; }
+[data-state="sparse"] .sparse-hide { display:none; }
+
+.attn, .run-attn { display:none; }
+.banner, .run-overdue { display:none; }
+.row.overdue-row { display:none; }
+
+.tip { font-size:11px; color:var(--c-text-faint); margin:4px 2px 0; font-family:"Inter",sans-serif; }
+</style>
+</head>
+<body data-state="normal">
+
+<!-- ============================ CONTROL BAR ============================ -->
+<div class="controls">
+  <div class="brand">
+    <b>NFF</b>
+    <span class="eyebrow">Operator — re-home the signal</span>
+  </div>
+
+  <span class="eyebrow ctl-label">State</span>
+  <div class="seg" id="stateSeg" role="group" aria-label="State">
+    <button data-st="normal" aria-pressed="true">Normal</button>
+    <button data-st="man-down">Man-down</button>
+    <button data-st="overdue">Overdue</button>
+    <button data-st="offline">Offline</button>
+    <button data-st="dense">Dense</button>
+    <button data-st="sparse">Sparse</button>
+  </div>
+
+  <span class="eyebrow ctl-label">Theme</span>
+  <div class="seg themes" id="themeSeg" role="group" aria-label="Theme">
+    <button data-th="light" aria-pressed="true">Light</button>
+    <button data-th="dark">Dark</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ====================== LEAD TIER: PHONE ====================== -->
+  <div class="tier-head">
+    <h2>The screen the operator is holding</h2>
+    <span class="tier-tag lead">Lead tier · phone 390px</span>
+  </div>
+  <p class="tier-note">
+    The arc's signals were stranded on a desktop nobody stares at. They live
+    here now — on the phone, in strict tap-priority order. A man-down jumps to
+    the top of the glance and into the running round. One-handed, gloves on,
+    sun on the screen, signal dropping in and out.
+  </p>
+
+  <div class="phones">
+
+    <!-- ---------- PHONE 1 · TODAY GLANCE ---------- -->
+    <div>
+      <div class="device">
+        <div class="screen">
+          <div class="statusbar">
+            <span class="num">9:54</span>
+            <span class="dots"><span class="outbox">☁ 1 queued</span> · ▲ ▲ ▮</span>
+          </div>
+          <div class="app">
+
+            <!-- header -->
+            <div class="app-pad" style="padding-bottom:0;">
+              <div style="display:flex; align-items:baseline; gap:10px;">
+                <div class="eyebrow" style="color:var(--c-text-muted)">Friday · Jun 29</div>
+                <div style="margin-left:auto; font-size:12px; color:var(--c-text-muted)" class="ui">⛅ 58°</div>
+              </div>
+            </div>
+
+            <!-- NowRule -->
+            <div class="nowrule">
+              <div class="rule"><span class="dot"></span></div>
+              <span class="lbl">Now · 9:54a</span>
+            </div>
+
+            <!-- AttentionCard — man-down, jumps to the top -->
+            <div class="attn">
+              <div class="hd">
+                <span class="warnglyph">⚠</span>
+                <span class="eyebrow">Needs cover</span>
+              </div>
+              <div class="bd">
+                <div class="work">Wash eggs · Egg room</div>
+                <div class="reason">
+                  James is off-site at the market til 1:00p — the egg-wash window
+                  opens 1:00–4:00 and no one is on it.
+                </div>
+                <button class="act">Jim covers — I've got it</button>
+                <div class="rec">The acknowledgment is the record. No lane to fill in — the hole just closes.</div>
+              </div>
+            </div>
+
+            <!-- DAY LOAD — one count-driven strip, never empty lanes -->
+            <div class="dayload">
+              <div class="cap">
+                <span class="eyebrow">Day load</span>
+                <span class="read" id="dayRead">22 items · 5 blocks</span>
+              </div>
+              <div class="loadbars" id="loadbars"></div>
+            </div>
+
+            <!-- block groups -->
+            <div class="blockgrp">
+              <div class="bh">
+                <span class="name heading">Morning</span>
+                <span class="seal seal-morning"><span class="tick">✓</span> Sealed · Jim · 7/7</span>
+                <span class="cnt sparse-hide" style="display:none">light</span>
+              </div>
+            </div>
+
+            <div class="blockgrp now">
+              <div class="bh">
+                <span class="name heading">Midmorning</span>
+                <span class="cnt num">2 / 8</span>
+              </div>
+              <div class="banner run-overdue" style="display:none">
+                <span class="warnglyph">⚠</span>
+                <span>Yesterday's must — <b>Pressure-wash nest boxes</b> — is overdue.</span>
+              </div>
+              <div class="row">
+                <span class="box" data-toggle>✓</span>
+                <div class="meat">
+                  <div class="ttl">Fill waterers <span class="opt">· 3 coops 0/3</span></div>
+                  <div class="place">Coops</div>
+                </div>
+              </div>
+              <div class="row">
+                <span class="box" data-toggle>✓</span>
+                <div class="meat">
+                  <div class="ttl">Pressure-wash nest boxes <span class="opt">optional today</span></div>
+                  <div class="place">Coops</div>
+                </div>
+              </div>
+              <div class="row overdue-row must">
+                <span class="box" data-toggle>✓</span>
+                <div class="meat">
+                  <div class="ttl">Wash eggs</div>
+                  <div class="place">Egg room</div>
+                  <div class="deadline">Deadline today — window 1:00–4:00p</div>
+                </div>
+                <span class="cloud" title="saved on device, not synced">☁</span>
+              </div>
+              <button class="golink">⤓ Open Rounds for Midmorning <span class="arr">→</span></button>
+            </div>
+
+            <div class="blockgrp">
+              <div class="bh">
+                <span class="name heading">Early afternoon</span>
+                <span class="cnt num">0 / 4</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="device-cap">Today — the operator glance</div>
+    </div>
+
+    <!-- ---------- PHONE 2 · ROUNDS RUN ---------- -->
+    <div>
+      <div class="device">
+        <div class="screen">
+          <div class="statusbar">
+            <span class="num">9:58</span>
+            <span class="dots">▲ ▲ ▮</span>
+          </div>
+          <div class="app run" id="run">
+
+            <div class="runbody">
+              <!-- run header -->
+              <div class="runhdr">
+                <div class="top">
+                  <div style="min-width:0">
+                    <div class="blk">Midmorning</div>
+                    <div class="hero num"><span id="runDone">2</span><small> / <span id="runTotal">5</span> done</small></div>
+                  </div>
+                  <span class="outbox" style="margin-left:6px">☁ 1 queued</span>
+                  <span class="clock num" id="runClock">0:14</span>
+                  <button class="x" title="Exit — run keeps going">✕</button>
+                </div>
+                <div class="progress"><span id="runBar" style="width:40%"></span></div>
+                <!-- NowRule promoted into the run header -->
+                <div class="nowrule" style="padding:10px 0 0;">
+                  <div class="rule"><span class="dot"></span></div>
+                  <span class="lbl">Now · 9:58a</span>
+                </div>
+              </div>
+
+              <!-- AttentionCard surfaces INSIDE the live run too -->
+              <div class="attn run-attn" style="margin:12px 16px 0;">
+                <div class="hd">
+                  <span class="warnglyph">⚠</span>
+                  <span class="eyebrow">Needs cover</span>
+                </div>
+                <div class="bd">
+                  <div class="work">Wash eggs · Egg room</div>
+                  <div class="reason">James off-site til 1:00p. You're already in the round — take it.</div>
+                  <button class="act">Jim covers — I've got it</button>
+                </div>
+              </div>
+
+              <!-- overdue banner inside the run -->
+              <div class="banner" style="margin:12px 16px 0;">
+                <span class="warnglyph">⚠</span>
+                <span>1 chore overran yesterday's window.</span>
+              </div>
+
+              <div class="switcher">
+                <button class="chip" aria-pressed="true">Everywhere</button>
+                <button class="chip">Coops</button>
+                <button class="chip">Chicken tractor 1</button>
+                <button class="chip">Egg room</button>
+              </div>
+
+              <div class="place-sec">
+                <div class="ph">
+                  <span class="nm">Coops</span>
+                  <span class="cnt num runsec-cnt">1 / 3 done</span>
+                </div>
+                <div class="row done">
+                  <span class="box" data-run>✓</span>
+                  <div class="meat"><div class="ttl">Fill feeder</div><div class="place">Chicken tractor 1</div></div>
+                </div>
+                <div class="row">
+                  <span class="box" data-run>✓</span>
+                  <div class="meat"><div class="ttl">Fill waterer</div><div class="place">Chicken tractor 1</div></div>
+                </div>
+                <div class="row">
+                  <span class="box" data-run>✓</span>
+                  <div class="meat"><div class="ttl">Collect eggs</div><div class="place">Chicken tractor 1</div></div>
+                </div>
+              </div>
+
+              <div class="place-sec">
+                <div class="ph">
+                  <span class="nm">Egg room</span>
+                  <span class="cnt num runsec-cnt">1 / 2 done</span>
+                </div>
+                <div class="row done">
+                  <span class="box" data-run>✓</span>
+                  <div class="meat"><div class="ttl">Wash eggs</div><div class="place">Egg room</div></div>
+                </div>
+                <div class="row">
+                  <span class="box" data-run>✓</span>
+                  <div class="meat"><div class="ttl">Pack flats</div><div class="place">Egg room</div></div>
+                </div>
+              </div>
+
+              <button class="markall" id="markAll">Mark all done</button>
+            </div>
+
+            <!-- seal wrap — block is sealed ONLY by completion -->
+            <div class="wrap">
+              <span class="eyebrow">Midmorning done</span>
+              <div class="big num">0:41</div>
+              <div class="seal"><span class="tick">✓</span> Sealed · Jim · 5/5</div>
+              <div class="note">Un-checking any chore reopens the run.<br/>No "confirm the day" — completion is the seal.</div>
+              <button class="reset" id="resetRun">Re-open run</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="device-cap">Rounds — the doing surface · seal by completion</div>
+    </div>
+
+  </div>
+
+  <p class="tip">Try it: check the boxes in either phone, or hit <b>Mark all done</b> in Rounds to seal the block. Flip the State toggle to see man-down jump to the top.</p>
+
+  <!-- ====================== SECONDARY TIER: DESKTOP ====================== -->
+  <div class="tier-head">
+    <h2>Desktop</h2>
+    <span class="tier-tag">Secondary · glance + plan</span>
+  </div>
+  <p class="tier-note">
+    The two-lane person ribbon is gone — it was desktop-only and empty in
+    production (assignment is null for nearly every chore). The week is drawn
+    <b>once</b>, folded into the sidebar list. The desktop is where you scan and
+    plan; the decisions still happen on the phone above.
+  </p>
+
+  <div class="desktop">
+    <div class="dt-chrome">
+      <span class="lights"><i></i><i></i><i></i></span>
+      <span class="t">Schedule · Friday Jun 29</span>
+    </div>
+    <div class="dt-grid">
+      <div class="dt-main">
+        <div class="dt-daytitle">
+          <h3>Friday Jun 29</h3>
+          <span class="meta">market day · 5 blocks</span>
+        </div>
+        <div class="killnote">Ribbon cut. Day-load + now + cover re-homed to the phone glance.</div>
+
+        <!-- dashboard "schedule at a glance" pane, relocated here as a scan -->
+        <div class="eyebrow" style="margin-bottom:6px">Schedule at a glance</div>
+        <div class="tl">
+          <div class="tlrow"><span class="tm num">6:08a</span><span class="tt">Morning rounds <span class="seal" style="font-size:10px">✓ sealed 7/7</span></span><span class="dt">Jim</span></div>
+          <div class="tlrow"><span class="tm num">9:30a</span><span class="tt">Midmorning rounds</span><span class="dt num">2 / 8</span></div>
+          <div class="tlrow event"><span class="tm num">9:00a</span><span class="tt">Farmers market</span><span class="dt">off-site · James</span></div>
+          <div class="tlrow"><span class="tm num">1:00p</span><span class="tt">Wash eggs <span style="color:var(--c-warn);font-weight:600">⚠ needs cover</span></span><span class="dt">Egg room</span></div>
+          <div class="tlrow proc"><span class="tm num">2:00p</span><span class="tt">Early-afternoon rounds</span><span class="dt num">0 / 4</span></div>
+        </div>
+      </div>
+
+      <!-- the ONE week — spine + should-tick folded into the list rows -->
+      <div class="dt-side">
+        <div class="weeklist">
+          <div class="eyebrow wl-head">This week</div>
+          <div class="wlrow"><span class="day">Sun 22</span><span class="n num">3</span><span class="spine"><i style="height:5px"></i><i style="height:8px"></i><i style="height:4px"></i></span><span class="sht"></span></div>
+          <div class="wlrow"><span class="day">Mon 23</span><span class="n num">8</span><span class="spine"><i style="height:10px"></i><i style="height:13px"></i><i style="height:7px"></i></span><span class="sht"></span></div>
+          <div class="wlrow"><span class="day">Tue 24</span><span class="n num">9</span><span class="spine"><i style="height:11px"></i><i style="height:9px"></i><i style="height:14px"></i></span><span class="sht"></span></div>
+          <div class="wlrow"><span class="day">Wed 25</span><span class="n num">9</span><span class="spine"><i style="height:9px"></i><i style="height:12px"></i><i style="height:7px"></i></span><span class="sht warm" title="should warming"></span></div>
+          <div class="wlrow today"><span class="day">Fri 29</span><span class="n num">22</span><span class="spine"><i style="height:9px"></i><i style="height:16px"></i><i style="height:8px"></i></span><span class="sht warm" title="should warming"></span></div>
+          <div class="wlrow"><span class="day">Sat 30</span><span class="n num">7</span><span class="spine"><i style="height:8px"></i><i style="height:14px"></i><i style="height:6px"></i></span><span class="sht"></span></div>
+          <div class="wlrow"><span class="day">Sun 31</span><span class="n num">12</span><span class="spine"><i style="height:12px"></i><i style="height:9px"></i><i style="height:6px"></i></span><span class="sht due" title="processing — deadline"></span></div>
+        </div>
+
+        <!-- chores escalation list — flush/hatch, not raised -->
+        <div class="eyebrow dt-sub">Chores · should → must</div>
+        <div class="crow done"><span class="cb"></span><span>Collect eggs · CT1</span></div>
+        <div class="crow"><span class="cb"></span><span>Fill waterers</span><span class="co">optional</span></div>
+        <div class="crow must"><span class="cb"></span><span>Pressure-wash nest boxes</span><span class="due">due Sun</span></div>
+        <div class="crow must"><span class="cb"></span><span>Wash eggs</span><span class="due">today</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="tip">The week's should-heat survives as a single tick per row (amber = warming, red = processing-deadline) — readable at a glance, not a heavy heat strip.</p>
+
+</div>
+
+<script>
+// ---- theme toggle ----
+const themeSeg = document.getElementById("themeSeg");
+themeSeg.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.documentElement.setAttribute("data-theme", b.dataset.th);
+  themeSeg.querySelectorAll("button").forEach(x =>
+    x.setAttribute("aria-pressed", String(x === b)));
+});
+
+// ---- day-load model per state (item counts → bars) ----
+const BLOCKS = ["morn","mid","aft","eve","late"];
+const LABELS = ["Morn","Mid","Aft","Eve","Late"];
+const LOAD = {
+  normal:   [{n:7,t:"seal"},{n:8,t:"now"},{n:4,t:"fut"},{n:5,t:"fut"},{n:3,t:"fut"}],
+  "man-down":[{n:7,t:"seal"},{n:8,t:"now"},{n:7,t:"over"},{n:5,t:"fut"},{n:3,t:"fut"}],
+  overdue:  [{n:7,t:"seal"},{n:9,t:"now"},{n:4,t:"fut"},{n:5,t:"fut"},{n:3,t:"fut"}],
+  offline:  [{n:7,t:"seal"},{n:8,t:"now"},{n:4,t:"fut"},{n:5,t:"fut"},{n:3,t:"fut"}],
+  dense:    [{n:11,t:"seal"},{n:14,t:"now"},{n:11,t:"fut"},{n:12,t:"fut"},{n:8,t:"fut"}],
+  sparse:   [{n:2,t:"seal"},{n:3,t:"now"},{n:1,t:"fut"},{n:2,t:"fut"},{n:2,t:"fut"}],
+};
+const READ = {
+  normal:"22 items · 5 blocks", "man-down":"22 items · 1 uncovered",
+  overdue:"23 items · 1 overdue", offline:"22 items · 1 queued",
+  dense:"56 items — heavy day", sparse:"10 items — light day",
+};
+const toneVar = {
+  seal:"var(--c-resolved)",
+  now:"var(--c-accent-deep)",
+  fut:"color-mix(in srgb, var(--c-accent-deep) 55%, var(--c-bg))",
+  over:"var(--c-warn)",
+};
+function renderLoad(state) {
+  const arr = LOAD[state] || LOAD.normal;
+  const max = Math.max(...arr.map(x => x.n), 1);
+  const host = document.getElementById("loadbars");
+  host.innerHTML = "";
+  arr.forEach((x, i) => {
+    const col = document.createElement("div");
+    col.className = "loadcol" + (x.t === "over" ? " over" : "");
+    const h = Math.max(8, Math.round((x.n / max) * 100));
+    col.innerHTML =
+      '<div class="bar" style="height:' + h + '%; background:' + toneVar[x.t] + '"></div>' +
+      '<div class="tick">' + LABELS[i] + (x.t === "over" ? " ⚠" : "") + "</div>";
+    host.appendChild(col);
+  });
+  document.getElementById("dayRead").textContent = READ[state] || READ.normal;
+}
+
+// ---- state toggle ----
+const stateSeg = document.getElementById("stateSeg");
+function setState(st) {
+  document.body.setAttribute("data-state", st);
+  stateSeg.querySelectorAll("button").forEach(x =>
+    x.setAttribute("aria-pressed", String(x.dataset.st === st)));
+  renderLoad(st);
+}
+stateSeg.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  setState(b.dataset.st);
+});
+
+// ---- Today: tappable checkboxes ----
+document.querySelectorAll("[data-toggle]").forEach(box => {
+  box.addEventListener("click", () => box.closest(".row").classList.toggle("done"));
+});
+
+// ---- Rounds: live count + progress + seal-by-completion ----
+const run = document.getElementById("run");
+function refreshRun() {
+  const rows = run.querySelectorAll(".runbody .row");
+  const done = run.querySelectorAll(".runbody .row.done").length;
+  const total = rows.length;
+  document.getElementById("runDone").textContent = done;
+  document.getElementById("runTotal").textContent = total;
+  document.getElementById("runBar").style.width =
+    (total ? Math.round((done / total) * 100) : 0) + "%";
+  // per-section counts
+  run.querySelectorAll(".place-sec").forEach(sec => {
+    const r = sec.querySelectorAll(".row");
+    const d = sec.querySelectorAll(".row.done").length;
+    sec.querySelector(".runsec-cnt").textContent = d + " / " + r.length + " done";
+  });
+  run.classList.toggle("sealed", done === total && total > 0);
+}
+run.querySelectorAll("[data-run]").forEach(box => {
+  box.addEventListener("click", () => {
+    box.closest(".row").classList.toggle("done");
+    refreshRun();
+  });
+});
+document.getElementById("markAll").addEventListener("click", () => {
+  run.querySelectorAll(".runbody .row").forEach(r => r.classList.add("done"));
+  refreshRun();
+});
+document.getElementById("resetRun").addEventListener("click", () => {
+  run.querySelectorAll(".runbody .row").forEach((r, i) => r.classList.toggle("done", i === 0));
+  refreshRun();
+});
+
+// init
+renderLoad("normal");
+refreshRun();
+</script>
+</body>
+</html>

@@ -1,0 +1,1426 @@
+{
+  "version": "1.0.0",
+  "generated_for": "NFF // Daily Ops",
+  "people": {
+    "salatin": {
+      "name": "Joel Salatin",
+      "lifespan": "b. 1957",
+      "role": "Farmer, author, regenerative agriculture pioneer",
+      "bio": "Operator of Polyface Farm in Virginia and the godfather of modern pastured poultry. His 'chicken tractor' model and rotational grazing systems are the foundation that nearly every pastured meat bird operation borrows from. Author of Pastured Poultry Profits, You Can Farm, and Folks, This Ain't Normal."
+    },
+    "berry": {
+      "name": "Wendell Berry",
+      "lifespan": "b. 1934",
+      "role": "Farmer, poet, essayist, novelist",
+      "bio": "Kentucky farmer and the patron saint of agrarian writing. Has been arguing for small farms, local economies, and land stewardship since the 1960s, blending poetry, fiction, and essays into a distinctive defense of place-based living."
+    },
+    "herriot": {
+      "name": "James Herriot",
+      "lifespan": "1916–1995",
+      "role": "Veterinarian and author",
+      "bio": "Pen name of James Alfred Wight, a country veterinarian who practiced in the Yorkshire Dales for over 50 years. His semi-autobiographical books — All Creatures Great and Small chief among them — chronicled the lives of Yorkshire farmers and their animals with deep affection and gentle humor."
+    },
+    "leopold": {
+      "name": "Aldo Leopold",
+      "lifespan": "1887–1948",
+      "role": "Forester, ecologist, philosopher",
+      "bio": "Author of A Sand County Almanac (1949), one of the foundational texts of conservation and land ethics. Spent his last years restoring a worn-out farm in Wisconsin, an experience that shaped his belief that humans belong to a community that includes soils, waters, plants, and animals."
+    },
+    "ebwhite": {
+      "name": "E.B. White",
+      "lifespan": "1899–1985",
+      "role": "Essayist, author of Charlotte's Web",
+      "bio": "Beloved essayist and author who kept a saltwater farm in Maine for decades. His essay collection One Man's Meat captures rural life with characteristic wit, and Charlotte's Web grew directly out of his observations of the animals on his own farm."
+    },
+    "thoreau": {
+      "name": "Henry David Thoreau",
+      "lifespan": "1817–1862",
+      "role": "Naturalist, philosopher, essayist",
+      "bio": "American transcendentalist whose Walden (1854) — written during two years living in a cabin on Walden Pond in Concord, Massachusetts — became the foundational text of simple living and self-reliance in American letters."
+    },
+    "muir": {
+      "name": "John Muir",
+      "lifespan": "1838–1914",
+      "role": "Naturalist, conservationist",
+      "bio": "Scottish-American naturalist and founder of the Sierra Club. His writings about Yosemite and the Sierra Nevada were instrumental in establishing the U.S. national park system, and his reverence for wilderness shaped American environmentalism."
+    },
+    "burns": {
+      "name": "Robert Burns",
+      "lifespan": "1759–1796",
+      "role": "Poet and farmer",
+      "bio": "Scotland's national poet and a working farmer for much of his life. He wrote 'To a Mouse' — the source of the famous 'best laid schemes' line — after turning up a mouse's nest while plowing his field."
+    },
+    "jefferson": {
+      "name": "Thomas Jefferson",
+      "lifespan": "1743–1826",
+      "role": "Statesman, agrarian thinker",
+      "bio": "Third U.S. president and architect of American agrarianism. His writings on farming as the moral foundation of a republic shaped the cultural ideal of the independent yeoman farmer. (A complicated figure whose record on slavery contradicted the freedoms he championed.)"
+    },
+    "fukuoka": {
+      "name": "Masanobu Fukuoka",
+      "lifespan": "1913–2008",
+      "role": "Farmer, philosopher",
+      "bio": "Japanese farmer and philosopher whose book The One-Straw Revolution introduced 'do-nothing' or natural farming to the world. A pioneering influence on the permaculture movement and a champion of working with, rather than against, natural systems."
+    },
+    "howard": {
+      "name": "Sir Albert Howard",
+      "lifespan": "1873–1947",
+      "role": "Agronomist",
+      "bio": "British agricultural researcher who spent decades in India observing traditional farming systems. Considered the father of organic agriculture; his book An Agricultural Testament (1940) laid the groundwork for the global organic movement."
+    },
+    "oliver": {
+      "name": "Mary Oliver",
+      "lifespan": "1935–2019",
+      "role": "Poet",
+      "bio": "Pulitzer Prize-winning American poet whose work draws sustained attention to the natural world — its small lives, its seasons, its capacity to instruct. Spent most of her writing life in Provincetown, Massachusetts."
+    },
+    "frost": {
+      "name": "Robert Frost",
+      "lifespan": "1874–1963",
+      "role": "Poet",
+      "bio": "Four-time Pulitzer Prize-winning American poet known for realistic depictions of rural New England life. Lived for years on a farm in Derry, New Hampshire, and his poems 'Mending Wall,' 'After Apple-Picking,' and 'The Road Not Taken' draw directly from that experience."
+    },
+    "wordsworth": {
+      "name": "William Wordsworth",
+      "lifespan": "1770–1850",
+      "role": "Poet",
+      "bio": "English Romantic poet who lived most of his life in the Lake District. His poetry helped establish nature itself as a serious literary subject and influenced generations of writers about the moral and spiritual value of the countryside."
+    },
+    "pollan": {
+      "name": "Michael Pollan",
+      "lifespan": "b. 1955",
+      "role": "Author, journalist",
+      "bio": "Author of The Omnivore's Dilemma and In Defense of Food, whose work brought Joel Salatin and pastured farming into the mainstream conversation about food. A leading voice on industrial agriculture and what it means to eat well."
+    },
+    "kingsolver": {
+      "name": "Barbara Kingsolver",
+      "lifespan": "b. 1955",
+      "role": "Novelist, essayist",
+      "bio": "American novelist who, with her family, spent a year eating only food they grew themselves or sourced locally. The resulting book, Animal, Vegetable, Miracle, became a touchstone of the local food movement."
+    },
+    "grandin": {
+      "name": "Temple Grandin",
+      "lifespan": "b. 1947",
+      "role": "Animal welfare scientist",
+      "bio": "Professor of animal science at Colorado State University who has revolutionized livestock handling through more humane facility designs. Her insights — informed by her own experience with autism — have transformed slaughterhouse and ranch practices worldwide."
+    },
+    "potter": {
+      "name": "Beatrix Potter",
+      "lifespan": "1866–1943",
+      "role": "Author, illustrator, sheep farmer",
+      "bio": "Beloved English author of The Tale of Peter Rabbit and many other children's books — and, less famously, a serious Herdwick sheep farmer in the Lake District and one of England's most influential early conservationists. She bequeathed thousands of acres of farmland to the National Trust."
+    },
+    "savory": {
+      "name": "Allan Savory",
+      "lifespan": "b. 1935",
+      "role": "Ecologist, regenerative grazing pioneer",
+      "bio": "Zimbabwean ecologist and founder of Holistic Management. Best known for the influential — and contested — idea that properly managed grazing animals can reverse desertification. His 2013 TED talk introduced regenerative grazing concepts to a global audience."
+    },
+    "willharris": {
+      "name": "Will Harris",
+      "lifespan": "b. 1954",
+      "role": "Rancher",
+      "bio": "Fourth-generation cattleman who converted his family's conventional industrial operation, White Oak Pastures in Bluffton, Georgia, back to multi-species pasture-based farming. A vocal advocate for radical decentralization in American food systems."
+    },
+    "gabebrown": {
+      "name": "Gabe Brown",
+      "lifespan": "b. 1959",
+      "role": "Rancher, regenerative ag pioneer",
+      "bio": "North Dakota rancher whose Brown's Ranch became a proving ground for regenerative agriculture. His book Dirt to Soil and the soil health principles he champions have shaped a movement of farmers focused on rebuilding rather than depleting the land."
+    },
+    "judy": {
+      "name": "Greg Judy",
+      "lifespan": "b. 1958",
+      "role": "Grazier, author",
+      "bio": "Missouri grazier who has built a substantial pasture-based cattle and sheep operation on leased land. Known for his accessible YouTube channel demonstrating mob grazing and parasite-resistant breeding, he has become a practical mentor to a generation of regenerative ranchers."
+    },
+    "rodgers": {
+      "name": "Diana Rodgers",
+      "lifespan": "b. 1972",
+      "role": "Dietitian, rancher, author",
+      "bio": "Registered dietitian, working rancher, and author of Sacred Cow. A leading voice for the case that well-raised, well-managed livestock are part of a genuinely sustainable food system."
+    },
+    "logsdon": {
+      "name": "Gene Logsdon",
+      "lifespan": "1932–2016",
+      "role": "Farmer, writer",
+      "bio": "Ohio writer and small-scale farmer often grouped with Wendell Berry as a leading voice of contemporary American agrarianism. His many books — including All Flesh Is Grass and the irreverent Holy Shit: Managing Manure — combine practical know-how with rural philosophy."
+    },
+    "kline": {
+      "name": "David Kline",
+      "lifespan": "b. 1945",
+      "role": "Amish farmer and writer",
+      "bio": "Old Order Amish farmer in Holmes County, Ohio, whose books — Great Possessions and Scratching the Woodchuck among them — describe the rhythms and joys of small-scale, horse-powered farming with quiet, observant prose."
+    },
+    "homer": {
+      "name": "Winslow Homer",
+      "lifespan": "1836–1910",
+      "role": "American painter",
+      "bio": "Boston-born American realist who began as a Civil War illustrator before turning to painting. After 1883 he settled at Prouts Neck, Maine, where he produced many of his most famous marine works. His agrarian and rural scenes from the 1860s–70s — particularly The Veteran in a New Field — are among the defining American images of post-Civil War life."
+    },
+    "eastmanjohnson": {
+      "name": "Eastman Johnson",
+      "lifespan": "1824–1906",
+      "role": "American genre painter",
+      "bio": "Maine-born painter and a co-founder of the Metropolitan Museum of Art. He summered on Nantucket from 1870 onward and made New England rural life a recurring subject — maple sugaring in Maine, cranberry harvesting and corn husking on Nantucket — depicting agricultural community with warmth and dignity."
+    },
+    "durrie": {
+      "name": "George Henry Durrie",
+      "lifespan": "1820–1863",
+      "role": "American painter",
+      "bio": "Hartford, Connecticut native who made snowy New England farm scenes his life's subject. Currier & Ives published lithographs of his paintings widely, fixing his cozy winter farmhouses in the American imagination as the visual shorthand for old New England country life. Died at 42."
+    },
+    "inness": {
+      "name": "George Inness",
+      "lifespan": "1825–1894",
+      "role": "American landscape painter",
+      "bio": "Often called the father of American landscape painting. Influenced first by the Hudson River School, then by the French Barbizon painters, and finally by the spiritualism of Emanuel Swedenborg, he developed an atmospheric, emotionally charged style. His late works are misty, golden, almost devotional."
+    },
+    "cole": {
+      "name": "Thomas Cole",
+      "lifespan": "1801–1848",
+      "role": "Founder, Hudson River School",
+      "bio": "English-born American painter who founded the Hudson River School, the first major American landscape movement. His grand views of the Catskills and the White Mountains romanticized the American wilderness at the moment it was being settled and cleared."
+    },
+    "cropsey": {
+      "name": "Jasper Francis Cropsey",
+      "lifespan": "1823–1900",
+      "role": "Hudson River School painter",
+      "bio": "Hudson River School painter who specialized in dazzling autumn landscapes. His flaming red and gold New England and New York scenes earned him the nickname 'America's painter of autumn,' and his paintings introduced European audiences to the spectacle of American fall foliage."
+    },
+    "heade": {
+      "name": "Martin Johnson Heade",
+      "lifespan": "1819–1904",
+      "role": "American painter",
+      "bio": "American painter known for atmospheric salt marshes, coastal views, and luminous still lifes of orchids and hummingbirds. His New England marsh paintings — quiet, low-horizoned, infused with weather — are among the most distinctive American landscapes of the 19th century."
+    },
+    "kensett": {
+      "name": "John Frederick Kensett",
+      "lifespan": "1816–1872",
+      "role": "Hudson River School painter",
+      "bio": "Connecticut-born Hudson River School painter celebrated for his serene, light-filled landscapes of the Northeast — Lake George, Newport, the White Mountains. His Mount Washington from the Valley of Conway was so popular it was reproduced for thousands of subscribers, making the White Mountains a tourist destination."
+    },
+    "durand": {
+      "name": "Asher Brown Durand",
+      "lifespan": "1796–1886",
+      "role": "Hudson River School painter",
+      "bio": "American landscape painter and founding member of the Hudson River School alongside Thomas Cole. His meticulous, spiritually inflected paintings of forests and pastoral valleys, and his Letters on Landscape Painting, helped establish landscape as a serious American art form."
+    },
+    "gifford": {
+      "name": "Sanford Robinson Gifford",
+      "lifespan": "1823–1880",
+      "role": "Hudson River School painter",
+      "bio": "Hudson River School painter and a leading figure in American luminism. His Catskill and Adirondack landscapes are bathed in a soft, almost theatrical golden light, capturing a particular quality of American atmosphere that critics called 'air-painting.'"
+    },
+    "whittredge": {
+      "name": "Worthington Whittredge",
+      "lifespan": "1820–1910",
+      "role": "Hudson River School painter",
+      "bio": "Hudson River School painter who, after a decade studying in Düsseldorf, returned to the U.S. and became one of the most respected American landscapists of his era. His forest interiors and Newport pastures balanced European technique with distinctly American subjects."
+    },
+    "mount": {
+      "name": "William Sidney Mount",
+      "lifespan": "1807–1868",
+      "role": "American genre painter",
+      "bio": "Long Island-born painter who specialized in scenes of rural American life — farmhouses, cider making, dance halls, country gatherings. His sympathetic portraits of working farmers and farmhands are among the earliest serious American genre paintings."
+    },
+    "bricher": {
+      "name": "Alfred Thompson Bricher",
+      "lifespan": "1837–1908",
+      "role": "American painter",
+      "bio": "American landscape and marine painter associated with the late Hudson River School and the luminist tradition. He painted New England coastal scenes, pastoral farms, and the rocky shorelines of Massachusetts and Maine."
+    },
+    "twachtman": {
+      "name": "John Henry Twachtman",
+      "lifespan": "1853–1902",
+      "role": "American Impressionist",
+      "bio": "Cincinnati-born American Impressionist who, after studying in Munich and Paris, settled in Greenwich, Connecticut. His muted, intimate winter landscapes of his Connecticut farm — particularly Winter Harmony — are among the most personal and atmospheric American paintings of the 1890s."
+    },
+    "metcalf": {
+      "name": "Willard Leroy Metcalf",
+      "lifespan": "1858–1925",
+      "role": "American Impressionist",
+      "bio": "Massachusetts-born American Impressionist and member of 'The Ten,' a group of artists who broke from the National Academy. He became known for his sensitive, season-specific New England landscapes — the dry brown of late autumn, the silvery green of summer twilight."
+    },
+    "hassam": {
+      "name": "Childe Hassam",
+      "lifespan": "1859–1935",
+      "role": "American Impressionist",
+      "bio": "One of the foremost American Impressionists. Best known for his urban scenes of New York and Boston, but he also produced an extensive body of work depicting New England villages, old colonial houses, and the working farms of Long Island and Connecticut."
+    },
+    "currierives": {
+      "name": "Currier & Ives",
+      "lifespan": "1857–1907",
+      "role": "American lithography firm",
+      "bio": "New York-based lithography firm founded by Nathaniel Currier in 1835 and joined by James Merritt Ives in 1857. They produced thousands of inexpensive hand-colored prints — including dozens of iconic Durrie winter farm scenes — that put American rural imagery in homes across the country."
+    },
+    "palmer": {
+      "name": "Frances Flora Bond Palmer",
+      "lifespan": "1812–1876",
+      "role": "Lithographer for Currier & Ives",
+      "bio": "English-born artist and one of the most prolific designers for Currier & Ives. She drew many of the firm's most beloved American landscapes and farm scenes, working at a time when professional women artists were extraordinarily rare."
+    },
+    "tryon": {
+      "name": "Dwight William Tryon",
+      "lifespan": "1849–1925",
+      "role": "American Tonalist painter",
+      "bio": "American landscape painter associated with the Tonalist movement. His subdued, atmospheric New England scenes — early springs, autumn evenings — sought to capture mood rather than literal description, and made him one of the most respected American landscapists of the late 19th century."
+    },
+    "hbjones": {
+      "name": "H. Bolton Jones",
+      "lifespan": "1848–1927",
+      "role": "American landscape painter",
+      "bio": "Baltimore-born American landscape painter who studied in France and became known for pastoral scenes of farms, fields, and old stone walls — particularly springtime images that captured the soft, awakening light of the rural Northeast."
+    },
+    "beers": {
+      "name": "Julie Hart Beers",
+      "lifespan": "1835–1913",
+      "role": "Hudson River School painter",
+      "bio": "American landscape painter and one of the few women associated with the Hudson River School. Sister of fellow painters William and James Hart, she ran her own studio in New York and exhibited regularly, focusing on intimate woodland scenes of the Hudson Valley and New England."
+    },
+    "bingham": {
+      "name": "George Caleb Bingham",
+      "lifespan": "1811–1879",
+      "role": "American genre painter",
+      "bio": "Missouri-based painter best known for scenes of Mississippi River life and frontier American politics. His images of flatboatmen, county elections, and rural cottages are among the most memorable depictions of mid-19th-century American life west of the Appalachians."
+    },
+    "anonymous19c": {
+      "name": "American 19th Century (anonymous)",
+      "lifespan": "19th century",
+      "role": "Folk / self-taught painter",
+      "bio": "An unidentified American painter, often self-taught, working in the folk tradition. The National Gallery's collection of anonymous 19th-century farm paintings — gifted by Edgar and Bernice Garbisch — represents some of the most evocative vernacular art of agrarian America."
+    }
+  },
+  "quotes": [
+    {
+      "id": "salatin-01",
+      "type": "quote",
+      "text": "The animals are happy, the land is happy, the farmer is happy, and the eater is happy. That's a beautiful thing.",
+      "author_id": "salatin"
+    },
+    {
+      "id": "salatin-02",
+      "type": "quote",
+      "text": "I'm not against technology. I'm against the abdication of personal responsibility to technology.",
+      "author_id": "salatin"
+    },
+    {
+      "id": "salatin-03",
+      "type": "quote",
+      "text": "Everything I want to do is illegal.",
+      "author_id": "salatin"
+    },
+    {
+      "id": "salatin-04",
+      "type": "quote",
+      "text": "A culture that views a pig as a pile of inanimate protoplasm to be manipulated will probably view fellow humans with the same disrespect.",
+      "author_id": "salatin"
+    },
+    {
+      "id": "berry-01",
+      "type": "quote",
+      "text": "The care of the Earth is our most ancient and most worthy and, after all, our most pleasing responsibility.",
+      "author_id": "berry"
+    },
+    {
+      "id": "berry-02",
+      "type": "quote",
+      "text": "Eating is an agricultural act.",
+      "author_id": "berry"
+    },
+    {
+      "id": "berry-03",
+      "type": "quote",
+      "text": "A good farmer is a craftsman of the highest order, a kind of artist.",
+      "author_id": "berry"
+    },
+    {
+      "id": "berry-04",
+      "type": "quote",
+      "text": "We have lived our lives by the assumption that what was good for us would be good for the world. We have been wrong.",
+      "author_id": "berry"
+    },
+    {
+      "id": "berry-05",
+      "type": "quote",
+      "text": "The world cannot be discovered by a journey of miles, no matter how long, but only by a spiritual journey by which we arrive at the ground at our own feet.",
+      "author_id": "berry"
+    },
+    {
+      "id": "herriot-01",
+      "type": "quote",
+      "text": "If having a soul means being able to feel love and loyalty and gratitude, then animals are better off than a lot of humans.",
+      "author_id": "herriot"
+    },
+    {
+      "id": "herriot-02",
+      "type": "quote",
+      "text": "I have long held the notion that if a vet can't catch his patient, there's nothing much to pay. Country people, in particular, believe it.",
+      "author_id": "herriot"
+    },
+    {
+      "id": "herriot-03",
+      "type": "quote",
+      "text": "The farmer's view is that all animals on his farm are there to provide him with a living, but the dog is different.",
+      "author_id": "herriot"
+    },
+    {
+      "id": "leopold-01",
+      "type": "quote",
+      "text": "We abuse land because we regard it as a commodity belonging to us. When we see land as a community to which we belong, we may begin to use it with love and respect.",
+      "author_id": "leopold"
+    },
+    {
+      "id": "leopold-02",
+      "type": "quote",
+      "text": "There are some who can live without wild things, and some who cannot.",
+      "author_id": "leopold"
+    },
+    {
+      "id": "leopold-03",
+      "type": "quote",
+      "text": "A thing is right when it tends to preserve the integrity, stability, and beauty of the biotic community. It is wrong when it tends otherwise.",
+      "author_id": "leopold"
+    },
+    {
+      "id": "white-01",
+      "type": "quote",
+      "text": "I don't know which is more discouraging, literature or chickens.",
+      "author_id": "ebwhite"
+    },
+    {
+      "id": "white-02",
+      "type": "quote",
+      "text": "There is no taste so deeply planted in me as the taste of feed.",
+      "author_id": "ebwhite"
+    },
+    {
+      "id": "white-03",
+      "type": "quote",
+      "text": "A really companionable and indispensable dog is an accident of nature. You can't get it by breeding for it, and you can't buy it with money. It just happens along.",
+      "author_id": "ebwhite"
+    },
+    {
+      "id": "thoreau-01",
+      "type": "quote",
+      "text": "What is the use of a house if you haven't got a tolerable planet to put it on?",
+      "author_id": "thoreau"
+    },
+    {
+      "id": "thoreau-02",
+      "type": "quote",
+      "text": "I went to the woods because I wished to live deliberately.",
+      "author_id": "thoreau"
+    },
+    {
+      "id": "muir-01",
+      "type": "quote",
+      "text": "In every walk with nature, one receives far more than he seeks.",
+      "author_id": "muir"
+    },
+    {
+      "id": "muir-02",
+      "type": "quote",
+      "text": "The clearest way into the Universe is through a forest wilderness.",
+      "author_id": "muir"
+    },
+    {
+      "id": "burns-01",
+      "type": "quote",
+      "text": "The best laid schemes o' Mice an' Men gang aft agley.",
+      "author_id": "burns"
+    },
+    {
+      "id": "jefferson-01",
+      "type": "quote",
+      "text": "Those who labor in the earth are the chosen people of God.",
+      "author_id": "jefferson"
+    },
+    {
+      "id": "jefferson-02",
+      "type": "quote",
+      "text": "Cultivators of the earth are the most valuable citizens. They are the most vigorous, the most independent, the most virtuous.",
+      "author_id": "jefferson"
+    },
+    {
+      "id": "fukuoka-01",
+      "type": "quote",
+      "text": "The ultimate goal of farming is not the growing of crops, but the cultivation and perfection of human beings.",
+      "author_id": "fukuoka"
+    },
+    {
+      "id": "howard-01",
+      "type": "quote",
+      "text": "The maintenance of the fertility of the soil is the first condition of any permanent system of agriculture.",
+      "author_id": "howard"
+    },
+    {
+      "id": "oliver-01",
+      "type": "quote",
+      "text": "Pay attention. Be astonished. Tell about it.",
+      "author_id": "oliver"
+    },
+    {
+      "id": "oliver-02",
+      "type": "quote",
+      "text": "To live in this world you must be able to do three things: to love what is mortal; to hold it against your bones knowing your own life depends on it; and, when the time comes to let it go, to let it go.",
+      "author_id": "oliver"
+    },
+    {
+      "id": "frost-01",
+      "type": "quote",
+      "text": "The land was ours before we were the land's.",
+      "author_id": "frost"
+    },
+    {
+      "id": "wordsworth-01",
+      "type": "quote",
+      "text": "Come forth into the light of things, let nature be your teacher.",
+      "author_id": "wordsworth"
+    },
+    {
+      "id": "pollan-01",
+      "type": "quote",
+      "text": "Eat food. Not too much. Mostly plants.",
+      "author_id": "pollan"
+    },
+    {
+      "id": "pollan-02",
+      "type": "quote",
+      "text": "Don't eat anything your great-grandmother wouldn't recognize as food.",
+      "author_id": "pollan"
+    },
+    {
+      "id": "kingsolver-01",
+      "type": "quote",
+      "text": "Food is the rare moral arena in which the ethical choice is generally the one more likely to make you groan with pleasure.",
+      "author_id": "kingsolver"
+    },
+    {
+      "id": "grandin-01",
+      "type": "quote",
+      "text": "Nature is cruel, but we don't have to be.",
+      "author_id": "grandin"
+    },
+    {
+      "id": "grandin-02",
+      "type": "quote",
+      "text": "I think using animals for food is an ethical thing to do, but we've got to do it right. We've got to give those animals a decent life.",
+      "author_id": "grandin"
+    },
+    {
+      "id": "potter-01",
+      "type": "quote",
+      "text": "There is something delicious about writing the first words of a story. You never quite know where they'll take you.",
+      "author_id": "potter"
+    },
+    {
+      "id": "savory-01",
+      "type": "quote",
+      "text": "We have only one option to save mankind. We must use livestock to mimic nature.",
+      "author_id": "savory"
+    },
+    {
+      "id": "harris-01",
+      "type": "quote",
+      "text": "We didn't inherit this farm from our ancestors. We are borrowing it from our descendants.",
+      "author_id": "willharris"
+    },
+    {
+      "id": "brown-01",
+      "type": "quote",
+      "text": "Healthy soil leads to healthy plants, healthy animals, healthy people, and a healthy planet.",
+      "author_id": "gabebrown"
+    },
+    {
+      "id": "judy-01",
+      "type": "quote",
+      "text": "Let the animals do the work. Nature is the best teacher we have, if we'll just slow down and watch.",
+      "author_id": "judy"
+    },
+    {
+      "id": "rodgers-01",
+      "type": "quote",
+      "text": "The question is not whether we should eat animals, but how those animals should live.",
+      "author_id": "rodgers"
+    },
+    {
+      "id": "logsdon-01",
+      "type": "quote",
+      "text": "The job of the farmer is not to fight nature but to imitate it.",
+      "author_id": "logsdon"
+    },
+    {
+      "id": "kline-01",
+      "type": "quote",
+      "text": "To be tied to a piece of land, to know it intimately through the seasons, is one of the deeper joys available to us.",
+      "author_id": "kline"
+    }
+  ],
+  "artwork": [
+    {
+      "id": "met-11265",
+      "type": "artwork",
+      "title": "The New Bonnet",
+      "date": "1876",
+      "medium": "Oil on academy board",
+      "artist_id": "eastmanjohnson",
+      "credit_line": "Bequest of Collis P. Huntington, 1900",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT2783.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT2783.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11265",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-13313",
+      "type": "artwork",
+      "title": "Evening in the Woods",
+      "date": "1876",
+      "medium": "Oil on canvas",
+      "artist_id": "whittredge",
+      "credit_line": "Bequest of Henry H. Cook, 1905",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/APS2208.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/APS2208.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/13313",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-10497",
+      "type": "artwork",
+      "title": "View from Mount Holyoke, Northampton, Massachusetts, after a Thunderstorm—The Oxbow",
+      "date": "1836",
+      "medium": "Oil on canvas",
+      "artist_id": "cole",
+      "credit_line": "Gift of Mrs. Russell Sage, 1908",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DP-12550-001.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DP-12550-001.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/10497",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-849540",
+      "type": "artwork",
+      "title": "Winter Morning",
+      "date": "1857–1907",
+      "medium": "Hand-colored lithograph",
+      "artist_id": "currierives",
+      "credit_line": "Bequest of Adele S. Colgate, 1962",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/dp/original/DP-20763-001.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/dp/web-large/DP-20763-001.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/849540",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "Drawings and Prints"
+    },
+    {
+      "id": "met-10501",
+      "type": "artwork",
+      "title": "View on the Catskill—Early Autumn",
+      "date": "1836–37",
+      "medium": "Oil on canvas",
+      "artist_id": "cole",
+      "credit_line": "Gift in memory of Jonathan Sturges by his children, 1895",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT2639.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT2639.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/10501",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-11145",
+      "type": "artwork",
+      "title": "The Veteran in a New Field",
+      "date": "1865",
+      "medium": "Oil on canvas",
+      "artist_id": "homer",
+      "credit_line": "Bequest of Miss Adelaide Milton de Groot (1876-1967), 1967",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DP102298.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DP102298.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11145",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-416138",
+      "type": "artwork",
+      "title": "The Old Farm Gate",
+      "date": "1864",
+      "medium": "Hand-colored lithograph",
+      "artist_id": "palmer",
+      "credit_line": "Gift of A. S. Colgate, 1952",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/dp/original/DP-39479-001.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/dp/web-large/DP-39479-001.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/416138",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "Drawings and Prints"
+    },
+    {
+      "id": "met-416140",
+      "type": "artwork",
+      "title": "New England Scenery",
+      "date": "1866",
+      "medium": "Hand-colored lithograph",
+      "artist_id": "palmer",
+      "credit_line": "Gift of A. S. Colgate, 1952",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/dp/original/DP-39482-001.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/dp/web-large/DP-39482-001.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/416140",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "Drawings and Prints"
+    },
+    {
+      "id": "met-11279",
+      "type": "artwork",
+      "title": "Spring",
+      "date": "1885–86",
+      "medium": "Oil on canvas",
+      "artist_id": "hbjones",
+      "credit_line": "Gift of George I. Seney, 1887",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/ap87.8.9.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/ap87.8.9.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11279",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-17054",
+      "type": "artwork",
+      "title": "Sheep",
+      "date": "1878",
+      "medium": "Dark graphite and white gouache on vat-dyed wove paper",
+      "artist_id": "homer",
+      "credit_line": "Bequest of Molly Flagg Knudtsen, 2001",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT5027.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT5027.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/17054",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-12831",
+      "type": "artwork",
+      "title": "Dawn—Early Spring",
+      "date": "1894",
+      "medium": "Oil on wood",
+      "artist_id": "tryon",
+      "credit_line": "Gift of Mrs. George Langdon Jewett, 1917",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/APS2222.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/APS2222.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/12831",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-415910",
+      "type": "artwork",
+      "title": "The Harvest Moon",
+      "date": "1857–71",
+      "medium": "Hand-colored lithograph",
+      "artist_id": "currierives",
+      "credit_line": "Gift of A. S. Colgate, 1951",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/dp/original/DP-39487-001.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/dp/web-large/DP-39487-001.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/415910",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "Drawings and Prints"
+    },
+    {
+      "id": "met-10793",
+      "type": "artwork",
+      "title": "Landscape—Scene from \"Thanatopsis\"",
+      "date": "1850",
+      "medium": "Oil on canvas",
+      "artist_id": "durand",
+      "credit_line": "Gift of J. Pierpont Morgan, 1911",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT1539.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT1539.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/10793",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-11053",
+      "type": "artwork",
+      "title": "Newburyport Meadows",
+      "date": "ca. 1876–81",
+      "medium": "Oil on canvas",
+      "artist_id": "heade",
+      "credit_line": "Purchase, Mrs. Samuel P. Reed Gift, Morris K. Jesup Fund, Maria DeWitt Jesup Fund, John Osgood and Elizabeth Amis Cameron Blanchard Memorial Fund and Gifts of Robert E. Tod and William Gedney Bunce, by exchange, 1985",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT2050.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT2050.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11053",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-11311",
+      "type": "artwork",
+      "title": "Lake George",
+      "date": "1869",
+      "medium": "Oil on canvas",
+      "artist_id": "kensett",
+      "credit_line": "Bequest of Maria DeWitt Jesup, from the collection of her husband, Morris K. Jesup, 1914",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT84.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT84.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11311",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-10805",
+      "type": "artwork",
+      "title": "Red School House (Country Scene)",
+      "date": "1858",
+      "medium": "Oil on canvas",
+      "artist_id": "durrie",
+      "credit_line": "Bequest of Peter H. B. Frelinghuysen, 2011",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DP277399.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DP277399.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/10805",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-851638",
+      "type": "artwork",
+      "title": "Summer Woodlands",
+      "date": "ca. 1870s",
+      "medium": "Oil on paper mounted to board",
+      "artist_id": "beers",
+      "credit_line": "The Morse Family Foundation Fund, 2021",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/After Conservation_Julie Hart Beers.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/After Conservation_Julie Hart Beers.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/851638",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-11323",
+      "type": "artwork",
+      "title": "Summer Day on Conesus Lake",
+      "date": "1870",
+      "medium": "Oil on canvas",
+      "artist_id": "kensett",
+      "credit_line": "Bequest of Collis P. Huntington, 1900",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/ap25.110.5.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/ap25.110.5.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11323",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-11326",
+      "type": "artwork",
+      "title": "Sunset Sky",
+      "date": "1872",
+      "medium": "Oil on canvas",
+      "artist_id": "kensett",
+      "credit_line": "Gift of Thomas Kensett, 1874",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/ap74.30.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/ap74.30.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11326",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-10946",
+      "type": "artwork",
+      "title": "A Gorge in the Mountains (Kauterskill Clove)",
+      "date": "1862",
+      "medium": "Oil on canvas",
+      "artist_id": "gifford",
+      "credit_line": "Bequest of Maria DeWitt Jesup, from the collection of her husband, Morris K. Jesup, 1914",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT81.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT81.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/10946",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-380483",
+      "type": "artwork",
+      "title": "Winter Morning in the Country",
+      "date": "1873",
+      "medium": "Hand-colored lithograph",
+      "artist_id": "currierives",
+      "credit_line": "Bequest of Adele S. Colgate, 1962",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/dp/original/DT9292.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/dp/web-large/DT9292.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/380483",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "Drawings and Prints"
+    },
+    {
+      "id": "met-14426",
+      "type": "artwork",
+      "title": "Hackensack Meadows",
+      "date": "1890",
+      "medium": "Watercolor, gouache, and graphite on off-white wove paper",
+      "artist_id": "cropsey",
+      "credit_line": "Gift of Mrs. John C. Newington, 1992",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/ap1992.97.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/ap1992.97.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/14426",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-10586",
+      "type": "artwork",
+      "title": "The Valley of Wyoming",
+      "date": "1865",
+      "medium": "Oil on canvas",
+      "artist_id": "cropsey",
+      "credit_line": "Gift of Mrs. John C. Newington, 1966",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT4598.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT4598.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/10586",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-10589",
+      "type": "artwork",
+      "title": "Wyoming Valley, Pennsylvania",
+      "date": "1864",
+      "medium": "Oil on canvas",
+      "artist_id": "cropsey",
+      "credit_line": "Bequest of Collis P. Huntington, 1900",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/ap25.110.63.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/ap25.110.63.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/10589",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-11234",
+      "type": "artwork",
+      "title": "Spring Blossoms, Montclair, New Jersey",
+      "date": "ca. 1891",
+      "medium": "Oil and crayon or charcoal on canvas",
+      "artist_id": "inness",
+      "credit_line": "Gift of George A. Hearn, in memory of Arthur Hoppock Hearn, 1911",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT98.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT98.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11234",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-11619",
+      "type": "artwork",
+      "title": "Cider Making",
+      "date": "1840–41",
+      "medium": "Oil on canvas",
+      "artist_id": "mount",
+      "credit_line": "Purchase, Bequest of Charles Allen Munn, by exchange, 1966",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT72.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT72.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11619",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-10214",
+      "type": "artwork",
+      "title": "The Farm",
+      "date": "ca. 1880–90",
+      "medium": "Watercolor, gouache, and graphite on white wove paper",
+      "artist_id": "bricher",
+      "credit_line": "Gift of Mr. and Mrs. Stuart P. Feld, 1974",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/ap1974.358.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/ap1974.358.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/10214",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-11623",
+      "type": "artwork",
+      "title": "Long Island Farmhouses",
+      "date": "1862–63",
+      "medium": "Oil on canvas",
+      "artist_id": "mount",
+      "credit_line": "Gift of Louise F. Wickham, in memory of her father, William H. Wickham, 1928",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/DT228021.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/DT228021.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11623",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-11123",
+      "type": "artwork",
+      "title": "Harvest Scene",
+      "date": "ca. 1873",
+      "medium": "Oil on canvas",
+      "artist_id": "homer",
+      "credit_line": "George A. Hearn Fund, 1909",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/ap09.26.6.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/ap09.26.6.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11123",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-773107",
+      "type": "artwork",
+      "title": "The Farmer's Home -- Winter",
+      "date": "1863",
+      "medium": "Hand-colored lithograph",
+      "artist_id": "durrie",
+      "credit_line": "Bequest of Adele S. Colgate, 1962",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/dp/original/DP-39480-001.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/dp/web-large/DP-39480-001.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/773107",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "Drawings and Prints"
+    },
+    {
+      "id": "met-11259",
+      "type": "artwork",
+      "title": "Corn Husking at Nantucket",
+      "date": "ca. 1875",
+      "medium": "Oil on canvas",
+      "artist_id": "eastmanjohnson",
+      "credit_line": "Rogers Fund, 1907",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/ap07.68.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/ap07.68.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11259",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "met-459516",
+      "type": "artwork",
+      "title": "Farm Scene",
+      "date": "second half 19th century",
+      "medium": "Watercolor",
+      "artist_id": "anonymous19c",
+      "credit_line": "Robert Lehman Collection, 1975",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/rl/original/DP-22055-001.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/rl/web-large/DP-22055-001.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/459516",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "Robert Lehman Collection"
+    },
+    {
+      "id": "met-11135",
+      "type": "artwork",
+      "title": "Saddle Horse in Farm Yard",
+      "date": "ca. 1870–75",
+      "medium": "Oil on wood",
+      "artist_id": "homer",
+      "credit_line": "Bequest of Miss Adelaide Milton de Groot (1876-1967), 1967",
+      "image_url_full": "https://images.metmuseum.org/CRDImages/ad/original/ap67.187.130.jpg",
+      "image_url_thumb": "https://images.metmuseum.org/CRDImages/ad/web-large/ap67.187.130.jpg",
+      "object_url": "https://www.metmuseum.org/art/collection/search/11135",
+      "source": "The Metropolitan Museum of Art",
+      "source_short": "Met",
+      "license": "Public Domain (CC0)",
+      "department": "The American Wing"
+    },
+    {
+      "id": "nga-42490",
+      "type": "artwork",
+      "title": "New England Farm in Winter",
+      "date": "1850 or after",
+      "medium": "oil on canvas",
+      "artist_id": "anonymous19c",
+      "credit_line": "Gift of Edgar William and Bernice Chrysler Garbisch",
+      "image_url_full": "https://api.nga.gov/iiif/b69a8ea5-3a2a-4ad2-aae2-b9866594868e/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/b69a8ea5-3a2a-4ad2-aae2-b9866594868e/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/42490",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-42496",
+      "type": "artwork",
+      "title": "Mahantango Valley Farm",
+      "date": "late 19th century",
+      "medium": "oil on window shade",
+      "artist_id": "anonymous19c",
+      "credit_line": "Gift of Edgar William and Bernice Chrysler Garbisch",
+      "image_url_full": "https://api.nga.gov/iiif/02f53d1f-074a-4c0e-8765-cc1801a08101/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/02f53d1f-074a-4c0e-8765-cc1801a08101/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/42496",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-42497",
+      "type": "artwork",
+      "title": "Farmhouse in Mahantango Valley",
+      "date": "late 19th century",
+      "medium": "oil on canvas",
+      "artist_id": "anonymous19c",
+      "credit_line": "Gift of Edgar William and Bernice Chrysler Garbisch",
+      "image_url_full": "https://api.nga.gov/iiif/b1ce4b8d-bb10-4989-a8a5-cc5c27e359b3/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/b1ce4b8d-bb10-4989-a8a5-cc5c27e359b3/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/42497",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-43443",
+      "type": "artwork",
+      "title": "New England Village",
+      "date": "early 19th century",
+      "medium": "oil on wood",
+      "artist_id": "anonymous19c",
+      "credit_line": "Gift of Edgar William and Bernice Chrysler Garbisch",
+      "image_url_full": "https://api.nga.gov/iiif/98dd85ed-73a4-4251-9a3c-ff6bee9094a3/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/98dd85ed-73a4-4251-9a3c-ff6bee9094a3/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/43443",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-148220",
+      "type": "artwork",
+      "title": "Farmer's Nooning",
+      "date": "c. 1840",
+      "medium": "lithograph in black",
+      "artist_id": "anonymous19c",
+      "credit_line": "Reba and Dave Williams Collection, Gift of Reba and Dave Williams",
+      "image_url_full": "https://api.nga.gov/iiif/16bbcde0-7af2-42be-8958-4624b453e5b7/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/16bbcde0-7af2-42be-8958-4624b453e5b7/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/148220",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Print"
+    },
+    {
+      "id": "nga-59886",
+      "type": "artwork",
+      "title": "Bucks County Farm Outside Doylestown, Pennsylvania",
+      "date": "c. 1890",
+      "medium": "oil on canvas",
+      "artist_id": "anonymous19c",
+      "credit_line": "Gift of Edgar William and Bernice Chrysler Garbisch",
+      "image_url_full": "https://api.nga.gov/iiif/a0e57e06-45d6-4e92-826d-e15ddd0ee968/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/a0e57e06-45d6-4e92-826d-e15ddd0ee968/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/59886",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-183351",
+      "type": "artwork",
+      "title": "Herd of Cattle",
+      "date": "19th century",
+      "medium": "lithograph in black on wove paper",
+      "artist_id": "anonymous19c",
+      "credit_line": "Corcoran Collection (Gift of J. William Middendorf, II)",
+      "image_url_full": "https://api.nga.gov/iiif/35c99779-e7b0-4970-81a8-69b7c9beb61f/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/35c99779-e7b0-4970-81a8-69b7c9beb61f/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/183351",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Print"
+    },
+    {
+      "id": "nga-148377",
+      "type": "artwork",
+      "title": "Moonlit Stroll in Winter",
+      "date": "c. 1880s",
+      "medium": "etching",
+      "artist_id": "anonymous19c",
+      "credit_line": "Reba and Dave Williams Collection, Gift of Reba and Dave Williams",
+      "image_url_full": "https://api.nga.gov/iiif/86e30de5-79ea-4005-be74-1cd6d0f35d1e/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/86e30de5-79ea-4005-be74-1cd6d0f35d1e/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/148377",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Print"
+    },
+    {
+      "id": "nga-169927",
+      "type": "artwork",
+      "title": "The Jonathan Baker Farm",
+      "date": "1924",
+      "medium": "etching in black on wove paper",
+      "artist_id": "hassam",
+      "credit_line": "Corcoran Collection (Gift of Mrs. Childe Hassam)",
+      "image_url_full": "https://api.nga.gov/iiif/bbc2bc89-53ac-4529-8274-0e799b9a3773/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/bbc2bc89-53ac-4529-8274-0e799b9a3773/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/169927",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Print"
+    },
+    {
+      "id": "nga-183565",
+      "type": "artwork",
+      "title": "The Old Mulford Farm",
+      "date": "1929",
+      "medium": "etching in black on wove paper",
+      "artist_id": "hassam",
+      "credit_line": "Corcoran Collection (Gift of Mrs. Childe Hassam)",
+      "image_url_full": "https://api.nga.gov/iiif/577a7f6f-e2ef-4bc6-b3f9-a83588948f94/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/577a7f6f-e2ef-4bc6-b3f9-a83588948f94/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/183565",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Print"
+    },
+    {
+      "id": "nga-50257",
+      "type": "artwork",
+      "title": "Winter Harmony",
+      "date": "c. 1890/1900",
+      "medium": "oil on canvas",
+      "artist_id": "twachtman",
+      "credit_line": "Gift of the Avalon Foundation",
+      "image_url_full": "https://api.nga.gov/iiif/24f75bef-6596-4eac-8470-719b2f9876ec/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/24f75bef-6596-4eac-8470-719b2f9876ec/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/50257",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-55845",
+      "type": "artwork",
+      "title": "Midsummer Twilight",
+      "date": "c. 1890",
+      "medium": "oil on canvas",
+      "artist_id": "metcalf",
+      "credit_line": "Gift of Admiral Neill Phillips in memory of Grace Hendrick Phillips",
+      "image_url_full": "https://api.nga.gov/iiif/7d6db742-9e1b-46b6-a05d-dcd7039a21e4/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/7d6db742-9e1b-46b6-a05d-dcd7039a21e4/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/55845",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-46474",
+      "type": "artwork",
+      "title": "Autumn - On the Hudson River",
+      "date": "1860",
+      "medium": "oil on canvas",
+      "artist_id": "cropsey",
+      "credit_line": "Gift of the Avalon Foundation",
+      "image_url_full": "https://api.nga.gov/iiif/0253c293-4cc1-4131-89a9-f2c997aebba0/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/0253c293-4cc1-4131-89a9-f2c997aebba0/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/46474",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-89675",
+      "type": "artwork",
+      "title": "Winter in the Country",
+      "date": "c. 1858",
+      "medium": "oil on canvas",
+      "artist_id": "durrie",
+      "credit_line": "Collection of Mr. and Mrs. Paul Mellon",
+      "image_url_full": "https://api.nga.gov/iiif/a6a9b39d-661b-4420-9c1e-00adf4d9e8e8/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/a6a9b39d-661b-4420-9c1e-00adf4d9e8e8/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/89675",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-109732",
+      "type": "artwork",
+      "title": "Winter in the Country",
+      "date": "c. 1859",
+      "medium": "oil on canvas",
+      "artist_id": "durrie",
+      "credit_line": "Avalon Fund",
+      "image_url_full": "https://api.nga.gov/iiif/458896db-3993-40ff-a3ad-c67106243ed9/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/458896db-3993-40ff-a3ad-c67106243ed9/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/109732",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-66576",
+      "type": "artwork",
+      "title": "The Farm-Yard in Winter",
+      "date": "1861",
+      "medium": "hand-colored lithograph, with touches of gum arabic, on wove paper",
+      "artist_id": "durrie",
+      "credit_line": "Collection of Mr. and Mrs. Paul Mellon",
+      "image_url_full": "https://api.nga.gov/iiif/27a850aa-69df-4a3f-b387-df57ff4773dd/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/27a850aa-69df-4a3f-b387-df57ff4773dd/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/66576",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Print"
+    },
+    {
+      "id": "nga-66577",
+      "type": "artwork",
+      "title": "Home to Thanksgiving",
+      "date": "1867",
+      "medium": "hand-colored lithograph on wove paper",
+      "artist_id": "durrie",
+      "credit_line": "Collection of Mr. and Mrs. Paul Mellon",
+      "image_url_full": "https://api.nga.gov/iiif/d5316b31-27bf-4115-9dfe-80c187f8a1e5/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/d5316b31-27bf-4115-9dfe-80c187f8a1e5/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/66577",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Print"
+    },
+    {
+      "id": "nga-166502",
+      "type": "artwork",
+      "title": "Trout Brook in the Catskills",
+      "date": "1875",
+      "medium": "oil on canvas",
+      "artist_id": "whittredge",
+      "credit_line": "Corcoran Collection (Museum Purchase, Gallery Fund)",
+      "image_url_full": "https://api.nga.gov/iiif/d72d916c-74df-4bc4-9b86-97b65b158042/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/d72d916c-74df-4bc4-9b86-97b65b158042/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/166502",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-42389",
+      "type": "artwork",
+      "title": "Beacon Rock, Newport Harbor",
+      "date": "1857",
+      "medium": "oil on canvas",
+      "artist_id": "kensett",
+      "credit_line": "Gift of Frederick Sturges, Jr.",
+      "image_url_full": "https://api.nga.gov/iiif/c31769b8-f5f8-41bd-b204-1e838690c219/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/c31769b8-f5f8-41bd-b204-1e838690c219/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/42389",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-178026",
+      "type": "artwork",
+      "title": "View on the Genesee near Mount Morris",
+      "date": "1857",
+      "medium": "oil on canvas",
+      "artist_id": "kensett",
+      "credit_line": "Corcoran Collection (Museum Purchase, Gallery Fund)",
+      "image_url_full": "https://api.nga.gov/iiif/fbeae8d8-16ff-4796-b7df-0d4474f1fbba/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/fbeae8d8-16ff-4796-b7df-0d4474f1fbba/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/178026",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    },
+    {
+      "id": "nga-166430",
+      "type": "artwork",
+      "title": "Cottage Scenery",
+      "date": "1845",
+      "medium": "oil on canvas",
+      "artist_id": "bingham",
+      "credit_line": "Corcoran Collection (Museum Purchase, Gallery Fund and Gifts of Charles C. Glover,  Jr., Orme Wilson, and Mr. and Mrs. Lansdell K. Christie)",
+      "image_url_full": "https://api.nga.gov/iiif/cba69cdf-4503-4439-9be3-93706a0f27db/full/full/0/default.jpg",
+      "image_url_thumb": "https://api.nga.gov/iiif/cba69cdf-4503-4439-9be3-93706a0f27db/full/!200,200/0/default.jpg",
+      "object_url": "https://www.nga.gov/artworks/166430",
+      "source": "National Gallery of Art, Washington",
+      "source_short": "NGA",
+      "license": "Public Domain (CC0)",
+      "classification": "Painting"
+    }
+  ]
+}

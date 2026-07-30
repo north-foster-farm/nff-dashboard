@@ -2825,7 +2825,7 @@ a migration / new routes — a future slice.
 
 ### Batch 41 — Chores rebuild: block-model engine + soft cutover · `v0.10.41-alpha`
 2026-06-04. Clean-slate replacement of the organically-grown chore
-set with the spec (`.ignored/nff-chores-spec.md`), plus the engine
+set with the spec (`docs/specs/nff-chores-spec.md`), plus the engine
 rewrite that renders it. Soft, reversible cutover on the live DB.
 
 **Source of truth.** `src/data/choreSeeds.js` rebuilt to the spec:
@@ -2986,10 +2986,12 @@ pass) produced a unified north-star; James's calls on the seven open
 questions and the work-backwards MVP cut land it as Batches 15–18,
 inserted right after 14.2. The north-star design, the rejected
 alternatives, the seven decisions, and the two Dad-derived hard
-requirements have been folded in here from
-`farm-map-north-star-requirements.md`, `farm-map-ui-overhaul-proposal.md`,
-and `farm-map-workshop-brief.md` — those artifacts are now retired; this
-roadmap is the capture point.
+requirements have been folded in here from the three workshop
+artifacts; this roadmap is the capture point for the decisions. The
+full north-star design itself is kept at
+`docs/specs/farm-map-north-star-requirements.md` — the work-backwards
+MVP cut is made against that doc. The pre-workshop UI-overhaul proposal
+and the workshop brief are superseded.
 
 Headline decisions (including the workshop's biggest surprise):
 - **The map is a view, not the front door.** Five blind agents
@@ -3419,10 +3421,13 @@ Added 2026-06-24. The missing day-plan layer between chores
 auto-composes chores + projects + events into one **draft**, which the
 operators **confirm** — a durable, glanceable, Rounds-executed day.
 Designed end-to-end via the Scope Workshop → Scope Document → Design
-Bracket; full spec + the work-backwards build plan live in
-`.ignored/schedule-feature/` (scope-document.md, the-design.md,
-versioned-capture-substrate.md, build-plan.md). The chosen design is
-the single-open accordion (`mockups/minimalist.html`).
+Bracket; the full design chain lives in `docs/workshops/`:
+`scope-workshop/examples/schedule/5-scope-document.md` (the same file as
+`design-bracket/examples/schedule/0-scope-document.md`) and
+`design-bracket/examples/schedule/4-the-design.md`. The capture-layer
+design is `docs/specs/versioned-capture-substrate.md`.
+The chosen design is the single-open accordion
+(`design-bracket/examples/schedule/mockups/minimalist-WINNER.html`).
 
 Built commitments-first over an S1–S11 plan (S1–S5 = the MVP: draft →
 one-tap confirm → tick, married to Rounds, offline, recorded as a
@@ -3653,7 +3658,8 @@ versioned capture).
   warnings in the zoom grids (would add per-day delta reads).
 - **41.17 — must/should escalation in the Schedule (S13–S15). AUTHORED
   `v0.10.58-alpha` (2026-06-25); pure frontend, NO migration.** A full
-  story-coverage audit (`.ignored/schedule-feature/coverage-audit.md`) found
+  story-coverage audit (`docs/history/records/schedule-coverage-audit.md`)
+  found
   the must/should distinction reported "missing" was actually derivable from
   the existing chore model — window frequencies (`weekly_window` /
   `monthly_last_week_window` / `block_on_weekday` deadline) ARE the "shoulds"
@@ -3847,8 +3853,8 @@ derivation** — zero stored block rows, **v1 = zero migration** (the per-day
 boundary override + its storage are deferred, additive). Design settled via a
 Scope Workshop → Design Bracket (Convention, de-hatched; slate-blue project
 color; clock-arrow overnight icons). Build refs in
-`.ignored/schedule-feature/` (`overnight-project-blocks-the-design.md` +
-`…-scope.md` + `…-build-plan.md`).
+`docs/history/records/` (`overnight-project-blocks-the-design.md` +
+`…-scope.md`).
 
 - **41.32 — Project blocks: derive + render the gaps. `v0.10.73-alpha`
   (2026-06-26); pure frontend, NO migration.** A new client-side ribbon
@@ -4932,10 +4938,10 @@ follows it home. The feature is only as good as that per-event data.
 
 ### Daily quote / artwork rotation + unlock gallery
 Added 2026-05-06. Spec + dataset already drafted; assets sit at
-`.ignored/quotes-and-artwork/` (44 quotes, 54 artwork candidates
+`docs/specs/quotes-and-artwork/` (44 quotes, 54 artwork candidates
 awaiting curation, 48 people records, plus an `artwork_curator.jsx`
 tool for pruning the artwork list down). Full handoff doc lives at
-`.ignored/quotes-and-artwork/handoff.md`.
+`docs/specs/quotes-and-artwork/handoff.md`.
 
 **v1 (whenever it slots in):**
 - Login screen surfaces a daily-rotating piece of content
@@ -5041,7 +5047,7 @@ key insight: no schema needed — stale = committed placements differ from
 what a reflow of the current ranking would produce, which fits the live-
 derived `deriveDay` model). 9/9 smoke tests; not yet wired in. Full slice
 plan + 3 OPEN decisions (horizon, override scope, auto-reflow default) in
-`.ignored/scheduling-engine-design.md`. Still deferred: Slices 2–7 (reflow
+`docs/specs/scheduling-engine-design.md`. Still deferred: Slices 2–7 (reflow
 action reconciling deltas, stale-indicator UI, debounced auto-reflow, Now
 integration, locks, conflict-awareness), lock-to-date UI at phase/step/
 item level, clone-from-stub, and retiring the vestigial `status` column +
