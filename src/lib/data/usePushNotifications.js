@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "../supabase.js";
+import { supabase } from "./supabase.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 
 // Web push subscription state for the Settings page.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../supabase.js";
+import { supabase } from "./supabase.js";
 
 // Returns the signed-in user's email. Reads the cached session synchronously
 // where possible (so the first render doesn't flash undefined), then keeps

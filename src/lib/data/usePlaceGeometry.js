@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // place_geometry — the binding between places and the authored farm-map
 // SVG (Batch 18.2). One row per place that maps onto an SVG layer:

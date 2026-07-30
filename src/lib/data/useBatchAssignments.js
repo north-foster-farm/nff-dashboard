@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // Loads every batch assignment in one round-trip and exposes:
 //   - getBatchId(eventInstanceId) → string | null

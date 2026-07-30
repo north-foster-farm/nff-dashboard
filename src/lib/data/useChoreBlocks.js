@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { resolveBlockMinutes } from "../sunTimes.js";
 
 // Loads chore_blocks and exposes CRUD for the Blocks tab on the

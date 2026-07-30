@@ -3,8 +3,8 @@ import { X, Trash2, ArrowUpRight, Workflow } from "lucide-react";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import { useEventOccurrences } from "../lib/data/useEventOccurrences.js";
 import { useBatchAssignments } from "../lib/data/useBatchAssignments.js";
-import { supabase } from "../lib/supabase.js";
-import { navigate, pathForProject } from "../lib/router.js";
+import { supabase } from "../lib/data/supabase.js";
+import { navigate, pathForProject } from "../lib/browser/router.js";
 import {
   classifyProcessWork, processingBatchMissing,
 } from "../lib/processes.js";

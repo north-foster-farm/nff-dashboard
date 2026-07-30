@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { lockState } from "../docdata/liveDoc.js";
 
 // The Supabase half of live HTML doc attachments (batch 42.8,

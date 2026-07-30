@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
 import { useProjects } from "../lib/data/useProjects.js";
-import { navigate, pathForProject } from "../lib/router.js";
+import { navigate, pathForProject } from "../lib/browser/router.js";
 import { formatDateRange } from "../lib/projects.js";
 
 // The Projects list page — forced-ranked rework (Batch: projects rework,

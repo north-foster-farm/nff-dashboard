@@ -65,10 +65,10 @@ import {
 } from "../lib/schedule/availability.js";
 import { useNeighborDeltas } from "../lib/data/useNeighborDeltas.js";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
-import { navigate, pathForSection } from "../lib/router.js";
+import { navigate, pathForSection } from "../lib/browser/router.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
-import { recordCapture, readCaptures } from "../lib/capture/capture.js";
-import { supabase, realtimeChannel } from "../lib/supabase.js";
+import { recordCapture, readCaptures } from "../lib/data/capture.js";
+import { supabase, realtimeChannel } from "../lib/data/supabase.js";
 import { formatMinutesOfDay, resolveBlockMinutes } from "../lib/sunTimes.js";
 import {
   NowTag, KindBadge, LoadSpine, WeekStrip, WarmingBadge,

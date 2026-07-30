@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // Egg collections data hook (Batch 26.1).
 //
@@ -14,7 +14,7 @@ import { realtimeChannel, supabase } from "../supabase.js";
 // One row per capture — a flock can log several per day (AM + PM
 // collection chores). This is the desktop write path; the Rounds quick
 // action writes the same table through the offline outbox
-// (lib/outbox.js → egg_collection_insert). Pass groupId = null to load
+// (lib/data/outbox.js → egg_collection_insert). Pass groupId = null to load
 // every flock's collections.
 
 const COLS =

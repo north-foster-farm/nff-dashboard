@@ -13,7 +13,7 @@ import {
   isLayerSpecies, isMeatSpecies, layerFeedEfficiency, layingRate,
   mortalityStats, bodyWeightTrend, uniformity, weeksTimeline,
 } from "../lib/metrics.js";
-import { navigate, pathForBatch } from "../lib/router.js";
+import { navigate, pathForBatch } from "../lib/browser/router.js";
 import { Pane } from "../components/ui.jsx";
 
 // The Metrics page (Batch 26.2) — the "how are we doing?" surface.

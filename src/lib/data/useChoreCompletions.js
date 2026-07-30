@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { toLocalDateString } from "./dateUtil.js";
 import {
   enqueueOp, initOutbox, outboxOps, subscribeOutbox,
-} from "../outbox.js";
+} from "./outbox.js";
 
 // Per-place chore completions (Batch 16.1), outbox-backed (Batch 16.2).
 //
@@ -14,7 +14,7 @@ import {
 // completion (chores with no place).
 //
 // Writes never hit Supabase directly anymore. Each toggle appends an
-// op to the device-local IndexedDB outbox (lib/outbox.js); the sync
+// op to the device-local IndexedDB outbox (lib/data/outbox.js); the sync
 // engine pushes it whenever there's connectivity. Displayed state is
 // the server rows (initial load + realtime) overlaid with the queue's
 // not-yet-synced ops, so a tick in a dead zone applies instantly,

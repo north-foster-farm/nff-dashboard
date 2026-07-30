@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { buildPlaceTree } from "../places.js";
 
 // Loads the recursive `places` tree + the `placements` occupancy edge in

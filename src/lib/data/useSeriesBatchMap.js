@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // Series → batch lookup (Batch 27.6). One map covering every way an
 // event series can reference a batch:

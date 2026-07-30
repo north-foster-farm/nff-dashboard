@@ -14,7 +14,7 @@ import PlacePage from "./PlacePage.jsx";
 import Schedule from "./Schedule.jsx";
 import {
   useRoute, navigate, navigateBack, usePersistedState,
-} from "../lib/router.js";
+} from "../lib/browser/router.js";
 
 // The Farm map page (Batch 18.2) — the desktop landing (decision 2 of
 // the farm-map workshop). One dataset, two renderers: this is the

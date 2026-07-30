@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // Neighbor-day timed deltas for the Overnight block (the two-day span). When
 // you view day X, the Overnight shift that ENDS this morning carries

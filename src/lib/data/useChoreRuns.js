@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { resolveBlockMinutes } from "../sunTimes.js";
 import {
   enqueueOp, initOutbox, outboxOps, subscribeOutbox,
-} from "../outbox.js";
+} from "./outbox.js";
 
 // Loads block-run commitments (`commitments`,
 // `source_type='chore_block'`) for today + a rolling history window and exposes
@@ -16,7 +16,7 @@ import {
 //
 // Outbox-backed (Batch 17 — hardened Rounds): mutations never call
 // Supabase directly. Each one appends an op to the device-local outbox
-// (lib/outbox.js); displayed state is the server rows (initial load +
+// (lib/data/outbox.js); displayed state is the server rows (initial load +
 // realtime) overlaid with the queue's not-yet-synced ops, so starting,
 // finishing, or canceling a run works with no signal and survives an
 // app kill. Offline-created runs carry a client-generated uuid; the

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   X, MessageSquare, AlertTriangle, Skull, Egg, ChevronDown, MapPin,
 } from "lucide-react";
-import { supabase } from "../lib/supabase.js";
+import { supabase } from "../lib/data/supabase.js";
 import { descendantIds } from "../lib/places.js";
 import PlaceTag from "./PlaceTag.jsx";
 
@@ -10,7 +10,7 @@ import PlaceTag from "./PlaceTag.jsx";
 // Note, MASH, Mortality, Eggs — each opens a sheet that writes a typed
 // Run Event via `logRunEvent` / `logMortality` / `logEggCollection`.
 // Since Batch 16.2 those helpers append to the device-local outbox
-// (lib/outbox.js) rather than calling Supabase directly, so a capture
+// (lib/data/outbox.js) rather than calling Supabase directly, so a capture
 // in a dead zone saves instantly and syncs when signal returns. Move +
 // Sweep retired from the tray in Batch 10: cohort moves are planned
 // events, and sweep is just bulk-tick on the doing surface itself.

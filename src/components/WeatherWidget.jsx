@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { CloudSun, Thermometer, ArrowUp, ArrowDown } from "lucide-react";
-import { useCurrentWeather, describeCode } from "../lib/weather.js";
+import { useCurrentWeather, describeCode } from "../lib/browser/weather.js";
 
 // Dashboard card: today's weather + day-of-week. Designed to slot into the
 // dashboard alongside the Schedule / Upcoming chores cards.

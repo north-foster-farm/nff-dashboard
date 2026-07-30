@@ -1,8 +1,8 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import {
   enqueueOp, initOutbox, subscribeOutbox, outboxOps,
-} from "../outbox.js";
+} from "./outbox.js";
 
 // All-occurrences buffers (S53/S54) — a buffer bound to an activity SERIES
 // rather than one day, so it auto-reserves on every occurrence (a market

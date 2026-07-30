@@ -1,8 +1,8 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import {
   enqueueOp, initOutbox, subscribeOutbox, outboxOps,
-} from "../outbox.js";
+} from "./outbox.js";
 
 // Schedule placement deltas (S6) — the authored, schedule-local
 // commitments that aren't chore-block runs: ad-hoc one-off tasks, notes,

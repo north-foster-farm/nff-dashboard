@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // Loads chore_definitions and exposes update + delete actions for the
 // in-place edit affordance on the All chores tab. A chore carries an

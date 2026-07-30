@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
-import { enqueueOp } from "../outbox.js";
+import { realtimeChannel, supabase } from "./supabase.js";
+import { enqueueOp } from "./outbox.js";
 
 // Run Events live in `activity_log` (typed rows tagged with run_id +
 // place context) plus the `activity_log_condition_states` child table

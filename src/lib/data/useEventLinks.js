@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // event_links reader for one polymorphic target (Batch 20). The batch
 // lifecycle page reads its milestone strip from here: every link row

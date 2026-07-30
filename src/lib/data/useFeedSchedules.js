@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // Feed schedules data hook (Batch 25.2) — the editing surface for the
 // per-species feed programs the reorder projections run on.

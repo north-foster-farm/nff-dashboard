@@ -656,7 +656,7 @@ Each: STATUS · what · use/not · canonical source.
   language, three levels). The "Linked to" section adds a
   **Project** kind — project→project references on the same
   `project_links` rows; clicking navigates to the target project.
-  Sources: `src/lib/router.js`, `src/components/ProjectBits.jsx`,
+  Sources: `src/lib/browser/router.js`, `src/components/ProjectBits.jsx`,
   `src/pages/ProjectPage.jsx`.
 
 ## Consolidation backlog (the bounded-options payoff)

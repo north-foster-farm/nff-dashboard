@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { LiveDocViewer, isLiveDoc } from "./LiveDocViewer.jsx";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
-import { pathForAttachment } from "../lib/router.js";
+import { pathForAttachment } from "../lib/browser/router.js";
 
 // Shared small components for the Projects subsystem (Batch 22):
 // inline-editable text, assignee chips, and the Storage-backed

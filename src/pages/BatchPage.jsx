@@ -7,13 +7,13 @@ import { useSites } from "../lib/data/useSites.js";
 import { placeSelectOptions } from "../components/ChoreFieldsEditor.jsx";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useEventLinks } from "../lib/data/useEventLinks.js";
-import { supabase } from "../lib/supabase.js";
+import { supabase } from "../lib/data/supabase.js";
 import { computeAge, formatDate } from "../lib/dates.js";
 import {
   batchLifecycle, BATCH_STATES, isMeatSpecies, isLayerSpecies,
   liveProcessingISO,
 } from "../lib/metrics.js";
-import { navigate, pathForSection } from "../lib/router.js";
+import { navigate, pathForSection } from "../lib/browser/router.js";
 import BatchMetricsSection from "../components/BatchMetrics.jsx";
 import BatchStatePill from "../components/BatchStatePill.jsx";
 import { Pane } from "../components/ui.jsx";

@@ -14,7 +14,7 @@ import {
 } from "../components/CalendarViews.jsx";
 import DateTyperPopover from "../components/DateTyperPopover.jsx";
 import { BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
-import { usePersistedState } from "../lib/router.js";
+import { usePersistedState } from "../lib/browser/router.js";
 
 // Calendar (Batch 14.1; renamed from "Schedule" in the 41.4
 // vocabulary settlement — Schedule is now the day plan). Single page

@@ -24,14 +24,14 @@ import { resolveBlockMinutes } from "../lib/sunTimes.js";
 import { displayPlace } from "../lib/places.js";
 import {
   navigate, pathForBatch, pathForProject, pathForSection,
-} from "../lib/router.js";
+} from "../lib/browser/router.js";
 import { useProcessingDates } from "../lib/data/useProcessingDates.js";
 import { batchLifecycle, isMeatSpecies, weeksTimeline } from "../lib/metrics.js";
 import { isActiveProject } from "../lib/projects.js";
 import { Pane, LoadSpine, AttentionCard, NowRule } from "../components/ui.jsx";
 import { farmLoad } from "../lib/load/farmLoad.js";
 import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
-import { useCurrentWeather, roundUpToHalfHour } from "../lib/weather.js";
+import { useCurrentWeather, roundUpToHalfHour } from "../lib/browser/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
@@ -130,7 +130,7 @@ function Stack({ children }) {
 }
 
 // Open-Meteo weather code → a Lucide icon (C1: no emoji). Buckets mirror
-// `describeCode` in lib/weather.js.
+// `describeCode` in lib/browser/weather.js.
 function weatherIcon(code) {
   if (code == null) return Cloud;
   if (code <= 1) return Sun;

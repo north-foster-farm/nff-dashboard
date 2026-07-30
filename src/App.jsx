@@ -16,7 +16,7 @@ import { useUserPreferences } from "./lib/data/useUserPreferences.js";
 import {
   useRoute, usePath, navigate, navigateBack, pathForSection,
   usePersistedState,
-} from "./lib/router.js";
+} from "./lib/browser/router.js";
 
 // Phone-width media query — used once at boot to pick the landing
 // section (farm-map workshop decisions 1 + 2: phones land on Now,
@@ -37,7 +37,7 @@ function defaultPath() {
 // `session` is always non-null here — LoginGate only renders <App /> after
 // the user is authenticated AND passes the admins check.
 export default function App({ session }) {
-  // All primary navigation lives in the URL (lib/router.js): the
+  // All primary navigation lives in the URL (lib/browser/router.js): the
   // current section, the Rounds takeover, place pages, and the Chores
   // tab. Reload reopens the same screen; back/forward walk history.
   const route = useRoute();

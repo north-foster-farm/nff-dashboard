@@ -6,7 +6,7 @@ import { useChoreMessages } from "../lib/data/useChoreMessages.js";
 import { useChoreLookup } from "../lib/data/useChoreLookup.js";
 import { useInboxItems } from "../lib/data/useInboxItems.js";
 import { useAutomationEmissions } from "../lib/data/useAutomations.js";
-import { navigate } from "../lib/router.js";
+import { navigate } from "../lib/browser/router.js";
 
 // Top-bar notifications affordance. Shows a bell with a count badge of
 // automation firings + unaddressed chore messages + unread inbox

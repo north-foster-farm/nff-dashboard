@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../supabase.js";
+import { supabase } from "./supabase.js";
 import { CHORE_SEEDS } from "../../data/choreSeeds.js";
 
 // Tiny shared cache so every consumer (InboxBell, ChoreMessageButton, etc.)

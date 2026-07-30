@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   initOutbox, subscribeOutbox, outboxOps, outboxSyncing, flushOutbox,
   retryFailedOps, discardFailedOps,
-} from "../outbox.js";
+} from "./outbox.js";
 
 // React binding for the device-local outbox (Batch 16.2). Surfaces
 // queue counts + connectivity so the "queued / not synced" indicator

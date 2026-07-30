@@ -38,7 +38,7 @@ import ChoreFieldsEditor, {
 import {
   PlaceTreeNode, PlaceTreeSection,
 } from "../components/PlaceTree.jsx";
-import { useRoute, navigate, usePersistedState } from "../lib/router.js";
+import { useRoute, navigate, usePersistedState } from "../lib/browser/router.js";
 
 // The page renders its own header (title + tabs) in place of the generic
 // SectionHeader, so it can fit a tab bar + inline actions.

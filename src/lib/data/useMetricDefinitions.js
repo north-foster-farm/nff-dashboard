@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // Metric registry hook (Batch 26.2).
 //

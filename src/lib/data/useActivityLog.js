@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { CHORE_SEEDS } from "../../data/choreSeeds.js";
 
 // Loads activity_log rows ordered most-recent-first, with optional time

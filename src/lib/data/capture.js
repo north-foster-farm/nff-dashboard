@@ -4,11 +4,11 @@
 //     pg_jsonschema in the record_capture RPC). Returns the client id.
 //   readCaptures(schemaId, filter) — fetch + upcast each doc to the
 //     latest shape, so callers only handle the current version.
-import { supabase } from "../supabase.js";
-import { enqueueOp } from "../outbox.js";
-import { latestVersion } from "./registry.js";
-import { assertValid } from "./validate.js";
-import { applyUpcasters } from "./upcast.js";
+import { supabase } from "./supabase.js";
+import { enqueueOp } from "./outbox.js";
+import { latestVersion } from "../capture/registry.js";
+import { assertValid } from "../capture/validate.js";
+import { applyUpcasters } from "../capture/upcast.js";
 
 const CAPTURE_COLS =
   "id, schema_id, schema_version, subject_type, subject_id, " +

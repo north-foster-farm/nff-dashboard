@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 
 // Inbox / "just a thought…" capture (Batch 21).

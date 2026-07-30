@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // Scheduled processing dates for every batch, in one query (Batch 26.2).
 //

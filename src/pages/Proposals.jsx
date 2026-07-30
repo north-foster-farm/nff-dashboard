@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useAgentProposals } from "../lib/data/useAgentProposals.js";
 import { useProjects } from "../lib/data/useProjects.js";
-import { navigate, pathForProject } from "../lib/router.js";
+import { navigate, pathForProject } from "../lib/browser/router.js";
 
 // The Proposals page — the review queue for actions a Claude chat
 // proposes through the nff-dashboard MCP server (see mcp/). Each pending

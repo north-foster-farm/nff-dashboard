@@ -26,7 +26,7 @@ import { useChoreAssignmentRules }
 import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
 import { farmLoad } from "../lib/load/farmLoad.js";
 import { AttentionCard } from "../components/ui.jsx";
-import { navigate, pathForSection } from "../lib/router.js";
+import { navigate, pathForSection } from "../lib/browser/router.js";
 
 // Full-screen takeover for actually doing chores. Bypasses the
 // normal layout (no TopBar, no Sidebar, no SectionHeader).

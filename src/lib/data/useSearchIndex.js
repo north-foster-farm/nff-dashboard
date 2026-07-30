@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../supabase.js";
-import { pathForBatch, pathForProject } from "../router.js";
+import { supabase } from "./supabase.js";
+import { pathForBatch, pathForProject } from "../browser/router.js";
 
 // App-wide search index (Batch 33). Builds a flat, in-memory list of
 // searchable entries spanning every entity type, for the cmd-K command

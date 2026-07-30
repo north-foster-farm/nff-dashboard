@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { SECTIONS } from "../sections.jsx";
 import { iconForSpecies } from "./animalIcons.jsx";
-import { navigate, pathForSection } from "../lib/router.js";
+import { navigate, pathForSection } from "../lib/browser/router.js";
 import { useSearchIndex, SEARCH_TYPE_LABEL } from "../lib/data/useSearchIndex.js";
 
 // App-wide command palette (Batch 33) — cmd/ctrl-K opens a single

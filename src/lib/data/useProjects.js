@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 import { slugify } from "../slug.js";
 import {

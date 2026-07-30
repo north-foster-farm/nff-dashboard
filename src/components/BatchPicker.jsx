@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabase.js";
+import { supabase } from "../lib/data/supabase.js";
 import { useSites } from "../lib/data/useSites.js";
 
 // BatchPicker (Batch 27.6) — the shared "which batch is this about?"

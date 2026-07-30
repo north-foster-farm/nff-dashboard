@@ -11,7 +11,7 @@ import { useActivityLog } from "../lib/data/useActivityLog.js";
 import { computePlaceStatus } from "../lib/placeStatus.js";
 import { placePath, descendantIds, childrenOf } from "../lib/places.js";
 import { tintForFlag } from "../lib/farmMap.js";
-import { navigate, pathForPlaceTimeline } from "../lib/router.js";
+import { navigate, pathForPlaceTimeline } from "../lib/browser/router.js";
 import ActivityRow from "../components/ActivityRow.jsx";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
 

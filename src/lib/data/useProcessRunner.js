@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { supabase } from "../supabase.js";
+import { supabase } from "./supabase.js";
 import { useProcessTables } from "./useProcesses.js";
 import {
   planExpansions, splitSteps, processChoreRow, occurrenceIsCurrent,

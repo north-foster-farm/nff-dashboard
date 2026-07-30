@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { progressOf } from "../projects.js";
 
 // Loads every migrated reference table in parallel and returns them keyed

@@ -1,6 +1,6 @@
 import { useUserPreferences } from "../lib/data/useUserPreferences.js";
 import { usePushNotifications } from "../lib/data/usePushNotifications.js";
-import { supabase } from "../lib/supabase.js";
+import { supabase } from "../lib/data/supabase.js";
 import {
   Sun, Moon, ALargeSmall, Bell, BellOff, LogOut, CalendarClock,
 } from "lucide-react";

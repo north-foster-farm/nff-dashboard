@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // Loads the three availability tables (migration 0044) and exposes
 // CRUD for the Availability UI (F50 time off, F51 working hours +

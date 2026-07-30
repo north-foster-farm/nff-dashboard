@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 
 // Per-user preferences. Source-of-truth split:

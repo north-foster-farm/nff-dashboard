@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import { useInboxItems } from "../lib/data/useInboxItems.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
-import { supabase } from "../lib/supabase.js";
-import { navigate, pathForProject } from "../lib/router.js";
+import { supabase } from "../lib/data/supabase.js";
+import { navigate, pathForProject } from "../lib/browser/router.js";
 
 // The Inbox page (Batch 21) — every captured "just a thought…" with
 // creator + creation time, drag-and-drop ordering, pinning (pinned

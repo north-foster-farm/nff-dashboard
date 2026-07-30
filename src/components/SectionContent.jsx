@@ -1,6 +1,6 @@
 import { getSpeciesFromSectionId, getEventKindFromSectionId } from "../sections.jsx";
 import ComingSoon from "./ComingSoon.jsx";
-import { useRoute } from "../lib/router.js";
+import { useRoute } from "../lib/browser/router.js";
 import Now from "../pages/Now.jsx";
 import MapPage from "../pages/MapPage.jsx";
 import Overview from "../pages/Overview.jsx";

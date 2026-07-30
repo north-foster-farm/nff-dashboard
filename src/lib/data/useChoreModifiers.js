@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
 
 // chore_modifiers reader/writer (Batch 23 — the table itself shipped

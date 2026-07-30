@@ -13,7 +13,7 @@ import { Pane, StatusPill, BTN_ACCENT } from "../components/ui.jsx";
 import { describeOffset } from "../lib/processes.js";
 import { MODIFIER_ACTION_LABEL } from "../lib/modifiers.js";
 import { formatDate } from "../lib/dates.js";
-import { navigate, pathForProject } from "../lib/router.js";
+import { navigate, pathForProject } from "../lib/browser/router.js";
 
 // The Processes page (Batch 23; reworked in the 0025 automations
 // rework). A process is a template tied to one or more event kinds:

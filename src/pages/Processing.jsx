@@ -11,7 +11,7 @@ import BatchPicker, {
 } from "../components/BatchPicker.jsx";
 import { AttachmentsBlock } from "../components/ProjectBits.jsx";
 import { useEventAttachments } from "../lib/data/useEventAttachments.js";
-import { navigate, pathForBatch } from "../lib/router.js";
+import { navigate, pathForBatch } from "../lib/browser/router.js";
 import { processingBatchMissing } from "../lib/processes.js";
 
 // Processing-day workspace (Batch 14.2). Reachable only from the

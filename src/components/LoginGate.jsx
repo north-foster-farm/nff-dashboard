@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "../lib/supabase.js";
+import { supabase } from "../lib/data/supabase.js";
 
 // LoginGate wraps the entire app and enforces three possible states:
 //

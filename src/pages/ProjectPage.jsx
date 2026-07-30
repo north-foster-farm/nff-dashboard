@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useProject, useProjects } from "../lib/data/useProjects.js";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
-import { navigate, pathForProject, pathForAttachment } from "../lib/router.js";
+import { navigate, pathForProject, pathForAttachment } from "../lib/browser/router.js";
 import { formatDateRange, checklistRollup } from "../lib/projects.js";
 import { ProgressBar } from "./Projects.jsx";
 import ProjectStepModal from "../components/ProjectStepModal.jsx";

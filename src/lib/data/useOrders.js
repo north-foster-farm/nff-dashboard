@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 import { orderTotalCents, saleChannelForOrder } from "../orders.js";
 import { skuLabel } from "../productCatalog.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";

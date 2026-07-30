@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { realtimeChannel, supabase } from "../supabase.js";
+import { realtimeChannel, supabase } from "./supabase.js";
 
 // CRUD on event_series + the split-series transaction that powers
 // the "This and following" branch of the EventEditor scope prompt.

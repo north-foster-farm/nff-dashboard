@@ -20,7 +20,7 @@ import { useProjects } from "../lib/data/useProjects.js";
 import {
   rankedActiveProjects, rankedStepQueue,
 } from "../lib/schedule/reflow.js";
-import { navigate, pathForProject } from "../lib/router.js";
+import { navigate, pathForProject } from "../lib/browser/router.js";
 
 // The Now surface (Batch 17) — the phone landing. Time-anchored: the
 // active-or-next round as one fat primary button, then a farm-wide
