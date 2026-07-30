@@ -50,7 +50,10 @@ day survived every subsequent rewrite (m2 §2026-05-06):
   ships with the foundation but has no editor until Processes.
 
 The full plan lived in `~/.claude/plans/chores-overhaul-v2.md`
-(repo-external); the rejected ontologies were in
+(repo-external, and **now lost** — that directory is empty as of
+2026-07-30). The workshop's agent prompts and James's verbatim
+requirements survive, promoted to
+`docs/workshops/scope-workshop/examples/chores/`; they were in
 `.ignored/chores-overhaul*.txt`, flagged for deletion in m3 §56
 because the model they debated has since been replaced twice. Also on
 2026-05-06: the doing-surface was renamed from "Chore Doer" to

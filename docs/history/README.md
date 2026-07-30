@@ -45,8 +45,10 @@ movements separated by three silences.
 The app starts as a dashboard over a JSON file (`a074dfb`), gains
 Supabase auth (`9878f1e`), and migrates its reference data to Postgres
 across four batches. On 2026-05-04 the whole plan is dumped in two
-sessions and written down as 22 batches (`4a8ed2c`; the full text lives
-outside the repo in `~/.claude/plans/`). Then, within four days, two
+sessions and written down as 22 batches (`4a8ed2c`). The raw dump lived
+outside the repo in `~/.claude/plans/` and is now **gone** — that
+directory is empty as of 2026-07-30, so `4a8ed2c`'s reconstruction is
+all that survives of it. Then, within four days, two
 design workshops insert two overhauls ahead of that plan — chores
 (`bfb8f8b`) and events (`9aff149`) — and batches 7 through 14.2 ship
 rapid-fire. By 05-08 the plan has grown from 22 batches to 35 and the
@@ -172,13 +174,18 @@ distinction — Roadmap v2 should.
 gaps contained the workshop that produced the next movement. Do not
 read a quiet stretch as a stall.
 
-**8. Decisions lived outside the repo for months.** The original
-22-batch plan sits in `~/.claude/plans/`; the rethinker arc's phased
-plan survives only in session transcripts; dozens of standing
-decisions existed only in the memory directory. H1 fixed part of this
-by promoting durable material into `docs/`, but the lesson holds:
-a decision that is not in the repo is a decision that will be
-re-litigated.
+**8. Decisions lived outside the repo, and some are already lost.**
+The original 22-batch plan, the chores overhaul plan and the events
+overhaul plan all lived in `~/.claude/plans/`. **That directory is
+empty as of 2026-07-30** — all three are gone, and session transcripts
+only reach back to 2026-07-01, so nothing from May can be recovered
+from them either. What survives is second-hand: `4a8ed2c`'s
+reconstruction of the plan, commit bodies, and the workshop *inputs*
+promoted to `docs/workshops/scope-workshop/examples/`. The rethinker
+arc's phased plan survives only in transcripts, and dozens of standing
+decisions existed only in the memory directory. This is no longer a
+cautionary lesson — it is a loss that already happened: a decision
+that is not in the repo is a decision you may simply not have.
 
 **9. The written record drifts in both directions, so verify before
 scheduling.** H2's writers checked every chapter against the code and

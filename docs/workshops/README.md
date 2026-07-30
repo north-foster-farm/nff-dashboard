@@ -52,6 +52,10 @@ docs/workshops/
   scope-workshop/
     scope-workshop-playbook.md     ← the method (the operating manual)
     examples/
+      chores/                      ← the FIRST run (2026-05-06): the four agent prompts verbatim,
+                                     the only place an assembled prompt survives. Inputs only —
+                                     the pitches and synthesis are lost (see its README)
+      events/                      ← the second run, same day, compact single-document style
       farm-map/                    ← a brief-seeded run (the lighter variant)
       schedule/                    ← a story-set-seeded run, full chain → Scope Document
   design-bracket/

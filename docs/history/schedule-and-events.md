@@ -21,8 +21,9 @@ trustworthy mapping is the as-shipped table at m1 §2, cited throughout.
 
 Round 1 of the two requirement dumps that produced the original
 22-batch plan already names a *schedule glance* (m2 §1 "Era 0",
-recorded in `4a8ed2c`; the dump text lives outside the repo at
-`~/.claude/plans/i-want-to-make-cozy-kitten.md`). Batch 3 shipped it as
+recorded in `4a8ed2c`; the dump text lived outside the repo at
+`~/.claude/plans/i-want-to-make-cozy-kitten.md` and is now lost —
+that directory is empty as of 2026-07-30). Batch 3 shipped it as
 an Overview card (`c827eb1`, v0.9.2) — a glanceable read with no model
 behind it. Everything below is that card growing a spine.
 
@@ -31,8 +32,10 @@ behind it. Everything below is that card growing a spine.
 The second of two four-agent design workshops that day (the first was
 Chores) inserted an Events overhaul as Batches 11–14, renumbering
 11–27 → 15–31 (`9aff149`; m2 §1). Source of truth was
-`~/.claude/plans/events-overhaul-v1.md`; the transcript is
-`.ignored/events-schedule-overhaul.txt` (m3 §1, classified DELETE); the
+`~/.claude/plans/events-overhaul-v1.md` (**now lost** — that directory
+is empty as of 2026-07-30). The workshop prompt and James's verbatim
+requirements survive, promoted to
+`docs/workshops/scope-workshop/examples/events/workshop-prompt.md`; the
 visual was `.ignored/calendar-rail-mockup.html`, the repo's earliest
 mockup artifact and still cited by the Design Bracket playbook as the
 archetype of a standalone HTML mockup.
