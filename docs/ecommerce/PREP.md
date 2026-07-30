@@ -6,6 +6,12 @@ requirements will be re-litigated fresh, and this document is the
 brief for that conversation. Every housekeeping phase appends what it
 learns here.
 
+Finalized 2026-07-30 (H6): `ROADMAP.md` (v2) now carries the arc's
+sequence — Part 4 is the e-commerce spine, opening with the
+site-architecture session this brief prepares. This document stays
+the requirements/context brief; the roadmap is the order of work.
+The architecture session's written decisions get appended here.
+
 ## What already exists (seeded 2026-07-29, pre-mining)
 
 Prior decisions on record (ROADMAP.md):
@@ -416,17 +422,41 @@ extending it.
   recorded nothing. That argues for pickup and local delivery before
   shipping.
 
+## Anchors set by James (2026-07-30, H6 kickoff)
+
+Three calls made at the start of Roadmap v2 work. These are settled;
+the open questions below are updated to match.
+
+- **Tailwind UI + Tailwind CSS** are the storefront's design layer.
+  This implies a custom build on a JS framework (Tailwind UI ships
+  React/HTML components), not a hosted platform — the "headless vs
+  Shopify vs custom" evaluation collapses to *custom*, with only the
+  framework choice open. The dashboard already runs Tailwind 4, so
+  tooling knowledge transfers.
+- **Stripe** is the payments processor. Confirms the card path named
+  since the pricing workshop; Venmo remains at most a deep-link/QR
+  side channel (no acceptance API — settled, `47620bd`).
+- **The Hugo public site will be migrated (rewritten) to a new
+  framework.** The `f2e08f7` forcing decision is made: not "bolt JS
+  onto Hugo" but a rewrite. The framework choice, monorepo-vs-split,
+  and hosting/indexing layout are the remaining site-architecture
+  decisions.
+
 ## Open questions for the re-scoping conversation
 
-- Platform: headless vs hosted (Shopify) vs custom on the existing
-  stack. Note there is no prior research to lean on — this is an open
-  evaluation, not a decision to revisit.
+- Framework for the rewritten public site + storefront (e.g. Next,
+  Astro, Remix, plain Vite/React like the dashboard) — must serve
+  both the content site (indexable, fast, mostly static) and the
+  commerce surface; Tailwind UI compatibility is a hard input.
+- Monorepo with the dashboard vs a separate repo; separate Netlify
+  site either way (the admin app is deliberately de-indexed at three
+  layers).
 - Initial scope: online ordering for pickup? Shipping? Deposits on
   future processing dates? Which products first?
 - Data boundary: does the storefront read the dashboard's Supabase
   (inventory, brackets, prices) directly, or via a published feed?
-- Payments: Stripe vs Venmo-first; how much of QuickBooks sync is in
-  scope.
+- Stripe integration shape (Checkout vs Payment Element vs payment
+  links); how much of QuickBooks sync is in scope.
 - Where it lives: the dashboard is admin.northfosterfarm.com; a
   storefront is presumably northfosterfarm.com — separate surface,
   shared data.
@@ -458,3 +488,8 @@ extending it.
   blank slate: zero orders/sales/prices ever recorded, 6 unpriced
   product_kinds, and the 65-row customers table is a real one-shot
   2026-06-02 import (usable as the seed mailing list).
+- H6 (2026-07-30): James set three anchors at Roadmap-v2 kickoff —
+  Tailwind UI/CSS for the storefront, Stripe for payments, and a
+  full rewrite of the Hugo public site onto a new framework. See
+  "Anchors set by James" above; the open-questions list was updated
+  to reflect what they settle.
