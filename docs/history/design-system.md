@@ -441,8 +441,9 @@ Real, and mostly a sequencing constraint rather than a feature.
   specified and absent from the code. A storefront needs these as web
   tokens, not just print values, and needs "which ramp is canonical for
   brand use" answered.
-- **Nacelle is freeware from dotcolon.net**, vendored as 16 woff2 in
-  `public/fonts/` with the `.otf` originals kept only in
-  `.ignored/nacelle/` for print work. A public site reusing the
-  dashboard's look needs those files, and needs the licence terms
+- **Nacelle is freeware from dotcolon.net**, vendored as woff2 in
+  `public/fonts/` (5 declared weights since H3 dropped the 11 unused
+  ones) with the 16 `.otf` originals at `assets/fonts-src/` for print
+  work and woff2 regeneration (tracked in H3). A public site reusing
+  the dashboard's look needs those files, and needs the licence terms
   checked for commercial use — nobody has verified that.

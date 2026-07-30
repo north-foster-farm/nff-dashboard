@@ -40,10 +40,10 @@ Planning material, promoted into this directory at the end of H1:
 - `google-business-profile-description.md` — live customer-facing copy
   work, drafts ranked, two open items.
 
-Assessed in H1: `.ignored/nacelle/` is a font package, not platform
-research — the name is a typeface (already tracked at
-`public/fonts/`), so there is **no prior headless-commerce research**
-to build on. `pricing-worksheets/` (beside this file, promoted in H3)
+Assessed in H1: the `nacelle` directory was a font package, not
+platform research — the name is a typeface (webfonts tracked at
+`public/fonts/`, `.otf` sources at `assets/fonts-src/`), so there is
+**no prior headless-commerce research** to build on. `pricing-worksheets/` (beside this file, promoted in H3)
 keeps the interactive worksheet HTML and its localStorage dump; the
 summary that matters is the promoted price list above.
 
