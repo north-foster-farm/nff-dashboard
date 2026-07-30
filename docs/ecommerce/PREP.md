@@ -443,3 +443,18 @@ extending it.
   half is built and in prod, the external half is unscheduled intent,
   and the unmade site-architecture decision (Hugo vs JS framework,
   monorepo vs split) gates the rest.
+- H4 (2026-07-30): the audit closed the H0 secrets item — the two
+  stray files are gone from `.ignored` and were never in git
+  history; `.env.local` is the remaining local crown-jewels file
+  (the MCP bridge reads the secret key from it). New pre-commerce
+  requirements from A1: (1) every Netlify function touching
+  orders/customers/payments must verify its caller (JWT forward or
+  shared-secret header) — today's functions are publicly POSTable
+  by design and that pattern must not extend; (2) offsite encrypted
+  backups before customer data (today's are single-copy, one
+  machine, manual — a 27-day gap just happened); (3) add customers/
+  orders/product_sales to CLAUDE.md's must-never-lose list when
+  commerce goes live. A4 confirmed the commerce layer is a true
+  blank slate: zero orders/sales/prices ever recorded, 6 unpriced
+  product_kinds, and the 65-row customers table is a real one-shot
+  2026-06-02 import (usable as the seed mailing list).
