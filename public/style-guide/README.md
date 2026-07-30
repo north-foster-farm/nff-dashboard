@@ -24,8 +24,9 @@ new component or a new variant, update both the matching visual page and
 
 Grounded in the real codebase (`index.html` tokens, `src/styles.css`,
 `src/components/ui.jsx`, the pages) and the harvest-remix design bracket
-(repo root: `.ignored/playbooks/design-bracket/examples/harvest-remix/DESIGN.md`).
+(`docs/workshops/design-bracket/examples/harvest-remix/DESIGN.md`).
 
 `assets/` holds the shared stylesheet (`ds.css`) and shell script (`ds.js`) —
-the docs' own chrome, built in the system they document. QA screenshots are kept
-out of the deploy in `.ignored/style-guide-qa/`.
+the docs' own chrome, built in the system they document. Verification
+screenshots are not kept: they date instantly as the guide changes, so
+re-shoot them with the drivers in `.ignored/audit/` when you need them.
