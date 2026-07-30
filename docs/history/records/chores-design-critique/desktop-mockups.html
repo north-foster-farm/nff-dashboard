@@ -1,0 +1,279 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFF Daily Ops — Desktop mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#1e7a4c; --green-d:#155e3a;
+    --sage:#cdddd3; --sage-fill:#e3ece5;
+    --ink:#1b1b18; --meta:#8a8a83; --accent:#55695b;
+    --line:#e4e3df; --bg:#f4f4f2; --card:#fff; --label:#7c7c74;
+    --display:'Lora',Georgia,'Times New Roman',serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+       font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 28px 80px}
+  h1.page{font-family:var(--display);font-weight:700;font-size:40px;margin:0 0 4px}
+  .sub{color:var(--meta);font-size:14px;margin-bottom:28px}
+  .secthead{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--label);
+            font-weight:700;margin:36px 0 12px}
+  .note{font-size:12.5px;color:var(--accent);background:var(--sage-fill);
+        border-left:3px solid var(--green);padding:8px 12px;border-radius:0 6px 6px 0;margin:0 0 16px}
+
+  /* ---- toolbar ---- */
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .search{flex:1;border:1px solid var(--line);background:var(--card);border-radius:8px;
+          padding:10px 14px;color:var(--meta);font-size:14px}
+  .segmented{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+  .segmented button{border:0;background:transparent;padding:9px 14px;font-size:12px;font-weight:700;
+                    letter-spacing:.04em;color:var(--meta);cursor:pointer}
+  .segmented button.on{background:var(--sage);color:var(--green-d)}
+  .add{background:var(--green);color:#fff;border:0;border-radius:8px;padding:10px 16px;
+       font-weight:700;font-size:13px;letter-spacing:.04em;cursor:pointer}
+
+  /* ---- place group ---- */
+  .group{margin-bottom:18px}
+  .grouphead{display:flex;align-items:center;gap:10px;background:#eceae5;border:1px solid var(--line);
+             border-bottom:0;border-radius:8px 8px 0 0;padding:11px 16px;font-weight:700;
+             letter-spacing:.06em;text-transform:uppercase;font-size:13px}
+  .grouphead .count{color:var(--meta);font-weight:600;letter-spacing:.02em;text-transform:none;font-size:12.5px}
+  .grouphead .rule{margin-left:auto;color:var(--accent);font-size:11.5px;letter-spacing:.04em}
+
+  /* ---- activity row (THE collapse) ---- */
+  .rows{border:1px solid var(--line);border-radius:0 0 8px 8px;background:var(--card);overflow:hidden}
+  .row{display:flex;align-items:flex-start;gap:14px;padding:13px 16px;border-top:1px solid var(--line);cursor:pointer}
+  .row:first-child{border-top:0}
+  .row:hover{background:#fafaf8}
+  .chev{flex:0 0 auto;color:var(--meta);transition:transform .15s;margin-top:3px}
+  .row.open .chev{transform:rotate(90deg)}
+  .rowmain{flex:1;min-width:0}
+  .title{font-weight:600;font-size:15.5px}
+  .place{color:var(--accent);font-weight:600}
+  /* block-set summary — the schedule shown as metadata, not as 4 rows */
+  .blocks{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;align-items:center}
+  .chip{font-size:11px;letter-spacing:.03em;border:1px solid var(--line);border-radius:5px;
+        padding:3px 8px;color:var(--meta);background:#fafaf8;text-transform:uppercase;font-weight:600}
+  .chip.act{border-color:var(--sage);background:var(--sage-fill);color:var(--green-d)}
+  .freq{font-size:12.5px;color:var(--meta);margin-left:4px}
+  .rowact{flex:0 0 auto;display:flex;gap:6px;opacity:0;transition:opacity .12s;color:var(--meta);margin-top:1px}
+  .row:hover .rowact{opacity:1}
+  .iconbtn{width:30px;height:30px;border:1px solid transparent;border-radius:6px;display:grid;
+           place-items:center;cursor:pointer;background:transparent}
+  .iconbtn:hover{background:#eceae5;border-color:var(--line)}
+  .countpill{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;
+             border:1px solid var(--green);color:var(--green-d);border-radius:5px;padding:2px 7px}
+
+  /* ---- expanded edit drawer ---- */
+  .editor{border-top:1px solid var(--line);background:#fbfbf9;padding:20px 16px 22px 44px;display:none}
+  .row.open + .editor{display:block}
+  .field{margin-bottom:16px}
+  .flabel{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--label);
+          font-weight:700;display:block;margin-bottom:6px}
+  .input,.select{width:100%;border:1px solid var(--line);background:#fff;border-radius:7px;
+                 padding:9px 12px;font-size:14px;font-family:var(--sans);color:var(--ink)}
+  .help{font-size:12px;color:var(--meta);margin-top:6px;line-height:1.4}
+  /* multi-select WHEN — toggle chips, the single highest-leverage form change */
+  .whenwrap{display:flex;flex-wrap:wrap;gap:8px}
+  .toggle{user-select:none;border:1px solid var(--line);background:#fff;border-radius:7px;
+          padding:9px 13px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:600}
+  .toggle .box{width:16px;height:16px;border:1.5px solid var(--meta);border-radius:4px;display:grid;place-items:center}
+  .toggle small{color:var(--meta);font-weight:500}
+  .toggle.sel{border-color:var(--green);background:var(--sage-fill);color:var(--green-d)}
+  .toggle.sel .box{background:var(--green);border-color:var(--green)}
+  .toggle.sel .box svg{display:block}
+  .toggle .box svg{display:none}
+  .toggle.sel small{color:var(--accent)}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .preview{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:8px}
+  .pvday{border:1px solid var(--line);border-radius:7px;background:#fff;padding:9px 6px;text-align:center}
+  .pvday .d{font-size:10px;letter-spacing:.08em;color:var(--label);text-transform:uppercase;font-weight:700}
+  .pvday .v{font-size:11px;color:var(--accent);margin-top:5px;min-height:14px}
+  .pvday.has{background:var(--sage-fill);border-color:var(--sage)}
+  .editactions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+  .btn{border-radius:7px;padding:9px 18px;font-weight:700;font-size:13px;letter-spacing:.03em;cursor:pointer;border:1px solid var(--line);background:#fff}
+  .btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+
+  .compare{display:flex;gap:8px;align-items:baseline;font-size:12.5px;color:var(--meta);margin-bottom:8px}
+  .strike{text-decoration:line-through}
+  .win{color:var(--green-d);font-weight:700}
+</style>
+
+<div class="wrap">
+  <h1 class="page">Chores</h1>
+  <div class="sub">ADMIN · v0.10.41-alpha — desktop mockup · ALL CHORES, collapsed by activity</div>
+
+  <p class="note"><b>The collapse.</b> One row per <i>activity</i>, with its blocks shown as a chip summary.
+  The schedule is metadata, not a row multiplier. Click a row to expand the editor with the multi-select
+  <code>WHEN</code> control. Compare against the current build: Brooder 1 was 8 rows → 2.</p>
+
+  <div class="toolbar">
+    <div class="search">Search chores</div>
+    <div class="segmented">
+      <button class="on">BY PLACE</button><button>BY ACTIVITY</button><button>A–Z</button>
+    </div>
+    <button class="add">+ ADD CHORE</button>
+  </div>
+
+  <!-- BROODERS -->
+  <div class="group">
+    <div class="grouphead">Brooders <span class="count">· Brooder 1 — 2 chores</span>
+      <span class="rule">follows occupied brooders</span></div>
+    <div class="rows">
+
+      <div class="row open" onclick="tog(this)">
+        <span class="chev">▸</span>
+        <div class="rowmain">
+          <div class="compare"><span class="strike">8 rows</span> → <span class="win">2 rows</span>
+            <span>· feeders + waterers, four blocks each</span></div>
+          <div class="title">Fill feeders <span class="place">· Brooder 1</span></div>
+          <div class="blocks">
+            <span class="chip act">Morning</span><span class="chip act">Mid-AM</span>
+            <span class="chip act">Early PM</span><span class="chip act">Late PM</span>
+            <span class="freq">· every day</span>
+          </div>
+        </div>
+        <div class="rowact">
+          <span class="iconbtn" title="Comment">💬</span>
+          <span class="iconbtn" title="Edit">✎</span>
+          <span class="iconbtn" title="Delete">🗑</span>
+        </div>
+      </div>
+      <!-- expanded editor -->
+      <div class="editor">
+        <div class="field">
+          <label class="flabel">Title</label>
+          <input class="input" value="Fill feeders">
+        </div>
+
+        <div class="field">
+          <label class="flabel">Belongs to</label>
+          <select class="select"><option>Animals — Broilers · housed in Brooder 1 · work happens where they live</option></select>
+          <div class="help">The chore follows these animals — move them and the chore moves with them.
+            No active animals → the chore goes dormant.</div>
+        </div>
+
+        <div class="field">
+          <label class="flabel">When — fires in every selected block</label>
+          <div class="whenwrap">
+            <label class="toggle sel"><span class="box"><svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 5.5 4 8.5 10 1.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Morning <small>sunrise</small></label>
+            <label class="toggle sel"><span class="box"><svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 5.5 4 8.5 10 1.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Mid-Morning <small>10 AM</small></label>
+            <label class="toggle sel"><span class="box"><svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 5.5 4 8.5 10 1.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Early Afternoon <small>1 PM</small></label>
+            <label class="toggle sel"><span class="box"><svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 5.5 4 8.5 10 1.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Late Afternoon <small>4 PM</small></label>
+            <label class="toggle"><span class="box"></span>End of Day <small>sunset</small></label>
+          </div>
+          <div class="help"><b>This is the change.</b> One activity, a <i>set</i> of blocks → generates four
+            occurrences a day on TODAY and in rounds. No more cloning the chore per block.</div>
+        </div>
+
+        <div class="twocol">
+          <div class="field">
+            <label class="flabel">Deadline block</label>
+            <select class="select"><option>— each occurrence due by the next block —</option></select>
+          </div>
+          <div class="field">
+            <label class="flabel">Days</label>
+            <div class="whenwrap" style="gap:6px">
+              <label class="toggle sel" style="padding:7px 11px">SUN</label>
+              <label class="toggle sel" style="padding:7px 11px">MON</label>
+              <label class="toggle sel" style="padding:7px 11px">TUE</label>
+              <label class="toggle sel" style="padding:7px 11px">WED</label>
+              <label class="toggle sel" style="padding:7px 11px">THU</label>
+              <label class="toggle sel" style="padding:7px 11px">FRI</label>
+              <label class="toggle sel" style="padding:7px 11px">SAT</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="flabel">Next 7 days preview — now shows occurrence count per day</label>
+          <div class="preview">
+            <div class="pvday has"><div class="d">Fri</div><div class="v">4×</div></div>
+            <div class="pvday has"><div class="d">Sat</div><div class="v">4×</div></div>
+            <div class="pvday has"><div class="d">Sun</div><div class="v">4×</div></div>
+            <div class="pvday has"><div class="d">Mon</div><div class="v">4×</div></div>
+            <div class="pvday has"><div class="d">Tue</div><div class="v">4×</div></div>
+            <div class="pvday has"><div class="d">Wed</div><div class="v">4×</div></div>
+            <div class="pvday has"><div class="d">Thu</div><div class="v">4×</div></div>
+          </div>
+        </div>
+
+        <div class="editactions">
+          <button class="btn">Cancel</button>
+          <button class="btn primary">Save</button>
+        </div>
+      </div>
+
+      <div class="row" onclick="tog(this)">
+        <span class="chev">▸</span>
+        <div class="rowmain">
+          <div class="title">Fill waterers <span class="place">· Brooder 1</span></div>
+          <div class="blocks">
+            <span class="chip act">Morning</span><span class="chip act">Mid-AM</span>
+            <span class="chip act">Early PM</span><span class="chip act">Late PM</span>
+            <span class="freq">· every day</span>
+          </div>
+        </div>
+        <div class="rowact"><span class="iconbtn">💬</span><span class="iconbtn">✎</span><span class="iconbtn">🗑</span></div>
+      </div>
+      <div class="editor"><div class="help">(editor collapsed — same structure as above)</div></div>
+    </div>
+  </div>
+
+  <!-- PASTURES, Mobile Coop 1 -->
+  <div class="group">
+    <div class="grouphead">Pastures <span class="count">· Mobile Coop 1 — 8 chores</span>
+      <span class="rule">follows Gold bands · 200 hens</span></div>
+    <div class="rows">
+      <div class="row" onclick="tog(this)"><span class="chev">▸</span><div class="rowmain">
+        <div class="title">Collect eggs <span class="place">· Mobile Coop 1</span></div>
+        <div class="blocks"><span class="chip act">Mid-AM</span><span class="chip act">Late PM</span><span class="freq">· every day</span></div>
+      </div><div class="rowact"><span class="iconbtn">💬</span><span class="iconbtn">✎</span><span class="iconbtn">🗑</span></div></div>
+      <div class="editor"></div>
+
+      <div class="row" onclick="tog(this)"><span class="chev">▸</span><div class="rowmain">
+        <div class="title">Fill feeders <span class="place">· Mobile Coop 1</span></div>
+        <div class="blocks"><span class="chip act">Morning</span><span class="chip act">Mid-AM</span><span class="chip act">Early PM</span><span class="chip act">Late PM</span><span class="chip act">End of Day</span><span class="freq">· every day</span></div>
+      </div><div class="rowact"><span class="iconbtn">💬</span><span class="iconbtn">✎</span><span class="iconbtn">🗑</span></div></div>
+      <div class="editor"></div>
+
+      <div class="row" onclick="tog(this)"><span class="chev">▸</span><div class="rowmain">
+        <div class="title">Fill waterers <span class="place">· Mobile Coop 1</span></div>
+        <div class="blocks"><span class="chip act">Morning</span><span class="chip act">Mid-AM</span><span class="chip act">Early PM</span><span class="chip act">Late PM</span><span class="chip act">End of Day</span><span class="freq">· every day</span></div>
+      </div><div class="rowact"><span class="iconbtn">💬</span><span class="iconbtn">✎</span><span class="iconbtn">🗑</span></div></div>
+      <div class="editor"></div>
+
+      <div class="row" onclick="tog(this)"><span class="chev">▸</span><div class="rowmain">
+        <div class="title">Fill grit <span class="place">· Mobile Coop 1</span></div>
+        <div class="blocks"><span class="chip act">Late PM</span><span class="freq">· Mon</span><span class="countpill">due today</span></div>
+      </div><div class="rowact"><span class="iconbtn">💬</span><span class="iconbtn">✎</span><span class="iconbtn">🗑</span></div></div>
+      <div class="editor"></div>
+
+      <div class="row" onclick="tog(this)"><span class="chev">▸</span><div class="rowmain">
+        <div class="title">Open / Close mobile coop <span class="place">· Mobile Coop 1</span></div>
+        <div class="blocks"><span class="chip act">Morning</span><span class="chip act">End of Day</span><span class="freq">· every day</span></div>
+      </div><div class="rowact"><span class="iconbtn">💬</span><span class="iconbtn">✎</span><span class="iconbtn">🗑</span></div></div>
+      <div class="editor"></div>
+
+      <div class="row" onclick="tog(this)"><span class="chev">▸</span><div class="rowmain">
+        <div class="title">Move mobile coop to fresh grass <span class="place">· Mobile Coop 1</span></div>
+        <div class="blocks"><span class="chip act">Morning</span><span class="freq">· Mon</span></div>
+      </div><div class="rowact"><span class="iconbtn">💬</span><span class="iconbtn">✎</span><span class="iconbtn">🗑</span></div></div>
+      <div class="editor"></div>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top:28px">Result: Mobile Coop 1 reads as <b>~8 activities</b> instead of 21 occurrence-rows,
+  and the whole <b>"60"</b> nav badge resolves to roughly the real count of things to maintain.</p>
+</div>
+
+<script>
+  function tog(el){
+    var open = el.classList.contains('open');
+    document.querySelectorAll('.row.open').forEach(function(r){r.classList.remove('open');});
+    if(!open) el.classList.add('open');
+  }
+</script>

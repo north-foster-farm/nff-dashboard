@@ -1,0 +1,281 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFF Daily Ops — Rounds mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#1e7a4c; --green-d:#155e3a;
+    --sage:#cdddd3; --sage-fill:#e3ece5;
+    --ink:#1b1b18; --meta:#8a8a83; --accent:#55695b;
+    --line:#e4e3df; --bg:#f4f4f2; --card:#fff; --label:#7c7c74;
+    --display:'Lora',Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#e6e6e2;color:var(--ink);font-family:var(--sans);
+       -webkit-font-smoothing:antialiased}
+  .stage{max-width:1160px;margin:0 auto;padding:40px 20px 80px;
+         display:flex;gap:40px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:392px}
+  .cap{font-size:13px;color:#4a4a44;margin:0 0 12px;line-height:1.45}
+  .cap b{color:#1b1b18}
+  .cap .tag{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+            font-weight:700;color:var(--green-d);background:var(--sage-fill);padding:2px 7px;border-radius:5px;margin-right:6px}
+
+  /* phone frame */
+  .phone{width:392px;background:var(--bg);border-radius:30px;border:10px solid #0d0d0d;
+         overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.22);position:relative}
+  .screen{height:760px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+
+  /* ---- session header: PROGRESS-FIRST (R1) ---- */
+  .shead{background:var(--card);border-bottom:1px solid var(--line);padding:14px 16px 12px;flex:0 0 auto}
+  .sheadtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+  .blocklbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--label);font-weight:700}
+  .elapsed{font-size:12px;color:var(--meta);font-variant-numeric:tabular-nums}
+  .hbtns{display:flex;align-items:center;gap:10px}
+  .lnk{font-size:12px;letter-spacing:.05em;font-weight:700;color:var(--meta);background:none;border:0;text-transform:uppercase;cursor:pointer}
+  .finish{background:var(--green);color:#fff;border:0;border-radius:7px;padding:8px 16px;font-weight:700;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+  .progwrap{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+  .prognum{font-family:var(--display);font-weight:700;font-size:30px;line-height:1}
+  .prognum small{font-size:15px;color:var(--meta);font-family:var(--sans);font-weight:600}
+  .progsub{font-size:12.5px;color:var(--meta)}
+  .pbar{height:6px;border-radius:4px;background:#eceae5;overflow:hidden}
+  .pbar i{display:block;height:100%;width:33%;background:var(--green);border-radius:4px}
+
+  /* ---- place tabs with edge fade (R8) ---- */
+  .tabs{position:relative;flex:0 0 auto;background:var(--bg);border-bottom:1px solid var(--line)}
+  .tabscroll{display:flex;gap:8px;overflow-x:auto;padding:10px 16px;scrollbar-width:none}
+  .tabscroll::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:8px;
+       padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--meta);white-space:nowrap}
+  .tab.on{background:var(--sage);color:var(--green-d);border-color:var(--sage)}
+  .fade{position:absolute;top:0;right:0;height:100%;width:34px;pointer-events:none;
+        background:linear-gradient(90deg,rgba(244,244,242,0),var(--bg))}
+
+  /* ---- scroll body ---- */
+  .body{flex:1;overflow-y:auto;padding:14px 16px 16px}
+
+  /* ---- location card (R2/R3): place is the header, activity is the title ---- */
+  .loc{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
+  .lochead{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--line);background:#fbfbf9}
+  .stop{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--sage-fill);color:var(--green-d);
+        font-size:11px;font-weight:700;display:grid;place-items:center}
+  .locname{font-weight:700;font-size:15px}
+  .locname span{color:var(--meta);font-weight:500;font-size:12.5px;display:block;margin-top:1px}
+  .locmeta{margin-left:auto;text-align:right}
+  .donecount{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--meta);font-weight:700}
+  .markall{margin-top:5px;border:1px solid var(--line);background:#fff;border-radius:6px;
+           padding:5px 9px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--green-d);
+           display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+  .markall svg{display:block}
+
+  .chore{display:flex;align-items:center;gap:14px;padding:14px;border-top:1px solid #f0efeb;cursor:pointer}
+  .chore:first-child{border-top:0}
+  .cb{flex:0 0 auto;width:30px;height:30px;border:2px solid #cfcfc8;border-radius:7px;background:#fff;display:grid;place-items:center}
+  .chore.done .cb{background:var(--green);border-color:var(--green)}
+  .chore.done .cb svg{display:block}
+  .cb svg{display:none}
+  .chore.done .ct{color:var(--meta);text-decoration:line-through}
+  .ct{font-size:16px;font-weight:600}
+  .duepill{margin-left:8px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;
+           border:1px solid var(--green);color:var(--green-d);border-radius:5px;padding:2px 7px;vertical-align:2px}
+
+  /* ---- quick-log bottom bar ---- */
+  .qbar{flex:0 0 auto;display:flex;background:var(--card);border-top:1px solid var(--line)}
+  .qbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:11px 0 13px;
+        font-size:11px;letter-spacing:.06em;font-weight:700;color:var(--ink);text-transform:uppercase;cursor:pointer;border:0;background:none}
+  .qbtn svg{display:block}
+
+  /* ===== sheet: unified quick-log (R6/R7) ===== */
+  .sheetwrap{position:absolute;inset:0;background:rgba(20,20,18,.4);display:flex;flex-direction:column;justify-content:flex-end}
+  .sheet{background:var(--card);border-radius:18px 18px 0 0;padding:18px 18px 22px;max-height:88%;overflow-y:auto}
+  .sheethead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .sheethead h3{margin:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--label);font-weight:700}
+  .xb{border:0;background:none;font-size:20px;color:var(--meta);cursor:pointer;line-height:1}
+  .ctxbox{display:flex;align-items:center;gap:10px;background:#f3f3f0;border-radius:10px;padding:12px 14px;margin-bottom:18px}
+  .ctxbox .pin{color:var(--green)}
+  .ctxbox .lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--label);font-weight:700}
+  .ctxbox .val{font-weight:700;font-size:15px}
+  .ctxbox .val span{color:var(--accent)}
+  .slabel{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--label);font-weight:700;display:block;margin:0 0 7px}
+  .sselect{width:100%;border:1px solid var(--line);background:#fff;border-radius:9px;padding:12px 14px;font-size:15px;margin-bottom:18px;font-family:var(--sans)}
+  .opt{border:1px solid var(--line);border-radius:9px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .opt.sel{border-color:var(--green);background:var(--sage-fill)}
+  .opt .nm{font-weight:700;font-size:15px}
+  .opt .ct2{color:var(--meta);font-size:13px}
+  .stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:22px}
+  .stepper button{flex:0 0 64px;border:0;background:#f3f3f0;font-size:26px;color:var(--green-d);padding:14px 0;cursor:pointer;font-weight:600}
+  .stepper .num{flex:1;text-align:center;font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
+  .logbtn{width:100%;background:var(--green);color:#fff;border:0;border-radius:11px;padding:16px;font-weight:700;font-size:15px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+
+  /* ===== styled cancel dialog (R4) ===== */
+  .modalwrap{position:absolute;inset:0;background:rgba(20,20,18,.45);display:grid;place-items:center;padding:24px}
+  .modal{background:var(--card);border-radius:16px;padding:22px;width:100%;max-width:330px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .modal h4{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 8px}
+  .modal p{font-size:14px;color:#4a4a44;line-height:1.5;margin:0 0 20px}
+  .modalbtns{display:flex;flex-direction:column;gap:10px}
+  .mbtn{border-radius:10px;padding:14px;font-weight:700;font-size:14px;letter-spacing:.03em;cursor:pointer;border:1px solid var(--line);background:#fff}
+  .mbtn.keep{background:var(--green);border-color:var(--green);color:#fff}
+  .mbtn.cancelrun{color:#a23a2e;border-color:#e7c9c4}
+</style>
+
+<div class="stage">
+
+  <!-- ============ A. ACTIVE ROUND, location-grouped ============ -->
+  <div class="col">
+    <p class="cap"><span class="tag">R1 · R2 · R5 · R8</span><b>Active round — grouped by location along the route.</b>
+    Header leads with <b>progress</b>, not a stopwatch (elapsed demoted to secondary). Each card is a
+    <b>stop</b>; the activity is the bold title since the place is now the header. "Mark all done" is a real button.</p>
+    <div class="phone"><div class="screen">
+
+      <div class="shead">
+        <div class="sheadtop">
+          <div><span class="blocklbl">Morning round</span></div>
+          <div class="hbtns">
+            <span class="elapsed">⏱ 8:24</span>
+            <button class="lnk">Cancel</button>
+            <button class="finish">Finish</button>
+          </div>
+        </div>
+        <div class="progwrap">
+          <div class="prognum">6<small> / 18 done</small></div>
+          <div class="progsub">3 stops left · Brooders, then pastures</div>
+        </div>
+        <div class="pbar"><i></i></div>
+      </div>
+
+      <div class="tabs">
+        <div class="tabscroll">
+          <span class="tab on">Everywhere</span><span class="tab">House</span>
+          <span class="tab">Barn</span><span class="tab">Brooders</span><span class="tab">Pastures</span>
+        </div>
+        <div class="fade"></div>
+      </div>
+
+      <div class="body">
+
+        <div class="loc">
+          <div class="lochead">
+            <span class="stop">1</span>
+            <div class="locname">House</div>
+            <div class="locmeta"><div class="donecount">1 / 1 done</div></div>
+          </div>
+          <div class="chore done">
+            <span class="cb"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div><span class="ct">Mow the lawn</span></div>
+          </div>
+        </div>
+
+        <div class="loc">
+          <div class="lochead">
+            <span class="stop">2</span>
+            <div class="locname">Barn <span>sheep</span></div>
+            <div class="locmeta">
+              <div class="donecount">0 / 3 done</div>
+              <button class="markall"><svg width="11" height="11" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#155e3a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Mark all done</button>
+            </div>
+          </div>
+          <div class="chore"><span class="cb"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#fff" stroke-width="2.5" fill="none"/></svg></span><div><span class="ct">Fill waterer</span></div></div>
+          <div class="chore"><span class="cb"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#fff" stroke-width="2.5" fill="none"/></svg></span><div><span class="ct">Fill minerals</span></div></div>
+          <div class="chore"><span class="cb"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#fff" stroke-width="2.5" fill="none"/></svg></span><div><span class="ct">Pressure wash sheep water trough</span></div></div>
+        </div>
+
+        <div class="loc">
+          <div class="lochead">
+            <span class="stop">5</span>
+            <div class="locname">Mobile Coop 1 <span>Pasture C · Gold bands, 200 hens</span></div>
+            <div class="locmeta">
+              <div class="donecount">0 / 4 done</div>
+              <button class="markall"><svg width="11" height="11" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#155e3a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Mark all done</button>
+            </div>
+          </div>
+          <div class="chore"><span class="cb"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#fff" stroke-width="2.5" fill="none"/></svg></span><div><span class="ct">Open coop</span></div></div>
+          <div class="chore"><span class="cb"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#fff" stroke-width="2.5" fill="none"/></svg></span><div><span class="ct">Fill feeders</span></div></div>
+          <div class="chore"><span class="cb"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#fff" stroke-width="2.5" fill="none"/></svg></span><div><span class="ct">Fill waterers</span></div></div>
+          <div class="chore"><span class="cb"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M2 7.5 5.5 11 13 2.5" stroke="#fff" stroke-width="2.5" fill="none"/></svg></span><div><span class="ct">Move coop to fresh grass</span> <span class="duepill">Mon</span></div></div>
+        </div>
+
+      </div>
+
+      <div class="qbar">
+        <button class="qbtn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b18" stroke-width="1.8"><path d="M4 5h16v11H8l-4 4z" stroke-linejoin="round"/></svg>Note</button>
+        <button class="qbtn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b18" stroke-width="1.8"><path d="M12 3 22 20H2z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01"/></svg>Mash</button>
+        <button class="qbtn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b18" stroke-width="1.8"><circle cx="12" cy="10" r="7"/><circle cx="9" cy="9" r="1.3" fill="#1b1b18" stroke="none"/><circle cx="15" cy="9" r="1.3" fill="#1b1b18" stroke="none"/><path d="M9 20v-3M15 20v-3M12 20v-3"/></svg>Mortality</button>
+        <button class="qbtn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1b1b18" stroke-width="1.8"><path d="M12 3c4 4 5 8 5 11a5 5 0 0 1-10 0c0-3 1-7 5-11z"/></svg>Eggs</button>
+      </div>
+
+    </div></div>
+  </div>
+
+  <!-- ============ B. UNIFIED QUICK-LOG SHEET ============ -->
+  <div class="col">
+    <p class="cap"><span class="tag">R6 · R7</span><b>Quick-log sheet — one component, every log type.</b>
+    Context (LOGGING AT) inherits the stop you're on. Same skeleton for Eggs and Mortality:
+    WHERE → FLOCK/COHORT (selected highlight) → HOW MANY stepper → solid-green LOG button.</p>
+    <div class="phone"><div class="screen">
+      <div class="sheetwrap">
+        <div class="sheet">
+          <div class="sheethead"><h3>Log eggs</h3><button class="xb">×</button></div>
+
+          <div class="ctxbox">
+            <span class="pin">◉</span>
+            <div><div class="lbl">Logging at</div><div class="val">Mobile Coop 1 <span>· Pasture C</span></div></div>
+          </div>
+
+          <label class="slabel">Where</label>
+          <div class="sselect">Mobile Coop 1 ⌄</div>
+
+          <label class="slabel">Flock</label>
+          <div class="opt sel"><span class="nm">Gold bands</span><span class="ct2">200 hens</span></div>
+
+          <label class="slabel">How many eggs</label>
+          <div class="stepper"><button>–</button><span class="num">100</span><button>+</button></div>
+
+          <button class="logbtn">Log 100 eggs</button>
+        </div>
+      </div>
+    </div></div>
+
+    <p class="cap" style="margin-top:18px"><b>Mortality reuses the exact skeleton</b> — only the labels and
+    button verb change (COHORT instead of FLOCK, "Log 1 loss"), so it stops looking like a different,
+    half-finished screen. Context defaults to the current stop's flock instead of "whole farm."</p>
+  </div>
+
+  <!-- ============ C. STYLED CANCEL DIALOG ============ -->
+  <div class="col">
+    <p class="cap"><span class="tag">R4</span><b>Cancel dialog — in-app, not <code>window.confirm</code>.</b>
+    Matches the green system; explicit verbs replace the "Cancel / OK" double-negative. The destructive
+    action is clearly the secondary, lower-weight choice.</p>
+    <div class="phone"><div class="screen" style="background:#cfcfca">
+
+      <div class="shead" style="opacity:.5">
+        <div class="sheadtop">
+          <div><span class="blocklbl">Morning round</span></div>
+          <div class="hbtns"><span class="elapsed">⏱ 8:24</span><button class="lnk">Cancel</button><button class="finish">Finish</button></div>
+        </div>
+        <div class="progwrap"><div class="prognum">6<small> / 18 done</small></div></div>
+        <div class="pbar"><i></i></div>
+      </div>
+      <div class="body" style="opacity:.4">
+        <div class="loc"><div class="lochead"><span class="stop">1</span><div class="locname">House</div></div>
+          <div class="chore"><span class="cb"></span><div><span class="ct">Mow the lawn</span></div></div></div>
+      </div>
+
+      <div class="modalwrap">
+        <div class="modal">
+          <h4>Cancel this round?</h4>
+          <p>Your ticked chores stay done — the round itself is marked <b>canceled</b> instead of finished.
+             You can start a fresh round any time.</p>
+          <div class="modalbtns">
+            <button class="mbtn keep">Keep going</button>
+            <button class="mbtn cancelrun">Cancel round</button>
+          </div>
+        </div>
+      </div>
+
+    </div></div>
+  </div>
+
+</div>

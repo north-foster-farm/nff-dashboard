@@ -178,15 +178,21 @@ insert the new set. Plan: A→B→C→**James verifies**→D (hard delete).
 `fce874b` / `06e2420` fixed four. **Phase D never ran.**
 
 **2026-06-05 — the collapse that was decided and never built.**
-`.ignored/chores-design-critique/` argued that a chore conflates
-what/when/where, one-chore-per-block being the root cause, and drafted
-`0030_chore_activities.sql` to collapse the five feeder rows into one
-activity with a block dimension. James's **no-legacy rule** killed the
+`docs/history/records/chores-design-critique/` (promoted out of
+`.ignored/` on 2026-07-30, with a status note) argued that a chore
+conflates what/when/where, one-chore-per-block being the root cause,
+and drafted `0030_chore_activities.sql` to collapse the five feeder
+rows into one activity with a block dimension. James's **no-legacy
+rule** killed the
 migration path (memory `feedback_no_legacy_paths`: fold old in and
 DELETE it, never a dual-source shim), pivoting to a view/editor
-collapse over `chore_definitions`. m3 §379 marks all four files for
-deletion; the acceptance criteria and the domain hazard it surfaced
-survive only in memory `project_chores_collapse_decision` — because
+collapse over `chore_definitions`. m3 §379 marked all four files for
+deletion; they were kept instead, because the critique is still a live
+findings register — its critical items (D1 multi-block `WHEN`, R2/R3
+walk-ordered Rounds) are unbuilt, and `e474993` closed only the
+zero-migration UI half (R1/R4/R5/R6/R7/R8/D2). The acceptance criteria
+and the domain hazard it surfaced also survive in memory
+`project_chores_collapse_decision` — because
 `mod-proc-no-feed` must spare the morning feed while suppressing the
 later three, **the five feeder rows *are* the block dimension** and
 cannot be collapsed naively. **Never started.**

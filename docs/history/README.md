@@ -34,7 +34,9 @@ Three hazards will bite anyone reading the primary sources directly:
   genealogy in m2 §3.
 - **Four independent F-numbering universes exist** — the audits of
   2026-06-04, 06-28, 07-01 and 07-02 each start at F1. Every F-number
-  needs a date qualifier or it is ambiguous.
+  needs a date qualifier or it is ambiguous. There is also a fifth,
+  separate scheme: `D1–D6` / `R1–R9` in
+  `records/chores-design-critique/`.
 
 ## The cross-feature narrative
 
