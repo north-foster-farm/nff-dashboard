@@ -62,12 +62,13 @@ export const SECTIONS = [
     children: [
       // First child is the unfiltered Agenda view (replaces the
       // pre-14.2 "All events" top-level entry).
-      { id: "events_all", label: "All events", icon: CalendarRange, description: "Every event in chronological order — Schedule with the Agenda view selected." },
+      { id: "events_all", label: "All events", icon: CalendarRange, description: "Every event in chronological order — Calendar with the Agenda view selected." },
       // Per-kind children are saved-filter chip presets — clicking
-      // any of them lands on Schedule with that one kind's filter on
-      // (Batch 14.2; per-kind pages retired). Keep ids in sync with
+      // any of them lands on Calendar with that one kind's filter on
+      // (Batch 14.2; per-kind pages retired. The surface was renamed
+      // Schedule -> Calendar in 41.4, f712c14). Keep ids in sync with
       // data.events.kinds[].id (after the `events_` prefix).
-      { id: "events_deliveries", label: "Deliveries", icon: Truck, description: "Deliveries to wholesale or restaurant partners — Schedule filtered to this kind." },
+      { id: "events_deliveries", label: "Deliveries", icon: Truck, description: "Deliveries to wholesale or restaurant partners — Calendar filtered to this kind." },
       { id: "events_egg_drop", label: "Egg drop", icon: Package, description: "Off-season egg pickup at the same farmers market site." },
       { id: "events_farmers_market", label: "Farmers markets", icon: Tent, description: "Recurring weekly farmers markets NFF attends during market season." },
       { id: "events_farm_visits", label: "Farm visits", icon: Users, description: "Visitors coming to the farm." },

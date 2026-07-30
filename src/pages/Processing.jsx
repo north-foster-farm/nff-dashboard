@@ -27,9 +27,11 @@ import { processingBatchMissing } from "../lib/processes.js";
 // Cut-size sheets (F22d) are uploaded files in event_attachments, not a
 // payload field — see useEventAttachments + the "Cut sheet" section.
 // Plus a `resolved` toggle (with `resolved_at` timestamp) marking
-// the day's batch close. Resolution doesn't yet touch
-// livestock_groups directly — that integration ships with the
-// animal-lifecycle pages in Batch 16.
+// the day's batch close. Resolution does NOT touch livestock_groups
+// or create inventory lots — it only stamps resolved/resolved_at.
+// The animal-lifecycle pages shipped (as batch 20, 11e8350) without
+// that write-back, so it was never built rather than pending; see
+// docs/history/processing-and-broilers.md for what the gap costs.
 //
 // On the same date, an event_occurrences override carrying the
 // payload_override is upserted alongside so per-instance edits

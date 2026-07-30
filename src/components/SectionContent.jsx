@@ -60,9 +60,10 @@ export default function SectionContent({
     return <SpeciesPage species={sp} data={data} />;
   }
   if (section.id === "events_all") {
-    // Folded into Schedule's Agenda view (Batch 14.1). Deep links
-    // to /events/all keep landing here; the page just opens with a
-    // different default view.
+    // Folded into the Agenda view of what batch 14.1 called Schedule
+    // and 41.4 renamed Calendar (f712c14). Deep links to /events/all
+    // keep landing here; the page just opens with a different default
+    // view.
     return <Calendar data={data} onOpenEvent={onOpenEvent} initialView="agenda" />;
   }
   if (section.id.startsWith("events_")) {

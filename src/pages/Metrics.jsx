@@ -191,8 +191,9 @@ function BroilerComparison({
       <p className="text-[11px] text-faint leading-relaxed m-0 mt-3">
         Feed eaten and cost are projected from the feed schedules; FCR,
         gain, and uniformity need weigh-ins (batch page → Weigh-ins).
-        Cuts ordered joins chicken lots recorded on the batch's
-        processing day. Click a row to open the batch.
+        Cuts ordered counts inventory lots whose lot date matches the
+        batch's processing day, so a mistyped lot date leaves them out.
+        Click a row to open the batch.
       </p>
     </Pane>
   );

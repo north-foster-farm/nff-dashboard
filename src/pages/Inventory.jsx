@@ -92,9 +92,9 @@ export default function Inventory({ startCreating = false }) {
             No inventory lots yet.
           </div>
           <div className="text-[11px] text-faint leading-relaxed max-w-[520px] mx-auto mt-2">
-            Chicken lots get created as the final step of a processing
-            day — sort by size and cut, then add one lot per size
-            bracket. Egg lots come from carton counts before a market.
+            Add chicken lots as the final step of a processing day —
+            sort by size and cut, then one lot per size bracket. Add
+            egg lots from carton counts before a market.
           </div>
         </div>
       ) : (
