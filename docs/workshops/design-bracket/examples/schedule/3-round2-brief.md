@@ -81,7 +81,7 @@ hi-fi. They are a deliberate opposed pair: **show the whole day's shape** vs
   collide and open side by side:
   - `.ignored/schedule-feature/mockups/rethinker.html`
   - `.ignored/schedule-feature/mockups/minimalist.html`
-  - (Precedent: `.ignored/calendar-rail-mockup.html` — a self-contained
+  - (Precedent: `../calendar-rail-mockup.html` — a self-contained
     HTML mockup with inline styles/CDN Tailwind is the proven low-friction
     form. Pull the real theme tokens from `src/styles.css` so colors/fonts/
     radii match: semantic `bg/surface/line/fg/accent/warn/resolved`, the

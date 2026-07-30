@@ -127,7 +127,7 @@ match:
 - **Neighbors to match** (`src/pages/`): `Rounds.jsx` (the field execution
   takeover the Schedule feeds — match its row/checkbox/feel),
   `Overview.jsx` (`buildTimelineItems` — the day-timeline being replaced).
-- **Prior mockup form:** `.ignored/calendar-rail-mockup.html` (standalone
+- **Prior mockup form:** `../calendar-rail-mockup.html` (standalone
   HTML is the proven low-friction mockup format here, for Round 2).
 - Icons: `lucide-react`.
 

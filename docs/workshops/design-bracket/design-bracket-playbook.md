@@ -367,7 +367,7 @@ mockups** good enough to decide on and to hand to a build.
 - **Self-contained and isolated.** Each direction builds in its **own
   directory/route** (e.g. `.ignored/<feature>/mockups/<direction>/`) — a
   standalone HTML file is the proven, low-friction form here (precedent:
-  `.ignored/calendar-rail-mockup.html`). If agents edit shared files, give
+  `examples/calendar-rail-mockup.html`). If agents edit shared files, give
   each its own **git worktree** so they don't collide. They must be openable
   **side by side**.
 - **Design the states, interactively where it matters.** The required
@@ -530,7 +530,7 @@ already exist, so prep is light:
   for chips, `CalendarViews` for the existing event surface being absorbed),
   `src/styles.css` (Tailwind theme), and `src/pages/Rounds.jsx` +
   `Overview.jsx` as the neighbors to match. Prior mockup form:
-  `.ignored/calendar-rail-mockup.html` (standalone HTML).
+  `examples/calendar-rail-mockup.html` (standalone HTML).
 - **Device tiers:** phone = field-first (one-handed, gloves, sun, offline);
   desktop = the planning workbench (week/month composition, search, buffer
   config). The phone is the deciding tier — Dad's comprehension is usually

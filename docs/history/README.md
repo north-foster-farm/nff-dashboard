@@ -282,6 +282,18 @@ tracked path:
   the processes-as-generators model.
 - `overnight-project-blocks-the-design.md` + `…-scope.md` — what the
   parked overnight/project-blocks feature actually is.
+- `chores-design-critique/` — the 2026-06-05 Chores & Rounds UX
+  critique, its drafted `0030_chore_activities` migration and two
+  mockups. Still a live findings register: its critical items (D1, R2)
+  are unbuilt. Read its README's caveat first.
+- `ntfy-digitalocean-setup.md` — the provisioning runbook for the
+  self-hosted push server that web-push/VAPID made unnecessary.
+  Preserved as prior art for the still-unbuilt notification channel;
+  preserving the runbook is not a vote to revive the idea.
+- `remix-propagation-tour.md` — the 2026-06-30 walkthrough of the
+  design-remix propagation. Its §4 is the durable half: what was
+  deliberately *not* flushed and why (hairline list rows need their
+  subtle grey fill or the dividers stop showing).
 - `schedule-coverage-audit.md` — the 2026-06-25 story-coverage audit
   of the shipped Schedule.
 

@@ -53,7 +53,8 @@ Three more things date from this day. The **Lessons module**
 before the next occurrence of the same event kind, with two seed lessons
 James wants prompted for on build; the oldest untouched entry in the
 file. Two integration reference dumps:
-`.ignored/ntfy-digitalocean-setup.md` (self-hosting an ntfy push server
+`docs/history/records/ntfy-digitalocean-setup.md` (self-hosting an ntfy
+push server
 on a droplet) and `.ignored/yosmart_docs.md` (292 KB of scraped YoLink
 API docs for the farm's smart thermometers). And the **pasture rotation
 planner**'s requirements — GeoJSON pasture upload, global
@@ -217,7 +218,8 @@ the segment math for its successor." No version of it was ever
 committed.
 
 One more artifact from this stretch deserves a line, because it is a
-parked *process* rather than a parked feature. `.ignored/remix-tour.md`
+parked *process* rather than a parked feature.
+`docs/history/records/remix-propagation-tour.md`
 (2026-06-30) is a guided page-by-page tour of the app-wide design remix
 across `9290268`→`cbfea96`, written with an honest admission — "I
 haven't seen them rendered" — and a named remaining tail: the Rounds

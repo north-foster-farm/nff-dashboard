@@ -36,7 +36,9 @@ Chores) inserted an Events overhaul as Batches 11–14, renumbering
 is empty as of 2026-07-30). The workshop prompt and James's verbatim
 requirements survive, promoted to
 `docs/workshops/scope-workshop/examples/events/workshop-prompt.md`; the
-visual was `.ignored/calendar-rail-mockup.html`, the repo's earliest
+visual was
+`docs/workshops/design-bracket/examples/calendar-rail-mockup.html`,
+the repo's earliest
 mockup artifact and still cited by the Design Bracket playbook as the
 archetype of a standalone HTML mockup.
 
@@ -487,7 +489,7 @@ retirement (`reflow.js:11`).
   and understates `commitments`', which is absent from that list.
 - **Stale references to promoted docs.** `src/lib/capture/registry.js:8`
   and the header comments of `0029_…sql:5` and `0030_…sql:5` point at
-  `.ignored/schedule-feature/versioned-capture-substrate.md`; the file
+  `docs/specs/versioned-capture-substrate.md`; the file
   now lives at `docs/specs/versioned-capture-substrate.md`.
 - **Stale post-rename vocabulary in comments.** `Calendar.jsx:18`
   still opens "Schedule (Batch 14.1)" and its inline comments call the
