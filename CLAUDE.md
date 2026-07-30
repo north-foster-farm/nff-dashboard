@@ -107,11 +107,22 @@ Every commit on this repo follows one consistent shape. Match it.
 ## Data safety — the app is LIVE in production
 
 **As of 2026-06-01 the linked Supabase project is in production.**
-It holds real, irreplaceable data. Two kinds in particular must never
-be lost: **events** (`event_series`, `event_occurrences`,
-`event_instances`, `event_links`) and **chores** (`chore_definitions`,
-`chore_blocks`, `chore_runs`, `chore_modifiers`, `chore_completions`,
-`chore_assignment_rules`).
+It holds real, irreplaceable data. Three kinds in particular must never
+be lost:
+
+- **events** — `event_series`, `event_occurrences`, `event_links`, and
+  the legacy `event_instances` (superseded by series/occurrences but
+  still populated).
+- **chores** — `chore_definitions`, `chore_blocks`, `chore_modifiers`,
+  `chore_completions`, `chore_assignment_rules`.
+- **the schedule** — `commitments` and `captures` (plus
+  `capture_schemas`). These hold every confirmed day and every
+  reservation; they are the day plan's only record.
+
+Corrected 2026-07-29: this list previously named `chore_runs`, which
+migration 0036 dropped on 2026-06-26, and omitted `commitments` /
+`captures`, which superseded it. Keep the list honest — a stale
+must-never-lose list is worse than none.
 
 Production rules:
 
