@@ -2,8 +2,11 @@
 # Commit requirement: a green FULL run of the unit suite.
 # Installed via `git config core.hooksPath .githooks` (one-time,
 # per clone; scripts/setup-hooks.sh does it for you).
-echo "pre-commit: running unit suite (npx vitest run)..."
-npx vitest run --silent
+# Goes through `npm test` deliberately: that script is the single
+# definition of "the suite", so anything added to it (lint, coverage
+# thresholds) is enforced here too instead of being bypassed.
+echo "pre-commit: running unit suite (npm test)..."
+npm test --silent -- --silent
 status=$?
 if [ $status -ne 0 ]; then
   echo ""
