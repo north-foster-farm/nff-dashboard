@@ -4,9 +4,9 @@ The bounded source of truth for how the app looks and reads, and how its pieces
 fit together. It lives here in `public/style-guide/`, so it's served by the app
 and versioned with it. Three faces of one system:
 
-- **In-app** — open the app and go to **Style guide** (Other group in the nav).
-  It embeds this site (theme-synced to the app); "Open full page" gives the
-  standalone view.
+- **In-app** — the **Style guide** nav item (Other group) opens these pages in
+  a new tab. The theme toggle here is the docs' own; it reads the same `--c-*`
+  tokens as the app.
 - **Standalone visual docs** — open `index.html` in a browser, or visit
   `/style-guide/index.html` on the running app. Pages: Overview + Principles
   (`index.html`), Foundations (`foundations.html`), Components

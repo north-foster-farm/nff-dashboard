@@ -77,12 +77,15 @@ stays a state color only.
 Row tints (rgba): `row-active`, `row-hover`, `row-active-dim`.
 Category hues (`cat-*`): fm (farmers market), popup, egg, chore, deliveries,
 farm-visits, pickups, processing, default — see foundations.html.
-Decorative ramps (50→950): sky-aqua, celadon, turf-green, tea-green,
-amber-glow, honey-bronze, hot-fuchsia, slate-blue, periwinkle, **teal**, and the
-two new palette additions **mulberry** + **terracotta** (unmapped) (+ 3 dupes to
-collapse: frozen-lake=sky-aqua, honey-bronze=amber-glow,
-grapefruit-pink=hot-fuchsia). Mappings: periwinkle → `event`, teal → `chore`;
-amber-glow now serves only `cat-popup` (no longer chore).
+Decorative ramps (50→950, real tokens in `src/styles.css`): emerald,
+celadon, turf-green, tea-green, sky-aqua, amber-glow, honey-bronze,
+hot-fuchsia, slate-blue, periwinkle. Mappings: periwinkle → `event`,
+slate-blue → `project`; amber-glow now serves only `cat-popup` (no longer
+chore). Single aliases, no ramp: `mulberry`, `terracotta` (palette
+additions, unmapped), and the chore teal — `--c-chore` is a hardcoded
+hex; there is no `--color-teal-*` scale. Byte-identical duplicates still
+to collapse: frozen-lake=sky-aqua, honey-bronze=amber-glow,
+grapefruit-pink=hot-fuchsia.
 
 ## Typography
 
@@ -671,11 +674,11 @@ Calendar, Activity, Roadmap, Inbox, Now, Orders. The sweep = (1) raised
 fills inside `gap-px bg-line` hairline-divider grids (load-bearing), form-control
 surfaces (inputs/selects/search fields), floating overlays/modals/trays, dynamic
 per-entity colors, and danger/neutral-toggle/icon-only/odd-sized buttons.
-**Remaining page holdouts (follow-ups):** `Rounds` (the full-screen takeover —
-its own raised pattern, left for a focused pass) and `ChoreFieldsEditor`'s
-`editInputStyle` (the last inline-style object, used by Chores + Processes
-editors). Component-layer surfaces (SitesAdmin, PricingGrid, CalendarViews, the
-sheets/editors) were not in this page-layer pass.
+**Remaining page holdouts (follow-ups):** none — `Rounds` was flushed
+(`9a59748`) and `ChoreFieldsEditor`'s `editInputStyle` became
+`EDIT_INPUT_CLS` (`95a7a6b`). Component-layer surfaces (SitesAdmin,
+PricingGrid, CalendarViews, the sheets/editors) were not in the
+page-layer pass.
 
 Collapse, don't re-litigate: raised Card/StatTile/PlaceSection →
 flush Pane (Card done; WeekList folded into WeekStrip, not Pane; the page-layer
@@ -739,14 +742,16 @@ Apply the right layer to any copy you write.
 
 ## Hosting
 
-This whole system lives at `public/style-guide/` — served by the app and
-viewable in-app under the **Style guide** nav item (Other group), embedded via
-`src/pages/StyleGuide.jsx` (iframe `?embed=1`, theme-synced). Editing these
-files updates both the standalone site and the in-app view (single source).
+This whole system lives at `public/style-guide/` — served by the app.
+The **Style guide** nav item (Other group) is an external link
+(`sections.jsx`) that opens `/style-guide/index.html` in a new tab;
+there is no in-app embed (the iframe page was deleted in 42.5,
+NO-LEGACY).
 
 ## Canonical source files
 
-Tokens/fonts/themes: `index.html`, `src/styles.css`, `src/theme.js`.
+Tokens/fonts/themes: `index.html` (the two data-theme palettes),
+`src/styles.css` (the Tailwind `@theme` map).
 Primitives: `src/components/ui.jsx`. Completion row:
 `src/components/ChoreCheckRow.jsx`. Page-title: `src/components/SectionHeader.jsx`
 / `PageHeader.jsx`. Schedule patterns: `src/pages/Schedule.jsx`,
