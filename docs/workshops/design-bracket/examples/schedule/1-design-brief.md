@@ -1,7 +1,7 @@
 # Schedule Feature — Design Bracket Brief (Round 1 input package)
 
 **What this is:** the input package for the **Design Bracket** on the
-Schedule feature (per `../design-workshops/design-bracket-playbook.md`).
+Schedule feature (per `../../design-bracket-playbook.md`).
 Round 1 = the **wireframe-off**: four design stances each produce low-fi
 wireframes of the hero screens + hard states. Scope is **settled** — this
 Bracket designs the surface, not the model.

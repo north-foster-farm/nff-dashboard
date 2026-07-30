@@ -5,7 +5,7 @@
 It is the **visual/interaction build reference**. Paired with
 `scope-document.md` (the *what*) it is the complete spec to build from.
 
-**The winning artifact:** `mockups/minimalist.html` — the **single-open
+**The winning artifact:** `mockups/minimalist-WINNER.html` — the **single-open
 accordion** Schedule. Open it; it is the visual source of truth. This doc
 records the decisions, the grafts pulled in from the eliminated stances,
 and the binding fixes.

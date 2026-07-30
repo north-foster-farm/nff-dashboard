@@ -8,7 +8,7 @@ around. Read in order:
 
 0. `0-scope-document.md` — the **binding input**. This is the Scope
    Workshop's output handed in as settled scope (same file as
-   `../../../scope-workshop/examples/schedule/5-scope-document.md`). The
+   `../../scope-workshop/examples/schedule/5-scope-document.md`). The
    Bracket designs the surface, not this model.
 1. `1-design-brief.md` — the design brief: binding scope digest + hero
    screens + the states-to-design list + design-system pointers + device

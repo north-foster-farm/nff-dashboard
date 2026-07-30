@@ -18,7 +18,7 @@ raw requirements dump. Read in order:
    questions, and the reserve-lens (Dad) commentary.
 5. `5-scope-document.md` — the binding **Scope Document** the workshop
    produces. *This is also the input to the Design Bracket* (see
-   `../../../design-bracket/examples/schedule/0-scope-document.md`).
+   `../../design-bracket/examples/schedule/0-scope-document.md`).
 
 ## `farm-map/` — the lighter, brief-seed variant
 

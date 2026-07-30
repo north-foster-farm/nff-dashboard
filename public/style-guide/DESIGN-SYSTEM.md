@@ -470,14 +470,15 @@ Each: STATUS · what · use/not · canonical source.
   (the F16 fixed 180px gave way to this content rule, 42.3 feedback).
   Day label = the row-title type at 12px (F11).
   **Folded in + deleted (Step 3):**
-  the center `WeekSpines` (`schedule/WeekSpines.jsx`, removed) + the sidebar
+  the center `WeekSpines` (component removed) + the sidebar
   `WeekList` (removed from `ScheduleSidebars.jsx`); the Schedule renders this
   once in the right sidebar. Source: `src/components/ui.jsx` (`WeekStrip`).
 - **day-load color (by kind)** · Stable · the day-load no longer has a load-state
   fill ramp or a should-heat gradient — both `loadColor()` and `heatColor()` were
   DELETED (slice D, NO-LEGACY). Bars color by kind directly: chore=`--c-chore`,
   project=`--c-project`; warming is the binary `WarmingBadge` (warn=`--c-warn`,
-  due=`--c-cat-processing`). `weekShouldHeat` (`lib/schedule/weekView.js`) is
+  due=`--c-cat-processing`). `weekShouldHeat` (`src/lib/schedule/weekView.js`)
+  is
   gone; `farmLoad` still folds `weekFullness` for the week silhouette.
 - **CommandPalette** · Stable · ⌘K app-wide search, keyboard-first
   (`src/components/CommandPalette.jsx`).
@@ -640,11 +641,11 @@ Each: STATUS · what · use/not · canonical source.
   ("Jim is editing") and their realtime saves stream into an open
   page as storage events. Chrome: filename + lock chip + Edit/Done +
   close over the iframe; HTML rows in AttachmentsBlock wear an
-  accent Globe icon. Engine: `lib/docdata/liveDoc.js` (shim,
+  accent Globe icon. Engine: `src/lib/docdata/liveDoc.js` (shim,
   injection, lockState — TDD'd); data: `useDocData`. Source:
   `src/components/LiveDocViewer.jsx`.
 - **Project URLs + attachment deep links** (0047) — projects live at
-  `/projects/<slug>` (immutable slug from the title, `lib/slug.js`;
+  `/projects/<slug>` (immutable slug from the title, `src/lib/slug.js`;
   uuid links still resolve and canonicalize to the slug on load).
   Every attachment row carries a ghost `Link2` copy-URL action (flips
   to an accent Check for 1.5s) whose link,
@@ -697,7 +698,8 @@ Migration order (cheapest-first): Step 1 — Card→Pane flush flip, ChoreCheckR
 escalation→Hole, unify NowRule. ✓ SHIPPED (`feat/harvest-remix`): Pane built
 flush + Card deleted; escalation de-raised to flat fill; NowRule unified +
 NowMarker collapsed. Step 2 — promote the vocabulary into ui.jsx
-(`lib/load/farmLoad.js` is built; step 0). ◐ IN PROGRESS (`feat/harvest-remix`):
+(`src/lib/load/farmLoad.js` is built; step 0). ◐ IN PROGRESS
+(`feat/harvest-remix`):
 CheckTarget / AttentionCard(+Hole.row) / FinishStamp / LoadSpine / EventRow /
 WindowBar / AlertStrip / WeekStrip promoted into `ui.jsx`; phone Today glance +
 in-run cover card + Schedule needs-cover wired. Step 3 — fold the week + demote
@@ -723,7 +725,7 @@ Schedule Project blocks carry a project DOWN the day — an empty later block
 offers a **"Continue ⟨project⟩"** action (a `CornerDownRight`, project-color
 button) that copies the carried project's next undone step into that gap, so one
 project can span multiple blocks without re-searching (`nextProjectStepFor` in
-`lib/projects.js`). (Full rationale, from repo root:
+`src/lib/projects.js`). (Full rationale, from repo root:
 `docs/workshops/design-bracket/examples/harvest-remix/DESIGN.md`.)
 
 ## Voice

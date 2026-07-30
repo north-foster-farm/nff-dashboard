@@ -1,6 +1,6 @@
 # 2026-06-29 — Harvest-Remix mockup review (Operator vs Systematizer)
 
-_Source: `processed/2026-06-29_21-41-21/transcript.md` (16:00, 144 segments).
+_Source: `transcript-21-41-21.md` (16:00, 144 segments).
 James reviewed the two coded Round-2 mockups side by side (Operator left,
 Systematizer right) in light + dark. This is a **review→direct** capture: the
 output seeds the **next** design-bracket round (Round 3). The binding spec lives
