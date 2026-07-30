@@ -233,8 +233,8 @@ export function useProducts() {
     [updateProduct]
   );
 
-  // Hard delete. Fails (FK restrict) if chicken_lots or product_sales
-  // reference the product — callers surface that as "archive instead".
+  // Hard delete. Fails (FK restrict) if product_sales rows reference
+  // the product — callers surface that as "archive instead".
   const removeProduct = useCallback(async (id) => {
     const { error: err } = await supabase.from("product_kinds")
       .delete().eq("id", id);

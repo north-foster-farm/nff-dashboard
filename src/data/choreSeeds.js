@@ -14,8 +14,9 @@
 //   * Deadlines are BLOCK-REFERENCE jsonb (Option A hybrid), not
 //     clock-hour offsets.
 //   * Recurrence gains the generalized `every_n` variant (months, etc.).
-//   * Checklists ride on the chore (mkt-load-vehicle) — Phase C splits
-//     them into chore_checklist_items (migration 0033).
+//   * Checklists ride on the chore (mkt-load-vehicle) — the planned
+//     Phase C split into a chore_checklist_items table never ran
+//     (0033's empty table was dropped in 0051).
 //   * Event/process- and batch-triggered chores (§5, §6) live in their
 //     own exports with `trigger` metadata; the recurring engine treats
 //     them as inert (`frequency.type === "event"`).

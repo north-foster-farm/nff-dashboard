@@ -30,9 +30,11 @@
 // chore (period hardcoded "morning", no block / deadline / checklist /
 // place / time window). The block/deadline/checklist carry-through is
 // engine work; `choreId` is recorded on every step so that upgrade has
-// everything it needs to spawn block- and deadline-aware chores and
-// attach chore_checklist_items. Until then, mkt-load-vehicle's checklist
-// is also rendered into the step body so nothing is lost.
+// everything it needs to spawn block- and deadline-aware chores with
+// structured checklists (the 0033 chore_checklist_items table was
+// dropped unused in 0051 — that upgrade re-adds storage). Until then,
+// mkt-load-vehicle's checklist is also rendered into the step body so
+// nothing is lost.
 //
 // DEFERRED: the six manual-landmark post-return chores (§5.4, §6.3) are
 // NOT steps here — landmarks have no engine foundation yet
@@ -87,7 +89,7 @@ function skipStep(targetChoreId, offsetDays, sortOrder) {
 }
 
 // Render a chore checklist into markdown for the step body (interim,
-// until process-spawned chores carry chore_checklist_items).
+// until process-spawned chores carry structured checklists).
 function checklistToMd(items) {
   return (items ?? [])
     .map((i) => `- [ ] ${i.label}${i.optional ? " _(optional)_" : ""}`)
