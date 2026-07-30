@@ -32,44 +32,21 @@ run `netlify dev` — that one needs `SUPABASE_SECRET_KEY` set in `.env.local`.
 
 ## Layout
 
-```text
-src/
-├── main.jsx               entry; wraps <App> in <LoginGate>
-├── App.jsx                root; merges JSON + DB reference data
-├── theme.js               design tokens
-├── sections.jsx           sidebar/section registry
-├── components/            chrome (TopBar, Sidebar, LoginGate, …)
-├── pages/                 per-section views
-├── lib/
-│   ├── supabase.js        single Supabase client
-│   ├── data/              hooks: useReferenceData, useChoreCompletions,
-│   │                      useActivityLog, useBatchAssignments
-│   ├── chores.js          chore engine (recurrence, deadlines, day expansion)
-│   ├── recurrence.js      event-instance recurrence expansion
-│   ├── productCost.js     broiler cost-floor math
-│   └── dates.js           date helpers
-└── data/
-    ├── nff-data.json      JSON fallback + costs/meta/modelNotes (still
-    │                      authoritative for these three slices)
-    └── choreSeeds.js      canonical chore definitions; source for the
-                           Supabase seed and a fallback if the DB is empty
+Orientation, not a tree (trees rot — the code is the map):
 
-netlify/
-└── functions/
-    ├── heartbeat.mjs           daily scheduled fn; upserts the heartbeat row
-    ├── notify-run-done.mjs     web-push sender (run close-out)
-    └── schedule-reminder.mjs   web-push sender (schedule reminders)
-
-supabase/
-└── migrations/            0001…0050, additive-only, all checked in
-
-scripts/
-├── gen-batch2-seed.mjs    regenerates chore_definitions seed block from
-│                          choreSeeds.js
-├── gen-batch3-seed.mjs    regenerates events + product_kinds seed blocks
-│                          from nff-data.json
-└── gen-batch4-seed.mjs    regenerates threads seed block from nff-data.json
-```
+- `src/lib/` — pure business logic + the vitest suite (`*.test.js`)
+- `src/lib/data/` — Supabase hooks (one per slice, ~50 of them)
+- `src/pages/` + `src/components/` — the UI; `src/sections.jsx` is the
+  sidebar/section registry
+- `src/styles.css` + `index.html` — the token layer (Tailwind `@theme`
+  over the `--c-*` palettes)
+- `public/style-guide/` — the design system (visual docs +
+  `DESIGN-SYSTEM.md`)
+- `docs/` — the feature-history catalog, specs, and workshop playbooks
+- `audits/` — dated walkthrough findings; `scripts/` — backup/restore,
+  seeds, hooks; `netlify/functions/` — heartbeat + the two web-push
+  senders; `supabase/migrations/` — 0001…0050, additive-only; `mcp/` —
+  the agent-bridge server
 
 ## Data flow
 
