@@ -227,6 +227,14 @@ function orderedBlocks(blocks, date) {
     .map((x) => x.b);
 }
 
+// The day's first active block by resolved start. Blocks are user data —
+// name and slug are presentation the user can change freely — so "the
+// morning block" is a POSITION, derived per-date, never an identity to
+// look up (F5). Null when there are no active blocks.
+export function firstBlockOfDay(blocks, date) {
+  return orderedBlocks(blocks, date)[0] ?? null;
+}
+
 // The next date on/after `date` whose weekday is `weekday` (Sun=0).
 function nextWeekdayOnOrAfter(date, weekday) {
   const out = startOfDay(date);
@@ -463,94 +471,21 @@ export function formatTime12hShort(hhmm) {
   return m === 0 ? `${h12} ${ampm}` : `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-// Convert "HH:MM" to minutes since midnight (0–1439). Treats post-midnight
-// evening times as still-in-the-evening-bucket — i.e. a 3 AM chore returns
-// 180, NOT 1620; period detection happens elsewhere.
-function startMinutes(hhmm) {
-  const [h, m] = (hhmm || "00:00").split(":").map(Number);
-  return h * 60 + m;
-}
-
-// True if `hhmm` falls inside the spec's window for the given period.
-// Period windows:
-//   morning   05:00–11:59
-//   afternoon 12:00–17:59
-//   evening   18:00–04:59  (wraps midnight)
-function inPeriodWindow(hhmm, period) {
-  const min = startMinutes(hhmm);
-  if (period === "morning") return min >= 300 && min <= 719;
-  if (period === "afternoon") return min >= 720 && min <= 1079;
-  if (period === "evening") return min >= 1080 || min <= 299;
-  return false;
-}
-
-// Find the earliest chore instance within a given period for a day. Evening
-// times wrap (so 6 PM precedes 3 AM next morning). Returns null if no chore
-// in the period matches.
-export function getEarliestChoreInPeriod(instances, period) {
-  const candidates = instances.filter(
-    (i) => i.chore.period === period && inPeriodWindow(i.chore.startTime, period)
-  );
-  if (candidates.length === 0) return null;
-  const order = (t) => {
-    const min = startMinutes(t);
-    if (period === "evening") return min < 300 ? min + 24 * 60 : min;
-    return min;
-  };
-  candidates.sort((a, b) => order(a.chore.startTime) - order(b.chore.startTime));
-  return candidates[0];
-}
-
-// Earliest start time for a period as minutes-since-midnight (0–1439). Used
-// to detect "pre-morning" items in the schedule timeline (anything before
-// today's morning-chores start). Returns null if the period has no chores.
-export function getChorePeriodStartMinutes(instances, period) {
-  const earliest = getEarliestChoreInPeriod(instances, period);
-  return earliest ? startMinutes(earliest.chore.startTime) : null;
-}
-
-// Compute the displayed start-time label for a chore period given the chore
-// instances scheduled on a particular day. The label is the earliest start
-// time among that period's chores, formatted via formatTime12hShort. Returns
-// "" if the period has no qualifying chores.
-export function getChorePeriodTimeLabel(instances, period) {
-  const earliest = getEarliestChoreInPeriod(instances, period);
-  return earliest ? formatTime12hShort(earliest.chore.startTime) : "";
-}
-
-// Block-aware variant: prefers chore_blocks data over the legacy
-// period helpers when a matching block is available. Lookup is by
-// lower-cased block name. Sunrise / sunset blocks resolve to today's
-// actual times via SunCalc; fixed blocks use their stored minutes.
-//
-// `blocks` is the list returned by useChoreBlocks (camelCase shape).
-export function getBlockTimeLabelForPeriod(instances, period, blocks) {
-  const block = blocks?.find((b) => b.isActive && b.name.toLowerCase() === period);
-  if (block) {
-    if (block.startKind === "sunrise") return "sunrise";
-    if (block.startKind === "sunset") return "sunset";
-    const m = ((block.startMinutes % 1440) + 1440) % 1440;
-    const h24 = Math.floor(m / 60);
-    const minutes = m % 60;
-    const ampm = h24 < 12 ? "AM" : "PM";
-    const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
-    return minutes === 0
-      ? `${h12} ${ampm}`
-      : `${h12}:${String(minutes).padStart(2, "0")} ${ampm}`;
-  }
-  return getChorePeriodTimeLabel(instances, period);
-}
-
-// Block-aware start-minutes for the timeline pre-morning detection.
-// Sunrise / sunset blocks resolve via SunCalc; fixed blocks return
-// their stored minutes.
-export function getBlockStartMinutesForPeriod(instances, period, blocks) {
-  const block = blocks?.find((b) => b.isActive && b.name.toLowerCase() === period);
-  if (block) {
-    if (block.startKind === "fixed") return block.startMinutes;
-    return sunMinutesOfDay(new Date(), block.startKind);
-  }
-  return getChorePeriodStartMinutes(instances, period);
+// A block's own start-time label — read straight off the block row,
+// never resolved through a name or period lookup (F5). Sun-anchored
+// blocks label as their event; fixed blocks as their clock time.
+export function blockTimeLabel(block) {
+  if (!block) return "";
+  if (block.startKind === "sunrise") return "sunrise";
+  if (block.startKind === "sunset") return "sunset";
+  const m = (((block.startMinutes ?? 0) % 1440) + 1440) % 1440;
+  const h24 = Math.floor(m / 60);
+  const minutes = m % 60;
+  const ampm = h24 < 12 ? "AM" : "PM";
+  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+  return minutes === 0
+    ? `${h12} ${ampm}`
+    : `${h12}:${String(minutes).padStart(2, "0")} ${ampm}`;
 }
 
 // Short display for a chore's start time, respecting evening chores that are

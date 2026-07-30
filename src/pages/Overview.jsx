@@ -16,7 +16,7 @@ import {
 } from "../lib/schedule/deriveDay.js";
 import {
   getChoresForDay, displayDeadlineConcrete, describeChoreAnchor,
-  getBlockTimeLabelForPeriod,
+  firstBlockOfDay, blockTimeLabel,
   formatTime12hShort,
   obligationPlaceIds
 } from "../lib/chores.js";
@@ -346,12 +346,12 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
   );
 
   const todayMorningCutoff = useMemo(
-    () => todaysMorningCutoff(data, today, blocks, ruleOpts),
-    [data, today, blocks, ruleOpts]
+    () => todaysMorningCutoff(today, blocks),
+    [today, blocks]
   );
   const tomorrowMorningCutoff = useMemo(
-    () => todaysMorningCutoff(data, tomorrow, blocks, ruleOpts),
-    [data, tomorrow, blocks, ruleOpts]
+    () => todaysMorningCutoff(tomorrow, blocks),
+    [tomorrow, blocks]
   );
 
   // Round sundown up to the next half-hour so the schedule shows a clean
@@ -410,9 +410,9 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
       if (r.startMin != null && r.startMin < tomorrowMorningCutoff) {
         // Pre-morning rollup → always include in Tomorrow.
         filteredRollups.push(r);
-      } else if (r.block?.name?.toLowerCase() === "morning") {
-        // Morning rollup → only include if a single named assignee owns it,
-        // and surface that name in place of the item count.
+      } else if (r.block && r.block.id === firstBlockOfDay(blocks, tomorrow)?.id) {
+        // First-block rollup → only include if a single named assignee owns
+        // it, and surface that name in place of the item count.
         const assignee = getRollupAssignee(r, tomorrow, ruleOpts);
         if (assignee) filteredRollups.push({ ...r, assignee });
       }
@@ -426,7 +426,7 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
       modifiers,
       dateISO: isoFromDate(tomorrowUTC)
     });
-  }, [tomorrowsEvents, tomorrowsChoreRollups, tomorrowMorningCutoff, tomorrow, sundownLabel, modifiers, tomorrowUTC]);
+  }, [tomorrowsEvents, tomorrowsChoreRollups, tomorrowMorningCutoff, tomorrow, blocks, sundownLabel, modifiers, tomorrowUTC]);
 
   // ─── "Upcoming events" — events between (today + 2) and (today + 7) ────
   const upcomingEvents = useMemo(() => {
@@ -724,7 +724,6 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
               key={key}
               block={blockById.get(key) ?? null}
               instances={byBlock[key]}
-              blocks={blocks}
               completions={completions}
               placesById={placesById}
               choreCtx={choreCtx}
@@ -737,12 +736,10 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
 }
 
 function UpcomingBlockGroup({
-  block, instances, blocks, completions, placesById, choreCtx,
+  block, instances, completions, placesById, choreCtx,
 }) {
   const label = block?.name ?? "Anytime";
-  const timeLabel = block
-    ? getBlockTimeLabelForPeriod(instances, block.name.toLowerCase(), blocks)
-    : "";
+  const timeLabel = blockTimeLabel(block);
   return (
     <div>
       <div className="text-[11px] text-fg uppercase tracking-[0.14em] font-bold mb-1.5">

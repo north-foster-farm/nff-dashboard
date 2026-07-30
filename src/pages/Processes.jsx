@@ -7,6 +7,7 @@ import { useProcesses } from "../lib/data/useProcesses.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
 import { useSites } from "../lib/data/useSites.js";
 import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
+import { firstBlockOfDay } from "../lib/chores.js";
 import ChoreFieldsEditor from "../components/ChoreFieldsEditor.jsx";
 import { Pane, StatusPill, BTN_ACCENT } from "../components/ui.jsx";
 import { describeOffset } from "../lib/processes.js";
@@ -178,9 +179,11 @@ function ProcessEditor({ process, kinds, proc }) {
   // reference data the Chores editor pulls.
   const { places, groups, speciesById } = useSites();
   const { blocks } = useChoreBlocks();
-  // New chore steps seed to the morning block so they never start
-  // null (matches the expansion floor; resolved by stable slug).
-  const morningBlockId = blocks.find(b => b.slug === "morning")?.id;
+  // New chore steps seed to the day's first block so they never start
+  // null (matches the expansion floor). Derived from the block
+  // schedule, never a name/slug lookup — user-created blocks have no
+  // slug at all (F5).
+  const morningBlockId = firstBlockOfDay(blocks, new Date())?.id;
   const editorData = { places, blocks, groups, speciesById };
 
   return (

@@ -77,12 +77,22 @@ describe("rollupChoresForDay", () => {
 });
 
 describe("todaysMorningCutoff", () => {
-  it("returns the morning block's resolved start minutes when morning chores exist", () => {
-    const defs = [dailyChore("m1", { blockId: "morning", startTime: "06:00" })];
-    const data = { chores: { definitions: defs } };
-    // getBlockStartMinutesForPeriod looks up a block literally named
-    // "morning" (case-insensitive) in the blocks list first.
-    const cutoff = todaysMorningCutoff(data, d(2026, 6, 1), BLOCKS, { blocks: BLOCKS });
+  it("returns the first block's resolved start minutes", () => {
+    const cutoff = todaysMorningCutoff(d(2026, 6, 1), BLOCKS);
+    expect(cutoff).toBe(6 * 60);
+  });
+
+  it("survives the user renaming the first block — prod names it Sunrise, not Morning", () => {
+    // Block names are user data (F5): the live rows are Sunrise/Sunset,
+    // and the old name-keyed lookup returned null for them, which kept
+    // the Overview's Tomorrow section dark for the app's whole life.
+    // The cutoff is the day's FIRST block by resolved start, whatever
+    // it is called.
+    const renamed = [
+      fixedBlock("sunrise", "Sunrise", 6 * 60),
+      fixedBlock("sunset", "Sunset", 18 * 60),
+    ];
+    const cutoff = todaysMorningCutoff(d(2026, 6, 1), renamed);
     expect(cutoff).toBe(6 * 60);
   });
 });

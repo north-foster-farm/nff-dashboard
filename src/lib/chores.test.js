@@ -29,6 +29,8 @@ import {
   displayDeadlineDateShort,
   obligationPlaceIds,
   describeChoreAnchor,
+  firstBlockOfDay,
+  blockTimeLabel,
   CHORE_BLOCK_IDS,
 } from "./chores.js";
 
@@ -244,6 +246,46 @@ describe("isChoreActiveOn — every_n (days/weeks/months/years)", () => {
   it("every_n with an unrecognized unit never fires", () => {
     const c = chore({ frequency: { type: "every_n", unit: "fortnights", n: 1 } });
     expect(isChoreActiveOn(c, d(2026, 6, 1))).toBe(false);
+  });
+});
+
+describe("firstBlockOfDay — the day's first block is derived, never identified", () => {
+  // Blocks are user data: name and slug are presentation the user can
+  // freely change (the live rows are named Sunrise/Sunset, not
+  // Morning). Code that needs "the day's first block" derives it from
+  // the resolved start order — it never matches a name (F5 remedy).
+  it("returns the earliest-starting active block no matter what it is named", () => {
+    const sunset = { ...fixedBlock("b-sunset", 19 * 60), name: "Sunset" };
+    const sunrise = { ...fixedBlock("b-sunrise", 6 * 60), name: "Sunrise" };
+    const first = firstBlockOfDay([sunset, sunrise], d(2026, 6, 1));
+    expect(first).toBe(sunrise);
+  });
+
+  it("skips inactive blocks even when they start earliest", () => {
+    const retired = { ...fixedBlock("b-old", 5 * 60, 60, false), name: "Dawn" };
+    const live = { ...fixedBlock("b-live", 8 * 60), name: "Late Start" };
+    expect(firstBlockOfDay([retired, live], d(2026, 6, 1))).toBe(live);
+  });
+
+  it("returns null when there are no blocks to derive from", () => {
+    expect(firstBlockOfDay([], d(2026, 6, 1))).toBeNull();
+    expect(firstBlockOfDay(undefined, d(2026, 6, 1))).toBeNull();
+  });
+});
+
+describe("blockTimeLabel — a block's own start label, no lookup involved", () => {
+  it("labels a fixed block with its clock time", () => {
+    expect(blockTimeLabel(fixedBlock("b1", 6 * 60))).toBe("6 AM");
+    expect(blockTimeLabel(fixedBlock("b2", 16 * 60 + 30))).toBe("4:30 PM");
+  });
+
+  it("labels sun-anchored blocks by their event, not a clock time", () => {
+    expect(blockTimeLabel({ id: "b3", startKind: "sunrise" })).toBe("sunrise");
+    expect(blockTimeLabel({ id: "b4", startKind: "sunset" })).toBe("sunset");
+  });
+
+  it("returns an empty label for a missing block", () => {
+    expect(blockTimeLabel(null)).toBe("");
   });
 });
 

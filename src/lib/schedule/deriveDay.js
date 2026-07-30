@@ -17,7 +17,7 @@
 import {
   getChoresForDay,
   resolveAssignee,
-  getBlockStartMinutesForPeriod,
+  firstBlockOfDay,
 } from "../chores.js";
 import { resolveBlockMinutes } from "../sunTimes.js";
 import { getEventOccurrences } from "../recurrence.js";
@@ -45,14 +45,17 @@ export function rollupChoresForDay(data, dayDate, ruleOpts) {
   });
 }
 
-// The morning block's resolved start minutes for a day — used to split a
-// day at its morning boundary.
-export function todaysMorningCutoff(data, dayDate, blocks, ruleOpts) {
-  return getBlockStartMinutesForPeriod(
-    getChoresForDay(data, dayDate, ruleOpts),
-    "morning",
-    blocks,
-  );
+// The day's first-block start minutes — used to split a day at its
+// morning boundary. Derived from the block schedule (the first active
+// block by resolved start), never from a block's user-editable name
+// (F5): the old name-keyed lookup returned null against the live
+// Sunrise/Sunset names, which kept Overview's Tomorrow section dark
+// for the app's whole life. Null until blocks load.
+export function todaysMorningCutoff(dayDate, blocks) {
+  const first = firstBlockOfDay(blocks, dayDate);
+  if (!first) return null;
+  return resolveBlockMinutes(dayDate, first.startKind, first.startMinutes)
+    ?? first.startMinutes ?? null;
 }
 
 // If every chore in the rollup that has an assignee resolves to the same
