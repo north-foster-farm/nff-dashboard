@@ -1,19 +1,23 @@
 #!/bin/sh
-# Commit requirement: a green FULL run of the unit suite.
+# Commit requirement: `npm run check` green — the full unit suite,
+# eslint (errors gate; warnings are the backlog), stylelint, and the
+# house format rules (trailing whitespace; max-len 80 ratchet on
+# added non-template lines — scripts/check-format.sh).
 # Installed via `git config core.hooksPath .githooks` (one-time,
 # per clone; scripts/setup-hooks.sh does it for you).
-# Goes through `npm test` deliberately: that script is the single
-# definition of "the suite", so anything added to it (lint, coverage
-# thresholds) is enforced here too instead of being bypassed.
-echo "pre-commit: running unit suite (npm test)..."
-npm test --silent -- --silent
+# Goes through `npm run check` deliberately: that script is the
+# single definition of "ready to commit", so anything added to it
+# (coverage thresholds, new linters) is enforced here too instead of
+# being bypassed.
+echo "pre-commit: running checks (npm run check)..."
+npm run check --silent
 status=$?
 if [ $status -ne 0 ]; then
   echo ""
-  echo "pre-commit: BLOCKED — the test suite is not green."
+  echo "pre-commit: BLOCKED — checks are not green."
   echo "Fix the failures (or cull tests that no longer earn their"
   echo "keep) and commit again. Bypassing with --no-verify is not"
   echo "the workflow."
   exit $status
 fi
-echo "pre-commit: suite green."
+echo "pre-commit: checks green."

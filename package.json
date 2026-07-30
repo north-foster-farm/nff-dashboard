@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . && stylelint 'src/**/*.css' 'public/style-guide/assets/*.css'",
+    "check": "npm run lint && npm test && bash scripts/check-format.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:partition": "node scripts/test-schedule-partition.mjs"

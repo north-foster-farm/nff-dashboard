@@ -36,7 +36,7 @@ The value is not any single pitch — it's the **spread**. One agent over-builds
                  (omit inapplicable; the rest become RESERVE lenses)
                                   │  (parallel, blind to each other)
             ┌──────────┬──────────┼──────────┬──────────┐
-            ▼          ▼          ▼          ▼          
+            ▼          ▼          ▼          ▼
         Agent 1    Agent 2    Agent 3    Agent 4     ...   │  RESERVE
         (selected lenses, max 5)                           │  (e.g. Dad)
             │          │          │          │             │

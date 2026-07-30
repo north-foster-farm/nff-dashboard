@@ -99,7 +99,7 @@ This Privacy Policy only applies to the information we collect. The YoSmart Webs
 
 Although we strive to use commercially acceptable means to protect your personally identifiable information, we cannot guarantee the security of any information you transmit to us or receive from us. You can help protect your information by creating a strong password to access your online account and by accessing your account only through a personal computer or device (not a public computer or public means).
 
-If you provide us with your personally identifiable information, you are deemed to have agreed to the collection, use and disclosure of such information in accordance with the provisions of this privacy policy. 
+If you provide us with your personally identifiable information, you are deemed to have agreed to the collection, use and disclosure of such information in accordance with the provisions of this privacy policy.
 
 ## 2\. HOW WE USE THE INFORMATION​
 
@@ -184,7 +184,7 @@ This Privacy Policy only applies to the information we collect. The YoSmart Webs
 
 Although we strive to use commercially acceptable means to protect your personally identifiable information, we cannot guarantee the security of any information you transmit to us or receive from us. You can help protect your information by creating a strong password to access your online account and by accessing your account only through a personal computer or device (not a public computer or public means).
 
-If you provide us with your personally identifiable information, you are deemed to have agreed to the collection, use and disclosure of such information in accordance with the provisions of this privacy policy. 
+If you provide us with your personally identifiable information, you are deemed to have agreed to the collection, use and disclosure of such information in accordance with the provisions of this privacy policy.
 
 ## 2\. HOW WE USE THE INFORMATION​
 
@@ -440,7 +440,7 @@ data.name| <String,Necessary>| The CS Name
   
 ## 4.Manage.syncAccountDevice​
 
-> Sync YoSmart Account's Device List 
+> Sync YoSmart Account's Device List
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -716,7 +716,7 @@ After the device enters the WiFi configuration mode, it will open a WiFi hotspot
 Request:
 [code]
     GET /api/v1/network/state  
-    
+
 [/code]
 
 Copy
@@ -729,7 +729,7 @@ Response:
         data.wifi.ip： String<Optional>, Current IP address of the WiFi, empty means that the WiFi client is not yet connected to any WiFi network;  
         data.wifi.ssid: String<Optional>, The ssid of current WiFi configuration  
         data.internet: Bool<Optional>, Whether the device is connected to the Internet；  
-    
+
 [/code]
 
 Copy
@@ -739,7 +739,7 @@ Copy
  _Note:Searching for WiFi networks takes some time, please make the timeout for calling this interface greater than 8 seconds_ Request:
 [code]
     GET /api/v1/wifi/scan  
-    
+
 [/code]
 
 Copy
@@ -750,8 +750,8 @@ Response:
     Body:  
         code: String, The error code; "000000" means success;  
         data[*].ssid： String, SSID of the WiFi network;  
-        data[*].rssi: Integer, Signal strength of the WiFi network   
-    
+        data[*].rssi: Integer, Signal strength of the WiFi network
+
 [/code]
 
 Copy
@@ -763,12 +763,12 @@ Copy
 Request:
 [code]
     POST /api/v1/wifi/sta  
-      
+
     Content-Type: application/json  
     Body:  
         ssid: String, SSID of target WiFi network；  
         pwd: String,  Password of target WiFi network;  
-    
+
 [/code]
 
 Copy
@@ -778,7 +778,7 @@ Response:
     Content-Type: application/json  
     Body:  
         code: String, The error code; "000000" means success;  
-    
+
 [/code]
 
 Copy
@@ -790,7 +790,7 @@ Copy
 Request:
 [code]
     POST /api/v1/wifi/config/exit  
-    
+
 [/code]
 
 Copy
@@ -800,7 +800,7 @@ Response:
     Content-Type: application/json  
     Body:  
         code: String, The error code; "000000" means success;  
-    
+
 [/code]
 
 Copy
@@ -831,7 +831,7 @@ After the device enters the WiFi configuration mode, it will open a WiFi hotspot
 Request:
 [code]
     GET /cgi-bin/api/v1/getNetState  
-    
+
 [/code]
 
 Copy
@@ -839,9 +839,9 @@ Copy
 Response:
 [code]
     Content-Type: application/json  
-    Body:   
-        *: Info of ethernet   
-    
+    Body:
+        *: Info of ethernet
+
 [/code]
 
 Copy
@@ -851,7 +851,7 @@ Copy
  _Note:Searching for WiFi networks takes some time, please make the timeout for calling this interface greater than 8 seconds_ Request:
 [code]
     GET /cgi-bin/api/v1/scan  
-    
+
 [/code]
 
 Copy
@@ -864,8 +864,8 @@ Response:
         data[*].ssid： String, ESSID of the WiFi network;  
         data[*].bssid: String, BSSID of the WiFi network;  
         data[*].authType: String, Encryption type of the WiFi network, Please check the Code Map Of WiFi Encryption for detailed info.  
-        data[*].rssi: Integer, Signal strength of the WiFi network   
-    
+        data[*].rssi: Integer, Signal strength of the WiFi network
+
 [/code]
 
 Copy
@@ -879,13 +879,13 @@ Copy
 Request:
 [code]
     POST /cgi-bin/api/v1/setWiFiSta  
-      
+
     Content-Type: application/json  
     Body:  
         ssid: String, ESSID of target WiFi network；  
         pwd: String,  Password of target WiFi network;  
         authType: String, Encryption type of the WiFi network;  
-    
+
 [/code]
 
 Copy
@@ -895,7 +895,7 @@ Response:
     Content-Type: application/json  
     Body:  
         code: String, The error code; "000000" means success;  
-    
+
 [/code]
 
 Copy
@@ -907,9 +907,9 @@ The hub will exit AP mode and return to STA mode.
 Request:
 [code]
     POST /cgi-bin/api/v1/exitAPMode  
-      
+
     Content-Type: application/json  
-    
+
 [/code]
 
 Copy
@@ -919,7 +919,7 @@ Response:
     Content-Type: application/json  
     Body:  
         code: String, The error code; "000000" means success;  
-    
+
 [/code]
 
 Copy
@@ -1033,7 +1033,7 @@ On this page
 ### Step2, Bind YoLink Devices​
 [code]
     1.1 Call Manage.addYoLinkDevice with device SN Code ( The QR-Code ) on device label.  
-    
+
 [/code]
 
 Copy
@@ -1049,11 +1049,11 @@ Copy
 >     >         "sn":"****060212B6481EBD4EC7696728****"  
 >     >     }  
 >     > }  
->     > 
+>     >
 [/code]
-> 
+>
 > Copy
-> 
+>
 > Response: JSON of [_BUDP_](</docs/protocol/datapacket#BUDP>)
 [code]
 >     {  
@@ -1069,15 +1069,15 @@ Copy
 >     >         "type": "Hub"  
 >     >     }  
 >     > }  
->     > 
+>     >
 [/code]
-> 
+>
 > Copy
 
 ### Step3, Control devices with device token​
 [code]
     2.1 Call ${DeviceType}.* with Device Net Info(DeviceId & Net Token) obtained in Step 1.  
-    
+
 [/code]
 
 Copy
@@ -1094,11 +1094,11 @@ Copy
 >     >   "params":{  
 >     >   }  
 >     > }  
->     > 
+>     >
 [/code]
-> 
+>
 > Copy
-> 
+>
 > Response: JSON of [_BUDP_](</docs/protocol/datapacket#BUDP>)
 [code]
 >     {  
@@ -1120,9 +1120,9 @@ Copy
 >     >         }  
 >     >     }  
 >     > }  
->     > 
+>     >
 [/code]
-> 
+>
 > Copy
 
 > You can also call Manage.syncAccountDevice to get YoSmart account's devices.
@@ -1159,7 +1159,7 @@ YoLink App (**[Local Hub]** -> **[Local Network]** -> **[Integrations]** -> **[L
 Obtain the access_token through the [Token interface](</docs/protocol/local_hub/openAPILocal#oauth20>) of Open API V2
 [code]
     curl -X POST -d "grant_type=client_credentials&client_id=${ClientId}&client_secret=${ClientSecret}" ${SVR_URL}/open/yolink/token  
-    
+
 [/code]
 
 Copy
@@ -1172,7 +1172,7 @@ Copy
     --header 'Content-Type: application/json' \  
     --header 'Authorization: Bearer ${access_token}' \  
     --data-raw '${BDDP}'  
-    
+
 [/code]
 
 Copy
@@ -1184,7 +1184,7 @@ Copy
     {  
       "method": "Home.getDeviceList"  
     }  
-    
+
 [/code]
 
 Copy
@@ -1204,7 +1204,7 @@ Copy
         "type": "DoorSensor"  
       }  
     }  
-    
+
 [/code]
 
 Copy
@@ -1219,7 +1219,7 @@ Call ${DeviceType}.* with Device Net Info(DeviceId & Net Token) obtained in Step
     --header 'Content-Type: application/json' \  
     --header 'Authorization: Bearer ${access_token}' \  
     --data-raw '${BDDP}'  
-    
+
 [/code]
 
 Copy
@@ -1234,7 +1234,7 @@ Copy
       "token": "****2C89C9FE5C30509B9B6****",  
       "params": {}  
     }  
-    
+
 [/code]
 
 Copy
@@ -1260,7 +1260,7 @@ Copy
         "reportAt": "2025-02-10T04:00:22.818Z"  
       }  
     }  
-    
+
 [/code]
 
 Copy
@@ -1268,7 +1268,7 @@ Copy
 ### Step5, Subscribe to receive events from devices​
 [code]
      mosquitto_sub -u ${ClientId} -P ${ClientSecret or AccessToken} -p 18080 -h ${Your Local Hub IP Address} -t ylsubnet/${sub-net Id}/+/report  
-    
+
 [/code]
 
 Copy
@@ -1295,7 +1295,7 @@ Create a UAC in YoLink App (**[Account]** -> **[Advanced Settings]** -> **[Perso
 Obtain the access_token of UAC through the [Token interface](</docs/protocol/openAPIV2#2-oauth20>) of Open API V2
 [code]
     curl -X POST -d "grant_type=client_credentials&client_id=${UAID}&client_secret=${Secret Key of PAC}" ${SVR_URL}/open/yolink/token  
-    
+
 [/code]
 
 Copy
@@ -1308,7 +1308,7 @@ Copy
     --header 'Content-Type: application/json' \  
     --header 'Authorization: Bearer ${access_token}' \  
     --data-raw '${BDDP}'  
-    
+
 [/code]
 
 Copy
@@ -1321,7 +1321,7 @@ Copy
         "method":"Home.getDeviceList",  
         "time":${timestamp}  
     }  
-    
+
 [/code]
 
 Copy
@@ -1349,7 +1349,7 @@ Copy
         ]  
       }  
     }  
-    
+
 [/code]
 
 Copy
@@ -1364,7 +1364,7 @@ Call ${DeviceType}.* with Device Net Info(DeviceId & Net Token) obtained in Step
     --header 'Content-Type: application/json' \  
     --header 'Authorization: Bearer ${access_token}' \  
     --data-raw '${BDDP}'  
-    
+
 [/code]
 
 Copy
@@ -1381,7 +1381,7 @@ Copy
       "params":{  
       }  
     }  
-    
+
 [/code]
 
 Copy
@@ -1408,7 +1408,7 @@ Copy
         }  
       }  
     }  
-    
+
 [/code]
 
 Copy
@@ -1421,7 +1421,7 @@ Copy
     --header 'Content-Type: application/json' \  
     --header 'Authorization: Bearer ${access_token}' \  
     --data-raw '${BDDP}'  
-    
+
 [/code]
 
 Copy
@@ -1434,7 +1434,7 @@ Copy
         "method":"Home.getGeneralInfo",  
         "time":${timestamp},  
     }  
-    
+
 [/code]
 
 Copy
@@ -1451,7 +1451,7 @@ Copy
         "id": "****340cba25****"  
       }  
     }  
-    
+
 [/code]
 
 Copy
@@ -1459,7 +1459,7 @@ Copy
 ### Step6, Subscribe to receive events from devices​
 [code]
      mosquitto_sub -u ${access_token} -p 8003 -h mqtt.api.yosmart.com -t yl-home/****340cba25****/+/report  
-    
+
 [/code]
 
 Copy
@@ -1696,14 +1696,14 @@ Token URL| ${SVR_URL}/open/yolink/token
 [code]
     //Get access token  
     curl -X POST -d "grant_type=client_credentials&client_id=${ClientId}&client_secret=${ClientSecret}" ${SVR_URL}/open/yolink/token  
-    
+
 [/code]  
   
 Copy
 [code]
     //Get access token by refresh_token  
     curl -X POST -d "grant_type=refresh_token&client_id=${ClientId}&refresh_token=${Refresh Token}" ${SVR_URL}/open/yolink/token  
-    
+
 [/code]
 
 Copy
@@ -1889,14 +1889,14 @@ Token URL| ${SVR_URL}/open/yolink/token
 [code]
     //Get access token by UAC  
     curl -X POST -d "grant_type=client_credentials&client_id=${UAID}&client_secret=${Secret Key of UAC}" ${HTTP Host}/open/yolink/token  
-    
+
 [/code]  
   
 Copy
 [code]
     //Get access token by refresh_token  
     curl -X POST -d "grant_type=refresh_token&client_id=${UAID}&refresh_token=${Refresh Token}" ${HTTP Host}/open/yolink/token  
-    
+
 [/code]
 
 Copy
@@ -3047,7 +3047,7 @@ data.deviceId| <String,Necessary>| Id of device
   
 ## 2.LeakSensor.setSettings​
 
-> Set settings for leak sensor 
+> Set settings for leak sensor
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -4899,7 +4899,7 @@ data.running.mode| <String,Necessary>| Mode, ["manual","schedule"]
 data.running.total.type| <String,Necessary>| Watering type, ["duration","amount"]  
 data.running.total.value| <Integer,Necessary>| Duration or amount, base on type  
 data.running.progress| <Integer,Necessary>| Progress of watering  
-data.waterFlowing| <Integer,Necessary>|   
+data.waterFlowing| <Integer,Necessary>|
 data.battery| <Integer,Necessary>| Battery level, [0-4] empty to full  
 data.version| <String,Necessary>| Firmware Version of device  
 data.tz| <Integer,Necessary>| Timezone of device. -12 ~ 12  
@@ -6282,7 +6282,7 @@ state| <String,Necessary>| result,"SetSuccess"
   
 ## 5.ApartmentLock.updatePwd​
 
-> Update password 
+> Update password
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -6303,7 +6303,7 @@ state| <String,Necessary>| result,"SetSuccess"
   
 ## 6.ApartmentLock.getTemporaryPassword​
 
-> Get Temporary Password 
+> Get Temporary Password
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -7094,7 +7094,7 @@ On this page
 
 ## 1.Hub.getGeneralInfo​
 
-> Get Hub's General Info 
+> Get Hub's General Info
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -7116,7 +7116,7 @@ data.rfmVersion| <String,Necessary>| Hub's rfm version;
   
 ## 2.Hub.setGeneralInfo​
 
-> Set Hub's General Info 
+> Set Hub's General Info
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -7140,7 +7140,7 @@ data.rfmVersion| <String,Necessary>| Hub's rfm version;
   
 ## 3.Hub.getNetworkInfo​
 
-> Get Hub's Network Info 
+> Get Hub's Network Info
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -7163,7 +7163,7 @@ data.mac| <String,Necessary>| The mac address of hub;
   
 ## ~~4.Hub.setNetworkInfo~~​
 
-> Set Hub's Network Info 
+> Set Hub's Network Info
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -7191,7 +7191,7 @@ data.mac| <String,Necessary>| The mac address of hub;
   
 ## 5.Hub.getTimeInfo​
 
-> Get Hub's Time Info 
+> Get Hub's Time Info
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -7214,7 +7214,7 @@ data.dstEnd| <String,Necessary>| DST End date;Format MM-dd;
   
 ## 6.Hub.setTimeInfo​
 
-> Set Hub's Time Info 
+> Set Hub's Time Info
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 
@@ -7797,7 +7797,7 @@ On this page
 
 ## 1.Switch.getState​
 
-> Get Current State 
+> Get Current State
 
 [_BDDP_](</docs/protocol/datapacket#BDDP>)
 

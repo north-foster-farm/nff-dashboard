@@ -350,7 +350,7 @@ color; **SLATE-BLUE** `#3F6DA3` = **project** (already mapped);
   parked (see Triage Outcome) and no time-off UI lands until it's settled.
 - [x] triaged
 
-### F18 — Week bars: overnight/projects representation — NO CHANGE · — 
+### F18 — Week bars: overnight/projects representation — NO CHANGE · —
 - **Words:** "I feel there's something missing — the overnight bar… you
   know what, I don't think we need to worry about that. This is fine in
   this current implementation. It's okay that projects are omitted —
