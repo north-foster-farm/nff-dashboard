@@ -533,7 +533,7 @@ function TodayObligationRow({
   metaParts.push(
     effects.deadlineText
       ? `today: ${effects.deadlineText}`
-      : displayDeadlineConcrete(chore)
+      : displayDeadlineConcrete(chore, blocks)
   );
 
   // Completion writes through the shared CheckTarget -> outbox path, with a
@@ -1075,7 +1075,7 @@ function ChoreDefinitionRow({
               onCancel={onCancelEdit}
               onSave={onSaveEdit}
             />
-          : <ExpandedChoreDetail chore={chore} blockById={blockById} />
+          : <ExpandedChoreDetail chore={chore} blocks={blocks} blockById={blockById} />
       )}
     </div>
   );
@@ -1333,7 +1333,7 @@ function FrequencyQuickEdit({ chore, onSave, onCancel }) {
 const EDIT_CHIP_INPUT =
   "bg-surface border border-line text-fg text-[12px] px-1.5 py-0.5 font-[inherit]";
 
-function ExpandedChoreDetail({ chore, blockById }) {
+function ExpandedChoreDetail({ chore, blocks, blockById }) {
   return (
     <div className="pt-2 pb-4 px-4 pl-[42px] border-t border-line bg-surface-alt">
       {chore.description && (
@@ -1350,7 +1350,7 @@ function ExpandedChoreDetail({ chore, blockById }) {
             ? describeChoreSchedule(chore, blockById)
             : displayStartTime(chore)}
         />
-        <Field label="Deadline" value={displayDeadline(chore)} />
+        <Field label="Deadline" value={displayDeadline(chore, blocks)} />
         <Field label="Assignment" value={describeAssignment(chore.assignment)} />
       </dl>
       <div className="mt-3 text-[11px] text-faint italic">

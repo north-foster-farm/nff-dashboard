@@ -31,7 +31,7 @@ import {
   describeChoreAnchor,
   firstBlockOfDay,
   blockTimeLabel,
-  CHORE_BLOCK_IDS,
+  displayDeadline,
 } from "./chores.js";
 
 // Local-time date constructors so tests read as calendar dates, not
@@ -45,16 +45,20 @@ function fixedBlock(id, startMinutes, durationMinutes = 60, isActive = true) {
 }
 
 // The five real chore blocks, roughly per docs/specs/nff-chores-spec.md
-// §2.1 —
-// morning / midmorning / early_afternoon / late_afternoon / end_of_day.
-// Block rows carry the REAL uuids (findBlock maps slug deadline refs
-// through CHORE_BLOCK_IDS before matching on id, exactly like prod);
-// BID.<slug> is the uuid chores store in blockId.
-const BID = CHORE_BLOCK_IDS;
+// §2.1. Block identity is the row uuid and NOTHING else — deadlines
+// store `block: <uuid>` (migration 0052) and every resolution matches
+// on id (F5). BID.<key> is just a readable alias for each fixture uuid;
+// the keys are for the test's eyes only.
+const BID = {
+  morning: "uuid-morning-block",
+  midmorning: "uuid-midmorning-block",
+  late_afternoon: "uuid-late-afternoon-block",
+  end_of_day: "uuid-end-of-day-block",
+};
 const FIVE_BLOCKS = [
   fixedBlock(BID.morning, 6 * 60),        // 6:00 AM
   fixedBlock(BID.midmorning, 10 * 60),    // 10:00 AM
-  fixedBlock(BID.early_afternoon, 13 * 60), // 1:00 PM
+  fixedBlock("uuid-early-afternoon-block", 13 * 60), // 1:00 PM
   fixedBlock(BID.late_afternoon, 16 * 60),  // 4:00 PM
   fixedBlock(BID.end_of_day, 20 * 60),      // 8:00 PM, 60 min -> ends 9 PM
 ];
@@ -319,8 +323,8 @@ describe("computeDeadline — new block-model deadlines ({ kind })", () => {
     expect(dl.getHours()).toBe(23);
   });
 
-  it("block resolves to the END of the named block (start + duration)", () => {
-    const c = chore({ deadline: { kind: "block", block: "morning" } });
+  it("block resolves to the END of the referenced block (start + duration)", () => {
+    const c = chore({ deadline: { kind: "block", block: BID.morning } });
     const dl = computeDeadline(c, d(2026, 6, 1), FIVE_BLOCKS);
     // morning = 6:00 AM start, 60 min duration -> ends 7:00 AM.
     expect(dl.getHours()).toBe(7);
@@ -329,7 +333,7 @@ describe("computeDeadline — new block-model deadlines ({ kind })", () => {
 
   it("block_on_weekday resolves against the next occurrence of that weekday", () => {
     // proc-pickup-style: deadline = late afternoon, Friday of the same week.
-    const c = chore({ deadline: { kind: "block_on_weekday", block: "late_afternoon", weekday: 5 } });
+    const c = chore({ deadline: { kind: "block_on_weekday", block: BID.late_afternoon, weekday: 5 } });
     // 2026-06-01 is a Monday; the next Friday is 2026-06-05.
     const dl = computeDeadline(c, d(2026, 6, 1), FIVE_BLOCKS);
     expect(dl.getDate()).toBe(5);
@@ -337,21 +341,21 @@ describe("computeDeadline — new block-model deadlines ({ kind })", () => {
   });
 
   it("block_on_weekday on the target weekday itself resolves to TODAY (not next week)", () => {
-    const c = chore({ deadline: { kind: "block_on_weekday", block: "late_afternoon", weekday: 5 } });
+    const c = chore({ deadline: { kind: "block_on_weekday", block: BID.late_afternoon, weekday: 5 } });
     const dl = computeDeadline(c, d(2026, 6, 5), FIVE_BLOCKS); // already Friday
     expect(dl.getDate()).toBe(5);
   });
 
   it("block_at_offset resolves the named block on date+offset_days", () => {
     // proc-stage-crates-trailer style: offset -1 (day before), late_afternoon.
-    const c = chore({ deadline: { kind: "block_at_offset", block: "late_afternoon", offset_days: -1 } });
+    const c = chore({ deadline: { kind: "block_at_offset", block: BID.late_afternoon, offset_days: -1 } });
     const dl = computeDeadline(c, d(2026, 6, 5), FIVE_BLOCKS);
     expect(dl.getDate()).toBe(4);
     expect(dl.getHours()).toBe(17);
   });
 
   it("block_at_offset with offset 0 resolves to the same day", () => {
-    const c = chore({ deadline: { kind: "block_at_offset", block: "morning", offset_days: 0 } });
+    const c = chore({ deadline: { kind: "block_at_offset", block: BID.morning, offset_days: 0 } });
     const dl = computeDeadline(c, d(2026, 6, 5), FIVE_BLOCKS);
     expect(dl.getDate()).toBe(5);
   });
@@ -367,6 +371,44 @@ describe("computeDeadline — new block-model deadlines ({ kind })", () => {
     expect(() => computeDeadline(c, d(2026, 6, 1), undefined)).not.toThrow();
     const dl = computeDeadline(c, d(2026, 6, 1), undefined);
     expect(dl.getHours()).toBe(23);
+  });
+
+  it("a block ref resolves by id ONLY — a slug string is a dangling ref, not an alias", () => {
+    // Pre-0052 rows stored slugs and the client carried a slug->uuid
+    // map of hardcoded prod keys. That map is gone: anything that
+    // isn't a live block id degrades to end-of-day.
+    const c = chore({ deadline: { kind: "block", block: "morning" } });
+    const dl = computeDeadline(c, d(2026, 6, 1), FIVE_BLOCKS);
+    expect(dl.getHours()).toBe(23);
+  });
+});
+
+describe("displayDeadline — block names come from the live rows, loudly when broken", () => {
+  // The user calls these blocks Sunrise and Sunset; the deadline text
+  // must say what the blocks admin says, not a bundled label map (F5:
+  // the old copy said "by end of Morning" for the block named Sunrise).
+  const named = (id, name, min) => ({ ...fixedBlock(id, min), name });
+  const LIVE = [
+    named(BID.morning, "Sunrise", 6 * 60),
+    named(BID.late_afternoon, "Late Afternoon", 16 * 60),
+    named(BID.end_of_day, "Sunset", 20 * 60),
+  ];
+
+  it("names the block exactly as the blocks admin does today", () => {
+    const c = chore({ deadline: { kind: "block", block: BID.end_of_day } });
+    expect(displayDeadline(c, LIVE)).toBe("by end of Sunset");
+  });
+
+  it("weekday deadlines carry the live name too", () => {
+    const c = chore({
+      deadline: { kind: "block_on_weekday", block: BID.late_afternoon, weekday: 5 },
+    });
+    expect(displayDeadline(c, LIVE)).toBe("by Fri Late Afternoon");
+  });
+
+  it("a dangling block ref reads as broken — never silently blank", () => {
+    const c = chore({ deadline: { kind: "block", block: "uuid-of-deleted-block" } });
+    expect(displayDeadline(c, LIVE)).toBe("by end of a deleted block");
   });
 });
 

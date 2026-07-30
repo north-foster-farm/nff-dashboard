@@ -405,7 +405,6 @@ async function loadChores() {
       category: c.category,
       description: c.description,
       frequency: c.frequency,
-      period: c.period,
       startTime: c.start_time,
       deadline: c.deadline,
       assignment: c.assignment,

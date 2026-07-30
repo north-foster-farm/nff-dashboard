@@ -493,25 +493,11 @@ export const ALL_CHORE_DEFINITIONS = [
   ...CHORE_SEEDS, ...EVENT_CHORES, ...BATCH_CHORES,
 ];
 
-// ── Block metadata + ids (live ids verified against prod 2026-06-04) ──
-// Phase C maps `block` slug → block_id via CHORE_BLOCK_IDS. The display
-// order here is chronological (the live sort_order is non-chronological
-// and gets re-numbered to match during the cutover).
-export const CHORE_BLOCK_IDS = {
-  morning: "9f576986-7524-4e71-a6b4-4e0965f310ac",
-  midmorning: "f6eeb73f-775d-48a6-9b2e-ead74acf72c0",
-  early_afternoon: "b05763c7-0c46-4d0f-8d86-b4bfcaa893ad",
-  late_afternoon: "e6bed0d7-931b-45d5-b61e-b6fff5306fb1",
-  end_of_day: "34ca2d90-cfea-4b2d-9edb-6e9f4cf7cf5d",
-};
-
-export const CHORE_BLOCKS_META = {
-  morning: { label: "Morning", hint: "early AM", order: 1 },
-  midmorning: { label: "Mid-Morning", hint: "10 AM", order: 2 },
-  early_afternoon: { label: "Early Afternoon", hint: "1 PM", order: 3 },
-  late_afternoon: { label: "Late Afternoon", hint: "4 PM", order: 4 },
-  end_of_day: { label: "End of Day", hint: "after sunset", order: 5 },
-};
+// The old CHORE_BLOCK_IDS / CHORE_BLOCKS_META maps are gone (F5):
+// deadlines reference blocks by row uuid (migration 0052) and every
+// label comes from the live rows. A client-bundled snapshot of
+// production primary keys is exactly the un-validated registry the
+// farm-map §9.4 principle warns about.
 
 // Owner display metadata (supersedes CHORE_CATEGORIES).
 export const CHORE_OWNERS = {

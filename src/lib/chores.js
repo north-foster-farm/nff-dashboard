@@ -3,25 +3,23 @@
 // and resolved assignee.
 
 import {
-  CHORE_SEEDS, CHORE_CATEGORIES,
-  CHORE_BLOCK_IDS, CHORE_BLOCKS_META, CHORE_OWNERS,
+  CHORE_SEEDS, CHORE_CATEGORIES, CHORE_OWNERS,
 } from "../data/choreSeeds.js";
 import { sunMinutesOfDay, displayBlockSide } from "./sunTimes.js";
 import { descendantIds } from "./places.js";
 
-export {
-  CHORE_SEEDS, CHORE_CATEGORIES,
-  CHORE_BLOCK_IDS, CHORE_BLOCKS_META, CHORE_OWNERS,
-};
+export { CHORE_SEEDS, CHORE_CATEGORIES, CHORE_OWNERS };
 
 // Short weekday names, Sun=0…Sat=6 (matches stored frequency/weekday
 // values). Module-level so frequency + deadline formatters share it.
 const DOW_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// Display label for a block slug (new model). Falls back to the raw
-// slug if it isn't one of the five known blocks.
-function blockSlugLabel(slug) {
-  return CHORE_BLOCKS_META[slug]?.label ?? slug ?? "";
+// Display label for a deadline's block reference: the LIVE block's
+// name, exactly as the blocks admin shows it. A ref that no longer
+// resolves reads as broken on purpose — a deadline quietly losing its
+// block is the F5 failure family this replaces.
+function blockRefLabel(ref, blocks) {
+  return findBlock(ref, blocks)?.name ?? "a deleted block";
 }
 
 // The canonical list of chore definitions the app shows. Once a backend
@@ -199,11 +197,13 @@ function fridayOfLastWeekOfMonth(date) {
 // `blocks` is the useChoreBlocks shape: { id, name, startKind,
 // startMinutes, durationMinutes, isActive }.
 
-// Resolve a block by uuid (chore.blockId) or by slug (deadline refs).
+// Resolve a block reference by row uuid — the ONLY block identity
+// (F5). chore.blockId and deadline.block both store uuids (deadline
+// slugs were rewritten by migration 0052). A ref that doesn't match a
+// live row returns null and the caller must surface that, not hide it.
 function findBlock(ref, blocks) {
   if (!ref || !blocks) return null;
-  const id = CHORE_BLOCK_IDS[ref] ?? ref;
-  return blocks.find((b) => b.id === id) ?? null;
+  return blocks.find((b) => b.id === ref) ?? null;
 }
 
 // A block's start minutes-of-day on `date` (sun events resolve per-day).
@@ -492,10 +492,11 @@ export function blockTimeLabel(block) {
 // anchored to sunset rather than a literal clock time.
 export function displayStartTime(chore) {
   // New model: a chore's time is its block (resolved elsewhere with the
-  // live block schedule); fall back to the block label here.
-  if (chore.block) return blockSlugLabel(chore.block);
-  if (!chore.period && !chore.startTime) return "—";
-  if (chore.period === "evening") return "After sunset";
+  // live block schedule). `chore.block` exists only on the seed-shaped
+  // dev fallback, where there are no live rows to name it — show the
+  // raw ref rather than pretending to know a display name.
+  if (chore.block) return chore.block;
+  if (!chore.startTime) return "—";
   const [h, m] = (chore.startTime || "00:00").split(":").map(Number);
   const ampm = h >= 12 ? "PM" : "AM";
   const h12 = ((h + 11) % 12) + 1;
@@ -659,22 +660,23 @@ function startOfDay(d) {
 }
 
 // Human label for a new-model block-reference deadline ({ kind: ... }).
-function describeBlockDeadline(d) {
+// Needs the live blocks list: the label IS the referenced block's
+// current name (F5 — a bundled label map once said "by end of Morning"
+// for the block the admin names Sunrise).
+function describeBlockDeadline(d, blocks) {
   switch (d.kind) {
     case "following_block": return "by the next block";
-    case "block": return d.block === "end_of_day"
-      ? "by end of day" : `by end of ${blockSlugLabel(d.block)}`;
+    case "block": return `by end of ${blockRefLabel(d.block, blocks)}`;
     case "midnight": return "by midnight";
     case "block_on_weekday": {
       const wd = DOW_SHORT[d.weekday ?? 5];
-      return d.block === "end_of_day"
-        ? `by ${wd} end of day` : `by ${wd} ${blockSlugLabel(d.block)}`;
+      return `by ${wd} ${blockRefLabel(d.block, blocks)}`;
     }
     case "block_at_offset": {
       const off = d.offset_days ?? 0;
       const rel = off === 0 ? "day of"
         : off < 0 ? `${-off}d before` : `${off}d after`;
-      return `by ${blockSlugLabel(d.block)} (${rel})`;
+      return `by ${blockRefLabel(d.block, blocks)} (${rel})`;
     }
     case "none": return "no fixed deadline";
     default: return "—";
@@ -682,9 +684,9 @@ function describeBlockDeadline(d) {
 }
 
 // Short display for a chore's deadline (relative to its start).
-export function displayDeadline(chore) {
+export function displayDeadline(chore, blocks) {
   const d = chore.deadline;
-  if (d?.kind) return describeBlockDeadline(d);
+  if (d?.kind) return describeBlockDeadline(d, blocks);
   switch (d?.type) {
     case "offset_hours": return `within ${d.hours}h of start`;
     case "end_of_day": return "by end of day";
@@ -698,9 +700,9 @@ export function displayDeadline(chore) {
 // offset on an 8 AM chore. Used wherever we have an actual day in hand
 // (Today tab, Upcoming chores card) — the relative form is reserved for
 // abstract definition lists where we don't know what day we're talking about.
-export function displayDeadlineConcrete(chore) {
+export function displayDeadlineConcrete(chore, blocks) {
   const d = chore.deadline;
-  if (d?.kind) return describeBlockDeadline(d);
+  if (d?.kind) return describeBlockDeadline(d, blocks);
   switch (d?.type) {
     case "offset_hours": {
       const [h, m] = (chore.startTime || "00:00").split(":").map(Number);

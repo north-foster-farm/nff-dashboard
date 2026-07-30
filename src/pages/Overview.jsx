@@ -724,6 +724,7 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
               key={key}
               block={blockById.get(key) ?? null}
               instances={byBlock[key]}
+              blocks={blocks}
               completions={completions}
               placesById={placesById}
               choreCtx={choreCtx}
@@ -736,7 +737,7 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
 }
 
 function UpcomingBlockGroup({
-  block, instances, completions, placesById, choreCtx,
+  block, instances, blocks, completions, placesById, choreCtx,
 }) {
   const label = block?.name ?? "Anytime";
   const timeLabel = blockTimeLabel(block);
@@ -751,6 +752,7 @@ function UpcomingBlockGroup({
           <UpcomingChoreRow
             key={inst.choreId}
             inst={inst}
+            blocks={blocks}
             completions={completions}
             placesById={placesById}
             choreCtx={choreCtx}
@@ -762,7 +764,7 @@ function UpcomingBlockGroup({
 }
 
 function UpcomingChoreRow({
-  inst, completions, placesById, choreCtx,
+  inst, blocks, completions, placesById, choreCtx,
 }) {
   const { chore } = inst;
   const [pending, setPending] = useState(false);
@@ -841,7 +843,7 @@ function UpcomingChoreRow({
             )}
           </div>
           <div className="text-[12px] text-muted mt-px">
-            {describeChoreAnchor(chore, choreCtx)} · {displayDeadlineConcrete(chore)}
+            {describeChoreAnchor(chore, choreCtx)} · {displayDeadlineConcrete(chore, blocks)}
           </div>
         </div>
       </div>
