@@ -5,20 +5,24 @@ Custom internal admin app for [North Foster Farm](https://northfosterfarm.com)
 
 ## Stack
 
-- **Vite** + **React 18** (SPA, plain JS, no router library — internal section
-  state in `App.jsx`)
+- **Vite** + **React 18** (SPA, plain JS, no router *library* — a
+  hand-rolled pushState router in `src/lib/router.js`)
 - **Supabase** for Postgres, auth (Google OAuth + admin allowlist), realtime
 - **Netlify** for hosting + the daily heartbeat function that keeps the
   Supabase free tier from auto-pausing
-- **lucide-react** icons; inline styles via `theme.js` (no CSS framework)
+- **lucide-react** icons; **Tailwind v4** utility classes over CSS
+  custom-property tokens (`src/styles.css` maps the `--c-*` palette from
+  `index.html` into the Tailwind `@theme`)
 - Fonts loaded from Google Fonts in `index.html`
 
 ## Develop
 
 ```bash
 npm install
+bash scripts/setup-hooks.sh     # installs the pre-commit gate
 cp .env.example .env.local      # then fill in real values
 npm run dev                     # http://localhost:5173
+npm test                        # vitest; must be green to commit
 npm run build
 npm run preview
 ```
@@ -52,10 +56,12 @@ src/
 
 netlify/
 └── functions/
-    └── heartbeat.mjs      daily scheduled fn; upserts the heartbeat row
+    ├── heartbeat.mjs           daily scheduled fn; upserts the heartbeat row
+    ├── notify-run-done.mjs     web-push sender (run close-out)
+    └── schedule-reminder.mjs   web-push sender (schedule reminders)
 
 supabase/
-└── migrations/            0001…0006, all idempotent, all checked in
+└── migrations/            0001…0050, additive-only, all checked in
 
 scripts/
 ├── gen-batch2-seed.mjs    regenerates chore_definitions seed block from
@@ -77,16 +83,19 @@ their own hooks with optimistic updates and realtime subscriptions.
 
 ## Migrations
 
-Apply by pasting each `supabase/migrations/000N_*.sql` file into Supabase →
-SQL Editor → Run, in order. They're idempotent: rerun on a populated DB is
-safe (upserts on every seed, `if not exists` on every schema object).
+The app is LIVE. Migrations are additive-only and applied with
+`supabase db push`, never by hand and never re-run. Before every push:
+`node scripts/backup-db.mjs` (read-only full export to a gitignored
+`.backups/<ts>/`), then confirm the events/chores row counts look
+right. Disaster recovery only:
+`node scripts/restore-db.mjs <backupDir> --yes`. See CLAUDE.md →
+"Data safety" for the full protocol.
 
 If you change `choreSeeds.js` or sections of `nff-data.json` that drive a
 seed, regenerate the affected seed block:
 
 ```bash
 node scripts/gen-batch2-seed.mjs > /tmp/chore-seed-block.sql
-# then paste the result into the migration before reapplying
 ```
 
 ## Auth
@@ -108,5 +117,10 @@ Required Netlify env vars (Site settings → Environment variables):
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server-side only — never prefix with `VITE_`)
+- `VITE_VAPID_PUBLIC_KEY` (client half of the web-push pair)
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — required by
+  the `notify-run-done` / `schedule-reminder` push functions;
+  `VAPID_PRIVATE_KEY` is server-only and pairs with
+  `VITE_VAPID_PUBLIC_KEY`
 
 After changing any env var, redeploy with cache cleared.

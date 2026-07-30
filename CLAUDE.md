@@ -6,7 +6,8 @@ behavior; follow them exactly.
 ## Test-driven development (core workflow, 2026-07-02)
 
 TDD is how code gets written in this repo. `npm test` runs the unit
-suite (vitest, pure `src/lib` layer); a green FULL run is a hard
+suite (vitest, the pure-logic layer — `src/lib` plus a few pure
+helpers beside their component); a green FULL run is a hard
 commit requirement, enforced by `.githooks/pre-commit` (installed
 per-clone via `scripts/setup-hooks.sh`; never bypass with
 `--no-verify`).
