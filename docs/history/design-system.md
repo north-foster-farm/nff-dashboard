@@ -278,11 +278,17 @@ always gets `tabular-nums` in a fixed-width container.
 Six places where the code disagrees with a document, verified
 2026-07-29:
 
-- **`src/theme.js` is dead code.** It exports only `T`, and nothing in
-  `src/` imports it — `de92adf` removed the last two consumers and left
-  the file. `DESIGN-SYSTEM.md`'s "Canonical source files" still lists it
-  beside `index.html` and `src/styles.css`. A NO-LEGACY violation of the
-  system's own principle 8.
+- **`src/theme.js` is a near-dead holdout, not dead code.**
+  *Corrected 2026-07-30: an earlier version of this chapter called it
+  dead with zero importers. That was wrong.* It exports only `T`, and
+  three pages still import it for exactly one key each — `T.cat`, twice
+  per file, in `src/pages/Calendar.jsx:3`, `src/pages/Overview.jsx:9`
+  and `src/pages/Schedule.jsx:80`. `de92adf` migrated the component
+  layer off `T` but left these three. So it is a real NO-LEGACY holdout
+  under the system's own principle 8, and `DESIGN-SYSTEM.md` listing it
+  under "Canonical source files" beside `index.html` and
+  `src/styles.css` overstates its standing — but deleting the file
+  without first re-homing `T.cat` breaks three pages.
 - **The iframe embed no longer exists.** `DESIGN-SYSTEM.md`'s Hosting
   section and `public/style-guide/README.md` both describe an in-app
   embed "via `src/pages/StyleGuide.jsx` (iframe `?embed=1`,
