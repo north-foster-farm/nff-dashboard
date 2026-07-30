@@ -88,8 +88,8 @@ app-wide.
 
 Execution began wrong and was corrected the same day. `35f58a1` ported
 the mockup's `LoadMeter` in as a specimen; after James's second video
-that day (`.ignored/audit-v2/audits/2026-06-28/processed/
-2026-06-28_12-28-45/`) `3bc3a13` removed it. The correction is the arc's
+that day (`audits/2026-06-28/transcript-12-28-45.md`) `3bc3a13`
+removed it. The correction is the arc's
 central idea: a ported mockup component is the right way to *introduce*
 an architecture but not the destination — **extract the mockup's styles
 and patterns and reinterpret them into our existing components**. So
@@ -205,7 +205,7 @@ range (info / alert / warning / danger + category hues) is actually
 represented, *then* reassign category identity. Flagged
 **time-sensitive**: "Jim is starting to use the app; late color changes
 will fight learned habits"
-(`.ignored/audit-v2/audits/2026-07-02/findings.md:179`).
+(`audits/2026-07-02/findings.md:179`).
 
 **2026-07-25 → 07-29 — the palette leaves the screen.** The style guide
 got a token refresh (`components.html` + `DESIGN-SYSTEM.md`, both dated

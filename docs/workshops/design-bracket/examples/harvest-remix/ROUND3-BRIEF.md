@@ -1,8 +1,8 @@
 # Round 3 brief — collaborative real-app prototype
 
 Round 2 produced two coded mockups (Operator, Systematizer). James reviewed them
-side by side on 2026-06-29 (the full capture was the untracked audit-v2
-review of that date). **Verdict: build a hybrid, not a winner.** This brief is
+side by side on 2026-06-29 (see `audits/2026-06-29/review.md`, repo root,
+for the full capture). **Verdict: build a hybrid, not a winner.** This brief is
 binding for Round 3.
 
 ## What changes from Rounds 1–2

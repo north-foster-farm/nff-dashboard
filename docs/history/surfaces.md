@@ -101,7 +101,7 @@ page): a phone-only `TodayGlance` reading the single `farmLoad` model,
 `Card` → `Pane`. Refined by 42.3 (`c72c676`) and 42.4 (`54dc41b`).
 
 **2026-07-02 — the verdict, not yet executed.** F30, 2026-07-02
-numbering (`.ignored/audit-v2/audits/2026-07-02/findings.md:251-257`):
+numbering (`audits/2026-07-02/findings.md:251-257`):
 weather icon into the top toolbar with a click-to-expand conditions
 card, capture the fold-out pattern in the design system, find the
 broiler mini-tracker a home — and "Dashboard has been superseded and

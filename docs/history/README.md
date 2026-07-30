@@ -158,7 +158,7 @@ findings. The 06-04 round (138) was never systematically triaged and
 the 06-03 round (23) is still "awaiting ROADMAP triage". The 06-28
 round, however, **was** triaged the same day, into six buckets with a
 progress log recording three fix sessions that closed every FIX NOW
-group (`.ignored/audit-v2/audits/2026-06-28/triage.md`); what remains
+group (`audits/2026-06-28/triage.md`); what remains
 there is greenlit builds, a design pass, a feature backlog and four
 VERIFY items. Both m4 §4 and the memory directory still describe that
 round as "F1–F80 untriaged" — **Roadmap v2 must not quote that

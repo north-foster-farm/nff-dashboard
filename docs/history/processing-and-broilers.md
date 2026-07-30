@@ -171,7 +171,7 @@ rule still uses it. See
 `docs/history/records/processes-as-chore-generators-plan.md`.
 
 **2026-07-02 — the second walkthrough, then the processing slice.** The
-2026-07-02 round (`.ignored/audit-v2/audits/2026-07-02/findings.md` §4)
+2026-07-02 round (`audits/2026-07-02/findings.md` §4)
 restated the animals asks as F20–F27 in a *new* numbering universe;
 commit batches 42.11–42.19 answered them. 42.11 (`81b74be`) made the
 batch record editable, removed the per-animal chore lists ("chores should

@@ -232,8 +232,7 @@ eyes-on review it was written for.
 ### 2026-06-28 — an audit round the dossiers record as untriaged
 
 The June-28 walkthrough logged 80 findings across five clips, Schedule
-and app chrome only (`.ignored/audit-v2/audits/2026-06-28/
-findings.md`). Memory and m4 §1e both call this bucket UNTRIAGED. The
+and app chrome only (`audits/2026-06-28/findings.md`). Memory and m4 §1e both call this bucket UNTRIAGED. The
 repo says otherwise: `triage.md` in the same directory records a
 same-day triage with James, six named buckets, and a PROGRESS log of
 three fix sessions (~20 `fix:` commits, `06874a0`…`1f8d523`) closing

@@ -271,8 +271,8 @@ regression still green (13/13).
 
 # Findings build (2026-06-30 video audits, F1–F34 triaged) — slices A–F
 
-The 2026-06-30 walkthroughs (`.ignored/audit-v2/audits/2026-06-30/
-findings.md`) drive a second build phase on the same branch. Same commit
+The 2026-06-30 walkthroughs (`audits/2026-06-30/findings.md`, repo
+root) drive a second build phase on the same branch. Same commit
 policy: HOLD until James confirms the whole rollout.
 
 ## Commit 8 — Findings slice A: chore/event identity tokens + KindBadge (F8/F9)

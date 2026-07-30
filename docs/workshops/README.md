@@ -68,7 +68,7 @@ docs/workshops/
                                      gate → joint build plan), not a greenfield feature
   qa-walkthrough/
     qa-walkthrough-playbook.md     ← the QA method (OBS capture → process → findings → triage → fix)
-                                     runs against .ignored/audit-v2/ ; prior run: audits/2026-06-04/
+                                     runs against .ignored/audit-v2/ (scratch); findings land in audits/<date>/
 ```
 
 `design-bracket/DESIGN-SYSTEM.md` is a **frozen snapshot** taken
