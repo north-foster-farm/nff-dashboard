@@ -10,17 +10,19 @@
 /* ---- Real Nacelle body font (served at /fonts/ when same-origin; falls
    back to system-ui standalone / over file://) ---- */
 @font-face {
-  font-family: "Nacelle";
+  font-family: Nacelle;
   src: url('/fonts/Nacelle-Regular.woff2') format('woff2');
   font-weight: 400; font-style: normal; font-display: swap;
 }
+
 @font-face {
-  font-family: "Nacelle";
+  font-family: Nacelle;
   src: url('/fonts/Nacelle-SemiBold.woff2') format('woff2');
   font-weight: 600; font-style: normal; font-display: swap;
 }
+
 @font-face {
-  font-family: "Nacelle";
+  font-family: Nacelle;
   src: url('/fonts/Nacelle-Bold.woff2') format('woff2');
   font-weight: 700; font-style: normal; font-display: swap;
 }
@@ -46,7 +48,7 @@ html[data-theme="dark"] {
   --c-terracotta: #cf6742;
   --c-on-accent: #0d1410;
   --c-cat-fm: #5dd585;
-  --c-cat-popup: #ffaa33;
+  --c-cat-popup: #fa3;
   --c-cat-egg: #68d5fd;
   --c-cat-chore: #c4bfad;
   --c-cat-deliveries: #ffbf66;
@@ -55,9 +57,10 @@ html[data-theme="dark"] {
   --c-cat-processing: #ff3347;
   --c-cat-default: #8e8877;
 }
+
 html[data-theme="light"] {
   --c-bg: #f6f6f6;
-  --c-surface: #ffffff;
+  --c-surface: #fff;
   --c-surface-alt: #ececec;
   --c-border: #d6d6d6;
   --c-text: #14180f;
@@ -73,9 +76,9 @@ html[data-theme="light"] {
   --c-event: #5b54a8;
   --c-mulberry: #9c2e6c;
   --c-terracotta: #9c3f23;
-  --c-on-accent: #ffffff;
+  --c-on-accent: #fff;
   --c-cat-fm: #2aa252;
-  --c-cat-popup: #cc7700;
+  --c-cat-popup: #c70;
   --c-cat-egg: #0295ca;
   --c-cat-chore: #7a7666;
   --c-cat-deliveries: #995900;
@@ -88,7 +91,7 @@ html[data-theme="light"] {
 /* ---- Type roles (Nacelle vendored in-app; system fallback in docs) ---- */
 :root {
   --font-body: "Nacelle", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-heading: "Lora", Georgia, "Times New Roman", serif;
+  --font-heading: "Lora", georgia, "Times New Roman", serif;
   --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --ds-nav-w: 246px;
   --ds-max: 880px;
@@ -112,7 +115,7 @@ a { color: var(--c-accent-deep); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 code, .mono {
-  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-family: SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.86em;
 }
 
@@ -129,12 +132,14 @@ code, .mono {
   height: 100vh;
   overflow-y: auto;
 }
+
 .ds-brand {
   font-family: var(--font-heading);
   font-size: 19px;
   letter-spacing: -0.01em;
   margin: 0 0 2px;
 }
+
 .ds-brand-sub {
   font-family: var(--font-ui);
   font-size: 10px;
@@ -143,6 +148,7 @@ code, .mono {
   color: var(--c-text-muted);
   margin: 0 0 20px;
 }
+
 .ds-navgroup {
   font-family: var(--font-ui);
   font-size: 10px;
@@ -152,6 +158,7 @@ code, .mono {
   color: var(--c-text-muted);
   margin: 18px 0 6px;
 }
+
 .ds-nav a {
   display: block;
   color: var(--c-text-dim);
@@ -161,6 +168,7 @@ code, .mono {
   margin-left: -8px;
 }
 .ds-nav a:hover { color: var(--c-text); text-decoration: none; }
+
 .ds-nav a.active {
   color: var(--c-text);
   border-left-color: var(--c-accent-deep);
@@ -168,6 +176,7 @@ code, .mono {
 }
 
 .ds-main { flex: 1 1 auto; min-width: 0; }
+
 .ds-content {
   max-width: var(--ds-max);
   margin: 0 auto;
@@ -187,10 +196,12 @@ code, .mono {
   background: var(--c-bg);
   z-index: 5;
 }
+
 .ds-toggle {
   display: inline-flex;
   border: 1px solid var(--c-border);
 }
+
 .ds-toggle button {
   font-family: var(--font-ui);
   font-size: 11px;
@@ -202,6 +213,7 @@ code, .mono {
   padding: 6px 12px;
   cursor: pointer;
 }
+
 .ds-toggle button[aria-pressed="true"] {
   background: var(--c-accent-deep);
   color: var(--c-on-accent);
@@ -216,6 +228,7 @@ code, .mono {
   letter-spacing: 0.14em;
   color: var(--c-text-muted);
 }
+
 h1.ds-h1 {
   font-family: var(--font-heading);
   font-size: 40px;
@@ -223,6 +236,7 @@ h1.ds-h1 {
   letter-spacing: -0.02em;
   margin: 6px 0 10px;
 }
+
 h2.ds-h2 {
   font-family: var(--font-heading);
   font-size: 26px;
@@ -231,6 +245,7 @@ h2.ds-h2 {
   padding-top: 18px;
   border-top: 1px solid var(--c-border);
 }
+
 h3.ds-h3 {
   font-family: var(--font-heading);
   font-size: 18px;
@@ -252,7 +267,7 @@ p { max-width: 70ch; }
   text-transform: uppercase;
   letter-spacing: 0.1em;
   padding: 2px 7px;
-  border: 1px solid currentColor;
+  border: 1px solid currentcolor;
   vertical-align: middle;
 }
 .ds-status.stable { color: var(--c-resolved); }
@@ -272,11 +287,13 @@ p { max-width: 70ch; }
   border: 1px solid var(--c-border);
   margin: 14px 0 4px;
 }
+
 .ds-example-stage {
   padding: 24px;
   background: var(--c-bg);
 }
 .ds-example-stage.alt { background: var(--c-surface-alt); }
+
 .ds-example-meta {
   font-family: var(--font-ui);
   font-size: 11px;
@@ -287,8 +304,9 @@ p { max-width: 70ch; }
   border-top: 1px solid var(--c-border);
   background: var(--c-surface);
 }
+
 .ds-code {
-  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-family: SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12.5px;
   line-height: 1.5;
   white-space: pre;
@@ -310,6 +328,7 @@ p { max-width: 70ch; }
 }
 .ds-swatch { border: 1px solid var(--c-border); }
 .ds-swatch-chip { height: 56px; }
+
 .ds-swatch-body {
   padding: 7px 9px;
   font-family: var(--font-ui);
@@ -325,12 +344,14 @@ table.ds-table {
   font-size: 13.5px;
   margin: 14px 0;
 }
+
 .ds-table th, .ds-table td {
   text-align: left;
   padding: 8px 10px;
   border-bottom: 1px solid var(--c-border);
   vertical-align: top;
 }
+
 .ds-table th {
   font-family: var(--font-ui);
   font-size: 10px;
@@ -351,6 +372,7 @@ table.ds-table {
 .ds-do, .ds-dont { border: 1px solid var(--c-border); padding: 12px 14px; }
 .ds-do { border-left: 3px solid var(--c-resolved); }
 .ds-dont { border-left: 3px solid var(--c-cat-processing); }
+
 .ds-do .ds-tag, .ds-dont .ds-tag {
   font-family: var(--font-ui);
   font-size: 11px;
@@ -369,6 +391,7 @@ table.ds-table {
   margin: 12px 0;
   font-size: 14px;
 }
+
 .ds-use b {
   font-family: var(--font-ui);
   font-size: 11px;
@@ -388,11 +411,12 @@ table.ds-table {
 }
 .ds-quote.stack { margin-bottom: 2px; }
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .ds-nav { display: none; }
   .ds-content { padding: 24px 20px 90px; }
   .ds-dodont { grid-template-columns: 1fr; }
 }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }

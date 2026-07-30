@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint .",
+    "lint": "eslint . && stylelint 'src/**/*.css' 'public/style-guide/assets/*.css'",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:partition": "node scripts/test-schedule-partition.mjs"
@@ -36,6 +36,8 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.8.0",
+    "stylelint": "^17.14.1",
+    "stylelint-config-standard": "^40.0.0",
     "tailwindcss": "^4.2.4",
     "vite": "^5.4.11",
     "vitest": "^4.1.9"
