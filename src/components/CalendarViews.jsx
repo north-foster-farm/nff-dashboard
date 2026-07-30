@@ -635,7 +635,6 @@ function EventBlock({ occurrence, columnIndex, columnCount, rail, bands, drag, d
   const block = eventToBlock(occurrence, rail);
   const widthPct = 100 / Math.max(1, columnCount);
   const leftPct = columnIndex * widthPct;
-  if (occurrence.status === "skipped") return null;
 
   const isDragging = drag.drag?.kind && drag.drag.occurrence === occurrence;
   const dy = isDragging ? drag.drag.dy : 0;
@@ -648,6 +647,10 @@ function EventBlock({ occurrence, columnIndex, columnCount, rail, bands, drag, d
     () => bandsOverlapEvent(bands, block),
     [bands, block.top, block.height]
   );
+
+  // After the hooks — a skipped occurrence toggling back would
+  // otherwise shift the hook order (rules-of-hooks).
+  if (occurrence.status === "skipped") return null;
 
   const onPointerDown = (e) => {
     // Bottom 6px is the resize grip; everywhere else moves.

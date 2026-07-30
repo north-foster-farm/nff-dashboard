@@ -129,6 +129,7 @@ export default function Sidebar({ current, onSelect, onOpenRounds, data }) {
           parent={SECTIONS.find(s => s.id === openFlyoutId)}
           current={current}
           data={data}
+          countCtx={countCtx}
           onSelect={handleSelect}
           onClose={requestClose}
           closing={closing}
@@ -208,7 +209,7 @@ function SidebarItem({ section, active, isFlyoutOpen, anyFlyoutOpen, count, onSe
   );
 }
 
-const FlyoutPane = forwardRef(function FlyoutPane({ parent, current, data, onSelect, closing }, ref) {
+const FlyoutPane = forwardRef(function FlyoutPane({ parent, current, data, countCtx, onSelect, closing }, ref) {
   const items = (parent.children || []).slice().sort((a, b) => a.label.localeCompare(b.label));
   return (
     <aside

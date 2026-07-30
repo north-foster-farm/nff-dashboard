@@ -10,7 +10,7 @@ import { useEventLinks } from "../lib/data/useEventLinks.js";
 import { supabase } from "../lib/data/supabase.js";
 import { computeAge, formatDate } from "../lib/dates.js";
 import {
-  batchLifecycle, BATCH_STATES, isMeatSpecies, isLayerSpecies,
+  batchLifecycle, isMeatSpecies, isLayerSpecies,
   liveProcessingISO,
 } from "../lib/metrics.js";
 import { navigate, pathForSection } from "../lib/browser/router.js";
@@ -326,9 +326,9 @@ export default function BatchPage({
           if (cErr) throw cErr;
         }
       }
-      // 3. Close the open placement (history stays).
-      if (activePlacement) {
-        await moveOutOccupant(activePlacement.id);
+      // 3. Close any open placements (history stays).
+      for (const { placement } of activePlacements) {
+        await moveOutOccupant(placement.id);
       }
       // 4. Remove processing-workspace assignments pointing at the
       //    batch — a dangling assignment on a future processing day
@@ -605,8 +605,14 @@ export default function BatchPage({
                   (c) => c.frequency?.type === "once").length} one-time
                 chore(s) tied to it
               </li>
-              {activePlacement && (
-                <li>close its placement at {currentPlace?.name}</li>
+              {activePlacements.length > 0 && (
+                <li>
+                  close its placement
+                  {activePlacements.length === 1 ? "" : "s"} at{" "}
+                  {activePlacements
+                    .map(({ place }) => place?.name ?? "an unknown place")
+                    .join(", ")}
+                </li>
               )}
               <li>remove its processing-day assignment (if any)</li>
             </ul>
