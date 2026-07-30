@@ -1,0 +1,50 @@
+name: LGTM auto-merge
+
+# James can't approve his own PRs on GitHub (he's the author of every
+# branch this repo produces). This treats the LGTM label as the merge
+# signal instead: on label, it waits for the required "check" status
+# to go green, then rebase-merges — the only method the main-branch
+# ruleset allows — and deletes the branch.
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    if: github.event.label.name == 'LGTM'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the check run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          for i in $(seq 1 40); do
+            conclusion=$(gh api "repos/$REPO/commits/$SHA/check-runs" --jq '
+              .check_runs[] | select(.name == "check") | .conclusion
+            ')
+            if [ "$conclusion" = "success" ]; then
+              exit 0
+            fi
+            if [ -n "$conclusion" ] && [ "$conclusion" != "null" ]; then
+              echo "check run concluded $conclusion — not merging." >&2
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for the check run." >&2
+          exit 1
+
+      - name: Merge PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --rebase --delete-branch
