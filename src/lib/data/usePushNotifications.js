@@ -30,7 +30,7 @@ const VAPID_PUBLIC_KEY = (import.meta.env.VITE_VAPID_PUBLIC_KEY ?? "").trim();
 
 export function usePushNotifications() {
   const email = useCurrentUserEmail();
-  const [support, setSupport] = useState(() => detectSupport());
+  const [support] = useState(() => detectSupport());
   const [permission, setPermission] = useState(() => readPermission());
   const [subscribed, setSubscribed] = useState(false);
   const [pending, setPending] = useState(false);

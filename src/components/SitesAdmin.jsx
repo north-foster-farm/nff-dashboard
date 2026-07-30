@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  Plus, X, ArrowUp, ArrowDown, Pencil, Check, ChevronRight, ChevronDown,
+  Plus, X, ArrowUp, ArrowDown, Check, ChevronRight, ChevronDown,
 } from "lucide-react";
 import { useSites } from "../lib/data/useSites.js";
 import { descendantIds } from "../lib/places.js";

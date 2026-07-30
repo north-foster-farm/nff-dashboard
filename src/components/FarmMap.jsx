@@ -36,7 +36,6 @@ export default function FarmMap({
   svg,                 // parseFarmMapSvg() result
   zones,               // [{ layer, place }] from bindLayersToPlaces
   background,          // [layer, …]
-  placesById,
   childrenByParent,
   flagOf,              // placeStatus flag accessor
   byPlace,             // placeStatus rollup map (for due counts)
@@ -271,7 +270,6 @@ export default function FarmMap({
     for (const c of candidates) {
       let guard = 0;
       // Push down while overlapping any already-placed label.
-      // eslint-disable-next-line no-loop-func
       while (guard++ < 40 && placed.some((p) =>
         Math.abs(p.cx - c.cx) < (p.halfW + c.halfW) &&
         Math.abs(p.cy - c.cy) < (p.halfH + c.halfH))) {

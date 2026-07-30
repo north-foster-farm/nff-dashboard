@@ -56,7 +56,6 @@ export default function ActivityRow({
       await onEdit(entry.id, next);
       setEditing(false);
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error("[activity] edit failed", err);
       alert("Couldn't save the edit. See console for details.");
     } finally {
@@ -72,7 +71,6 @@ export default function ActivityRow({
     setBusy(true);
     try { await onDelete(entry.id); }
     catch (err) {
-      // eslint-disable-next-line no-console
       console.error("[activity] delete failed", err);
       alert("Couldn't delete. See console for details.");
       setBusy(false);

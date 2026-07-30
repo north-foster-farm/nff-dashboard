@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ArrowUpRight, Banknote, Trash2 } from "lucide-react";
 import {
   SALE_CHANNELS, fmtCents,
-  saleGroupKey, saleGroupLabel, salesByMonth, skuLabel,
+  saleGroupLabel, salesByMonth, skuLabel,
 } from "../lib/productCatalog.js";
 
 // The Sales tab (Batch 27.3) — sales over time + recent sales.

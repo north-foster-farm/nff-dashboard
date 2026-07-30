@@ -152,7 +152,7 @@ export function parseDateInput(input) {
   }
 
   // M/D, M/D/YYYY, M-D, M-D-YYYY.
-  m = /^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/.exec(trimmed);
+  m = /^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/.exec(trimmed);
   if (m) {
     const month = +m[1];
     const day = +m[2];

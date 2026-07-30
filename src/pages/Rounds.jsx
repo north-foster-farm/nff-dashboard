@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  X, Check, ChevronLeft, CloudOff, Trash2,
+  X, Check, ChevronLeft, Trash2,
 } from "lucide-react";
 import pluralize from "pluralize";
-import { useChoreBlocks, formatMinutesOfDay } from "../lib/data/useChoreBlocks.js";
+import { useChoreBlocks } from "../lib/data/useChoreBlocks.js";
 import { useSites } from "../lib/data/useSites.js";
 import { descendantIds, placePath } from "../lib/places.js";
 import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
@@ -13,13 +13,9 @@ import { useChoreRuns, formatElapsed } from "../lib/data/useChoreRuns.js";
 import { useRunEvents } from "../lib/data/useRunEvents.js";
 import { resolveBlockMinutes, displayBlockSide } from "../lib/sunTimes.js";
 import QuickActionsTray from "../components/QuickActionsTray.jsx";
-import ChoreRemainingPill from "../components/ChoreRemainingPill.jsx";
 import OutboxIndicator from "../components/OutboxIndicator.jsx";
 import PlaceTag from "../components/PlaceTag.jsx";
-import ModifierBadges from "../components/ModifierBadge.jsx";
 import ChoreCheckRow from "../components/ChoreCheckRow.jsx";
-import { useChoreModifiers } from "../lib/data/useChoreModifiers.js";
-import { resolveModifiers, applyModifier } from "../lib/modifiers.js";
 import { formatISODate, todayUTC } from "../lib/dates.js";
 import { useChoreAssignmentRules }
   from "../lib/data/useChoreAssignmentRules.js";
@@ -566,7 +562,6 @@ function DoingSurface({
   definitions, completions,
   logRunEvent, logMortality, logEggCollection,
   onCancelRun, onFinishRun, onJoinRun,
-  participants,
   recentConditionsByPlace, repeatWindowDays,
   selectedPlaceId, onSelectPlace,
   selectedChildId, onSelectChild,
@@ -1321,7 +1316,6 @@ function AllDoneButton({ obligations, completions, className = "" }) {
         byChore.get(o.chore.id).push(o.placeId);
       }
       for (const [choreId, placeIds] of byChore) {
-        // eslint-disable-next-line no-await-in-loop
         await completions.toggleMany(choreId, placeIds, true);
       }
     } finally {

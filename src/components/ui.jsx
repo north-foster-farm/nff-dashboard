@@ -365,7 +365,6 @@ export function AttentionCard({
 // The compact one-line variant — a flush amber row for inline escalation
 // (e.g. an overdue chore in a list) where a full card would be too loud.
 AttentionCard.Row = function AttentionRow({
-  kind = "overdue",
   work,
   where,
   action,

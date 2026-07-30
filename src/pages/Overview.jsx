@@ -149,7 +149,7 @@ function weatherIcon(code) {
 // the one `farmLoad` model so it can never drift from the Schedule. Phone
 // only (`lg:hidden`); desktop keeps its multi-pane grid. The full block
 // list + ticking lives one tap away in Rounds, so this stays a glance.
-function TodayGlance({ data, today, blocks, ruleOpts }) {
+function TodayGlance({ data, today, ruleOpts }) {
   const { choreCtx } = useSites();
   const completions = useChoreCompletions(today);
   const todayISO = useMemo(() => {
@@ -244,7 +244,7 @@ function TodayGlance({ data, today, blocks, ruleOpts }) {
 
 // ─── Activity (capped + link) ───────────────────────────────────────────────
 
-function ActivitySinceYesterday({ data, today, onNavigate }) {
+function ActivitySinceYesterday({ today, onNavigate }) {
   const windowStart = useMemo(() => {
     const d = new Date(today);
     d.setDate(d.getDate() - 1);

@@ -221,8 +221,6 @@ describe("deriveDay — event folding (S17, round-5 zero-width-range regression 
   });
 
   it("excludes an event that lands on a different day even though it's in the same series", () => {
-    const dayISO = "2026-06-06";
-    const dayUTC = new Date(Date.UTC(2026, 5, 6));
     const data = {
       chores: { definitions: [] },
       events: {

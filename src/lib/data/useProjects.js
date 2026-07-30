@@ -774,7 +774,7 @@ export function useProject(projectKey) {
   const uploadAttachment = useCallback(async (file, { stepId = null } = {}) => {
     // Path: <projectId>/<stepId|project>/<timestamp>-<name>. Sanitized
     // so odd filenames can't break out of the prefix.
-    const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+    const safeName = file.name.replace(/[^\w.-]+/g, "_");
     const path = `${projectId}/${stepId ?? "project"}/` +
       `${Date.now()}-${safeName}`;
     const { error: upErr } = await supabase.storage

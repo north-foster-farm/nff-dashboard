@@ -41,8 +41,8 @@ import BatchPicker, {
 export default function EventEditor({
   open, onClose, kinds, seed, onOpenProcessing, data,
 }) {
-  const { series, seriesById, createSeries, updateSeries, deleteSeries, splitSeries } = useEventSeries();
-  const { occurrences: seriesOccurrences, upsertOverride, deleteOverride } =
+  const { seriesById, createSeries, updateSeries, deleteSeries, splitSeries } = useEventSeries();
+  const { occurrences: seriesOccurrences, upsertOverride } =
     useEventOccurrences({ seriesId: seed?.seriesId });
 
   const editingSeries = seed?.seriesId ? seriesById.get(seed.seriesId) : null;

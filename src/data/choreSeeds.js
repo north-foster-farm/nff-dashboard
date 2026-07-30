@@ -330,8 +330,6 @@ const MARKET = "farmers_market_or_popup";
 const AS_EVENT = { owner: "event", place: "house", activation: "event" };
 const AS_EVENT_BARN = { owner: "event", place: "barn",
   activation: "event" };
-const AS_EVENT_COLD = { owner: "event", place: "cold_storage",
-  activation: "event" };
 const AS_EVENT_NOWHERE = { owner: "event", place: null,
   activation: "event" };
 

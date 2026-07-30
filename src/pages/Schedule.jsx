@@ -2071,10 +2071,6 @@ export default function Schedule({ data }) {
     return out;
   }, [projectEntries, overnightEntries]);
 
-  const totalRows = useMemo(
-    () => counts.reduce((s, c) => s + c.total, 0) + placedCommitmentItems.length,
-    [counts, placedCommitmentItems]);
-
   // One placed commitment -> a confirm-doc entry (reference + label, never a
   // copy of content). Keyed by commitment id, like the in-block ad-hoc rows.
   const commitmentConfirmEntry = (d) => ({

@@ -49,7 +49,7 @@ function getRule(series) {
   const dtIso = dtstart.toISOString().replace(/[-:]|\.\d{3}/g, "");
   const composed =
     `DTSTART:${dtIso.slice(0, dtIso.length - 1)}Z\nRRULE:${series.rrule}`;
-  let rule = null;
+  let rule;
   try {
     rule = rrulestr(composed);
   } catch (e) {

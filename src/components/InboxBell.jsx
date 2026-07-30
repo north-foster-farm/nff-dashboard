@@ -239,7 +239,6 @@ function formatRelative(iso) {
 }
 
 function reportErr(err) {
-  // eslint-disable-next-line no-console
   console.error("[inbox]", err);
   alert("That action failed. See console for details.");
 }

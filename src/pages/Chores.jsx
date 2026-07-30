@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
-  Plus, Search, Copy, Pencil, Trash2, ChevronDown, ChevronRight, CloudOff,
+  Plus, Search, Pencil, Trash2, ChevronDown, ChevronRight, CloudOff,
   Sparkles,
 } from "lucide-react";
 import { CheckTarget, BTN_ACCENT, BTN_GHOST } from "../components/ui.jsx";
@@ -18,7 +18,7 @@ import { useChoreAssignmentRules } from "../lib/data/useChoreAssignmentRules.js"
 import { useSites } from "../lib/data/useSites.js";
 import { childrenOf } from "../lib/places.js";
 import {
-  useChoreBlocks, formatMinutesOfDay,
+  useChoreBlocks,
 } from "../lib/data/useChoreBlocks.js";
 import { displayBlockSide, resolveBlockMinutes } from "../lib/sunTimes.js";
 import ActivityRow from "../components/ActivityRow.jsx";
@@ -497,7 +497,7 @@ function TodayPlaceTree({
 // chore: checkbox, title, queued glyph, assignees + deadline meta, and
 // the sticky-note button.
 function TodayObligationRow({
-  inst, placeId, completions, currentUserEmail, blocks, blockById, choreCtx,
+  inst, placeId, completions, currentUserEmail, blocks, choreCtx,
 }) {
   const { chore, assignees } = inst;
   const isDone = completions.isDone(chore.id, placeId);
@@ -806,7 +806,7 @@ function AllChoresTab({ data }) {
 // beneath them fold up automatically but stay visible — every place is
 // represented even when it has no chores yet.
 function PlaceGroupedChores({
-  defs, roots, childrenByParent, placesById, choreCtx,
+  defs, roots, childrenByParent, choreCtx,
   rowHandlers, editorData,
 }) {
   // Fan every definition into its obligations. choresByPlace maps
@@ -1407,7 +1407,7 @@ function RowActions({ editing, onEdit, onDelete }) {
 // order, the assignment-rules editor, and an explicit Save (the draft
 // accumulates locally and persists once, on Save).
 function ChoreInlineEditor({
-  chore, places, blocks, groups, speciesById, choreCtx, onCancel, onSave,
+  chore, places, blocks, groups, speciesById, onCancel, onSave,
 }) {
   const [draft, setDraft] = useState(() => ({
     title: chore.title,
@@ -1526,7 +1526,7 @@ function IconAction({ title, onClick, active, children }) {
 
 const CHORE_ACTIVITY_KINDS = new Set(["chore_completed", "chore_uncompleted"]);
 
-function ActivityLogTab({ data }) {
+function ActivityLogTab() {
   const [query, setQuery] = useState("");
   const { entries, loading, edit, remove } = useActivityLog();
   const userEmail = useCurrentUserEmail();

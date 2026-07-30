@@ -26,7 +26,7 @@ const OBSERVATION_KINDS = [
 ];
 
 export default function PlacePage({
-  placeId, data, onBack, onOpenPlace, onOpenRounds, onNavigate,
+  placeId, data, onBack, onOpenPlace, onOpenRounds,
 }) {
   const {
     placesById, childrenByParent, placementsByPlaceId, groupsById,
@@ -348,7 +348,7 @@ function EmptyLine({ children }) {
 
 // ── Occupants ─────────────────────────────────────────────────────────
 function OccupantRow({
-  occupant: o, place, groupsById, speciesById, machinesById, placesById,
+  occupant: o, place, groupsById, speciesById, machinesById,
   onOpenPlace,
 }) {
   const isBatch = o.occupantType === "batch";

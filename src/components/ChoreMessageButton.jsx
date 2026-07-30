@@ -221,7 +221,6 @@ function formatRelative(iso) {
 }
 
 function reportErr(err) {
-  // eslint-disable-next-line no-console
   console.error("[chore-message]", err);
   alert("That action failed. See console for details.");
 }

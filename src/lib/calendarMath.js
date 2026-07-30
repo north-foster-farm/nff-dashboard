@@ -132,7 +132,6 @@ export function layoutOverlappingEvents(occurrences) {
   const columns = [];
   for (const ev of sorted) {
     const startMin = hhmmToMinutes(ev.startTime) ?? 0;
-    const endMin = hhmmToMinutes(ev.endTime) ?? startMin + 60;
     let placed = false;
     for (let i = 0; i < columns.length; i += 1) {
       const col = columns[i];

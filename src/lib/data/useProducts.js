@@ -327,7 +327,7 @@ export function useProducts() {
   const uploadPhoto = useCallback(async (product, file) => {
     // Path: <productId>/<timestamp>-<name>, sanitized so odd filenames
     // can't break out of the prefix (same convention as project-files).
-    const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+    const safeName = file.name.replace(/[^\w.-]+/g, "_");
     const path = `${product.id}/${Date.now()}-${safeName}`;
     const { error: upErr } = await supabase.storage
       .from(PHOTO_BUCKET)

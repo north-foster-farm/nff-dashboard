@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-react";
 import { T } from "../theme.js";
 import { formatISODate, formatLongDate } from "../lib/dates.js";
