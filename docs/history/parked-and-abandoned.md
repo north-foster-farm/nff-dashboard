@@ -21,7 +21,7 @@ below carries its audit date.
 ### 2026-05-04 — the wishlist that seeded most of the graveyard
 
 Before `ROADMAP.md` existed there was a brain-dump
-(`.ignored/more-stuff.md`, m3 §1). Its first paragraph is the
+(`records/more-stuff.md`, m3 §1). Its first paragraph is the
 e-commerce intent list — "SKUs and inventory, pricing, orders, point
 of sale, stripe, venmo and quickbooks integration"; its second half is
 the parking lot: voice control ("dad needs to be able to command this
@@ -55,7 +55,8 @@ James wants prompted for on build; the oldest untouched entry in the
 file. Two integration reference dumps:
 `docs/history/records/ntfy-digitalocean-setup.md` (self-hosting an ntfy
 push server
-on a droplet) and `.ignored/yosmart_docs.md` (292 KB of scraped YoLink
+on a droplet) and `docs/research/yosmart_docs.md` (292 KB of scraped
+YoLink
 API docs for the farm's smart thermometers). And the **pasture rotation
 planner**'s requirements — GeoJSON pasture upload, global
 Suscovich/Salatin tractor footprints and bird caps, right-angle-move and

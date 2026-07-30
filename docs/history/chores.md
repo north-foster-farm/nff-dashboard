@@ -41,7 +41,7 @@ day survived every subsequent rewrite (m2 §2026-05-06):
 - **Accountability is about time, not people** — "Chores all must be
   finished, period … Accountability means we know when chores were
   started and finished within the designated block"
-  (`.ignored/workshop-follow-up.txt`, quoted in m3). No leaderboards,
+  (`records/workshop-follow-up.txt`, quoted in m3). No leaderboards,
   no initials, no per-person splits; **"overrun" replaces "DNF"**
   (memory `feedback_chores_accountability`, m4 §2). This is the one
   design principle in the whole repo that lives only in memory and in

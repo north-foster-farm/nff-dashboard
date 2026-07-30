@@ -143,7 +143,7 @@ idea source, not a live bug list — its checkbox ledger stopped being
 maintained that evening (m4 §1c).
 
 **2026-06-28 — one broiler batch, many places.** The investigation in
-`.ignored/broiler-brooder-placement/DESIGN.md` found the real bug: the
+`records/broiler-brooder-placement-design.md` found the real bug: the
 brooder-cleanout chore anchored to "the event's batch", so at +22 days
 it resolved to wherever the batch *now* was — the pasture — never the
 brooder it had left. The doc recommended the conservative option; James

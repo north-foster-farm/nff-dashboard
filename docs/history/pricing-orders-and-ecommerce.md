@@ -25,7 +25,7 @@ two days before `ROADMAP.md` exists. The cost model born here is
 static reference data in `src/data/nff-data.json`, and it is still
 static reference data today — see Current state.
 
-**2026-05-04 (`4a8ed2c`, `.ignored/more-stuff.md`) — the whole arc is
+**2026-05-04 (`4a8ed2c`, `records/more-stuff.md`) — the whole arc is
 named on day one.** The roadmap's reconstructed first revision carries
 a "Round 2" dump that lists the commerce sequence essentially as it
 was eventually built: Resources, Products, Inventory, Pricing, Orders,

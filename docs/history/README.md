@@ -299,6 +299,14 @@ tracked path:
 - `prototype-model-notes.md` — the prototype-era `modelNotes` prose
   promoted out of `src/data/nff-data.json` when H3 deleted the dead
   keys that carried it (nothing ever rendered them).
+- `broiler-brooder-placement-design.md` — the 2026-06-28 one-batch/
+  many-places investigation and design (Option B: resolve cleanout
+  from placement history), cited by two chapters as a decision source.
+- `workshop-follow-up.txt` — James's verbatim accountability
+  clarification (time-management, not per-person splits; "overrun"
+  replaces "DNF"). The origin of the chores-accountability principle.
+- `more-stuff.md` — the 2026-05-04 pre-roadmap brain-dump whose first
+  paragraph names the whole e-commerce arc on day one.
 
 Related promoted material lives in `docs/specs/` (design specs),
 `docs/workshops/` (the playbooks and their worked runs),

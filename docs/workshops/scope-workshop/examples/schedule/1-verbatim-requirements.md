@@ -54,7 +54,8 @@ ad-hoc is **activity** (under review — see the parent-concept note).
 > feature should create a fundamental LINK between concepts without being
 > a leaky abstraction that poorly wraps several complex domain objects.
 
-(Related prior context: `.ignored/workshop-follow-up.txt` — accountability
+(Related prior context:
+`docs/history/records/workshop-follow-up.txt` — accountability
 is about time-management/routine, not per-person completion; chores
 "strung through the whole day" is the core pain.)
 

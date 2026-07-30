@@ -155,7 +155,7 @@ option.** Broiler batches routinely run split across 5+ chicken tractors,
 which the one-open-row-per-occupant constraint made unrepresentable, and
 brooder cleanout resolved to wherever the batch *now* is (the pasture)
 instead of the brooder it left. The design doc
-(`.ignored/broiler-brooder-placement/DESIGN.md`) recommended Option B —
+(`records/broiler-brooder-placement-design.md`) recommended Option B —
 no migration, resolve cleanout from placement history. James chose
 **Option A**: "Brooders aren't the only place a batch can be split …
 one batch is split across 5+ chicken tractors." `0039` (`9aa027e`)

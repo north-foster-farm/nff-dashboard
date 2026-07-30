@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFF Pricing — Worksheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- shared store (optional). If you don't configure Supabase below, the page still works in single-device mode. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --ink:#1d1c1a; --t2:#5d584f; --t3:#8a847a; --line:#e7e4dd; --line2:#f0eee8;
+    --green:#3f6b4a; --green-d:#2f5238; --green-wash:#eef3ee; --green-edge:#cdd9cf;
+    --paper:#f4f3ef; --sheet:#ffffff; --wheat:#8a5e1e;
+    --pos:#c0392b; --neg:#2f7d4f; --warn:#b5781f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.45;padding:30px 16px 70px}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+  .sheet{max-width:1180px;margin:0 auto;background:var(--sheet);border:1px solid var(--line);
+    box-shadow:0 18px 44px -30px rgba(29,28,26,.5)}
+
+  header{padding:32px 36px 0}
+  .kicker{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:11px}
+  h1{margin:0 0 8px;font-size:28px;font-weight:800;letter-spacing:-.02em}
+  .sub{font-size:13.5px;color:var(--t2);max-width:74ch;margin:0}
+
+  .controls{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-end;justify-content:space-between;
+    margin-top:24px;padding:18px 0 16px;border-top:1px solid var(--line)}
+  .ctl-group{display:flex;flex-direction:column;gap:7px}
+  .ctl-label{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);font-weight:700}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fbfaf7}
+  .seg button{appearance:none;border:0;background:transparent;font-family:inherit;font-size:13.5px;font-weight:600;
+    color:var(--t2);padding:9px 18px;cursor:pointer;transition:.12s}
+  .seg button + button{border-left:1px solid var(--line)}
+  .seg.who button.on{background:var(--green);color:#fff}
+  .modes .seg button.on,.seg.modes button.on{background:var(--ink);color:#fff}
+
+  .conn{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--t2);
+    border:1px solid var(--line);border-radius:20px;padding:5px 13px;background:#fbfaf7}
+  .conn .dot{width:8px;height:8px;border-radius:50%;background:#cfcabf}
+  .conn.live{color:var(--green-d);border-color:var(--green-edge);background:var(--green-wash)}
+  .conn.live .dot{background:var(--green)}
+
+  .status{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--t2);
+    border:1px solid var(--line);border-radius:20px;padding:5px 12px;background:#fbfaf7}
+  .dot{width:8px;height:8px;border-radius:50%;background:#cfcabf}
+  .pill.done{color:var(--green-d);border-color:var(--green-edge);background:var(--green-wash)}
+  .pill.done .dot{background:var(--green)}
+
+  .view{display:none} .view.on{display:block}
+  .scroll{overflow-x:auto}
+
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  thead th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);font-weight:700;
+    text-align:right;padding:14px 16px 9px;border-bottom:1px solid var(--ink);white-space:nowrap;background:var(--sheet)}
+  thead th.l{text-align:left;padding-left:36px}
+  thead th .u{display:block;font-size:9px;letter-spacing:.03em;text-transform:none;color:var(--t3);font-weight:400;margin-top:2px}
+  thead th.mine{color:var(--green)}
+  tr.grp td{padding:18px 36px 7px;border-bottom:1px solid var(--line2)}
+  .cn{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+  .gn{font-size:11px;font-style:italic;color:var(--t3);font-weight:400;margin-left:11px;text-transform:none;letter-spacing:0}
+  tr.r td{padding:9px 16px;border-bottom:1px solid var(--line2);vertical-align:middle;text-align:right;white-space:nowrap}
+  tr.r:hover td{background:#fdfcf9}
+  td.band{text-align:left;padding-left:36px;font-size:13px;color:var(--ink)}
+  td.band .sug{display:inline-block;margin-left:8px;font-size:8.5px;letter-spacing:.06em;font-weight:700;color:var(--wheat);
+    border:1px solid #d9bb86;border-radius:3px;padding:1px 5px;vertical-align:1px;text-transform:uppercase}
+  td.ref{color:var(--t3);font-size:12.5px}
+  td.ref b{color:var(--t2);font-weight:600}
+  td.mine{background:var(--green-wash);box-shadow:inset 1px 0 var(--green-edge),inset -1px 0 var(--green-edge)}
+  .delta{font-size:11px;font-weight:600}
+  .delta.p{color:var(--pos)} .delta.n{color:var(--neg)} .delta.z{color:var(--t3)}
+  .na{color:#cdc9bf}
+
+  .inp{display:inline-flex;align-items:center;gap:1px;border:1px solid var(--green-edge);border-radius:7px;
+    background:#fff;padding:3px 8px 3px 9px;transition:.12s}
+  .inp:focus-within{border-color:var(--green);box-shadow:0 0 0 3px rgba(63,107,74,.13)}
+  .inp .cur{color:var(--t3);font-size:13px;font-weight:600}
+  .inp input{border:0;outline:0;width:54px;text-align:right;font-family:inherit;font-size:14.5px;font-weight:700;
+    color:var(--green-d);background:transparent;font-variant-numeric:tabular-nums}
+  .inp.changed{border-color:var(--warn);background:#fffaf0}
+  td.lbcell{font-weight:700;font-size:14.5px;color:var(--green-d)}
+  .pair{font-size:11px;color:var(--t3);font-weight:500;margin-top:1px;white-space:nowrap}
+
+  .actions{padding:22px 36px 6px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .btn{appearance:none;border:0;font-family:inherit;font-size:14px;font-weight:700;border-radius:9px;
+    padding:11px 20px;cursor:pointer;transition:.12s}
+  .btn.primary{background:var(--green);color:#fff}
+  .btn.primary:hover{background:var(--green-d)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--t3)}
+  .btn:disabled{opacity:.5;cursor:wait}
+  .btn.big{font-size:17px;padding:16px 34px;border-radius:11px}
+  .hint{font-size:12px;color:var(--t3)}
+
+  .await{margin:30px 36px;padding:26px;border:1px dashed var(--green-edge);border-radius:12px;background:var(--green-wash);
+    text-align:center;color:var(--t2);font-size:14px}
+  .await b{color:var(--green-d)}
+  .summary{display:flex;gap:30px;flex-wrap:wrap;padding:20px 36px 4px}
+  .stat .n{font-size:23px;font-weight:800;color:var(--green-d);letter-spacing:-.01em}
+  .stat .l{font-size:11.5px;color:var(--t2);margin-top:3px;max-width:24ch}
+  .gapcell .g{font-weight:800;font-size:14px}
+  .gapcell .meet{font-size:11px;color:var(--t3);margin-top:1px}
+  .packbig{font-size:20px;font-weight:800;color:var(--green-d);line-height:1.12;font-variant-numeric:tabular-nums}
+  .gapcell .g.big{color:var(--pos)} .gapcell .g.mid{color:var(--warn)} .gapcell .g.same{color:var(--neg)}
+
+  /* simple (Jim) mode */
+  body.simple .full-only{display:none !important}
+  body.simple header{padding-bottom:0}
+  .whoami{display:inline-flex;align-items:center;gap:9px;font-size:15px;font-weight:700;color:var(--green-d);
+    background:var(--green-wash);border:1px solid var(--green-edge);border-radius:24px;padding:7px 16px;margin-top:18px}
+  .done-screen{display:none;padding:60px 36px;text-align:center}
+  .done-screen.on{display:block}
+  .done-screen .check{width:66px;height:66px;border-radius:50%;background:var(--green);margin:0 auto 20px;
+    display:flex;align-items:center;justify-content:center}
+  .done-screen .check svg{width:34px;height:34px}
+  .done-screen h2{margin:0 0 8px;font-size:24px;font-weight:800}
+  .done-screen p{margin:0 auto 22px;max-width:42ch;color:var(--t2);font-size:15px}
+
+  footer{margin-top:6px;padding:22px 36px 28px;border-top:1px solid var(--ink);font-size:12px;color:var(--t2);line-height:1.65}
+  footer h4{margin:14px 0 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+  footer h4:first-child{margin-top:0}
+  footer ol{margin:0 0 8px;padding-left:18px}
+  footer a{color:var(--green-d)}
+  footer code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  footer pre{background:#fbfaf7;border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:11.5px;
+    overflow-x:auto;color:var(--ink);margin:6px 0 4px}
+  details summary{cursor:pointer;font-weight:700;color:var(--green-d);font-size:12.5px}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;
+    font-size:13px;font-weight:600;padding:11px 20px;border-radius:24px;opacity:0;pointer-events:none;transition:.22s;z-index:99}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:760px){
+    header,.actions,footer,.summary,.await,tr.grp td,.done-screen{padding-left:18px;padding-right:18px}
+    td.band,thead th.l{padding-left:18px}
+    h1{font-size:23px}
+    .controls{flex-direction:column;align-items:flex-start;gap:16px}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header>
+    <div class="kicker">North Foster Farm — pricing worksheet</div>
+    <h1 id="title">Set your prices, then meet in the middle</h1>
+    <p class="sub" id="sub">Fill the <b>pack price</b> for each cut; the $/lb and the gaps versus Pat's Pastured and Maple Wind update live. When you submit, your prices are saved so the Joined view can line both of you up side by side.</p>
+
+    <div class="whoami full-only" id="whoami" style="display:none"></div>
+
+    <div class="controls full-only" id="controls">
+      <div class="ctl-group">
+        <span class="ctl-label">I am</span>
+        <div class="seg who" id="whoSeg">
+          <button data-who="james" class="on">James</button>
+          <button data-who="jim">Jim</button>
+        </div>
+      </div>
+      <div class="ctl-group">
+        <span class="ctl-label">View</span>
+        <div class="seg modes" id="modeSeg">
+          <button data-mode="entry" class="on">My entry</button>
+          <button data-mode="joined">Joined view</button>
+        </div>
+      </div>
+      <div class="ctl-group">
+        <span class="ctl-label">Sync</span>
+        <span class="conn" id="conn"><span class="dot"></span><span id="connTxt">This device only</span></span>
+      </div>
+      <div class="ctl-group">
+        <span class="ctl-label">Submitted</span>
+        <div class="status" id="statusBar">
+          <span class="pill" id="pillJames"><span class="dot"></span>James</span>
+          <span class="pill" id="pillJim"><span class="dot"></span>Jim</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ENTRY -->
+  <section class="view on" id="entryView">
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th class="l">Weight band</th>
+          <th class="mine">Your pack<span class="u">you set this</span></th>
+          <th class="mine">Your $/lb<span class="u">live</span></th>
+          <th>Claude<span class="u">pack · $/lb</span></th>
+          <th>Pat's<span class="u">$/lb · vs you</span></th>
+          <th>Maple Wind<span class="u">$/lb · vs you</span></th>
+        </tr></thead>
+        <tbody id="entryBody"></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="submitBtn">Submit my prices</button>
+      <button class="btn ghost full-only" id="resetBtn">Reset to Claude's suggestions</button>
+      <span class="hint" id="entryHint"></span>
+    </div>
+  </section>
+
+  <!-- JOINED (full mode only) -->
+  <section class="view full-only" id="joinedView">
+    <div class="actions">
+      <button class="btn ghost" id="refreshBtn">Refresh</button>
+      <span class="hint" id="joinedHint"></span>
+    </div>
+    <div class="await" id="awaitMsg"></div>
+    <div id="joinedReady" style="display:none">
+      <div class="summary" id="joinedSummary"></div>
+      <div class="scroll">
+        <table>
+          <thead><tr>
+            <th class="l">Weight band</th>
+            <th>Claude<span class="u">pack · $/lb</span></th>
+            <th>James<span class="u">pack · $/lb · vs Pat/Maple</span></th>
+            <th>Jim<span class="u">pack · $/lb · vs Pat/Maple</span></th>
+            <th>James ↔ Jim<span class="u">pack gap · meet in middle</span></th>
+          </tr></thead>
+          <tbody id="joinedBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- simple-mode confirmation -->
+  <section class="done-screen" id="doneScreen">
+    <div class="check"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <h2 id="doneTitle">All set!</h2>
+    <p id="doneMsg">Your prices were sent to James. You can close this tab — or tap below if you want to change anything.</p>
+    <button class="btn ghost" id="editAgainBtn">Edit my prices again</button>
+  </section>
+
+  <footer class="full-only">
+    <h4>One-time setup so Jim can submit from his own phone (free)</h4>
+    <p>This uses your Supabase. Paste your project URL and anon key into the <code>CONFIG</code> block near the top of this file's script, then run this once in the Supabase SQL editor:</p>
+    <pre>create table if not exists nff_pricing (
+  person text primary key,
+  packs jsonb,
+  updated_at timestamptz default now()
+);
+alter table nff_pricing disable row level security;</pre>
+    <p>Then send Jim his link: <code>your-url.html?me=jim</code> — he sees only a form and a Submit button. You open the plain URL and watch both fill in under Joined view.</p>
+    <details><summary>Notes on privacy &amp; hosting</summary>
+      <p style="margin-top:8px">The anon key sits in this file, so anyone with the page URL could read/write this one table — keep the hosted link between you and Jim, and don't reuse a project with sensitive data (or add a row-level policy instead of disabling RLS). Host the single file free on <a href="https://app.netlify.com/drop" target="_blank" rel="noopener">Netlify Drop</a> or GitHub Pages. Until you add the keys, the page runs in single-device mode and you can enter both sets of prices yourself.</p>
+    </details>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     CONFIG — paste your Supabase values here to enable Jim's link.
+     Leave blank to use single-device mode (you enter both).
+     ============================================================ */
+  var SUPABASE_URL = "";        // e.g. "https://abcdxyz.supabase.co"
+  var SUPABASE_ANON_KEY = "";   // your project's anon public key
+  /* ============================================================ */
+
+  // ---- data: [band, midpoint-lb, suggested?, Claude pack $, Pat's $/lb, Maple $/lb] (null = not sold) ----
+  var DATA = [
+    { name:"Whole Chicken", rows:[
+      ["2.0–2.5 lb",2.25,true ,17,9.80,10.67],["2.5–3.0 lb",2.75,false,20,9.84,10.93],
+      ["3.0–3.5 lb",3.25,true ,23,9.55,11.09],["3.5–4.0 lb",3.75,true ,27,9.61,11.21],
+      ["4.0–4.5 lb",4.25,true ,30,9.42,11.30],["4.5–5.5 lb",5.00,true ,35,9.81,11.38],
+      ["5.5–6.0 lb",5.75,true ,39,9.23,11.49],["6.0–7.0 lb",6.50,true ,44,9.55,null ],
+      ["7.0–8.0 lb",7.50,true ,49,9.47,null ],
+    ]},
+    { name:"Cornish Hen", note:"no competitor equivalent", rows:[["2.5–3.5 lb",3.00,false,20,null,null]]},
+    { name:"Boneless Breast", rows:[
+      ["≤1.25 lb",1.125,false,15,20.40,17.49],["1.25–1.5 lb",1.375,false,18,19.89,17.49],
+      ["1.5–1.75 lb",1.625,true ,21,19.54,18.69],["1.75–2.0 lb",1.875,true ,24,19.31,18.69],
+    ]},
+    { name:"Bone-In Thighs", rows:[
+      ["1.0–1.5 lb",1.25,false,12,13.14,11.30],["1.5–2.0 lb",1.75,false,15,12.83,12.15],
+      ["2.0–2.5 lb",2.25,true ,17,12.74,12.58],
+    ]},
+    { name:"Tenders", note:"Maple sells one size only", rows:[
+      ["≤1.25 lb",1.125,false,15,20.40,17.12],["1.25–1.5 lb",1.375,true ,18,19.89,null],
+      ["1.5–1.75 lb",1.625,true ,21,19.57,null],
+    ]},
+    { name:"Drumsticks", rows:[["<1.5 lb",1.25,false,8,12.45,8.20],["1.5–2.0 lb",1.75,false,10,13.29,8.80]]},
+    { name:"Wings", rows:[
+      ["1.0–2.0 lb",1.50,false,10,9.43,6.80],["2.0–2.5 lb",2.25,true ,15,9.15,8.18],
+      ["2.5–3.0 lb",2.75,true ,18,9.00,8.18],
+    ]},
+    { name:"Chicken Sausage", note:"12 oz pack · Maple's is ~1 lb", rows:[["12 oz · 4 links",0.75,true,15,24.33,17.86]]},
+  ];
+
+  var ROWS = [];
+  DATA.forEach(function(cat){ cat.rows.forEach(function(r){
+    ROWS.push({ cat:cat.name, band:r[0], mid:r[1], sug:r[2], cpack:r[3], pat:r[4], maple:r[5], idx:ROWS.length });
+  });});
+  var N = ROWS.length;
+
+  // ---- mode / identity ----
+  var params = new URLSearchParams(location.search);
+  var pMe = (params.get("me")||"").toLowerCase();
+  var SIMPLE = (pMe==="james"||pMe==="jim");      // a personal "fill & submit" link
+  var me = SIMPLE ? pMe : "james";
+  var mode = "entry";
+  var draft = defaults();
+  var entries = { james:null, jim:null };
+  var stamps  = { james:null, jim:null };
+  function defaults(){ return ROWS.map(function(r){ return r.cpack; }); }
+  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+  // ---- cloud (Supabase) ----
+  var sb = null, CLOUD = false;
+  try{
+    if(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && window.supabase.createClient){
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      CLOUD = true;
+    }
+  }catch(e){ CLOUD=false; }
+
+  // ---- local cache (graceful) ----
+  var mem={};
+  function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return mem[k]||null; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
+  function saveLocal(){ lsSet("nff_neg", JSON.stringify({entries:entries,stamps:stamps})); }
+  function loadLocal(){ try{ var o=JSON.parse(lsGet("nff_neg")); if(o&&o.entries){ entries=o.entries; if(o.stamps)stamps=o.stamps; } }catch(e){} }
+
+  // ---- math ----
+  function lbOf(p,m){ if(p===""||p==null||isNaN(p)) return null; return (+p)/m; }
+  function money(x,dp){ if(x==null||isNaN(x)) return "—"; var s=(+x).toFixed(dp==null?2:dp); s=s.replace(/\.00$/,""); return "$"+s; }
+  function pct(c,l){ if(c==null||l==null||l<=0) return null; return (c-l)/l*100; }
+  function deltaHtml(p){ if(p==null) return '<span class="na">—</span>';
+    var cls=Math.abs(p)<0.5?"z":(p>0?"p":"n"), sign=p>0?"+":(p<0?"−":"");
+    return '<span class="delta '+cls+'">'+sign+Math.abs(Math.round(p))+'%</span>'; }
+
+  // ---- entry render ----
+  var entryBody=document.getElementById("entryBody");
+  function renderEntry(){
+    var html="", ci=null;
+    ROWS.forEach(function(r){
+      if(r.cat!==ci){ ci=r.cat; var cat=DATA.find(function(c){return c.name===ci;});
+        var note=cat&&cat.note?'<span class="gn">'+cat.note+'</span>':'';
+        html+='<tr class="grp"><td colspan="6"><span class="cn">'+r.cat+'</span>'+note+'</td></tr>'; }
+      var v=draft[r.idx], mineLb=lbOf(v,r.mid), changed=(v!=="" && v!=null && +v!==r.cpack), claudeLb=r.cpack/r.mid;
+      html+='<tr class="r">'+
+        '<td class="band">'+r.band+(r.sug?'<span class="sug">sug</span>':'')+'</td>'+
+        '<td class="mine"><span class="inp'+(changed?' changed':'')+'"><span class="cur">$</span>'+
+          '<input class="num" type="number" min="0" step="0.25" inputmode="decimal" data-i="'+r.idx+'" value="'+(v==null?"":v)+'"></span></td>'+
+        '<td class="mine lbcell num" id="elb'+r.idx+'">'+(mineLb==null?'—':money(mineLb)+lbSmall())+'</td>'+
+        '<td class="ref num"><b>'+money(r.cpack,0)+'</b> · '+money(claudeLb)+'/lb</td>'+
+        '<td class="num" id="epat'+r.idx+'">'+compCell(r.pat,mineLb)+'</td>'+
+        '<td class="num" id="emap'+r.idx+'">'+compCell(r.maple,mineLb)+'</td>'+
+      '</tr>';
+    });
+    entryBody.innerHTML=html;
+    entryBody.querySelectorAll("input[data-i]").forEach(function(inp){ inp.addEventListener("input",onEdit); });
+  }
+  function lbSmall(){ return '<span style="font-weight:500;color:var(--t3);font-size:11px">/lb</span>'; }
+  function compCell(comp,mineLb){ if(comp==null) return '<span class="na">n/a</span>';
+    return money(comp)+'/lb &nbsp;'+deltaHtml(pct(comp,mineLb)); }
+  function onEdit(e){
+    var i=+e.target.getAttribute("data-i"), raw=e.target.value;
+    draft[i]= raw==="" ? "" : raw;
+    var r=ROWS[i], mineLb=lbOf(draft[i],r.mid);
+    document.getElementById("elb"+i).innerHTML=(mineLb==null?'—':money(mineLb)+lbSmall());
+    document.getElementById("epat"+i).innerHTML=compCell(r.pat,mineLb);
+    document.getElementById("emap"+i).innerHTML=compCell(r.maple,mineLb);
+    var w=e.target.closest(".inp"); if(w) w.classList.toggle("changed", draft[i]!=="" && +draft[i]!==r.cpack);
+    lsSet("nff_draft_"+me, JSON.stringify(draft));
+  }
+
+  // ---- submit ----
+  var submitBtn=document.getElementById("submitBtn");
+  submitBtn.addEventListener("click", function(){
+    var packs=draft.map(function(v){ return (v===""||v==null)?null:+v; });
+    entries[me]={packs:packs}; stamps[me]=new Date().toISOString(); saveLocal(); updateStatus();
+    if(CLOUD){
+      submitBtn.disabled=true; submitBtn.textContent="Sending…";
+      sb.from("nff_pricing").upsert({person:me,packs:packs,updated_at:stamps[me]},{onConflict:"person"})
+        .then(function(res){
+          submitBtn.disabled=false; submitBtn.textContent="Submit my prices";
+          if(res.error){ toast("Couldn't send — check connection"); return; }
+          if(SIMPLE){ showDone(); } else { toast(cap(me)+"'s prices sent"); }
+        });
+    } else {
+      if(SIMPLE){ showDone(); } else { toast(cap(me)+"'s prices saved on this device"); }
+    }
+  });
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    draft=defaults(); lsSet("nff_draft_"+me,JSON.stringify(draft)); renderEntry(); toast("Reset to suggestions");
+  });
+
+  // ---- simple-mode done screen ----
+  function showDone(){
+    document.getElementById("entryView").classList.remove("on");
+    document.getElementById("doneScreen").classList.add("on");
+    document.getElementById("doneTitle").textContent="All set, "+cap(me)+"!";
+    document.getElementById("doneMsg").textContent = CLOUD
+      ? "Your prices were sent to James. You can close this tab — or tap below to change anything."
+      : "Your prices are saved. (Heads up: cloud sync isn't switched on, so show these to James directly.)";
+  }
+  document.getElementById("editAgainBtn").addEventListener("click", function(){
+    document.getElementById("doneScreen").classList.remove("on");
+    document.getElementById("entryView").classList.add("on");
+  });
+
+  // ---- joined ----
+  function fetchCloud(cb){
+    if(!CLOUD){ if(cb)cb(); return; }
+    sb.from("nff_pricing").select("person,packs,updated_at").then(function(res){
+      if(!res.error && res.data){ res.data.forEach(function(row){
+        if(row.person==="james"||row.person==="jim"){ entries[row.person]={packs:row.packs}; stamps[row.person]=row.updated_at; }
+      }); saveLocal(); updateStatus(); }
+      if(cb)cb();
+    });
+  }
+  var joinedBody=document.getElementById("joinedBody");
+  function renderJoined(){
+    var ready=entries.james&&entries.jim;
+    document.getElementById("awaitMsg").style.display=ready?"none":"block";
+    document.getElementById("joinedReady").style.display=ready?"block":"none";
+    document.getElementById("joinedHint").textContent = CLOUD ? "Live from your shared store." : "Single-device mode — both entries are stored here.";
+    if(!ready){
+      var miss=[]; if(!entries.james)miss.push("James"); if(!entries.jim)miss.push("Jim");
+      document.getElementById("awaitMsg").innerHTML="Waiting on <b>"+miss.join("</b> and <b>")+"</b> to submit. Both sets line up here automatically once they're in.";
+      return;
+    }
+    var jaP=entries.james.packs, jmP=entries.jim.packs, html="", ci=null, gaps=[], diffRows=0;
+    ROWS.forEach(function(r){
+      if(r.cat!==ci){ ci=r.cat; html+='<tr class="grp"><td colspan="5"><span class="cn">'+r.cat+'</span></td></tr>'; }
+      var ja=jaP[r.idx], jm=jmP[r.idx], jaLb=lbOf(ja,r.mid), jmLb=lbOf(jm,r.mid), claudeLb=r.cpack/r.mid;
+      var gap=(jaLb!=null&&jmLb!=null&&jaLb>0)?(jmLb-jaLb)/jaLb*100:null;
+      if(gap!=null){ gaps.push(Math.abs(gap)); if(Math.abs(gap)>=0.5)diffRows++; }
+      var meetPack=(ja!=null&&jm!=null)?(ja+jm)/2:null, meetLb=meetPack!=null?meetPack/r.mid:null;
+      html+='<tr class="r">'+
+        '<td class="band">'+r.band+(r.sug?'<span class="sug">sug</span>':'')+'</td>'+
+        '<td class="ref num"><b>'+money(r.cpack,0)+'</b> · '+money(claudeLb)+'</td>'+
+        personCell(ja,jaLb,r)+personCell(jm,jmLb,r)+gapCell(gap,meetPack,(ja!=null&&jm!=null)?(jm-ja):null)+'</tr>';
+    });
+    joinedBody.innerHTML=html;
+    var avg=gaps.length?gaps.reduce(function(a,b){return a+b;},0)/gaps.length:0, maxGap=gaps.length?Math.max.apply(null,gaps):0;
+    document.getElementById("joinedSummary").innerHTML=
+      '<div class="stat"><div class="n num">'+diffRows+'</div><div class="l">rows where you two differ</div></div>'+
+      '<div class="stat"><div class="n num">'+Math.round(avg)+'%</div><div class="l">average gap between your prices</div></div>'+
+      '<div class="stat"><div class="n num">'+Math.round(maxGap)+'%</div><div class="l">widest single-row gap to resolve</div></div>';
+  }
+  function personCell(pack,lb,r){
+    if(pack==null||lb==null) return '<td><span class="na">—</span></td>';
+    return '<td class="num">'+
+      '<div class="packbig">'+money(pack)+'</div>'+
+      '<div class="pair">'+money(lb)+'/lb &nbsp;·&nbsp; Pat '+mini(pct(r.pat,lb))+' · Maple '+mini(pct(r.maple,lb))+'</div>'+
+    '</td>';
+  }
+  function mini(p){ if(p==null) return '<span class="na">n/a</span>';
+    var cls=Math.abs(p)<0.5?"z":(p>0?"p":"n"), sign=p>0?"+":(p<0?"−":"");
+    return '<span class="delta '+cls+'">'+sign+Math.abs(Math.round(p))+'%</span>'; }
+  function gapCell(gap,meetPack,packDiff){
+    if(gap==null||packDiff==null) return '<td><span class="na">—</span></td>';
+    var a=Math.abs(gap), cls=a<0.5?"same":(a<8?"mid":"big");
+    var head = a<0.5 ? "aligned" : ("Jim "+(packDiff>0?"+":"−")+money(Math.abs(packDiff)));
+    var bits=[]; if(a>=0.5) bits.push((gap>0?"+":"−")+a.toFixed(0)+"%");
+    if(meetPack!=null) bits.push("meet at "+money(meetPack));
+    var second = bits.length ? '<div class="meet">'+bits.join(" · ")+'</div>' : '';
+    return '<td class="gapcell"><span class="g '+cls+' num">'+head+'</span>'+second+'</td>';
+  }
+
+  // ---- status / nav ----
+  function updateStatus(){
+    document.getElementById("pillJames").classList.toggle("done",!!entries.james);
+    document.getElementById("pillJim").classList.toggle("done",!!entries.jim);
+  }
+  document.getElementById("whoSeg").addEventListener("click", function(e){
+    var b=e.target.closest("button"); if(!b) return; me=b.getAttribute("data-who");
+    [].forEach.call(this.querySelectorAll("button"),function(x){ x.classList.toggle("on",x===b); });
+    var d=null; if(entries[me]) d=entries[me].packs.map(function(v){return v==null?"":v;});
+    else { try{ d=JSON.parse(lsGet("nff_draft_"+me)); }catch(e2){} }
+    draft=d&&d.length===N?d:defaults(); renderEntry(); toast("Editing as "+cap(me));
+  });
+  var pollT=null;
+  document.getElementById("modeSeg").addEventListener("click", function(e){
+    var b=e.target.closest("button"); if(!b) return; mode=b.getAttribute("data-mode");
+    [].forEach.call(this.querySelectorAll("button"),function(x){ x.classList.toggle("on",x===b); });
+    document.getElementById("entryView").classList.toggle("on",mode==="entry");
+    document.getElementById("joinedView").classList.toggle("on",mode==="joined");
+    clearInterval(pollT);
+    if(mode==="joined"){ fetchCloud(renderJoined); if(CLOUD){ pollT=setInterval(function(){ fetchCloud(renderJoined); },6000); } }
+  });
+  document.getElementById("refreshBtn").addEventListener("click", function(){ fetchCloud(renderJoined); toast("Refreshed"); });
+
+  // ---- utils ----
+  var toastEl=document.getElementById("toast"),toastT;
+  function toast(m){ toastEl.textContent=m; toastEl.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(function(){toastEl.classList.remove("show");},1900); }
+
+  // ---- connection badge ----
+  (function(){ var c=document.getElementById("conn"),t=document.getElementById("connTxt");
+    if(CLOUD){ c.classList.add("live"); t.textContent="Synced with Jim"; } else { t.textContent="This device only"; } })();
+
+  // ---- init ----
+  loadLocal();
+  if(SIMPLE){
+    document.body.classList.add("simple");
+    document.getElementById("title").textContent="Your prices, "+cap(me);
+    document.getElementById("sub").innerHTML="Adjust any pack price you'd set differently — the rest are the suggested starting points. When you're happy, tap <b>Submit my prices</b> at the bottom. That's it.";
+    var w=document.getElementById("whoami"); w.style.display="inline-flex"; w.innerHTML='You are filling this out as <b style="margin-left:2px">'+cap(me)+'</b>';
+    // prefill from their last cloud submission if present
+    fetchCloud(function(){
+      var src=null;
+      if(entries[me]) src=entries[me].packs.map(function(v){return v==null?"":v;});
+      else { try{ src=JSON.parse(lsGet("nff_draft_"+me)); }catch(e){} }
+      draft=src&&src.length===N?src:defaults(); renderEntry();
+    });
+  } else {
+    var d=null; if(entries[me]) d=entries[me].packs.map(function(v){return v==null?"":v;});
+    else { try{ d=JSON.parse(lsGet("nff_draft_"+me)); }catch(e){} }
+    draft=d&&d.length===N?d:defaults();
+    updateStatus(); renderEntry();
+    if(CLOUD) fetchCloud(updateStatus); // pull any existing submissions for the status pills
+  }
+})();
+</script>
+</body>
+</html>
