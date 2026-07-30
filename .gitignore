@@ -29,3 +29,4 @@ audits/raw/
 # Processed transcripts + frames (intermediate; findings.md is the keeper).
 audits/*/processed/
 .playwright-mcp/
+coverage/

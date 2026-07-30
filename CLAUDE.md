@@ -7,8 +7,9 @@ behavior; follow them exactly.
 
 TDD is how code gets written in this repo. `npm test` runs the unit
 suite (vitest, the pure-logic layer — `src/lib` plus a few pure
-helpers beside their component); a green FULL run is a hard
-commit requirement, enforced by `.githooks/pre-commit` (installed
+helpers beside their component); a green `npm run check` (suite +
+lint + format — see Quality gates below) is a hard commit
+requirement, enforced by `.githooks/pre-commit` (installed
 per-clone via `scripts/setup-hooks.sh`; never bypass with
 `--no-verify`).
 
@@ -38,6 +39,42 @@ The loop, exactly:
 5. **Tests are living code.** Update and refactor them as the
    codebase changes; a suite left to rot stops catching bugs and
    stops feeling valuable.
+
+## Quality gates & invariants (H5, 2026-07-30)
+
+`npm run check` is the single definition of "ready to commit" — the
+pre-commit hook runs it. It chains eslint (errors gate; warnings are
+the visible improvement backlog), stylelint, the unit suite with
+coverage thresholds, and `scripts/check-format.sh`.
+
+Everything below is a RATCHET — limits tighten as code improves and
+never loosen to make a commit pass:
+
+- **Complexity/size limits** (`eslint.config.js`): complexity 15 /
+  max-depth 4 / max-params 5 for new code;
+  max-lines-per-function 120 on the pure lib layer. Legacy hotspots
+  sit in explicit waiver buckets (25/40/80) in the config; when a
+  refactor brings a file under its bucket, move it down or out —
+  never add a new file to a bucket.
+- **Coverage thresholds** (`vitest.config.js`): measured on the pure
+  lib layer only; raise them to just under the new mark when real
+  coverage rises.
+- **Format** (`scripts/check-format.sh`): no trailing whitespace
+  repo-wide (markdown may end a line with EXACTLY two spaces — the
+  hard break); max-len 80 checked on ADDED non-template lines only
+  (.js/.mjs/.sql/.sh/.css; JSX/HTML exempt).
+- **Lib purity** (`src/lib/libPurity.test.js`): impurity lives only
+  in `src/lib/data/` (supabase, outbox, capture I/O, use* hooks) and
+  `src/lib/browser/` (React + browser APIs). Nothing else under
+  `src/lib` may import react/supabase or reach into those zones.
+- **Identity invariants** (`src/lib/identityInvariants.test.js`,
+  F5): user-renameable rows (blocks, places, projects) are
+  identified by primary key only — never `.name`/`.slug` compared
+  to a literal, never `.name.toLowerCase()` comparisons.
+- **Prod referential integrity**:
+  `node scripts/check-consistency.mjs` (READ-ONLY) verifies every
+  chore block reference and farm-map binding resolves. Run it after
+  anything that touches blocks, deadlines, places, or the map SVG.
 
 ## Commit style
 
@@ -145,7 +182,8 @@ Production rules:
 
 Run through this before every commit:
 
-0. **The unit suite is green** (`npx vitest run`). The
+0. **The checks are green** (`npm run check` — suite + lint +
+   format; see Quality gates above). The
    `.githooks/pre-commit` hook enforces this; don't lean on it —
    run the suite yourself first.
 1. The message follows **Commit style** above (including no
