@@ -11,6 +11,8 @@ import {
   validateBlockWindow,
   displayBlockSide,
 } from "../lib/data/useChoreBlocks.js";
+import { useChoreDefinitions } from "../lib/data/useChoreDefinitions.js";
+import { choresReferencingBlock } from "../lib/chores.js";
 import AssignmentRulesEditor from "./AssignmentRulesEditor.jsx";
 
 // Chores → Blocks tab. Named windows of the day. Each block has a
@@ -23,7 +25,26 @@ export default function ChoresBlocksTab() {
     blocks, blocksOrdered, loading,
     createBlock, updateBlock, deleteBlock,
   } = useChoreBlocks();
+  const { definitions } = useChoreDefinitions();
   const [creating, setCreating] = useState(false);
+
+  // Archiving a block strands every chore still pointing at it (their
+  // deadlines render "a deleted block"), so the confirm names the
+  // blast radius before anything happens (F5 step 6).
+  const confirmThenDelete = async (id) => {
+    const block = blocks.find(b => b.id === id);
+    const referencing = choresReferencingBlock(definitions ?? [], id);
+    const n = referencing.length;
+    const impact = n === 0
+      ? "No chores reference it."
+      : `${n} ${n === 1 ? "chore still references" :
+          "chores still reference"} it — their deadlines will read ` +
+        `"a deleted block" until they're re-pointed.`;
+    const ok = window.confirm(
+      `Archive "${block?.name ?? "this block"}"? ${impact}`,
+    );
+    if (ok) await deleteBlock(id);
+  };
 
   const active = blocksOrdered.filter(b => b.isActive);
   const archived = blocksOrdered.filter(b => !b.isActive);
@@ -83,7 +104,7 @@ export default function ChoresBlocksTab() {
               block={b}
               allBlocks={blocks}
               onUpdate={updateBlock}
-              onDelete={deleteBlock}
+              onDelete={confirmThenDelete}
             />
           ))}
         </div>

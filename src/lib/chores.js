@@ -235,6 +235,18 @@ export function firstBlockOfDay(blocks, date) {
   return orderedBlocks(blocks, date)[0] ?? null;
 }
 
+// Every chore holding a reference to `blockId` — via its start block,
+// its deadline, or its last-chance block. Archiving a block strands
+// all of these ("by end of a deleted block"), so the blocks admin
+// shows this list's size before confirming a soft delete (F5 step 6).
+export function choresReferencingBlock(chores, blockId) {
+  if (!blockId) return [];
+  return (chores ?? []).filter((c) =>
+    c.blockId === blockId ||
+    c.deadline?.block === blockId ||
+    c.lastChanceBlockId === blockId);
+}
+
 // The next date on/after `date` whose weekday is `weekday` (Sun=0).
 function nextWeekdayOnOrAfter(date, weekday) {
   const out = startOfDay(date);

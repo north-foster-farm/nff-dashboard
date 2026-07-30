@@ -32,6 +32,7 @@ import {
   firstBlockOfDay,
   blockTimeLabel,
   displayDeadline,
+  choresReferencingBlock,
 } from "./chores.js";
 
 // Local-time date constructors so tests read as calendar dates, not
@@ -1047,5 +1048,51 @@ describe("describeChoreAnchor — human labels", () => {
       .toBe("Needs re-anchoring");
     expect(describeChoreAnchor(chore({ anchorType: "batch", anchorBatchId: "ghost" }), makeCtx()))
       .toBe("Needs re-anchoring");
+  });
+});
+
+describe("choresReferencingBlock — the soft-delete impact list (F5 step 6)", () => {
+  // Archiving a block leaves every reference to it dangling — the UI
+  // renders those loudly ("by end of a deleted block"), so the admin
+  // must see the blast radius BEFORE confirming the archive.
+  const waterByMorning = chore({
+    id: "c-water",
+    deadline: { kind: "block", block: BID.morning },
+  });
+  const morningRound = chore({
+    id: "c-round",
+    blockId: BID.morning,
+    deadline: { kind: "midnight" },
+  });
+  const eveningClose = chore({
+    id: "c-close",
+    lastChanceBlockId: BID.morning,
+    deadline: { kind: "midnight" },
+  });
+  const unrelated = chore({
+    id: "c-other",
+    deadline: { kind: "block", block: BID.end_of_day },
+  });
+
+  it("finds a chore through each of the three reference fields", () => {
+    const all = [waterByMorning, morningRound, eveningClose, unrelated];
+    const referencing = choresReferencingBlock(all, BID.morning);
+    expect(referencing.map((c) => c.id))
+      .toEqual(["c-water", "c-round", "c-close"]);
+  });
+
+  it("counts a chore once even when it references the block twice", () => {
+    const doubleRef = chore({
+      id: "c-double",
+      blockId: BID.morning,
+      deadline: { kind: "block", block: BID.morning },
+    });
+    expect(choresReferencingBlock([doubleRef], BID.morning))
+      .toHaveLength(1);
+  });
+
+  it("is empty when nothing references the block", () => {
+    expect(choresReferencingBlock([unrelated], BID.morning))
+      .toEqual([]);
   });
 });
