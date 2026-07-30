@@ -1,6 +1,7 @@
 // Process seed config — Phase B2 of the chores rebuild
-// (.ignored/nff-chores-spec.md §5–§6, plan in
-// .ignored/chores-rebuild-reconciliation.md). Source of truth for the
+// (docs/specs/nff-chores-spec.md §5–§6, plan in
+// docs/history/records/chores-rebuild-reconciliation.md). Source of
+// truth for the
 // event-driven PROCESSES that spawn the spec's non-recurring chores.
 // Phase C reads this to insert processes / process_steps /
 // process_event_kind_links on the live DB (backup-gated, attended). It

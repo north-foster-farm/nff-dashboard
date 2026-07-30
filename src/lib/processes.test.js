@@ -1,7 +1,8 @@
 // Processes (Batch 23) — "turns an event on the schedule into the work
 // around it." Templates tied to event kinds expand into one-time chores
 // (chore-kind steps) + chore_modifiers (modifier-kind steps) per upcoming
-// occurrence. See nff-chores-spec.md §2.7 (event-triggered chores) and
+// occurrence. See docs/specs/nff-chores-spec.md §2.7 (event-triggered
+// chores) and
 // CH-Processing in the QA test plan (offsets -1/0/+1, Sparkles glyph).
 import { describe, it, expect } from "vitest";
 import {

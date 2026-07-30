@@ -720,8 +720,8 @@ Schedule Project blocks carry a project DOWN the day — an empty later block
 offers a **"Continue ⟨project⟩"** action (a `CornerDownRight`, project-color
 button) that copies the carried project's next undone step into that gap, so one
 project can span multiple blocks without re-searching (`nextProjectStepFor` in
-`lib/projects.js`). Last — delete `/rethinker`. (Full rationale, from repo root:
-`.ignored/playbooks/design-bracket/examples/harvest-remix/DESIGN.md`.)
+`lib/projects.js`). (Full rationale, from repo root:
+`docs/workshops/design-bracket/examples/harvest-remix/DESIGN.md`.)
 
 ## Voice
 

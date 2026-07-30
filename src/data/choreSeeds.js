@@ -1,6 +1,6 @@
 // Chore seed data — REBUILT to the chore spec
-// (.ignored/nff-chores-spec.md), per the staged plan in
-// .ignored/chores-rebuild-reconciliation.md. This module is the
+// (docs/specs/nff-chores-spec.md), per the staged plan in
+// docs/history/records/chores-rebuild-reconciliation.md. This module is the
 // source of truth Phase C reads to (re)insert chore_definitions on the
 // live DB; it writes no rows itself.
 //

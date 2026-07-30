@@ -6,7 +6,7 @@
 //
 // RUN (plain node can't named-import the CJS `rrule` in the import chain, so
 // bundle with esbuild first, from repo root):
-//   npx esbuild .ignored/playbooks/design-bracket/examples/harvest-remix/round3/verify-farmload.mjs \
+//   npx esbuild docs/workshops/design-bracket/examples/harvest-remix/round3/verify-farmload.mjs \
 //     --bundle --platform=node --format=esm --outfile=/tmp/vf.mjs && node /tmp/vf.mjs
 // Re-run whenever farmLoad or the walks it folds change — load-bearing.
 import assert from "node:assert";

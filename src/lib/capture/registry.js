@@ -5,7 +5,7 @@
 // Adding a schema version: drop a vN.schema.json next to the others, add
 // its upcaster (n-1 -> n) to that schema's upcasters.js, register the
 // version below, and publish it with a migration. See
-// .ignored/schedule-feature/versioned-capture-substrate.md.
+// docs/specs/versioned-capture-substrate.md.
 import confirmedDayV1 from "./schemas/schedule.confirmed_day/v1.schema.json";
 import confirmedDayUpcasters from "./schemas/schedule.confirmed_day/upcasters.js";
 

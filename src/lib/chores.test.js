@@ -2,8 +2,9 @@
 // matching, assignment precedence, the days-remaining countdown, and the
 // per-place obligation/anchor system. This is the single richest pure
 // module in the app and backs BOTH the Chores feature (CH# requirements
-// in .ignored/nff-chores-spec.md) and the Schedule feature's must/should
-// escalation (S13-S15 in .ignored/schedule-feature/story-set.md) — a
+// in docs/specs/nff-chores-spec.md) and the Schedule feature's
+// must/should escalation (S13-S15 in
+// docs/workshops/scope-workshop/examples/schedule/2-story-set.md) — a
 // regression here silently breaks two features at once.
 //
 // Dates use LOCAL time throughout (matches the source's own convention:
@@ -40,7 +41,8 @@ function fixedBlock(id, startMinutes, durationMinutes = 60, isActive = true) {
   return { id, startKind: "fixed", startMinutes, durationMinutes, isActive };
 }
 
-// The five real chore blocks, roughly per nff-chores-spec.md §2.1 —
+// The five real chore blocks, roughly per docs/specs/nff-chores-spec.md
+// §2.1 —
 // morning / midmorning / early_afternoon / late_afternoon / end_of_day.
 // Block rows carry the REAL uuids (findBlock maps slug deadline refs
 // through CHORE_BLOCK_IDS before matching on id, exactly like prod);

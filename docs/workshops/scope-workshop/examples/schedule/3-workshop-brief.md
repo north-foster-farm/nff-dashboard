@@ -1,7 +1,7 @@
 # Schedule Feature — Scope Workshop Brief (agent input package)
 
 **What this is:** the input package for running the multi-agent design
-workshop (see `../design-workshops/multi-agent-design-workshop-playbook.md`)
+workshop (see `../../scope-workshop-playbook.md`)
 on the new **Schedule** feature. It is thin packaging around two content
 artifacts that already exist:
 
@@ -169,7 +169,9 @@ the design.
 
 ## PART B — Source requirements (read verbatim; do not summarize)
 
-Two files, both in `.ignored/schedule-feature/`:
+Two files, both in this directory (promoted from the original
+`.ignored/schedule-feature/` scratch as `1-verbatim-requirements.md` and
+`2-story-set.md`):
 
 1. **`verbatim-requirements.md`** — James's raw brain-dump. The mess is
    signal (the half-formed "what is the parent concept?" musing, the
@@ -234,8 +236,8 @@ the repo.
     `event_instances`/`event_links`. Chores tables listed in A6.
 
 **Behavior + method**
-15. `.ignored/schedule-feature/story-set.md` and
-    `verbatim-requirements.md` (Part B) — the requirements.
+15. `2-story-set.md` and
+    `1-verbatim-requirements.md` (Part B) — the requirements.
 
 ---
 

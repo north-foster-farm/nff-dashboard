@@ -1,6 +1,7 @@
 // Chore modifiers (Batch 23) — date-bound overrides (skip/replace/prepend/
 // restrict_until) with deterministic priority-based conflict resolution.
-// See nff-chores-spec.md §2.8 and CH-Modifier/CH-Modifier2 in the QA test
+// See docs/specs/nff-chores-spec.md §2.8 and CH-Modifier/CH-Modifier2
+// in the QA test
 // plan: "a suppressed chore must NOT appear in the schedule at all (not
 // shown-as-skipped)" and "winner solid, losers ghosted... highest priority
 // wins, newest breaks ties."

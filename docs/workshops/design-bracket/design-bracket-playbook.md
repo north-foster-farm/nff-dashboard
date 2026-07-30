@@ -13,7 +13,7 @@ James, runs Round 2, and produces the Design. This document is the
 operating manual; it is not specific to any one feature.
 
 **Provenance & relationship to the Scope Workshop.** This is the **second**
-of the two workshop methods in this `playbooks/` bundle. The
+of the two workshop methods in this `docs/workshops/` bundle. The
 **Scope Workshop** (`../scope-workshop/scope-workshop-playbook.md`) decides
 *what to build* — the model, the entities, what's in and out — and
 deliberately leaves design questions open. The **Design Bracket** picks up
@@ -503,7 +503,8 @@ real files); **no happy-path-only** (design the hard states).
 When this method is pointed at the **Schedule** Design Bracket, the inputs
 already exist, so prep is light:
 
-- **Scope is fully settled** — `.ignored/schedule-feature/scope-document.md`
+- **Scope is fully settled** —
+  `../scope-workshop/examples/schedule/5-scope-document.md`
   is binding (one `commitments` timeline, store-deltas-derive-the-draft,
   whole-day one-tap confirm, one-timeline-three-zooms, the versioned-capture
   substrate). Feed its model + decisions ledger as **closed**; the Bracket

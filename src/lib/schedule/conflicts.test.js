@@ -2,8 +2,7 @@
 // squeeze). Contrast with manDown.js's INCLUSIVE start-touch overlap rule
 // (deliberate, the market hand-off case) — double-book and squeeze here
 // use STRICT overlap, so a back-to-back same-person pair flags man-down
-// but never double-book. This is the exact QA gotcha called out in
-// .ignored/audit-v2/test-plan.md §1 ("Man-down uses inclusive start-touch;
+// but never double-book ("Man-down uses inclusive start-touch;
 // double-book/squeeze use strict overlap").
 import { describe, it, expect } from "vitest";
 import { bufferSqueezes, doubleBookConflicts, scanHorizonConflicts } from "./conflicts.js";
