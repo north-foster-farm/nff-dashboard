@@ -9,6 +9,12 @@ dist
 # Local DB backups (scripts/backup-db.mjs) — may contain real data.
 .backups
 
+# Scratch workspace. Untracked BY DESIGN and declared here rather than
+# relying on a global ~/.gitignore: it currently holds live credentials,
+# so on a clone without that global rule a `git add -A` would stage
+# them. Durable material belongs in docs/, never here.
+.ignored/
+
 # Env files with secrets. .env.example is committed as a setup reference;
 # every real .env / .env.local stays local.
 .env
