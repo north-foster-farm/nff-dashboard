@@ -7,7 +7,7 @@ import { describe, it, expect } from "vitest";
 import {
   isActiveProject, nextProjectStep, nextProjectStepFor, stepDone, phaseDone,
   progressOf, dayDelta, shiftISODate, transitiveDependents,
-  computeDependentShifts, formatDateRange, checklistRollup,
+  computeDependentShifts, formatDateRange, checklistRollup, newProjectFields,
 } from "./projects.js";
 
 describe("isActiveProject", () => {
@@ -328,5 +328,76 @@ describe("checklistRollup", () => {
     expect(checklistRollup({ checklists: [] })).toBeNull();
     expect(checklistRollup({})).toBeNull();
     expect(checklistRollup({ checklists: [{ items: [] }] })).toBeNull();
+  });
+});
+
+// The create invariants (0.7): every new project row — whether typed
+// on the Projects page or promoted from an inbox thought — gets a
+// unique slug, an explicit bucket, and a queue position that never
+// claims the top of the ranked list by surprise.
+describe("newProjectFields", () => {
+  const existingProjects = [
+    { slug: "build-the-coop", queueState: "ranked", sortOrder: 4 },
+    { slug: "fence-the-pasture", queueState: "ranked", sortOrder: 9 },
+  ];
+
+  it("slugs the title, suffixing past a slug already taken", () => {
+    const titleOfAnExistingProject = "Build the coop";
+    const fields = newProjectFields({
+      title: titleOfAnExistingProject, projects: existingProjects,
+    });
+    expect(fields.slug).toBe("build-the-coop-2");
+  });
+
+  it("joins the ranked queue at the tail, never the top", () => {
+    const lastRankedSortOrder = 9;
+    const fields = newProjectFields({
+      title: "Rebuild the farm stand",
+      queueState: "ranked",
+      projects: existingProjects,
+    });
+    expect(fields.sortOrder).toBe(lastRankedSortOrder + 1);
+  });
+
+  it("ignores archived, completed and unranked rows when finding the tail", () => {
+    const projectsWithHighSortOrdersThatDoNotCount = [
+      ...existingProjects,
+      { slug: "old-barn", queueState: "ranked", sortOrder: 50,
+        archivedAt: "2026-01-01" },
+      { slug: "sold-birds", queueState: "ranked", sortOrder: 60,
+        completedAt: "2026-02-01" },
+      { slug: "someday-orchard", queueState: "unprioritized", sortOrder: 70 },
+    ];
+    const fields = newProjectFields({
+      title: "Rebuild the farm stand",
+      queueState: "ranked",
+      projects: projectsWithHighSortOrdersThatDoNotCount,
+    });
+    expect(fields.sortOrder).toBe(10);
+  });
+
+  it("keeps an unprioritized project out of the ranked ordering", () => {
+    const fields = newProjectFields({
+      title: "Rebuild the farm stand",
+      queueState: "unprioritized",
+      projects: existingProjects,
+    });
+    expect(fields.queueState).toBe("unprioritized");
+    expect(fields.sortOrder).toBe(0);
+  });
+
+  it("trims the title and empties a blank description to null", () => {
+    const fields = newProjectFields({
+      title: "  Rebuild the farm stand  ",
+      description: "   ",
+      projects: [],
+    });
+    expect(fields.title).toBe("Rebuild the farm stand");
+    expect(fields.description).toBeNull();
+  });
+
+  it("refuses a title that is blank once trimmed", () => {
+    expect(() => newProjectFields({ title: "   ", projects: [] }))
+      .toThrow(/title required/i);
   });
 });
