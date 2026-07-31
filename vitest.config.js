@@ -25,15 +25,18 @@ export default defineConfig({
         "src/lib/data/**",
         "src/lib/browser/**",
       ],
-      // RATCHET thresholds (H5): set just under the 2026-07-30
-      // measurement (93.8 / 86.1 / 96.3 / 95.5). When real coverage
-      // rises, raise these to just under the new mark — never lower
-      // them to make a commit pass.
+      // RATCHET thresholds (H5): set just under the 2026-07-31
+      // measurement (93.85 / 86.08 / 96.29 / 95.46). When real
+      // coverage rises, raise these to just under the new mark —
+      // never lower them to make a commit pass. Roadmap 0.5 closed
+      // the gap the old numbers had drifted into: they were left
+      // 1.5-2 points slack, so an entire module could rot out of
+      // coverage without the gate noticing.
       thresholds: {
-        statements: 92,
-        branches: 84,
-        functions: 95,
-        lines: 94,
+        statements: 93.8,
+        branches: 86,
+        functions: 96.2,
+        lines: 95.4,
       },
     },
   },
