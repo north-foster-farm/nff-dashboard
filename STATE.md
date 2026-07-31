@@ -1,10 +1,17 @@
-LEASE: 2026-07-31T22:35:49Z cloud-1785537349
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
 status: waiting-on-james
 
 ## Last run
+
+2026-07-31T22:35Z — **Idle, 7th consecutive skipped run.** No new
+INBOX input (`sequence: 1`, unchanged since the file was created) and
+no PR activity since 15:42Z, so the new-input guard fired and I did no
+work. Nothing is wrong with the agent; it is waiting on you, and it
+will keep skipping every hour until INBOX.md gains an answer. The
+substantive write-up below is from 15:34Z, the last run that built
+anything — it is not recent.
 
 2026-07-31T15:34Z — **Shipped 1.5 (self-host Lora + Inter) as #15,
 green.** Nine `latin`-subset woff2 files vendored into
