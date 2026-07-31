@@ -11,13 +11,77 @@
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <meta name="theme-color" content="#101614" />
     <title>North Foster Farm — Admin</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap"
-    />
     <style>
+      /* Inter + Lora — self-hosted (1.5). Both are OFL, so serving
+         them ourselves is licence-clean. The files are the `latin`
+         subset of the same Google-hosted woff2 the CDN served, which
+         covers ASCII plus the Latin-1 accents; nothing on the farm
+         needs Cyrillic or Greek. Only the weights the app actually
+         asks for are here — adding one means adding its file too,
+         which src/lib/fontLoading.test.js checks. */
+      @font-face {
+        font-family: 'Inter';
+        src: url('/fonts/Inter-Medium.woff2') format('woff2');
+        font-weight: 500;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Inter';
+        src: url('/fonts/Inter-SemiBold.woff2') format('woff2');
+        font-weight: 600;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Inter';
+        src: url('/fonts/Inter-Bold.woff2') format('woff2');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Lora';
+        src: url('/fonts/Lora-Regular.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Lora';
+        src: url('/fonts/Lora-Medium.woff2') format('woff2');
+        font-weight: 500;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Lora';
+        src: url('/fonts/Lora-SemiBold.woff2') format('woff2');
+        font-weight: 600;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Lora';
+        src: url('/fonts/Lora-Bold.woff2') format('woff2');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Lora';
+        src: url('/fonts/Lora-Italic.woff2') format('woff2');
+        font-weight: 400;
+        font-style: italic;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Lora';
+        src: url('/fonts/Lora-MediumItalic.woff2') format('woff2');
+        font-weight: 500;
+        font-style: italic;
+        font-display: swap;
+      }
       /* Nacelle — local custom font from dotcolon.net. Files live in
          /public/fonts/ as .woff2. */
       @font-face {
