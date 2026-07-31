@@ -1,13 +1,19 @@
 # CI (H5): `npm run check` — eslint (errors), stylelint, the unit
-# suite with coverage thresholds, and the house format rules — on
-# every PR and every push. The `check` job is the required status
-# in the main-branch ruleset, so a PR can't merge (and therefore
-# nothing can reach the auto-deploying main) until it's green.
+# suite with coverage thresholds, and the house format rules. The
+# `check` job is the required status in the main-branch ruleset, so
+# a PR can't merge (and therefore nothing can reach the
+# auto-deploying main) until it's green.
 name: check
 
+# Every PR gets exactly one run, from `pull_request`. The push
+# trigger is scoped to main so a branch push doesn't run the same
+# commit a second time; main still needs its own run because the
+# merge deploys and fires no PR event. `src/lib/ciWorkflows.test.js`
+# holds the scoping rule.
 on:
   pull_request:
   push:
+    branches: [main]
 
 jobs:
   check:
