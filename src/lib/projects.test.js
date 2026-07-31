@@ -1,109 +1,57 @@
 // Projects subsystem pure helpers (Batch 22; forced-ranked-priority
-// rework context in ROADMAP.md "Projects rework"). Covers the
-// completeness rule (phases>1 -> milestones; phases==1 -> steps), the
-// Schedule auto-pull (nextProjectStep — BD11: never changes global
-// sort_order, display-only), and the dependency date-shuffle.
+// rework context in ROADMAP.md "Projects rework"). Covers the one
+// activity model (0.6: queue membership + day membership), the
+// completeness rule (phases>1 -> milestones; phases==1 -> steps), and
+// the dependency date-shuffle.
 import { describe, it, expect } from "vitest";
 import {
-  isActiveProject, nextProjectStep, nextProjectStepFor, stepDone, phaseDone,
+  projectRunsOnDay, stepDone, phaseDone,
   progressOf, dayDelta, shiftISODate, transitiveDependents,
   computeDependentShifts, formatDateRange, checklistRollup,
 } from "./projects.js";
 
-describe("isActiveProject", () => {
-  it("is false once status is 'completed', regardless of dates", () => {
-    expect(isActiveProject({ status: "completed" }, "2026-06-01")).toBe(false);
+describe("projectRunsOnDay", () => {
+  const today = "2026-06-01";
+  const queued = (over = {}) => ({
+    queueState: "ranked", completedAt: null, archivedAt: null, ...over,
   });
 
-  it("is true with no startedAt/targetDate bounds at all (open on both sides)", () => {
-    expect(isActiveProject({ status: "planned" }, "2026-06-01")).toBe(true);
+  it("keeps undated and not-yet-started projects off the day (F16)", () => {
+    const undatedProject = queued();
+    const startsNextMonth = queued({ startedAt: "2026-07-01" });
+    expect(projectRunsOnDay(undatedProject, today)).toBe(false);
+    expect(projectRunsOnDay(startsNextMonth, today)).toBe(false);
   });
 
-  it("excludes a project that hasn't started yet (startedAt is in the future)", () => {
-    expect(isActiveProject({ status: "planned", startedAt: "2026-07-01" }, "2026-06-01")).toBe(false);
+  it("runs from its startedAt until its targetDate, both inclusive", () => {
+    const runsThisWeek = queued({
+      startedAt: "2026-05-30", targetDate: "2026-06-02",
+    });
+    const endedYesterday = queued({
+      startedAt: "2026-05-01", targetDate: "2026-05-31",
+    });
+    expect(projectRunsOnDay(runsThisWeek, today)).toBe(true);
+    expect(projectRunsOnDay(endedYesterday, today)).toBe(false);
   });
 
-  it("includes a project starting exactly today (inclusive boundary)", () => {
-    expect(isActiveProject({ status: "planned", startedAt: "2026-06-01" }, "2026-06-01")).toBe(true);
-  });
-
-  it("excludes a project whose targetDate has already passed", () => {
-    expect(isActiveProject({ status: "planned", targetDate: "2026-05-01" }, "2026-06-01")).toBe(false);
-  });
-
-  it("includes a project targeting exactly today (inclusive boundary)", () => {
-    expect(isActiveProject({ status: "planned", targetDate: "2026-06-01" }, "2026-06-01")).toBe(true);
+  it("takes activity from the queue, not from the legacy status column", () => {
+    const runningToday = { startedAt: "2026-05-30", targetDate: "2026-06-02" };
+    const stillInTheQueue = queued(runningToday);
+    const unprioritized = queued({ ...runningToday, queueState: "unprioritized" });
+    const finished = queued({ ...runningToday, completedAt: "2026-05-31" });
+    const archived = queued({ ...runningToday, archivedAt: "2026-05-31" });
+    const legacyStatusOnly = { ...runningToday, status: "planned" };
+    expect(projectRunsOnDay(stillInTheQueue, today)).toBe(true);
+    expect(projectRunsOnDay(unprioritized, today)).toBe(false);
+    expect(projectRunsOnDay(finished, today)).toBe(false);
+    expect(projectRunsOnDay(archived, today)).toBe(false);
+    expect(projectRunsOnDay(legacyStatusOnly, today)).toBe(false);
   });
 });
 
-function project(over = {}) {
-  return { id: "p1", title: "Build the coop", status: "planned", sortOrder: 0, steps: [], ...over };
-}
 function step(over = {}) {
   return { id: "s1", title: "Frame the walls", sortOrder: 0, completedAt: null, ...over };
 }
-
-describe("nextProjectStep — the Schedule auto-pull default occupant", () => {
-  it("picks the LOWEST-sortOrder active project's next incomplete step", () => {
-    const projects = [
-      project({ id: "p2", sortOrder: 1, steps: [step({ id: "s2" })] }),
-      project({ id: "p1", sortOrder: 0, steps: [step({ id: "s1" })] }),
-    ];
-    const node = nextProjectStep(projects, "2026-06-01");
-    expect(node).toEqual({ projectId: "p1", projectTitle: "Build the coop", stepId: "s1", title: "Frame the walls" });
-  });
-
-  it("skips a completed project's steps and falls to the next active one", () => {
-    const projects = [
-      project({ id: "p1", sortOrder: 0, status: "completed", steps: [step({ id: "s1" })] }),
-      project({ id: "p2", sortOrder: 1, steps: [step({ id: "s2" })] }),
-    ];
-    expect(nextProjectStep(projects, "2026-06-01").projectId).toBe("p2");
-  });
-
-  it("skips a top project with ZERO incomplete steps and falls to the next one", () => {
-    const projects = [
-      project({ id: "p1", sortOrder: 0, steps: [step({ id: "s1", completedAt: "2026-05-01" })] }),
-      project({ id: "p2", sortOrder: 1, steps: [step({ id: "s2" })] }),
-    ];
-    expect(nextProjectStep(projects, "2026-06-01").projectId).toBe("p2");
-  });
-
-  it("returns null when no active project has any incomplete step", () => {
-    expect(nextProjectStep([], "2026-06-01")).toBeNull();
-    const allDone = [project({ steps: [step({ completedAt: "2026-05-01" })] })];
-    expect(nextProjectStep(allDone, "2026-06-01")).toBeNull();
-  });
-
-  it("never touches sortOrder — it's purely a read (BD11: display-only, no schedule-driven priority change)", () => {
-    const projects = [
-      project({ id: "p1", sortOrder: 5, steps: [step()] }),
-      project({ id: "p2", sortOrder: 1, steps: [step({ id: "s2" })] }),
-    ];
-    nextProjectStep(projects, "2026-06-01");
-    expect(projects[0].sortOrder).toBe(5);
-    expect(projects[1].sortOrder).toBe(1);
-  });
-});
-
-describe("nextProjectStepFor — one project's next step (the 'Continue project' substrate)", () => {
-  it("returns the lowest-sortOrder incomplete step", () => {
-    const p = project({
-      steps: [step({ id: "s2", sortOrder: 1 }), step({ id: "s1", sortOrder: 0 })],
-    });
-    expect(nextProjectStepFor(p).stepId).toBe("s1");
-  });
-
-  it("excludes steps already placed today via excludeStepIds", () => {
-    const p = project({ steps: [step({ id: "s1" }), step({ id: "s2", sortOrder: 1 })] });
-    expect(nextProjectStepFor(p, new Set(["s1"])).stepId).toBe("s2");
-  });
-
-  it("returns null for a null project or a project with no remaining steps", () => {
-    expect(nextProjectStepFor(null)).toBeNull();
-    expect(nextProjectStepFor(project({ steps: [] }))).toBeNull();
-  });
-});
 
 describe("stepDone / phaseDone", () => {
   it("stepDone reflects completedAt presence", () => {

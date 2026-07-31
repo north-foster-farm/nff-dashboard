@@ -14,60 +14,29 @@ import { parseISODate, formatISODate } from "./dates.js";
 //      outgoing edges have shift_dependents, every transitive
 //      dependent shifts by the same number of days.
 
-// ── Active-project predicate ──────────────────────────────────────────
-// A project is "active" (worth surfacing on the dashboard and counting
-// in the sidebar badge) when it isn't completed and today falls inside
-// its [startedAt, targetDate] window. Past-target prep projects — e.g.
-// a processing-day prep whose day has come and gone — fall out, so the
-// sidebar count and the dashboard card always agree. Dates are ISO
-// "YYYY-MM-DD"; missing bounds are treated as open.
-export function isActiveProject(p, todayISO) {
-  return p.status !== "completed"
-    && (!p.startedAt || p.startedAt <= todayISO)
-    && (!p.targetDate || p.targetDate >= todayISO);
+// ── Queue membership ──────────────────────────────────────────────────
+// The one activity model (0.6): a project is live work when it sits in
+// the ranked queue and has neither been completed nor archived. The
+// `status` column plays no part — it is vestigial, written by nothing
+// since the 0041 rework, and two notions of status disagreeing on
+// screen is F96 (06-04 audit).
+export function isQueuedProject(project) {
+  return project.queueState === "ranked"
+    && !project.completedAt
+    && !project.archivedAt;
 }
 
-// ── Schedule auto-pull (Project blocks) ───────────────────────────────
-//
-// The default occupant of a day's Project block: the next incomplete step of
-// the highest-priority active project. "Highest priority" = the smallest
-// `sortOrder` among active projects (the Projects page's own ordering);
-// "next" = the smallest-`sortOrder` step that isn't complete. Returned as a
-// schedulable node `{ projectId, projectTitle, stepId, title }` (the same
-// shape the search-to-add offers), or null when no active project has an
-// incomplete step. PURE + display-only — derived live, never written on open
-// (honors no-silent-mutation): completing the step elsewhere simply re-derives
-// the next one. Requires each project to carry its `steps` (id, title,
-// sortOrder, completedAt) — the loader must hydrate them.
-export function nextProjectStep(projects, todayISO) {
-  const active = (projects ?? [])
-    .filter((p) => isActiveProject(p, todayISO))
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  for (const p of active) {
-    const node = nextProjectStepFor(p);
-    if (node) return node;
-  }
-  return null;
-}
-
-// The next incomplete step of ONE specific project, skipping any step ids
-// already placed or auto-shown earlier today — the substrate for "Continue
-// project above" (F32), which copies the same project's next step down into a
-// later Project block. Same node shape as nextProjectStep; null when the
-// project has no remaining (unexcluded) step.
-export function nextProjectStepFor(project, excludeStepIds = new Set()) {
-  if (!project) return null;
-  const next = (project.steps ?? [])
-    .filter((s) => !s.completedAt && !excludeStepIds.has(s.id))
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
-  return next
-    ? {
-      projectId: project.id,
-      projectTitle: project.title,
-      stepId: next.id,
-      title: next.title,
-    }
-    : null;
+// ── Day membership ────────────────────────────────────────────────────
+// Whether a project belongs on ONE day's timeline. F16 (06-04 audit):
+// an undated project, and one whose dates sit in the future, both
+// rendered "All day · today" — because the old predicate treated a
+// missing `startedAt` as "open on that side", i.e. started forever ago.
+// A project earns a place on a day only by actually running on it.
+export function projectRunsOnDay(project, dayISO) {
+  return isQueuedProject(project)
+    && !!project.startedAt
+    && project.startedAt <= dayISO
+    && (!project.targetDate || project.targetDate >= dayISO);
 }
 
 // ── Completion predicates ─────────────────────────────────────────────
