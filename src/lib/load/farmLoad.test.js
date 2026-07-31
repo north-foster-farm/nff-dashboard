@@ -3,7 +3,7 @@
 // touched in batch 42.5 (weekRes/weekTimed args + week.days[].bars) —
 // highest regression risk of anything in this session's work. This suite
 // intentionally does NOT re-verify projectGaps' own invariants (covered
-// by scripts/test-schedule-partition.mjs's 4,000-run property test) or
+// by schedule/partition.property.test.js's 4,000-run property test) or
 // chore recurrence (chores.test.js) — it tests farmLoad's OWN composition
 // logic: block state derivation, the binary warming fold, needs-cover
 // UNIT counting, and the This Week bar assembly.

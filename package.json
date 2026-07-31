@@ -11,8 +11,7 @@
     "check": "npm run lint && npm run test:coverage && bash scripts/check-format.sh",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest",
-    "test:partition": "node scripts/test-schedule-partition.mjs"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
