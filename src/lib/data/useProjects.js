@@ -23,7 +23,7 @@ import {
 // data hooks.
 
 const PROJECT_COLS =
-  "id, title, description, status, owner_email, started_at, " +
+  "id, title, description, owner_email, started_at, " +
   "target_date, completed_at, notes, created_at, body_md, created_by, " +
   "archived_at, sort_order, updated_at, queue_state, timing_note, " +
   "locked_date, slug";
@@ -65,7 +65,6 @@ function shapeProject(r) {
     slug: r.slug ?? null,
     description: r.description,
     bodyMd: r.body_md,
-    status: r.status,
     ownerEmail: r.owner_email,
     createdBy: r.created_by,
     startedAt: r.started_at,
@@ -265,7 +264,6 @@ function projectPatch(patch) {
   if ("title" in patch) out.title = patch.title;
   if ("description" in patch) out.description = patch.description;
   if ("bodyMd" in patch) out.body_md = patch.bodyMd;
-  if ("status" in patch) out.status = patch.status;
   if ("ownerEmail" in patch) out.owner_email = patch.ownerEmail;
   if ("startedAt" in patch) out.started_at = patch.startedAt;
   if ("targetDate" in patch) out.target_date = patch.targetDate;

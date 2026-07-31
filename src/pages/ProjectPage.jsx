@@ -15,7 +15,9 @@ import {
 import { useProject, useProjects } from "../lib/data/useProjects.js";
 import { useEventSeries } from "../lib/data/useEventSeries.js";
 import { navigate, pathForProject } from "../lib/browser/router.js";
-import { formatDateRange, checklistRollup } from "../lib/projects.js";
+import {
+  completionPatch, formatDateRange, checklistRollup,
+} from "../lib/projects.js";
 import { ProgressBar } from "./Projects.jsx";
 import ProjectStepModal from "../components/ProjectStepModal.jsx";
 import Markdown from "../components/Markdown.jsx";
@@ -34,12 +36,6 @@ import { BTN_ACCENT } from "../components/ui.jsx";
 // the Trello-style step modal (ProjectStepModal.jsx). The progress
 // header applies the completeness rule from lib/projects.js. Links
 // and project-level attachments sit at the bottom.
-
-const STATUS_OPTIONS = [
-  { value: "planned", label: "Planned" },
-  { value: "in_progress", label: "In progress" },
-  { value: "completed", label: "Completed" },
-];
 
 // `projectId` is the URL key — a slug or a uuid; useProject resolves
 // either. `attachmentId` (the /files/<id> tail) deep-links one file.
@@ -110,13 +106,11 @@ export default function ProjectPage({
   const { project, phases } = proj;
   const archived = !!project.archivedAt;
 
-  const setStatus = (status) => {
-    const patch = { status };
-    // Completing stamps completed_at; un-completing clears it.
-    patch.completedAt = status === "completed"
-      ? new Date().toISOString().slice(0, 10)
-      : null;
-    proj.updateProject(patch).catch(() => {});
+  const completed = !!project.completedAt;
+
+  const toggleCompleted = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    proj.updateProject(completionPatch(project, today)).catch(() => {});
   };
 
   const deleteProject = async () => {
@@ -132,7 +126,8 @@ export default function ProjectPage({
         <div className="flex items-start justify-between gap-4 flex-wrap mt-3">
           <div className="min-w-0 flex-1">
             <div className="font-ui text-[10px] uppercase tracking-[0.16em] text-faint font-semibold">
-              Project{archived ? " · archived" : ""}
+              Project{completed ? " · completed" : ""}
+              {archived ? " · archived" : ""}
             </div>
             <h2 className="font-heading text-[28px] font-bold -tracking-[0.02em] m-0 leading-tight">
               <EditableText
@@ -150,15 +145,12 @@ export default function ProjectPage({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <select
-              value={project.status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="bg-surface border border-line text-fg text-[12px] px-2 py-1.5 outline-none focus:border-accent font-[inherit]"
+            <HeaderAction
+              title={completed ? "Reopen project" : "Mark project complete"}
+              onClick={toggleCompleted}
             >
-              {STATUS_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+              {completed ? <CircleCheck size={14} /> : <Circle size={14} />}
+            </HeaderAction>
             <HeaderAction
               title={archived ? "Restore from archive" : "Archive project"}
               onClick={() => (archived

@@ -26,6 +26,14 @@ export function isQueuedProject(project) {
     && !project.archivedAt;
 }
 
+// Completing a project is a single fact: the date it was finished.
+// The patch that toggles it writes `completedAt` and nothing else —
+// the vestigial `status` column used to be written alongside, and the
+// two disagreeing on screen is F96 (06-04 audit).
+export function completionPatch(project, todayISO) {
+  return { completedAt: project.completedAt ? null : todayISO };
+}
+
 // ── Day membership ────────────────────────────────────────────────────
 // Whether a project belongs on ONE day's timeline. F16 (06-04 audit):
 // an undated project, and one whose dates sit in the future, both
