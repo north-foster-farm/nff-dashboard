@@ -1,4 +1,5 @@
 import { parseISODate, formatISODate } from "./dates.js";
+import { slugify } from "./slug.js";
 
 // projects.js — pure helpers for the Projects subsystem (Batch 22).
 //
@@ -217,4 +218,41 @@ export function checklistRollup(step) {
     }
   }
   return total === 0 ? null : { done, total };
+}
+
+// ── Create invariants ─────────────────────────────────────────────────
+//
+// The fields every new project row derives, wherever the project is
+// created — typed on the Projects page, or promoted from an inbox
+// thought. One pure definition because the promote path used to skip
+// them entirely: no slug, no bucket, and a defaulted sort_order that
+// dropped the thought at the HEAD of the ranked queue. `projects` is
+// the current project list in the hook's camelCase shape; only the
+// slug and the ranked position read it.
+export function newProjectFields({
+  title, description, queueState = "ranked", projects = [],
+}) {
+  const trimmedTitle = (title ?? "").trim();
+  if (!trimmedTitle) throw new Error("Title required.");
+  const takenSlugs = new Set(
+    (projects ?? []).map(p => p.slug).filter(Boolean)
+  );
+  return {
+    title: trimmedTitle,
+    slug: slugify(trimmedTitle, takenSlugs),
+    description: (description ?? "").trim() || null,
+    queueState,
+    sortOrder: queueState === "ranked" ? rankedTail(projects) : 0,
+  };
+}
+
+// One past the last live ranked project, so a new project joins the
+// queue at the tail and never claims the #1 focus slot by surprise.
+// Archived, completed and unranked rows hold no ranked position.
+function rankedTail(projects) {
+  const liveRankedSortOrders = (projects ?? [])
+    .filter(p => p.queueState === "ranked" && !p.archivedAt
+      && !p.completedAt)
+    .map(p => p.sortOrder);
+  return Math.max(0, ...liveRankedSortOrders) + 1;
 }
