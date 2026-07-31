@@ -3,7 +3,7 @@
 // blocks become Project segments (clamped to the farm-wide default band,
 // trimmed by buffers, annotated with who's free), and the after-last-block
 // window belongs to Overnight, never a Project block. Complements the
-// 4,000-run property test in scripts/test-schedule-partition.mjs — this
+// 4,000-run property test in `partition.property.test.js` — this
 // suite pins exact hand-traced values and edge cases (touching intervals,
 // sub-MIN_PROJECT_GAP gaps, band clamping) rather than invariants.
 import { describe, it, expect } from "vitest";
