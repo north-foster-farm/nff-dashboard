@@ -95,10 +95,17 @@ export function useSearchIndex(data) {
       }
     }
 
-    // Projects → real deep link.
+    // Projects → real deep link. The sublabel qualifies a project only
+    // when it sits outside the ranked queue; the legacy `status`
+    // column it used to show has been retired (0.6).
     for (const p of data?.projects ?? []) {
+      let queuePlacement = null;
+      if (p.completedAt) queuePlacement = "Completed";
+      else if (p.queueState === "unprioritized") {
+        queuePlacement = "Unprioritized";
+      }
       out.push(entry(
-        p.id, "project", p.title, p.status, pathForProject(p.id)));
+        p.id, "project", p.title, queuePlacement, pathForProject(p.id)));
     }
 
     // Places → /place/<id>.

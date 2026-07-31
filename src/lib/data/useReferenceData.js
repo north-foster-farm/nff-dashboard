@@ -662,7 +662,7 @@ async function loadProjects() {
   const [projRes, phaseRes, stepRes] = await Promise.all([
     supabase
       .from("projects")
-      .select("id, title, description, status, owner_email, started_at, target_date, completed_at, notes, created_at, archived_at, sort_order, queue_state, locked_date")
+      .select("id, title, description, owner_email, started_at, target_date, completed_at, notes, created_at, archived_at, sort_order, queue_state, locked_date")
       .is("archived_at", null)
       .order("created_at", { ascending: false }),
     supabase
@@ -694,7 +694,6 @@ async function loadProjects() {
       id: p.id,
       title: p.title,
       description: p.description,
-      status: p.status,
       ownerEmail: p.owner_email,
       startedAt: p.started_at,
       targetDate: p.target_date,

@@ -5,7 +5,7 @@
 // the dependency date-shuffle.
 import { describe, it, expect } from "vitest";
 import {
-  projectRunsOnDay, stepDone, phaseDone,
+  projectRunsOnDay, completionPatch, stepDone, phaseDone,
   progressOf, dayDelta, shiftISODate, transitiveDependents,
   computeDependentShifts, formatDateRange, checklistRollup,
 } from "./projects.js";
@@ -46,6 +46,24 @@ describe("projectRunsOnDay", () => {
     expect(projectRunsOnDay(finished, today)).toBe(false);
     expect(projectRunsOnDay(archived, today)).toBe(false);
     expect(projectRunsOnDay(legacyStatusOnly, today)).toBe(false);
+  });
+});
+
+describe("completionPatch", () => {
+  const today = "2026-06-01";
+
+  it("stamps completedAt when completing, clears it when reopening", () => {
+    const openProject = { completedAt: null };
+    const finishedProject = { completedAt: "2026-05-20" };
+    expect(completionPatch(openProject, today))
+      .toEqual({ completedAt: today });
+    expect(completionPatch(finishedProject, today))
+      .toEqual({ completedAt: null });
+  });
+
+  it("never writes the legacy status column (F96)", () => {
+    const openProject = { completedAt: null, status: "planned" };
+    expect("status" in completionPatch(openProject, today)).toBe(false);
   });
 });
 
