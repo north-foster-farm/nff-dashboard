@@ -15,6 +15,22 @@
 // Pure + tolerant: a null/loose minute, or a minute outside every segment,
 // routes to "anytime" rather than throwing.
 
+// The block-less bucket. F30 removed "Anytime" as something the app
+// offers — a chore requires a block, and no add or edit control lists
+// this as a destination. What the bucket still does is catch orphans:
+// a delta whose block_id no longer resolves lands here instead of
+// vanishing from the day (1d1ad4a kept it for exactly that). So the
+// key stays, and every surface names it for what it is through
+// NO_BLOCK_LABEL rather than dressing a fallback up as a choice.
+export const NO_BLOCK_BUCKET = "anytime";
+export const NO_BLOCK_LABEL = "No block";
+
+// Display name for a bucket's block: its own name, or the no-block
+// label when the block didn't resolve.
+export function blockLabel(block) {
+  return block?.name ?? NO_BLOCK_LABEL;
+}
+
 // segments: ordered [{ bucket, start, end }] with minutes-of-day bounds
 // (start inclusive, end exclusive). Returns the matching bucket, or "anytime".
 export function segmentForStart(startMin, segments) {
