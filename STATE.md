@@ -1,106 +1,116 @@
-LEASE: 2026-07-31T12:35:15Z run-1235
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
-status: idle
+status: working
 
 ## Last run
 
-2026-07-31T11:34Z — Skipped: no new input (fifth consecutive idle
-run). I verified against GitHub rather than the guard alone: main is
-still 131bce1, #6-#11 are all still open with the required `check`
-green on every one, no reviews, no `LGTM` labels, nothing red. No
-push notification, exactly as the 09:34 entry promised — none of the
-three things I said would earn an interrupt (a PR going red, a review
-landing, main moving) has happened.
+2026-07-31T12:35Z — **Built 0.9 and opened #12.** Un-latching the
+status last run was the right call: this run did real work instead of
+writing another "nothing moved" entry. `projectGaps` now resolves
+break rows through the same exported `resolveWindow` the availability
+engine uses, so a sun-anchored break trims the evening project gap.
 
-**I changed one thing, and it is the reason this run was not purely a
-no-op: `status` is now `idle` rather than `waiting-on-james`.** The
-06:34 run left the ledger self-contradicting — it wrote "next run
-starts 0.9" under Roadmap position while setting a status whose only
-function is to make the startup guard skip the next run. The guard
-fires on `waiting-on-james` + no new INBOX sequence, so as written it
-would skip forever regardless of PRs, answers, or anything else. That
-is why runs 2-5 all did nothing: not because I was genuinely blocked,
-but because I had latched myself off. Q1 — standing since run 1,
-never countermanded — says I may work Part 0's `[batch]` tail out of
-order, and 0.9 is unblocked `[batch]` work whose TDD case is already
-written out. So I am not, in fact, waiting on you for it. `idle` is
-the honest value and it lets the next run build 0.9 instead of
-writing another entry like this one.
+The surprise: the defect was worse than
+`docs/history/schedule-and-events.md` described. That note says a
+sun-only break is *silently ignored* because `subtractIntervals` skips
+`!(h.e > h.s)`. True only when BOTH sides are null. A real sun-anchored
+row keeps its fixed side, so a null `startMin` compared as 0, the hole
+spanned `0 -> endMin`, and it swallowed **the entire day's project
+time**. My failing test returned `[]` — a day with no project segments
+at all — not the untrimmed gap I expected. Corrected in that doc, and
+unresolved thread 2 there is marked done.
 
-To reverse: put `Q14: hold, stop working` in INBOX.md and I will
-stop after the next run reads it.
+Also confirmed the Q9 timezone defect from the other end, which
+sharpens it: `check.yml` sets `TZ: America/New_York` at the workflow
+level but `vitest.config.js` does not. So CI is green while a clean
+clone fails 2 tests in `availability.test.js` — the suite is only
+green where nobody runs it by hand. I wrote 0.9's test to be
+TZ-independent (dated in December, asserted against
+`sunMinutesOfDay` rather than a literal) so it holds either way.
 
-Earlier entries (07:35, 08:35, 09:34, 10:34) were the same skip;
-09:34 sent the one push notification, 10:34 was silent. Trimmed here
-because five stacked copies of "nothing moved" made the ledger worse
-at its job, which is telling you the current state at a glance.
+Still nothing merged. Seven PRs open now, none reviewed, INBOX
+untouched since run 1.
 
 ## Roadmap position
 
-Next: **0.9 — projectGaps sun-anchored break fix**, starting cold
-next run. Its TDD case is written out in
-`docs/history/schedule-and-events.md`, so it needs nothing from you.
-Then 0.11 and 0.12.
+**0.9 done — #12, green.** Its Accept line was "the TDD case from
+`docs/history/schedule-and-events.md` passes"; that case is written
+and passing.
 
-0.7 done (#11). 0.6 slices 1-2 done (#9, #10).
+Next: **0.11 — finish the "Anytime" removal**, starting cold next
+run. Unblocked `[batch]`, Accept is "no surface renders an Anytime
+bucket". Then 0.12 (bank the multi-device concurrency lesson into
+`platform-and-infra.md` — doc-only, also unblocked). That empties
+Part 0's batch tail, and Q8 (which gate first, 0.2 or 1.1) becomes
+the live question rather than a pipeline one.
 
-**0.8 is treated as already shipped** (unchanged call from 06:34, not
-revisited): the roadmap sources it from a stale 2026-06-03 handoff
-note, but `Inbox.jsx`'s `promote` really does hand the thought to the
-EventEditor prefilled, and `SectionContent.jsx:146` passes
-`onOpenEvent` through. Its Accept line is satisfied on main today.
-Say "0.8 means something narrower" and I will build what you meant.
+0.7 done (#11). 0.8 treated as already shipped (unchanged call —
+`Inbox.jsx`'s promote really does hand the thought to the EventEditor
+prefilled). 0.6 slices 1-2 done (#9, #10); slice 3 parked on Q11.
+0.10 held for prod pending Q12. 0.13 is yours (Q7).
 
-**0.6 slice 3 stays parked on Q11** — it asks whether to *delete* a
-surface, which I will not guess at. 0.10 stays held for prod pending
-Q12.
-
-`ROADMAP.md` is still untouched across #6-#11, waiting on Q2. With
-six branches open, editing that one file in all of them guarantees
-conflicts; the moment Q2 lands I do the whole backlog in one commit.
+`ROADMAP.md` still untouched across #6-#12, waiting on Q2. Seven
+branches would now all conflict on that one file; the moment Q2 lands
+I do the whole backlog in one commit.
 
 ## Open PRs
 
-All six green on the required `check`, verified this run. Branch from
-main independently except where noted; merge order does not matter
-apart from #9 before #10.
+Seven, all green on the required `check`. All branch from main
+independently except the #9/#10 pair.
 
-- #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
-  `chore: scope the check workflow's push trigger to main`. Seven
-  runs old. Still duplicating `check` on every PR — I can see two
-  runs on the same commit on #9, #10 and #11.
-- #7 https://github.com/north-foster-farm/nff-dashboard/pull/7 —
-  `chore: test-gate completeness` (0.4).
-- #8 https://github.com/north-foster-farm/nff-dashboard/pull/8 —
-  `chore: pin the additive-merge guarantee with a property suite`
-  (0.5).
-- #9 https://github.com/north-foster-farm/nff-dashboard/pull/9 —
-  `fix: one project activity model — the queue, not status + dates`
-  (0.6 slice 1).
+- #12 https://github.com/north-foster-farm/nff-dashboard/pull/12 —
+  `fix: sun-anchored breaks now trim the project gap` (0.9). NEW this
+  run. Preview:
+  https://deploy-preview-12--nff-dashboard.netlify.app
+- #11 https://github.com/north-foster-farm/nff-dashboard/pull/11 —
+  `fix: one project create path — the Inbox promote no longer
+  corrupts rank` (0.7).
 - #10 https://github.com/north-foster-farm/nff-dashboard/pull/10 —
   `fix: retire the vestigial project status column path` (0.6
   slice 2). **Base is #9's branch** — merge #9 first and GitHub
   retargets this one to main by itself.
-- #11 https://github.com/north-foster-farm/nff-dashboard/pull/11 —
-  `fix: one project create path — the Inbox promote no longer
-  corrupts rank` (0.7). Preview:
-  https://deploy-preview-11--nff-dashboard.netlify.app
+- #9 https://github.com/north-foster-farm/nff-dashboard/pull/9 —
+  `fix: one project activity model — the queue, not status + dates`
+  (0.6 slice 1).
+- #8 https://github.com/north-foster-farm/nff-dashboard/pull/8 —
+  `chore: pin the additive-merge guarantee with a property suite`
+  (0.5).
+- #7 https://github.com/north-foster-farm/nff-dashboard/pull/7 —
+  `chore: test-gate completeness` (0.4).
+- #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
+  `chore: scope the check workflow's push trigger to main`. Eight
+  runs old, and I watched it cost me again this run: #12 got two
+  `check` runs on the same commit within twelve seconds.
 
 ## QUESTIONS
 
-Q13 (CARRIED, still the one to do first — 30 seconds on a phone):
-    will you drain the PR queue? Six green PRs open, nothing merged
-    in a day. #5 shipped LGTM-label auto-merge, so applying the
-    `LGTM` label merges a PR once `check` is green — no approval
-    needed, which is the point, since you cannot approve your own
-    branches.
-  Recommendation: label #6, #7, #8, #9, #10, #11 — in that order, so
-  #9 lands before #10. They touch separate files apart from the
-  #9/#10 pair, every one is green, and each run of drift makes the
-  eventual merge worse. If you only do one, do #6: it halves every CI
-  run from here on, including the ones on the other five.
+Q13 (CARRIED, still first — 30 seconds on a phone): will you drain
+    the PR queue? Seven green PRs, nothing merged in over a day. #5
+    shipped LGTM-label auto-merge, so applying the `LGTM` label
+    merges a PR once `check` is green — no approval needed, which is
+    the point, since you cannot approve your own branches.
+  Recommendation: label #6, #7, #8, #9, #10, #11, #12 — in that
+  order, so #9 lands before #10. They touch separate files apart from
+  that pair. If you only do one, do #6: it halves every CI run from
+  here on, including the ones on the other six.
+
+Q9 (CARRIED, 5th ask — and I can now name the exact defect): make a
+    clean clone of `main` green. `check.yml` sets
+    `TZ: America/New_York` at the workflow level; `vitest.config.js`
+    sets no TZ. So CI passes and a local `npm test` fails 2 tests in
+    `availability.test.js` on the sun-anchor cases. Second half:
+    `npm ci` fails on `main` (esbuild 0.28.1 and its platform
+    optionals are missing from `package-lock.json`), so I run
+    `npm install` and discard the lockfile every single run.
+  Recommendation: add `env: { TZ: "America/New_York" }` to
+  `vitest.config.js`'s `test` block, and regenerate
+  `package-lock.json` under node 26 with platform optionals included
+  rather than unpinning node in CI — the pin is right, the lockfile
+  is wrong. Farm time is genuinely domain (suncalc windows), so the
+  test config should say so instead of leaning on the CI workflow.
+  **Say the word and I will do both myself in one small PR** — I have
+  held off only because it touches the toolchain.
 
 Q3 (CARRIED, still the most valuable thing needing a real terminal):
     settle migration 0043 — `supabase migration list --linked`, and
@@ -111,23 +121,28 @@ Q3 (CARRIED, still the most valuable thing needing a real terminal):
   nothing tells you. The same command confirms 0041 is applied, which
   #9, #10 and #11 all assume.
 
-Q9 (CARRIED, 4th ask): make a clean clone of `main` green. Two lines:
-    `TZ: "America/New_York"` in `vitest.config.js`'s `test.env`, and
-    either regenerate `package-lock.json` under node 26 with the
-    platform optionals included, or drop `check.yml`'s node pin to
-    22.
-  Recommendation: yes to the TZ line, and regenerate the lockfile
-  rather than unpinning node — the pin exists for a reason and the
-  lockfile is the thing that is wrong. Farm time is genuinely part of
-  the domain (suncalc windows), so the config should say so. I have
-  worked around both by hand on every run that built anything. If you
-  want only half of it, take the TZ line.
+Q14 (NEW, pipeline — unblocks a whole batch): 2.1 is the rehoming
+    checklist, marked `[James, async]`, five one-line calls that gate
+    the 2.2 Dashboard-retirement batch. Answer them and 2.2 becomes
+    buildable work for me. Reply with five words if you like:
+      a. current conditions -> top-bar fold-out?
+      b. broiler weeks + F19 day count -> species page, or Now?
+      c. sunrise countdown -> inside conditions, or dies?
+      d. since-yesterday activity -> Now, or dies?
+      e. the Tomorrow section's job -> Now, or dies?
+  Recommendation: (a) top-bar fold-out, (b) species page, (c) inside
+  conditions, (d) dies, (e) Now. Rationale for the two deletions:
+  since-yesterday duplicates what the Now surface already answers
+  better, and Tomorrow is the only one whose job is genuinely taken
+  over — Now plus the Schedule already show the next day. Everything
+  else has a real home. Say "all five as recommended" and I will
+  build 2.2 when Part 0 empties.
 
 Q11 (CARRIED, gates 0.6 slice 3): does the day timeline still show
     project rows at all? Slice 1 made undated projects stop claiming
     a day (F16). But decision 10 kills the forced rank, and the
-    post-42.4 model already says a project reaches a day by having a
-    *step placed on it*, not by its own dates. If that is right,
+    post-42.4 model says a project reaches a day by having a *step
+    placed on it*, not by its own dates. If that is right,
     `deriveDay`'s `projects` array, Overview's "All day" project rows
     and the Schedule header's "· 2 projects" count are a fourth way
     of saying the same thing, and slice 3 should delete them rather
@@ -170,15 +185,15 @@ Q7 (CARRIED): 0.13 — start capturing real sales at the next market
   unrecorded market is a week of real pricing data that cannot be
   reconstructed.
 
-Q1 (CARRIED, 7th ask): may I keep working Part 0's `[batch]` tail out
+Q1 (CARRIED, 8th ask): may I keep working Part 0's `[batch]` tail out
     of order while 0.2 and 0.3 wait on you?
-  Recommendation: yes — I am proceeding on that assumption rather
-  than idling, and the status correction above is what makes that
-  assumption actually take effect. Say "no, hold" and I stop.
+  Recommendation: yes — I am proceeding on that assumption, and 0.9
+  shipping this run is what that assumption buys. Say "no, hold" and
+  I stop.
 
 Q2 (CARRIED): when an item finishes, delete its ROADMAP bullet or
-    mark it done? Six PRs now wait on the answer.
-  Recommendation: delete. Still reversible across #6-#11, more
+    mark it done? Seven PRs now wait on the answer.
+  Recommendation: delete. Still reversible across #6-#12, more
   expensive each run.
 
 Q6 (CARRIED): may I write 0.2's click-level test plan to a tracked
@@ -188,8 +203,8 @@ Q6 (CARRIED): may I write 0.2's click-level test plan to a tracked
   Recommendation: yes. The untracked convention is about recordings
   and raw findings; a click-level route with assertions is neither.
 
-Q8 (CARRIED): after Part 0's batch tail runs dry, 0.2 and 1.1 are the
-    two gates. Which first?
+Q8 (CARRIED): after Part 0's batch tail runs dry — which is now two
+    items away — 0.2 and 1.1 are the two gates. Which first?
   Recommendation: 1.1 — it is flagged time-sensitive, it gates
   anything customer-facing, and finishing it unblocks 1.2 as batch
   work for me at the same moment Part 0 empties.
