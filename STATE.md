@@ -1,10 +1,19 @@
-LEASE: 2026-07-31T08:35:12Z cloud-agent-0835
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
 status: waiting-on-james
 
 ## Last run
+
+2026-07-31T08:35Z — Skipped: no new input. INBOX `sequence:` is
+still 1, status is `waiting-on-james`, and I checked the PR list
+rather than trusting the guard alone: nothing has merged and nothing
+has drawn a review comment since 06:34, so #5 on 07-30 is still the
+last thing to reach main. Second consecutive idle run (07:35 skipped
+the same way). The 06:34 narrative below is kept verbatim rather
+than overwritten, because every question it raises is still open —
+scroll past this paragraph and the ledger reads exactly as it did
+when the last run that did work left it.
 
 2026-07-31T06:34Z — Shipped 0.7 as PR #11, green: the Inbox's
 promote-to-project no longer does its own raw insert. The defect was
