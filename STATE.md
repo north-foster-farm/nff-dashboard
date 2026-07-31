@@ -1,4 +1,3 @@
-LEASE: 2026-07-31T13:35:00Z run-13-35
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,64 +5,72 @@ status: working
 
 ## Last run
 
-2026-07-31T12:35Z — **Built 0.9 and opened #12.** Un-latching the
-status last run was the right call: this run did real work instead of
-writing another "nothing moved" entry. `projectGaps` now resolves
-break rows through the same exported `resolveWindow` the availability
-engine uses, so a sun-anchored break trims the evening project gap.
+2026-07-31T13:35Z — **Built 0.11 and opened #13.** The "Anytime"
+removal is finished: nothing under `src/` renders the bucket, and no
+add or edit control offers it as a destination any more.
 
-The surprise: the defect was worse than
-`docs/history/schedule-and-events.md` described. That note says a
-sun-only break is *silently ignored* because `subtractIntervals` skips
-`!(h.e > h.s)`. True only when BOTH sides are null. A real sun-anchored
-row keeps its fixed side, so a null `startMin` compared as 0, the hole
-spanned `0 -> endMin`, and it swallowed **the entire day's project
-time**. My failing test returned `[]` — a day with no project segments
-at all — not the untrimmed gap I expected. Corrected in that doc, and
-unresolved thread 2 there is marked done.
+The find that shaped the batch: the obvious reading of 0.11 is wrong.
+The old Phase 4 plan (`processes-as-chore-generators-plan.md`) says
+to delete every Anytime derivation — but `1d1ad4a` deliberately KEPT
+the `anytime` bucket key, because it turned out to be live orphan
+tolerance: a delta whose `block_id` no longer resolves lands there
+instead of vanishing from the day. Deleting it would silently drop
+rows on a live app. So I split the concept in two — the key stays
+(internal, orphan-catching), the *offer* and the *label* go — and put
+both in one place, `placement.js`, where the sentinel already lived.
 
-Also confirmed the Q9 timezone defect from the other end, which
-sharpens it: `check.yml` sets `TZ: America/New_York` at the workflow
-level but `vitest.config.js` does not. So CI is green while a clean
-clone fails 2 tests in `availability.test.js` — the suite is only
-green where nobody runs it by hand. I wrote 0.9's test to be
-TZ-independent (dated in December, asserted against
-`sunMinutesOfDay` rather than a literal) so it holds either way.
+Three controls were still handing out the filing spot. One was a
+straight hole rather than a leftover: `Chores.jsx`'s block
+quick-edit could still clear a chore's block to null, which is the
+exact invariant `ChoreFieldsEditor` says F30 established. That is the
+generator bug re-openable by hand.
 
-Still nothing merged. Seven PRs open now, none reviewed, INBOX
+Q9 reproduced again, unchanged: 2 `availability.test.js` failures in
+a clean clone, green under `TZ=America/New_York`; `npm ci` still
+fails on main, so I ran `npm install` and discarded the lockfile.
+
+Eight PRs open now. Nothing merged in over a day; INBOX still
 untouched since run 1.
 
 ## Roadmap position
 
-**0.9 done — #12, green.** Its Accept line was "the TDD case from
-`docs/history/schedule-and-events.md` passes"; that case is written
-and passing.
+**0.11 done — #13, green.** Accept was "no surface renders an
+'Anytime' bucket"; a new source-scan invariant
+(`src/lib/anytimeRemoved.test.js`) pins it.
 
-Next: **0.11 — finish the "Anytime" removal**, starting cold next
-run. Unblocked `[batch]`, Accept is "no surface renders an Anytime
-bucket". Then 0.12 (bank the multi-device concurrency lesson into
-`platform-and-infra.md` — doc-only, also unblocked). That empties
-Part 0's batch tail, and Q8 (which gate first, 0.2 or 1.1) becomes
-the live question rather than a pipeline one.
+Next: **0.12 — bank the multi-device concurrency lesson** into
+`docs/history/platform-and-infra.md`, starting cold next run.
+Doc-only, unblocked, and the last `[batch]` in Part 0. The
+deterministic-survivor mitigation (lexically smallest id) was
+root-caused in deleted code, so the run will start by recovering it
+from git history rather than from the working tree — budget for that.
 
-0.7 done (#11). 0.8 treated as already shipped (unchanged call —
-`Inbox.jsx`'s promote really does hand the thought to the EventEditor
-prefilled). 0.6 slices 1-2 done (#9, #10); slice 3 parked on Q11.
-0.10 held for prod pending Q12. 0.13 is yours (Q7).
+**After 0.12, Part 0's batch tail is empty.** Q8 (which gate first —
+0.2 or 1.1) then stops being a pipeline question and becomes the
+thing that decides whether I have any buildable work at all. If Q8
+and Q1 are both still unanswered next run, the run after it is
+questions-only. That is the moment worth pre-empting.
 
-`ROADMAP.md` still untouched across #6-#12, waiting on Q2. Seven
+0.9 done (#12). 0.7 done (#11). 0.8 treated as already shipped.
+0.6 slices 1-2 done (#9, #10); slice 3 parked on Q11. 0.10 held for
+prod pending Q12. 0.13 is yours (Q7).
+
+`ROADMAP.md` still untouched across #6-#13, waiting on Q2. Eight
 branches would now all conflict on that one file; the moment Q2 lands
 I do the whole backlog in one commit.
 
 ## Open PRs
 
-Seven, all green on the required `check`. All branch from main
-independently except the #9/#10 pair.
+Eight. All green on the required `check` — #13's push-triggered
+`check` passed; its PR-triggered duplicate was still running at
+shutdown, on the same commit.
 
+- #13 https://github.com/north-foster-farm/nff-dashboard/pull/13 —
+  `fix: finish the "Anytime" removal — no surface renders the bucket`
+  (0.11). NEW this run. 8 files across pages/components/lib. Preview:
+  https://deploy-preview-13--nff-dashboard.netlify.app
 - #12 https://github.com/north-foster-farm/nff-dashboard/pull/12 —
-  `fix: sun-anchored breaks now trim the project gap` (0.9). NEW this
-  run. Preview:
-  https://deploy-preview-12--nff-dashboard.netlify.app
+  `fix: sun-anchored breaks now trim the project gap` (0.9).
 - #11 https://github.com/north-foster-farm/nff-dashboard/pull/11 —
   `fix: one project create path — the Inbox promote no longer
   corrupts rank` (0.7).
@@ -80,30 +87,41 @@ independently except the #9/#10 pair.
 - #7 https://github.com/north-foster-farm/nff-dashboard/pull/7 —
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
-  `chore: scope the check workflow's push trigger to main`. Eight
-  runs old, and I watched it cost me again this run: #12 got two
-  `check` runs on the same commit within twelve seconds.
+  `chore: scope the check workflow's push trigger to main`. Nine
+  runs old. It cost me again this run, visibly: #13 got two `check`
+  runs on the same commit, 27 seconds apart.
 
 ## QUESTIONS
 
 Q13 (CARRIED, still first — 30 seconds on a phone): will you drain
-    the PR queue? Seven green PRs, nothing merged in over a day. #5
+    the PR queue? Eight green PRs, nothing merged in over a day. #5
     shipped LGTM-label auto-merge, so applying the `LGTM` label
     merges a PR once `check` is green — no approval needed, which is
     the point, since you cannot approve your own branches.
-  Recommendation: label #6, #7, #8, #9, #10, #11, #12 — in that
+  Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13 — in that
   order, so #9 lands before #10. They touch separate files apart from
   that pair. If you only do one, do #6: it halves every CI run from
-  here on, including the ones on the other six.
+  here on, including the ones on the other seven.
 
-Q9 (CARRIED, 5th ask — and I can now name the exact defect): make a
-    clean clone of `main` green. `check.yml` sets
-    `TZ: America/New_York` at the workflow level; `vitest.config.js`
-    sets no TZ. So CI passes and a local `npm test` fails 2 tests in
-    `availability.test.js` on the sun-anchor cases. Second half:
-    `npm ci` fails on `main` (esbuild 0.28.1 and its platform
-    optionals are missing from `package-lock.json`), so I run
-    `npm install` and discard the lockfile every single run.
+Q15 (NEW, 10 seconds, and it is live in #13 right now): the
+    block-less bucket needed a name that is not "Anytime". I used
+    **"No block"**. It is single-sourced as `NO_BLOCK_LABEL` in
+    `placement.js`, so changing it is a one-line edit that moves
+    every surface at once.
+  Recommendation: keep "No block". It names the fallback as a
+  fallback, which is the whole point of the batch — "Unscheduled"
+  reads like a deliberate state someone chose, which is the exact
+  impression F30 set out to kill. Say a different word and I change
+  the one line.
+
+Q9 (CARRIED, 6th ask — reproduced again this run): make a clean
+    clone of `main` green. `check.yml` sets `TZ: America/New_York` at
+    the workflow level; `vitest.config.js` sets no TZ. So CI passes
+    and a local `npm test` fails 2 tests in `availability.test.js` on
+    the sun-anchor cases. Second half: `npm ci` fails on `main`
+    (esbuild 0.28.1 and its platform optionals are missing from
+    `package-lock.json`), so I run `npm install` and discard the
+    lockfile every single run.
   Recommendation: add `env: { TZ: "America/New_York" }` to
   `vitest.config.js`'s `test` block, and regenerate
   `package-lock.json` under node 26 with platform optionals included
@@ -122,10 +140,10 @@ Q3 (CARRIED, still the most valuable thing needing a real terminal):
   nothing tells you. The same command confirms 0041 is applied, which
   #9, #10 and #11 all assume.
 
-Q14 (NEW, pipeline — unblocks a whole batch): 2.1 is the rehoming
-    checklist, marked `[James, async]`, five one-line calls that gate
-    the 2.2 Dashboard-retirement batch. Answer them and 2.2 becomes
-    buildable work for me. Reply with five words if you like:
+Q14 (CARRIED, pipeline — unblocks a whole batch): 2.1 is the
+    rehoming checklist, marked `[James, async]`, five one-line calls
+    that gate the 2.2 Dashboard-retirement batch. Answer them and 2.2
+    becomes buildable work for me. Reply with five words if you like:
       a. current conditions -> top-bar fold-out?
       b. broiler weeks + F19 day count -> species page, or Now?
       c. sunrise countdown -> inside conditions, or dies?
@@ -186,15 +204,15 @@ Q7 (CARRIED): 0.13 — start capturing real sales at the next market
   unrecorded market is a week of real pricing data that cannot be
   reconstructed.
 
-Q1 (CARRIED, 8th ask): may I keep working Part 0's `[batch]` tail out
+Q1 (CARRIED, 9th ask): may I keep working Part 0's `[batch]` tail out
     of order while 0.2 and 0.3 wait on you?
-  Recommendation: yes — I am proceeding on that assumption, and 0.9
+  Recommendation: yes — I am proceeding on that assumption, and 0.11
   shipping this run is what that assumption buys. Say "no, hold" and
   I stop.
 
 Q2 (CARRIED): when an item finishes, delete its ROADMAP bullet or
-    mark it done? Seven PRs now wait on the answer.
-  Recommendation: delete. Still reversible across #6-#12, more
+    mark it done? Eight PRs now wait on the answer.
+  Recommendation: delete. Still reversible across #6-#13, more
   expensive each run.
 
 Q6 (CARRIED): may I write 0.2's click-level test plan to a tracked
@@ -204,8 +222,9 @@ Q6 (CARRIED): may I write 0.2's click-level test plan to a tracked
   Recommendation: yes. The untracked convention is about recordings
   and raw findings; a click-level route with assertions is neither.
 
-Q8 (CARRIED): after Part 0's batch tail runs dry — which is now two
-    items away — 0.2 and 1.1 are the two gates. Which first?
+Q8 (CARRIED, and one item away from being urgent): after Part 0's
+    batch tail runs dry — 0.12 is the last one — 0.2 and 1.1 are the
+    two gates. Which first?
   Recommendation: 1.1 — it is flagged time-sensitive, it gates
   anything customer-facing, and finishing it unblocks 1.2 as batch
   work for me at the same moment Part 0 empties.
