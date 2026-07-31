@@ -1,4 +1,5 @@
 import { supabase } from "./supabase.js";
+import { planMortalityMerge } from "../outboxMerge.js";
 
 // Device-local, append-only outbox (Batch 16.2; run lifecycle 17).
 //
@@ -291,20 +292,22 @@ async function execCaptureInsert(p) {
 // ADDITIVE mortality merge: read the cohort count at sync time and
 // subtract the op's delta — never write an absolute count captured
 // when the op was queued. Two offline phones each logging "1 dead"
-// therefore sum to 2 instead of clobbering each other.
+// therefore sum to 2 instead of clobbering each other. The arithmetic
+// (and the gone/uncounted skip) lives in the pure lib/outboxMerge.js
+// where the suite can hold it to that property; this keeps the I/O.
 async function execMortalityDecrement(p) {
   const { data: rows, error: selErr } = await supabase
     .from("livestock_groups")
     .select("id, count")
     .eq("id", p.groupId);
   if (selErr) throw asError(selErr);
-  const group = rows?.[0];
-  if (!group || typeof group.count !== "number") {
+  const plan = planMortalityMerge(rows?.[0], p.delta);
+  if (plan.skipped) {
     // Cohort gone or uncounted — nothing to decrement; the
     // mortality_observed activity row is the durable record.
     return { skipped: true };
   }
-  const next = Math.max(0, group.count - p.delta);
+  const next = plan.count;
   const { error: updErr } = await supabase
     .from("livestock_groups")
     .update({ count: next })
@@ -314,7 +317,7 @@ async function execMortalityDecrement(p) {
   // that empties to zero closes its open placements. Best-effort —
   // never fail the op (and risk a replayed double-decrement) over
   // move-out bookkeeping.
-  if (next === 0) {
+  if (plan.closePlacements) {
     await supabase
       .from("placements")
       .update({ moved_out: localDateString(new Date()) })
