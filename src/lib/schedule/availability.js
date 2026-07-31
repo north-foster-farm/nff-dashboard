@@ -15,7 +15,7 @@ function resolveSide(sun, fixedMin, date) {
 // minutes for `date`. Null when either side is unset or the resolved
 // window is empty/inverted (a sunset-anchored window can invert in
 // summer — treat it as absent rather than carving garbage).
-function resolveWindow(row, date) {
+export function resolveWindow(row, date) {
   const startMin = resolveSide(row.startSun, row.startMin, date);
   const endMin = resolveSide(row.endSun, row.endMin, date);
   if (startMin == null || endMin == null || endMin <= startMin) {
