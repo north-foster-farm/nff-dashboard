@@ -9,6 +9,12 @@
 # single definition of "ready to commit", so anything added to it
 # (coverage thresholds, new linters) is enforced here too instead of
 # being bypassed.
+# The version guard runs first: it is instant, and there is no point
+# spending a full check run to then refuse the commit over two
+# strings. Claude Code sessions hit the same script through a
+# PreToolUse hook; this door is the one a human commit comes in.
+bash "$(dirname "$0")/../scripts/check-version-sync.sh" --check || exit $?
+
 echo "pre-commit: running checks (npm run check)..."
 npm run check --silent
 status=$?
