@@ -53,9 +53,6 @@ e-commerce arc; this file is the sequence.
 
 ## Part 0 — close the housekeeping tail
 
-- 0.1 **CI trigger scope** [batch]. `check.yml` push trigger →
-  `branches: [main]`; PR branches stop double-running.
-  Accept: one CI run per PR push.
 - 0.2 **Eyes-on QA walkthrough** [session] + fix wave [batch].
   One session (QA Walkthrough playbook, `docs/workshops/`), both
   viewports per surface: the Tomorrow section (live for the first
