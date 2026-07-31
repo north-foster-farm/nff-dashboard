@@ -7,6 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { weekDays, blockFullness, weekFullness } from "./weekView.js";
 import { monthFullness } from "./monthView.js";
+import { NO_BLOCK_LABEL } from "./placement.js";
 
 const d = (y, m, day) => new Date(y, m - 1, day);
 
@@ -97,11 +98,11 @@ describe("blockFullness", () => {
     expect(out.find((b) => b.bucket === "morning").count).toBe(2);
   });
 
-  it("names an orphaned bucket (no real block found) 'Anytime' as the display fallback", () => {
+  it("names an orphaned bucket (no real block found) 'No block' — never 'Anytime' (F30)", () => {
     const defs = [dailyChore("orphan", { blockId: "deleted" })];
     const data = { chores: { definitions: defs } };
     const out = blockFullness(data, d(2026, 6, 1), { blocks: BLOCKS });
-    expect(out[0].name).toBe("Anytime");
+    expect(out[0].name).toBe(NO_BLOCK_LABEL);
     expect(out[0].block).toBeNull();
   });
 
