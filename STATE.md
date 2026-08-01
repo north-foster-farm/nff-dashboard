@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T10:34:46Z hourly-2026-08-01T10
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,84 +5,70 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T09:34Z — **Idle, by the guard** — sixth consecutive hour.
-INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`, and
-status is `waiting-on-james`, so the startup new-input guard held and I
-did no build work. I took the lease, checked both input channels, and
+2026-08-01T10:35Z — **Idle, by the guard** — seventh consecutive
+hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
+and status is `waiting-on-james`, so the startup new-input guard held
+and I did no build work. I took the lease, checked both channels, and
 released it.
 
-Nothing moved on either channel. INBOX is unchanged. On GitHub all
-twelve of #6–#17 are open, unlabelled, uncommented and unreviewed — I
-checked by `updated_at`, which a label, comment or review would bump,
-and every one still reads the hour it was opened (#17 at 04:41Z, its
-own creation). Nothing has been merged. The queue has now sat
-untouched for **33 hours**.
+Nothing moved. INBOX unchanged. On GitHub all twelve of #6–#17 are
+still open, unlabelled, uncommented and unreviewed — I read
+`updated_at` on every one and each is identical to last hour's reading
+(#17 still 04:41Z, its own creation; #6 still 07-31T01:48Z). Nothing
+merged, nothing closed. The queue has now sat untouched for **34
+hours**.
 
-No push notification again — 04:34Z said all of this and an hourly
+No push notification again — 04:34Z said all of this, and an hourly
 "still waiting" is noise. **The single highest-value thing you can do
 is Q13**: label the PRs, `#6` first.
 
 ### Previous substantive run — 2026-08-01T04:34Z
 
-**Shipped 3.1 (React 19 + Vite 8 +
-plugin-react 6) as #17, green, and hit the end of the buildable
-road.** The upgrade went better than expected: the codebase had *zero*
-React 19 removed-API surface — `src/main.jsx` already mounts through
-`createRoot`, and there are no `ReactDOM.render`, `findDOMNode`,
-string refs, `defaultProps` or `propTypes` anywhere — so nothing
-needed rewriting. Vite 8 replaces esbuild with oxc, so the advisory
-wasn't patched so much as evicted: the lockfile now has **zero**
-esbuild entries and `npm audit` reports 0 vulnerabilities.
+**Shipped 3.1 (React 19 + Vite 8 + plugin-react 6) as #17, green, and
+hit the end of the buildable road.** The upgrade went better than
+expected: the codebase had *zero* React 19 removed-API surface —
+`src/main.jsx` already mounts through `createRoot`, and there are no
+`ReactDOM.render`, `findDOMNode`, string refs, `defaultProps` or
+`propTypes` anywhere. Vite 8 replaces esbuild with oxc, so the
+advisory wasn't patched so much as evicted: the lockfile now has
+**zero** esbuild entries and `npm audit` reports 0 vulnerabilities.
 
 **Q9's lockfile half is retired for real** — and by accident. The
 vitest-4-wants-esbuild-`^0.28` / vite-5-pins-`0.21.5` split that made
 `npm ci` fail in my container was a symptom of esbuild being in the
 tree twice. With esbuild gone, `npm ci` succeeds here on node 22 *and*
-in CI on node 26. Last run diagnosed the cause correctly and
-recommended not touching it; 3.1 dissolved it as a side effect. The TZ
-half of Q9 stands — I re-ran it after the upgrade, still 2 failures.
+in CI on node 26. The TZ half of Q9 stands — re-run after the upgrade,
+still 2 failures.
 
 Two things I could not verify, stated plainly. 3.1's Accept asks for
 "deploy verified by content marker": Netlify built the preview fine,
 so the *build* is confirmed on their infra, but fetching
-`deploy-preview-17--nff-dashboard.netlify.app` still dies on `CONNECT
-tunnel failed, response 403`. I tested it this run rather than
-assuming. **And this is a React major with no visual QA behind it** —
-the suite is the pure-logic layer only, so 1200 green tests say
-nothing about whether the app renders. I flagged that in the PR body
-as a do-not-blind-LGTM. It is the one PR in the queue I would not want
-labelled on the strength of CI alone.
-
-I also sent a push notification this run — the first time. The
-protocol says git is the only channel, and that was true when it was
-written, but the scheduler I run under has one. Twelve PRs frozen for
-30 hours with the agent going idle seemed worth the interrupt. Veto it
-in INBOX and I will not do it again.
+`deploy-preview-17--nff-dashboard.netlify.app` dies on `CONNECT tunnel
+failed, response 403`. **And this is a React major with no visual QA
+behind it** — the suite is the pure-logic layer only, so 1200 green
+tests say nothing about whether the app renders. It is the one PR in
+the queue I would not want labelled on the strength of CI alone.
 
 ## Roadmap position
 
-**Parts 0–3 are now exhausted for me except 3.2, and 3.2 needs a
-decision before it can be built (Q23).** This is a real wall, not the
-false one from the 03:36Z run:
+**Parts 0–3 are exhausted for me except 3.2, and 3.2 needs a decision
+before it can be built (Q23).** This is a real wall:
 
 - Part 0: done or PR'd.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
   Q22; 1.2 and 1.3 both implement the `[session]` 1.1.
-- Part 2: 2.2 is fully specified and buildable **the moment Q14's
-  five words arrive**. Still the largest block of work you can hand me
-  in one message.
+- Part 2: 2.2 is fully specified and buildable **the moment Q14's five
+  words arrive**. Still the largest block of work you can hand me in
+  one message.
 - Part 3: 3.1 done (#17). 3.2's Accept is *"navigation shows no stale
   frame; recompute under 1s on the reference phone"* — both halves are
   device measurements I cannot make, and the fix lives inside
   `Schedule.jsx` (3940 lines, no component tests, no visual QA). I am
-  **not** building that blind against an auto-deploying main; the
-  schedule is the day plan's only record. See Q23.
+  **not** building that blind against an auto-deploying main. See Q23.
 - Part 4 opens with 4.1, a `[session]`.
 
-So `status: waiting-on-james` is honest this time, and the startup
-guard will correctly hold the next runs. That is the intended
-behaviour, not the 03:36Z deadlock — the difference is that this time
-the wall is real and you have been told about it.
+So `status: waiting-on-james` is honest, and the startup guard will
+correctly hold the next runs.
 
 `ROADMAP.md` still untouched across #6–#17 — **twelve** branches now
 conflict on that one file. Q2 remains the cheapest answer you can give
@@ -95,8 +80,8 @@ Twelve. All green on the required `check`; not one carries a label, a
 comment or a review.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
-  `chore: react 19 + vite 8 + plugin-react 6` (3.1). Opened and
-  verified green this run. **Preview-check this one before merging.**
+  `chore: react 19 + vite 8 + plugin-react 6` (3.1).
+  **Preview-check this one before merging.**
 - #16 https://github.com/north-foster-farm/nff-dashboard/pull/16 —
   `fix: drift-lint the semantic token layer` (1.4).
 - #15 https://github.com/north-foster-farm/nff-dashboard/pull/15 —
@@ -120,14 +105,14 @@ comment or a review.
 - #7 https://github.com/north-foster-farm/nff-dashboard/pull/7 —
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
-  `chore: scope the check workflow's push trigger to main`. Fifteen
+  `chore: scope the check workflow's push trigger to main`. Sixteen
   runs old. #17 spawned two duplicate `check` runs on one push —
   again — which is the exact waste #6 exists to stop.
 
 ## QUESTIONS
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, nothing merged in 30 hours. #5 shipped
+    queue? Twelve green PRs, nothing merged in 34 hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
     since you cannot approve your own branches.
@@ -150,7 +135,7 @@ Q21 (CARRIED, decides whether I work at all): I overrode the startup
   instead — but then the guard needs a third condition (`AND no
   unblocked [batch] item remains`) or it deadlocks again.
 
-Q23 (NEW — the only thing between me and more build work): 3.2's
+Q23 (CARRIED — the only thing between me and more build work): 3.2's
     Accept is two measurements I cannot make ("no stale frame",
     "recompute under 1s on the reference phone"). May I replace it
     with an offline proxy: a node-side benchmark that times the day
@@ -207,7 +192,7 @@ Q3 (CARRIED, the only item with a live production failure mode):
   un-confirming a day silently no-ops under RLS and nothing tells you.
   The same command confirms 0041, which #9, #10 and #11 all assume.
 
-Q24 (NEW, pipeline — the next gate after Part 1): 4.1 is the
+Q24 (CARRIED, pipeline — the next gate after Part 1): 4.1 is the
     site-architecture session, `[session]`, FIRST in Part 4 with
     nothing customer-facing allowed before it. May I pre-stage it the
     same way as Q10 — a tracked page laying out the five open calls
@@ -222,13 +207,13 @@ Q24 (NEW, pipeline — the next gate after Part 1): 4.1 is the
   de-indexed at three layers is a real complication for a storefront
   that must be indexable.
 
-Q25 (NEW, and the answer to "what can the agent build after Part 3"):
-    4.3a is transactional email, `[batch]`, and the roadmap marks it
-    **explicitly NOT blocked on site architecture** — 65 contacts have
-    been waiting since 06-02. It is the only `[batch]` item left in
-    the file that does not sit behind a session. It needs two things
-    from you: pick SendGrid or Mailgun, and create the account + API
-    key.
+Q25 (CARRIED, and the answer to "what can the agent build after Part
+    3"): 4.3a is transactional email, `[batch]`, and the roadmap marks
+    it **explicitly NOT blocked on site architecture** — 65 contacts
+    have been waiting since 06-02. It is the only `[batch]` item left
+    in the file that does not sit behind a session. It needs two
+    things from you: pick SendGrid or Mailgun, and create the account
+    + API key.
   Recommendation: **Mailgun, whenever you next have five minutes** —
   this is the item that keeps me working once the PR queue drains. I
   recommend Mailgun over SendGrid mainly for the sandbox domain, which
@@ -299,8 +284,7 @@ Q11 (CARRIED, gates 0.6 slice 3): does the day timeline still show
 Q9 (CARRIED — **lockfile half now RETIRED**, TZ half still live):
     `check.yml` sets `TZ: America/New_York` at the workflow level,
     `vitest.config.js` sets none, so a clean local `npm test` fails 2
-    tests in `src/lib/schedule/availability.test.js`. Re-reproduced
-    this run, after the upgrade.
+    tests in `src/lib/schedule/availability.test.js`.
   Recommendation: add `env: { TZ: "America/New_York" }` to
   `vitest.config.js`'s `test` block — two lines, and farm time is
   genuinely domain, so the test config should say so rather than
@@ -332,7 +316,7 @@ Q8 (CARRIED, low urgency): 0.2 and 1.1 are the two gates. Which first?
   customer-facing, and finishing it unblocks 1.2, 1.3 and the rest of
   Part 1 as batch work for me.
 
-Q1 (CARRIED, 14th ask, superseded in practice by Q21): may I keep
+Q1 (CARRIED, 15th ask, superseded in practice by Q21): may I keep
     working `[batch]` items out of order while `[session]` and
     `[James]` items wait?
   Recommendation: yes — 0.11, 0.12, 1.5, 1.4 and now 3.1 are what it
