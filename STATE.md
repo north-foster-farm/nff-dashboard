@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T02:35Z cloud-agent-0235
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,26 +5,21 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T01:35Z — **Idle, 10th consecutive skipped run.** INBOX
+2026-08-01T02:35Z — **Idle, 11th consecutive skipped run.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
-status is `waiting-on-james`, so the new-input guard fired and I did
-no build work. Before standing down I re-listed every PR: ten open
-(#6–#15), none merged, none closed, and every `updated_at` is still
-within a minute of its own `created_at` — so no comments, no reviews,
-no labels have landed anywhere on the queue since #15 was opened at
-2026-07-31T15:42Z, ten hours ago. Lease taken and released cleanly.
+status is `waiting-on-james`, so the new-input guard fired. Before
+standing down I re-listed all fifteen PRs: #6–#15 open, none merged,
+none closed, no labels, no comments, every `updated_at` still within
+a minute of its own `created_at`. Nothing has touched the queue since
+#15 was opened at 2026-07-31T15:42Z, eleven hours ago. Lease taken
+and released cleanly; no push notification this run, as promised last
+run — git stays the channel unless something genuinely changes or
+breaks.
 
-Ten scheduled hours have now produced nothing, and the reason has not
-changed once: every next step I can take is behind an answer from
-you. The cheapest unblock is still **one `LGTM` label** (Q13), which
-merges a green PR by itself; the permanent one is **Q1** ("yes, keep
-going"), which turns every future run back into build time.
-
-One protocol note, so it is on the record: this run also sent you a
-push notification, because ten dead runs is the routine failing at
-its job rather than a quiet all-clear. I do not intend to repeat that
-every hour — git stays the channel, and the next notification will
-only go out if something genuinely changes or breaks.
+The reason has not changed either: every next step is behind an
+answer from you. The cheapest unblock is still **one `LGTM` label**
+(Q13), which merges a green PR by itself; the permanent one is
+**Q1**, which turns future runs back into build time.
 
 2026-07-31T15:34Z — **Shipped 1.5 (self-host Lora + Inter) as #15,
 green.** Nine `latin`-subset woff2 files vendored into
@@ -59,7 +53,7 @@ in the built HTML or CSS.
 
 ## Roadmap position
 
-Unchanged from the last run — nothing was picked up this hour.
+Unchanged for eleven runs — nothing picked up this hour.
 
 Next, cold start, still no dependency on anything you answer: **1.4 —
 design-doc drift lint** (`[batch]`). Accept is "a deleted ramp fails
@@ -109,7 +103,7 @@ carries a label, a comment or a review.
 - #7 https://github.com/north-foster-farm/nff-dashboard/pull/7 —
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
-  `chore: scope the check workflow's push trigger to main`. Twelve
+  `chore: scope the check workflow's push trigger to main`. Thirteen
   runs old.
 
 ## QUESTIONS
@@ -124,7 +118,7 @@ Q13 (CARRIED, still first — 30 seconds on a phone): will you drain
   apart from that pair. If you only do one, do #6: it halves every CI
   run from here on, including the ones on the other nine.
 
-Q9 (CARRIED, 8th ask — reproduced again): make a clean clone of
+Q9 (CARRIED, 9th ask — reproduced again): make a clean clone of
     `main` green. `check.yml` sets `TZ: America/New_York` at the
     workflow level; `vitest.config.js` sets no TZ. So CI passes and a
     local `npm test` fails 2 tests in `availability.test.js` on the
@@ -153,7 +147,7 @@ Q3 (CARRIED, still the most valuable thing needing a real terminal):
   nothing tells you. The same command confirms 0041 is applied, which
   #9, #10 and #11 all assume.
 
-Q19 (NEW, pipeline — the shortest real decision on the board, and
+Q19 (CARRIED, pipeline — the shortest real decision on the board, and
     four batches sit behind it): 4.2b is the egg inventory model,
     marked `[session, short]`. Two calls:
       a. count-before-market, or log-as-collected?
@@ -172,13 +166,14 @@ Q19 (NEW, pipeline — the shortest real decision on the board, and
   disagree, the place to say so is here, not after the chain is
   built.
 
-Q18 (NEW, pipeline — same pre-staging offer as Q12 and Q17): 4.2a is
-    the catalog ↔ price-list reconciliation, marked `[batch → James]`
-    — I enumerate the gaps, you confirm and authorize the write. The
-    write is yours and I will not touch it. May I do the whole first
-    half now: enumerate every gap between `src/lib/productCatalog.js`
-    and `docs/ecommerce/proposed-prices-summer-2026.md`, and stage
-    the seed migration with a dry-run diff you can read?
+Q18 (CARRIED, pipeline — same pre-staging offer as Q12 and Q17): 4.2a
+    is the catalog ↔ price-list reconciliation, marked
+    `[batch → James]` — I enumerate the gaps, you confirm and
+    authorize the write. The write is yours and I will not touch it.
+    May I do the whole first half now: enumerate every gap between
+    `src/lib/productCatalog.js` and
+    `docs/ecommerce/proposed-prices-summer-2026.md`, and stage the
+    seed migration with a dry-run diff you can read?
   Recommendation: yes. Both sides are tracked files, so the entire
   enumeration is offline work needing no credentials — the only thing
   I genuinely cannot do is apply it. It turns your step from
@@ -204,9 +199,9 @@ Q14 (CARRIED, pipeline — unblocks a whole batch): 2.1 is the
   over — Now plus the Schedule already show the next day. Say "all
   five as recommended" and I will build 2.2.
 
-Q20 (NEW, and it is pure data entry — 2 minutes, no tooling): 4.2f
-    asks you for arrival dates for Batches 1 and 2, plus Batch 4's
-    tractor spread. They are null in prod today, and that null is
+Q20 (CARRIED, and it is pure data entry — 2 minutes, no tooling):
+    4.2f asks you for arrival dates for Batches 1 and 2, plus Batch
+    4's tractor spread. They are null in prod today, and that null is
     load-bearing: no arrival date means no age, so no lifecycle
     state and no per-batch metrics for either batch.
   Recommendation: reply with the dates here even if they are
@@ -282,7 +277,7 @@ Q7 (CARRIED): 0.13 — start capturing real sales at the next market
   unrecorded market is a week of real pricing data that cannot be
   reconstructed.
 
-Q1 (CARRIED, 11th ask): may I keep working `[batch]` items out of
+Q1 (CARRIED, 12th ask): may I keep working `[batch]` items out of
     order while the `[session]` and `[James]` items wait on you?
   Recommendation: yes — I am proceeding on that assumption, and 0.11,
   0.12 and 1.5 shipping are what it buys. Say "no, hold" and I stop.
