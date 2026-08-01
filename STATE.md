@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T19:35Z run-1935
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,24 +5,27 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T18:35Z — **Idle, by the guard** — fifteenth consecutive
+2026-08-01T19:35Z — **Idle, by the guard** — sixteenth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels and the full PR list, released
-it. No build work, deliberately.
+Took the lease, re-read both channels, re-read the PR list and
+re-checked Part 4 for anything buildable, released the lease. No build
+work, deliberately.
 
 Nothing moved. Every PR from #6 to #17 is still open carrying the same
-`updated_at` as the last eight readings (#17 still 04:41Z, #6 still
+`updated_at` as the last nine readings (#17 still 04:41Z, #6 still
 07-31T01:48Z) — nothing merged, closed, labelled, commented or
-reviewed. The queue has now sat untouched for **42 hours**.
+reviewed. The queue has now sat untouched for **43 hours**.
 
-The reasoning from 14:35Z–17:34Z stands and I won't restate it:
-idling is correct now in a way it was not at 03:36Z, because every
-remaining item genuinely needs an answer from you (Q14, Q23, Q25) or
-is a `[session]`. A thirteenth PR would add a thirteenth ROADMAP.md
-conflict to resolve at merge time, not progress. No new questions
-either — sixteen are open and each is a real gate; a seventeenth would
-cost you reading time rather than buy me work.
+One thing I did re-verify rather than take on trust: the claim in Q25
+that 4.3a is the only `[batch]` item not sitting behind a session. It
+holds. 4.3b needs a YoLink API key and a live sensor; 4.3d needs
+Stripe keys in Netlify env and a test-mode call; 4.3c's Accept is
+*"anon key can read exactly the published surface"* — a credentialed
+check I cannot run, and its shape is one of the five calls 4.1 decides
+(direct Supabase read vs published feed), so building it now would be
+guessing at the answer. All three are genuinely blocked, not
+overlooked.
 
 No push notification. The 04:34Z ping said all of this and named the
 action; an hourly "still waiting" is pure noise on your phone. The
@@ -32,30 +34,17 @@ has passed since that ping — **that falls at the 04:35Z run
 tomorrow** if the queue is still frozen. **The single highest-value
 thing you can do is Q13**: label the PRs, `#6` first.
 
-### Previous substantive run — 2026-08-01T04:34Z
+### Standing note on #17 (from the 04:34Z run)
 
-**Shipped 3.1 (React 19 + Vite 8 + plugin-react 6) as #17, green, and
-hit the end of the buildable road.** The codebase had *zero* React 19
-removed-API surface — `src/main.jsx` already mounts through
-`createRoot`, and there are no `ReactDOM.render`, `findDOMNode`,
-string refs, `defaultProps` or `propTypes` anywhere. Vite 8 replaces
-esbuild with oxc, so the advisory wasn't patched so much as evicted:
-the lockfile now has **zero** esbuild entries and `npm audit` reports
-0 vulnerabilities.
-
-**Q9's lockfile half is retired for real** — and by accident. The
-vitest-4-wants-esbuild-`^0.28` / vite-5-pins-`0.21.5` split that made
-`npm ci` fail in my container was a symptom of esbuild being in the
-tree twice. With esbuild gone, `npm ci` succeeds here on node 22 *and*
-in CI on node 26. The TZ half of Q9 stands.
-
-Two things I could not verify, stated plainly. 3.1's Accept asks for
-"deploy verified by content marker": Netlify built the preview fine,
-so the *build* is confirmed on their infra, but fetching
-`deploy-preview-17--nff-dashboard.netlify.app` dies on `CONNECT tunnel
-failed, response 403`. **And this is a React major with no visual QA
-behind it** — the suite is the pure-logic layer only, so 1200 green
-tests say nothing about whether the app renders. It is the one PR in
+3.1 shipped React 19 + Vite 8 + plugin-react 6 as #17, green. The
+codebase had zero React 19 removed-API surface, and Vite 8 evicts
+esbuild entirely — the lockfile now has zero esbuild entries and
+`npm audit` reports 0 vulnerabilities, which is what retired Q9's
+lockfile half. Two things I could not verify: the preview fetch dies
+on `CONNECT tunnel failed, response 403`, so Netlify's build is
+confirmed but the page is not; and **this is a React major with no
+visual QA behind it** — 1200 green tests cover the pure-logic layer
+and say nothing about whether the app renders. It is the one PR in
 the queue I would not want labelled on the strength of CI alone.
 
 ## Roadmap position
@@ -74,7 +63,10 @@ before it can be built (Q23).** This is a real wall:
   device measurements I cannot make, and the fix lives inside
   `Schedule.jsx` (3940 lines, no component tests, no visual QA). I am
   **not** building that blind against an auto-deploying main. See Q23.
-- Part 4 opens with 4.1, a `[session]`.
+- Part 4: opens with 4.1, a `[session]`. Of the `[batch]` items
+  behind it, 4.3a is unblocked in principle but needs a provider
+  choice and an account from you (Q25); 4.3b/c/d are blocked as
+  described above.
 
 So `status: waiting-on-james` is honest, and the startup guard will
 correctly hold the next runs.
@@ -82,7 +74,8 @@ correctly hold the next runs.
 **Resume point:** the moment an INBOX answer lands, work it first. If
 that answer is Q14, start 2.2 from a failing test in
 `src/lib/schedule/`. If it is Q23, start 3.2's benchmark half. If it
-is only Q13/Q2, rebase the merged branches out and shrink the queue.
+is Q25, start 4.3a's provider-agnostic half. If it is only Q13/Q2,
+rebase the merged branches out and shrink the queue.
 
 `ROADMAP.md` still untouched across #6–#17 — **twelve** branches now
 conflict on that one file. Q2 remains the cheapest answer you can give
@@ -91,7 +84,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 18:35Z — no state change on any.
+comment or a review. Re-verified 19:35Z — no state change on any.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
