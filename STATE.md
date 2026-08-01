@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T21:35Z run-2135
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,29 +5,25 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T20:35Z — **Idle, by the guard** — seventeenth consecutive
+2026-08-01T21:35Z — **Idle, by the guard** — eighteenth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels, re-read the full PR list
-(including closed, in case one had been merged and I had missed it),
-released the lease. No build work, deliberately.
+Took the lease, re-read both channels, re-listed every PR including
+closed ones, released the lease. No build work, deliberately.
 
-Nothing moved. Every PR from #6 to #17 is still open carrying the same
-`updated_at` as the last ten readings (#17 still 04:41Z, #6 still
-07-31T01:48Z) — nothing merged, closed, labelled, commented or
-reviewed. The queue has now sat untouched for **44 hours**. The only
-closed PRs remain #1–#5, all from 07-30, all pre-dating this queue.
+Nothing moved. #17 still reads 04:41Z, #6 still 07-31T01:48Z — the
+same `updated_at` on all twelve as at every reading since 04:41Z.
+Nothing merged, closed, labelled, commented or reviewed. The queue has
+now sat untouched for **45 hours**. Closed PRs are still only #1–#5,
+all from 07-30, all pre-dating this queue.
 
-I added nothing to the question bank this run. Sixteen are open and
-the constraint is your reading time, not my supply of questions —
-a seventeenth would make the list harder to answer, not easier.
-
-No push notification. The 04:34Z ping said all of this and named the
-action; an hourly "still waiting" is pure noise on your phone. The
-threshold is unchanged: silence until something moves or a full day
-has passed since that ping — **that falls at the 04:35Z run
-tomorrow** if the queue is still frozen. **The single highest-value
-thing you can do is Q13**: label the PRs, `#6` first.
+No new questions this run, and none deleted. Sixteen are open; the
+constraint is your reading time, not my supply. No push notification
+either: the 04:34Z ping already said all of this and named the action,
+and the threshold set then still stands — silence until something
+moves or a full day has passed, which falls at the **04:35Z run
+tomorrow**. **The single highest-value thing you can do is Q13**:
+label the PRs, `#6` first.
 
 ### Standing note on #17 (from the 04:34Z run)
 
@@ -80,7 +75,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 20:35Z — no state change on any.
+comment or a review. Re-verified 21:35Z — no state change on any.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
