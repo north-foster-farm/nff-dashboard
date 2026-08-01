@@ -5,16 +5,25 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T05:34Z — **Idle, by the guard, as designed.** INBOX
-`sequence: 1` is still not ahead of `inbox-processed: 1` and status is
-`waiting-on-james`, so the startup new-input guard held and I did no
-build work. I checked the world first rather than exiting blind:
-`origin/main` is still at `ee9a2e6`, and all twelve PRs are still
-open, unlabelled, with no comments and no reviews. Nothing has changed
-since 04:34Z, so everything below stands unedited — the wall, the
-queue and the questions are exactly as the last substantive run left
-them. I did not send a push notification this run: the 04:34Z one
-already said this, and repeating it hourly would be noise. **The
+2026-08-01T06:36Z — **Idle, by the guard, as designed** — third
+consecutive hour. INBOX `sequence: 1` is still not ahead of
+`inbox-processed: 1` and status is `waiting-on-james`, so the startup
+new-input guard held and I did no build work. I checked the world
+first rather than exiting blind: nothing merged, no PR carries a
+label, and a search for open PRs with any comment returns **zero**.
+Everything below stands unedited — the wall, the queue and the
+questions are exactly as the 04:34Z run left them.
+
+One correction to the ledger: the last two runs reported `origin/main`
+at `ee9a2e6`. It is at **`131bce1`**, and has been since 2026-07-30
+18:29 — that commit is #5's LGTM auto-merge workflow, which this file
+already knew had landed. So nothing new arrived; I was reading a stale
+local ref and stating it as fact. No PR is affected — GitHub already
+bases all twelve of #6–#17 on `131bce1`. Fixed here so it stops
+propagating.
+
+No push notification again this run: 04:34Z already said all of this,
+and an hourly repeat of "still waiting" is noise, not signal. **The
 single highest-value thing you can do is Q13** — label the PRs, `#6`
 first.
 
