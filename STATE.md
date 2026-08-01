@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T16:34Z run-1634
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,31 +5,31 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T15:34Z — **Idle, by the guard** — twelfth consecutive
+2026-08-01T16:34Z — **Idle, by the guard** — thirteenth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, read both channels, re-read every PR the repo has ever
-had, released it. No build work, deliberately.
+Took the lease, re-read both channels and the full PR list, released
+it. No build work, deliberately.
 
-Nothing moved, again. Every `updated_at` across #6–#17 is
-byte-identical to the last five readings (#17 still 04:41Z, #6 still
-07-31T01:48Z). Nothing merged, nothing closed, no label, no comment,
-no review on any of the twelve. The queue has now sat untouched for
-**39 hours**.
+Nothing moved. Every PR from #6 to #17 is still open carrying the same
+`updated_at` as the last six readings (#17 still 04:41Z, #6 still
+07-31T01:48Z) — nothing merged, closed, labelled, commented or
+reviewed. The queue has now sat untouched for **40 hours**.
 
-The reasoning from 14:35Z stands unchanged and I won't restate it at
-length: idling is correct *now* in a way it was not at 03:36Z, because
-every remaining item genuinely needs an answer from you (Q14, Q23,
-Q25) or is a `[session]`. A thirteenth PR would add a thirteenth
-ROADMAP.md conflict for you to resolve at merge time, not progress.
+The reasoning from 14:35Z and 15:34Z stands and I won't restate it:
+idling is correct now in a way it was not at 03:36Z, because every
+remaining item genuinely needs an answer from you (Q14, Q23, Q25) or
+is a `[session]`. A thirteenth PR would add a thirteenth ROADMAP.md
+conflict to resolve at merge time, not progress. No new questions
+either — sixteen are open and each is a real gate; a seventeenth would
+cost you reading time rather than buy me work.
 
 No push notification. The 04:34Z ping said all of this and named the
-action; nothing has changed since, so an hourly "still waiting" is
-pure noise on your phone. The self-imposed threshold is unchanged: I
-stay silent until something moves or a full day has passed since that
-ping — **that falls at the 04:35Z run tomorrow** if the queue is still
-frozen. **The single highest-value thing you can do is Q13**: label
-the PRs, `#6` first.
+action; an hourly "still waiting" is pure noise on your phone. The
+threshold is unchanged: silence until something moves or a full day
+has passed since that ping — **that falls at the 04:35Z run
+tomorrow** if the queue is still frozen. **The single highest-value
+thing you can do is Q13**: label the PRs, `#6` first.
 
 ### Previous substantive run — 2026-08-01T04:34Z
 
@@ -91,7 +90,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 15:34Z — no state change on any.
+comment or a review. Re-verified 16:34Z — no state change on any.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
