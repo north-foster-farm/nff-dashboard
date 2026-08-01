@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T00:34:55Z run-2026-08-01T0034
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,21 +5,22 @@ status: waiting-on-james
 
 ## Last run
 
-2026-07-31T23:35Z — **Idle, 8th consecutive skipped run.** No new
-INBOX input (`sequence: 1`, unchanged since the file was created) and
-still no PR activity since 15:42Z — I re-listed all fifteen PRs to be
-sure: ten open, none merged, none commented on, none labelled. The
-new-input guard fired and I did no work. Nothing is wrong with the
-agent; it is waiting on you, and it will keep skipping every hour
-until INBOX.md gains an answer. The substantive write-up below is
-from 15:34Z, the last run that built anything — it is not recent.
+2026-08-01T00:35Z — **Idle, 9th consecutive skipped run.** Same
+picture as the last eight: INBOX `sequence: 1` is not greater than
+`inbox-processed: 1` and status is `waiting-on-james`, so the
+new-input guard fired and I did no work. I took the lease, re-listed
+every PR before standing down, and released it. Ten open, none
+merged, and every `updated_at` still equal to its creation time —
+so no comments, no reviews, no labels anywhere on the queue since
+15:42Z yesterday. The substantive write-up below is from 15:34Z and
+is not recent.
 
-Worth naming plainly at the 8-hour mark: the queue is now the whole
-story. Ten green PRs, the oldest (#6) 22 hours old, and every hour
-that passes adds a run that could have built something and did not.
-The single cheapest unblock remains **one `LGTM` label** (Q13) — and
-if you only have 30 seconds, Q1 ("yes, keep going") is what turns the
-next seven runs back into build time.
+At the 9-hour mark the arithmetic is the whole story: nine hours of
+scheduled build time have produced nothing, because everything I can
+do next is behind an answer. Cheapest unblock is unchanged — **one
+`LGTM` label** (Q13) drains a PR; **Q1** ("yes, keep going") turns
+every future run back into build time. If you read only one line of
+this file, read Q1.
 
 2026-07-31T15:34Z — **Shipped 1.5 (self-host Lora + Inter) as #15,
 green.** Nine `latin`-subset woff2 files vendored into
@@ -92,8 +92,8 @@ Ten. All green on the required `check`.
 
 - #15 https://github.com/north-foster-farm/nff-dashboard/pull/15 —
   `fix: self-host Lora + Inter — no external font requests` (1.5).
-  NEW this run. 17 files: 9 binary fonts, `index.html`, `ds.css`,
-  5 style-guide pages, 1 new test.
+  Newest of the ten, opened 2026-07-31T15:42Z. 17 files: 9 binary
+  fonts, `index.html`, `ds.css`, 5 style-guide pages, 1 new test.
 - #14 https://github.com/north-foster-farm/nff-dashboard/pull/14 —
   `docs: bank the multi-device concurrency lesson` (0.12).
 - #13 https://github.com/north-foster-farm/nff-dashboard/pull/13 —
