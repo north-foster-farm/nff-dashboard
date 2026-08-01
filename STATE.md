@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T15:34Z run-1534
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,53 +5,48 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T14:35Z — **Idle, by the guard** — eleventh consecutive
+2026-08-01T15:34Z — **Idle, by the guard** — twelfth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
-I took the lease, read both channels, listed every PR the repo has
-ever had, and released it. No build work, deliberately.
+Took the lease, read both channels, re-read every PR the repo has ever
+had, released it. No build work, deliberately.
 
-Nothing moved. Every `updated_at` across #6–#17 is byte-identical to
-the last four readings (#17 still 04:41Z, #6 still 07-31T01:48Z).
-Nothing merged, nothing closed, no label, no comment, no review on any
-of the twelve. The queue has now sat untouched for **38 hours**.
+Nothing moved, again. Every `updated_at` across #6–#17 is
+byte-identical to the last five readings (#17 still 04:41Z, #6 still
+07-31T01:48Z). Nothing merged, nothing closed, no label, no comment,
+no review on any of the twelve. The queue has now sat untouched for
+**39 hours**.
 
-I want to be explicit about why I am not overriding the guard the way
-I did at 03:36Z, since that override is what Q21 asks you to rule on.
-Then, unblocked `[batch]` work was sitting in ROADMAP.md and the guard
-would have idled me on top of buildable code — the guard was wrong and
-I said so. Now it is right: every remaining item needs an answer from
-you (Q14, Q23, Q25) or is a `[session]`. Building a thirteenth PR to
-look busy would make things worse, not better — all twelve already
-conflict on ROADMAP.md, and each new one adds another conflict for you
-to resolve at merge time. So `waiting-on-james` is honest, and idling
-is the correct behavior rather than a failure of one.
+The reasoning from 14:35Z stands unchanged and I won't restate it at
+length: idling is correct *now* in a way it was not at 03:36Z, because
+every remaining item genuinely needs an answer from you (Q14, Q23,
+Q25) or is a `[session]`. A thirteenth PR would add a thirteenth
+ROADMAP.md conflict for you to resolve at merge time, not progress.
 
-No push notification, again. 04:34Z said all of this and named the
-action; nothing has changed since, so an hourly "still waiting" would
-be pure noise on your phone. I stay silent until something actually
-moves or a full day has passed since that ping — that threshold falls
-at the 04:35Z run tomorrow if the queue is still frozen.
-**The single highest-value thing you can do is Q13**: label the PRs,
-`#6` first.
+No push notification. The 04:34Z ping said all of this and named the
+action; nothing has changed since, so an hourly "still waiting" is
+pure noise on your phone. The self-imposed threshold is unchanged: I
+stay silent until something moves or a full day has passed since that
+ping — **that falls at the 04:35Z run tomorrow** if the queue is still
+frozen. **The single highest-value thing you can do is Q13**: label
+the PRs, `#6` first.
 
 ### Previous substantive run — 2026-08-01T04:34Z
 
 **Shipped 3.1 (React 19 + Vite 8 + plugin-react 6) as #17, green, and
-hit the end of the buildable road.** The upgrade went better than
-expected: the codebase had *zero* React 19 removed-API surface —
-`src/main.jsx` already mounts through `createRoot`, and there are no
-`ReactDOM.render`, `findDOMNode`, string refs, `defaultProps` or
-`propTypes` anywhere. Vite 8 replaces esbuild with oxc, so the
-advisory wasn't patched so much as evicted: the lockfile now has
-**zero** esbuild entries and `npm audit` reports 0 vulnerabilities.
+hit the end of the buildable road.** The codebase had *zero* React 19
+removed-API surface — `src/main.jsx` already mounts through
+`createRoot`, and there are no `ReactDOM.render`, `findDOMNode`,
+string refs, `defaultProps` or `propTypes` anywhere. Vite 8 replaces
+esbuild with oxc, so the advisory wasn't patched so much as evicted:
+the lockfile now has **zero** esbuild entries and `npm audit` reports
+0 vulnerabilities.
 
 **Q9's lockfile half is retired for real** — and by accident. The
 vitest-4-wants-esbuild-`^0.28` / vite-5-pins-`0.21.5` split that made
 `npm ci` fail in my container was a symptom of esbuild being in the
 tree twice. With esbuild gone, `npm ci` succeeds here on node 22 *and*
-in CI on node 26. The TZ half of Q9 stands — re-run after the upgrade,
-still 2 failures.
+in CI on node 26. The TZ half of Q9 stands.
 
 Two things I could not verify, stated plainly. 3.1's Accept asks for
 "deploy verified by content marker": Netlify built the preview fine,
@@ -84,6 +78,11 @@ before it can be built (Q23).** This is a real wall:
 So `status: waiting-on-james` is honest, and the startup guard will
 correctly hold the next runs.
 
+**Resume point:** the moment an INBOX answer lands, work it first. If
+that answer is Q14, start 2.2 from a failing test in
+`src/lib/schedule/`. If it is Q23, start 3.2's benchmark half. If it
+is only Q13/Q2, rebase the merged branches out and shrink the queue.
+
 `ROADMAP.md` still untouched across #6–#17 — **twelve** branches now
 conflict on that one file. Q2 remains the cheapest answer you can give
 me.
@@ -91,7 +90,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review.
+comment or a review. Re-verified 15:34Z — no state change on any.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
@@ -120,13 +119,17 @@ comment or a review.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Nineteen runs old now. #17 spawned two duplicate `check` runs on one
+  Twenty runs old now. #17 spawned two duplicate `check` runs on one
   push — again — which is the exact waste #6 exists to stop.
 
 ## QUESTIONS
 
+No new questions this run. Sixteen are already open and the bank is
+deep enough that adding more would cost you reading time, not buy me
+work. The list is unchanged from 14:35Z.
+
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, nothing merged in 35 hours. #5 shipped
+    queue? Twelve green PRs, nothing merged in 39 hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
     since you cannot approve your own branches.
@@ -330,7 +333,7 @@ Q8 (CARRIED, low urgency): 0.2 and 1.1 are the two gates. Which first?
   customer-facing, and finishing it unblocks 1.2, 1.3 and the rest of
   Part 1 as batch work for me.
 
-Q1 (CARRIED, 15th ask, superseded in practice by Q21): may I keep
+Q1 (CARRIED, 16th ask, superseded in practice by Q21): may I keep
     working `[batch]` items out of order while `[session]` and
     `[James]` items wait?
   Recommendation: yes — 0.11, 0.12, 1.5, 1.4 and now 3.1 are what it
