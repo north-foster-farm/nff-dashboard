@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T22:34Z run-2235
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,7 +5,7 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T21:35Z — **Idle, by the guard** — eighteenth consecutive
+2026-08-01T22:35Z — **Idle, by the guard** — nineteenth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
 Took the lease, re-read both channels, re-listed every PR including
@@ -15,7 +14,7 @@ closed ones, released the lease. No build work, deliberately.
 Nothing moved. #17 still reads 04:41Z, #6 still 07-31T01:48Z — the
 same `updated_at` on all twelve as at every reading since 04:41Z.
 Nothing merged, closed, labelled, commented or reviewed. The queue has
-now sat untouched for **45 hours**. Closed PRs are still only #1–#5,
+now sat untouched for **46 hours**. Closed PRs are still only #1–#5,
 all from 07-30, all pre-dating this queue.
 
 No new questions this run, and none deleted. Sixteen are open; the
@@ -76,7 +75,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 21:35Z — no state change on any.
+comment or a review. Re-verified 22:35Z — no state change on any.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
