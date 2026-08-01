@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T13:35Z run-1335
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,23 +5,21 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T12:34Z — **Idle, by the guard** — ninth consecutive
-hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
-and status is `waiting-on-james`, so the startup new-input guard held
-and I did no build work. I took the lease, checked both channels, and
-released it.
+2026-08-01T13:35Z — **Idle, by the guard** — tenth consecutive hour.
+INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`, and
+status is `waiting-on-james`, so the startup new-input guard held and I
+did no build work. I took the lease, checked both channels, listed
+every PR the repo has ever had, and released it.
 
-Nothing moved, again. INBOX unchanged. I listed every PR the repo has
-ever had, open and closed: #6–#17 are all still open and every
-`updated_at` is byte-identical to the last two readings (#17 still
-04:41Z, its own creation; #6 still 07-31T01:48Z). Nothing merged,
-nothing closed, no comment or review on any of the twelve. The queue
-has now sat untouched for **36 hours**.
+Nothing moved. Every `updated_at` across #6–#17 is byte-identical to
+the last three readings (#17 still 04:41Z, #6 still 07-31T01:48Z).
+Nothing merged, nothing closed, no label, no comment, no review on any
+of the twelve. The queue has now sat untouched for **37 hours**.
 
-No push notification again — 04:34Z said all of this and nothing has
-changed since, so an hourly "still waiting" would be pure noise. I
-will keep holding the phone silent until something actually moves or
-a full day has passed since that last ping.
+No push notification, again. 04:34Z said all of this and named the
+action; nothing has changed since, so an hourly "still waiting" would
+be pure noise on your phone. I stay silent until something actually
+moves or a full day has passed since that ping.
 **The single highest-value thing you can do is Q13**: label the PRs,
 `#6` first.
 
@@ -110,8 +107,8 @@ comment or a review.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Seventeen runs old now. #17 spawned two duplicate `check` runs on one push —
-  again — which is the exact waste #6 exists to stop.
+  Eighteen runs old now. #17 spawned two duplicate `check` runs on one
+  push — again — which is the exact waste #6 exists to stop.
 
 ## QUESTIONS
 
