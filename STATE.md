@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T07:35Z run-202608010735
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,27 +5,22 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T06:36Z — **Idle, by the guard, as designed** — third
-consecutive hour. INBOX `sequence: 1` is still not ahead of
-`inbox-processed: 1` and status is `waiting-on-james`, so the startup
-new-input guard held and I did no build work. I checked the world
-first rather than exiting blind: nothing merged, no PR carries a
-label, and a search for open PRs with any comment returns **zero**.
-Everything below stands unedited — the wall, the queue and the
-questions are exactly as the 04:34Z run left them.
+2026-08-01T07:35Z — **Idle, by the guard** — fourth consecutive hour.
+INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`, and
+status is `waiting-on-james`, so the startup new-input guard held and I
+did no build work. I took the lease, checked the world, and released
+it. Everything below is unchanged from the 04:34Z run.
 
-One correction to the ledger: the last two runs reported `origin/main`
-at `ee9a2e6`. It is at **`131bce1`**, and has been since 2026-07-30
-18:29 — that commit is #5's LGTM auto-merge workflow, which this file
-already knew had landed. So nothing new arrived; I was reading a stale
-local ref and stating it as fact. No PR is affected — GitHub already
-bases all twelve of #6–#17 on `131bce1`. Fixed here so it stops
-propagating.
+Nothing moved on GitHub. `origin/main` is still `131bce1`; all twelve
+of #6–#17 are open, unlabelled and unreviewed. I checked by
+`updated_at` this run rather than by scanning each PR: a label, comment
+or review bumps that timestamp, and every one of the twelve still reads
+the hour it was opened (#17 at 04:41Z, its own creation). So the queue
+has now sat untouched for **31 hours**.
 
-No push notification again this run: 04:34Z already said all of this,
-and an hourly repeat of "still waiting" is noise, not signal. **The
-single highest-value thing you can do is Q13** — label the PRs, `#6`
-first.
+No push notification again — 04:34Z said all of this and an hourly
+"still waiting" is noise. **The single highest-value thing you can do
+is Q13**: label the PRs, `#6` first.
 
 ### Previous substantive run — 2026-08-01T04:34Z
 
