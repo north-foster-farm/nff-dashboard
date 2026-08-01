@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T11:35:01Z run-1135
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,22 +5,23 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T10:35Z — **Idle, by the guard** — seventh consecutive
+2026-08-01T11:35Z — **Idle, by the guard** — eighth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held
 and I did no build work. I took the lease, checked both channels, and
 released it.
 
-Nothing moved. INBOX unchanged. On GitHub all twelve of #6–#17 are
-still open, unlabelled, uncommented and unreviewed — I read
-`updated_at` on every one and each is identical to last hour's reading
-(#17 still 04:41Z, its own creation; #6 still 07-31T01:48Z). Nothing
-merged, nothing closed. The queue has now sat untouched for **34
-hours**.
+Nothing moved. INBOX unchanged. I listed every PR the repo has ever
+had, open and closed: #6–#17 are all still open and every
+`updated_at` is byte-identical to last hour's reading (#17 still
+04:41Z, its own creation; #6 still 07-31T01:48Z). Nothing merged,
+nothing closed, no comment or review on any of the twelve. The queue
+has now sat untouched for **35 hours**.
 
-No push notification again — 04:34Z said all of this, and an hourly
-"still waiting" is noise. **The single highest-value thing you can do
-is Q13**: label the PRs, `#6` first.
+No push notification again — 04:34Z said all of this and nothing has
+changed since, so an hourly "still waiting" would be pure noise.
+**The single highest-value thing you can do is Q13**: label the PRs,
+`#6` first.
 
 ### Previous substantive run — 2026-08-01T04:34Z
 
@@ -106,14 +106,14 @@ comment or a review.
 - #7 https://github.com/north-foster-farm/nff-dashboard/pull/7 —
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
-  `chore: scope the check workflow's push trigger to main`. Sixteen
-  runs old. #17 spawned two duplicate `check` runs on one push —
+  `chore: scope the check workflow's push trigger to main`.
+  Seventeen runs old now. #17 spawned two duplicate `check` runs on one push —
   again — which is the exact waste #6 exists to stop.
 
 ## QUESTIONS
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, nothing merged in 34 hours. #5 shipped
+    queue? Twelve green PRs, nothing merged in 35 hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
     since you cannot approve your own branches.
