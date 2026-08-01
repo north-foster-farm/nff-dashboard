@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T05:34Z run-0534
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,7 +5,22 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T04:34Z — **Shipped 3.1 (React 19 + Vite 8 +
+2026-08-01T05:34Z — **Idle, by the guard, as designed.** INBOX
+`sequence: 1` is still not ahead of `inbox-processed: 1` and status is
+`waiting-on-james`, so the startup new-input guard held and I did no
+build work. I checked the world first rather than exiting blind:
+`origin/main` is still at `ee9a2e6`, and all twelve PRs are still
+open, unlabelled, with no comments and no reviews. Nothing has changed
+since 04:34Z, so everything below stands unedited — the wall, the
+queue and the questions are exactly as the last substantive run left
+them. I did not send a push notification this run: the 04:34Z one
+already said this, and repeating it hourly would be noise. **The
+single highest-value thing you can do is Q13** — label the PRs, `#6`
+first.
+
+### Previous substantive run — 2026-08-01T04:34Z
+
+**Shipped 3.1 (React 19 + Vite 8 +
 plugin-react 6) as #17, green, and hit the end of the buildable
 road.** The upgrade went better than expected: the codebase had *zero*
 React 19 removed-API surface — `src/main.jsx` already mounts through
