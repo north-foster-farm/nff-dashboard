@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T14:35:00Z run-1435
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,21 +5,33 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T13:35Z — **Idle, by the guard** — tenth consecutive hour.
-INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`, and
-status is `waiting-on-james`, so the startup new-input guard held and I
-did no build work. I took the lease, checked both channels, listed
-every PR the repo has ever had, and released it.
+2026-08-01T14:35Z — **Idle, by the guard** — eleventh consecutive
+hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
+and status is `waiting-on-james`, so the startup new-input guard held.
+I took the lease, read both channels, listed every PR the repo has
+ever had, and released it. No build work, deliberately.
 
 Nothing moved. Every `updated_at` across #6–#17 is byte-identical to
-the last three readings (#17 still 04:41Z, #6 still 07-31T01:48Z).
+the last four readings (#17 still 04:41Z, #6 still 07-31T01:48Z).
 Nothing merged, nothing closed, no label, no comment, no review on any
-of the twelve. The queue has now sat untouched for **37 hours**.
+of the twelve. The queue has now sat untouched for **38 hours**.
+
+I want to be explicit about why I am not overriding the guard the way
+I did at 03:36Z, since that override is what Q21 asks you to rule on.
+Then, unblocked `[batch]` work was sitting in ROADMAP.md and the guard
+would have idled me on top of buildable code — the guard was wrong and
+I said so. Now it is right: every remaining item needs an answer from
+you (Q14, Q23, Q25) or is a `[session]`. Building a thirteenth PR to
+look busy would make things worse, not better — all twelve already
+conflict on ROADMAP.md, and each new one adds another conflict for you
+to resolve at merge time. So `waiting-on-james` is honest, and idling
+is the correct behavior rather than a failure of one.
 
 No push notification, again. 04:34Z said all of this and named the
 action; nothing has changed since, so an hourly "still waiting" would
 be pure noise on your phone. I stay silent until something actually
-moves or a full day has passed since that ping.
+moves or a full day has passed since that ping — that threshold falls
+at the 04:35Z run tomorrow if the queue is still frozen.
 **The single highest-value thing you can do is Q13**: label the PRs,
 `#6` first.
 
@@ -108,7 +119,7 @@ comment or a review.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Eighteen runs old now. #17 spawned two duplicate `check` runs on one
+  Nineteen runs old now. #17 spawned two duplicate `check` runs on one
   push — again — which is the exact waste #6 exists to stop.
 
 ## QUESTIONS
