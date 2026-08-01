@@ -1,4 +1,3 @@
-LEASE: 2026-08-01T20:35:15Z run-2035
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,27 +5,22 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T19:35Z — **Idle, by the guard** — sixteenth consecutive
+2026-08-01T20:35Z — **Idle, by the guard** — seventeenth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels, re-read the PR list and
-re-checked Part 4 for anything buildable, released the lease. No build
-work, deliberately.
+Took the lease, re-read both channels, re-read the full PR list
+(including closed, in case one had been merged and I had missed it),
+released the lease. No build work, deliberately.
 
 Nothing moved. Every PR from #6 to #17 is still open carrying the same
-`updated_at` as the last nine readings (#17 still 04:41Z, #6 still
+`updated_at` as the last ten readings (#17 still 04:41Z, #6 still
 07-31T01:48Z) — nothing merged, closed, labelled, commented or
-reviewed. The queue has now sat untouched for **43 hours**.
+reviewed. The queue has now sat untouched for **44 hours**. The only
+closed PRs remain #1–#5, all from 07-30, all pre-dating this queue.
 
-One thing I did re-verify rather than take on trust: the claim in Q25
-that 4.3a is the only `[batch]` item not sitting behind a session. It
-holds. 4.3b needs a YoLink API key and a live sensor; 4.3d needs
-Stripe keys in Netlify env and a test-mode call; 4.3c's Accept is
-*"anon key can read exactly the published surface"* — a credentialed
-check I cannot run, and its shape is one of the five calls 4.1 decides
-(direct Supabase read vs published feed), so building it now would be
-guessing at the answer. All three are genuinely blocked, not
-overlooked.
+I added nothing to the question bank this run. Sixteen are open and
+the constraint is your reading time, not my supply of questions —
+a seventeenth would make the list harder to answer, not easier.
 
 No push notification. The 04:34Z ping said all of this and named the
 action; an hourly "still waiting" is pure noise on your phone. The
@@ -85,7 +79,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 19:35Z — no state change on any.
+comment or a review. Re-verified 20:35Z — no state change on any.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
@@ -122,6 +116,10 @@ comment or a review. Re-verified 19:35Z — no state change on any.
 No new questions this run. Sixteen are already open and the bank is
 deep enough that adding more would cost you reading time, not buy me
 work. The list is unchanged from 14:35Z.
+
+Answer format, for a phone: one line each in INBOX.md under
+`## Answers`, e.g. `Q14: all five as recommended`, then bump
+`sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
     queue? Twelve green PRs, nothing merged in 39 hours. #5 shipped
