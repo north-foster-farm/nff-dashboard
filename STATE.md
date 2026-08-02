@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T00:35:07Z run-0035
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,25 +5,26 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-01T23:34Z — **Idle, by the guard** — twentieth consecutive
+2026-08-02T00:35Z — **Idle, by the guard** — twenty-first consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
 Took the lease, re-read both channels, re-listed every PR including
 closed ones, released the lease. No build work, deliberately.
 
-Nothing moved. #17 still reads 04:41Z, #6 still 07-31T01:48Z — the
-same `updated_at` on all twelve as at every reading since 04:41Z.
+Nothing moved. #17 still reads 08-01T04:41Z, #6 still 07-31T01:48Z —
+the same `updated_at` on all twelve as at every reading since 04:41Z.
 Nothing merged, closed, labelled, commented or reviewed. The queue has
-now sat untouched for **47 hours**. Closed PRs are still only #1–#5,
+now sat untouched for **48 hours**. Closed PRs are still only #1–#5,
 all from 07-30, all pre-dating this queue.
 
 No new questions this run, and none deleted. Sixteen are open; the
 constraint is your reading time, not my supply. No push notification
-either: the 04:34Z ping already said all of this and named the action,
-and the threshold set then still stands — silence until something
-moves or a full day has passed, which falls at the **04:35Z run
-tomorrow**. **The single highest-value thing you can do is Q13**:
-label the PRs, `#6` first.
+either: the 08-01T04:34Z ping already said all of this and named the
+action, and the threshold set then still stands — silence until
+something moves or a full day has passed. That mark now falls at the
+**04:35Z run later this morning**, three runs from now; if the queue
+is still untouched then, I will ping once. **The single highest-value
+thing you can do is Q13**: label the PRs, `#6` first.
 
 ### Standing note on #17 (from the 04:34Z run)
 
@@ -76,7 +76,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 23:34Z — no state change on any.
+comment or a review. Re-verified 08-02T00:35Z — no state change on any.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
