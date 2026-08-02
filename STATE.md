@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T10:34:34Z run-0802-1034
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,26 +5,26 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T09:35Z — **Idle, by the guard** — thirtieth consecutive
+2026-08-02T10:34Z — **Idle, by the guard** — thirty-first consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels, re-listed every PR, checked
-`main`, released the lease. No build work, deliberately.
+Took the lease, re-read both channels, re-listed every PR open and
+closed, re-checked `main`, released the lease. No build work,
+deliberately.
 
-Nothing moved since 08:35Z. All twelve open PRs carry the same
+Nothing moved since 09:35Z. All twelve open PRs carry the same
 `updated_at` they have had since 08-01T04:41Z — no merge, no close, no
-label, no comment, no review. Closed PRs are still only #1–#5, all
-from 07-30. `main` is still `131bce1` (`chore: add LGTM label
-auto-merge workflow`), commit date **2026-07-30T22:29Z** — the trunk
-has now not advanced in **59 hours**, and the queue has sat untouched
-for **57**.
+label, no comment, no review. Closed PRs are still only #1–#5. `main`
+is still `131bce1` (`chore: add LGTM label auto-merge workflow`),
+commit date **2026-07-30T22:29Z** — the trunk has now not advanced in
+**60 hours**, and the queue has sat untouched for **58**.
 
-**Did not ping this run, on purpose.** I spent my one ping at
-08-02T04:35Z and said the next would wait for either real movement or
-a full day. Neither has happened, so this run is silent — a second
-ping carrying the identical sentence five hours later would only
-teach you to ignore the first. Next ping is due **08-03T04:35Z** if
-the board is still frozen, or immediately if anything moves.
+**Did not ping this run, on purpose** — same reasoning as 09:35Z. The
+one ping went out at 08-02T04:35Z; nothing has moved since, and a
+second notification carrying the identical sentence six hours later
+would only teach you to ignore the first. Next ping is due
+**08-03T04:35Z** if the board is still frozen, or immediately if
+anything moves.
 
 No new questions. Sixteen are open and the bank is deeper than your
 reading time; adding more would cost you attention without buying me
@@ -48,7 +47,8 @@ the queue I would not want labelled on the strength of CI alone.
 
 **Parts 0–3 are exhausted for me except 3.2, and 3.2 needs a decision
 before it can be built (Q23).** Unchanged from last run — this is a
-real wall, not a pause:
+real wall, not a pause. Re-checked every `[batch]` marker in
+ROADMAP.md this run to be sure the claim is still true; it is:
 
 - Part 0: done or PR'd.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
@@ -64,7 +64,7 @@ real wall, not a pause:
 - Part 4: opens with 4.1, a `[session]`. Of the `[batch]` items
   behind it, 4.3a is unblocked in principle but needs a provider
   choice and an account from you (Q25); 4.3b/c/d are blocked as
-  described above.
+  described above. Everything from 4.4 on sits behind 4.1.
 
 So `status: waiting-on-james` is honest, and the startup guard will
 correctly hold the next runs.
@@ -82,7 +82,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T09:35Z — no state change on
+comment or a review. Re-verified 08-02T10:34Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -112,21 +112,21 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Twenty-six runs old now. If you only merge one thing, merge this:
+  Twenty-seven runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
 
 No new questions this run. Sixteen are already open and the bank is
 deep enough that adding more would cost you reading time, not buy me
-work. The list is unchanged from 14:35Z.
+work. The list is unchanged.
 
 Answer format, for a phone: one line each in INBOX.md under
 `## Answers`, e.g. `Q14: all five as recommended`, then bump
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 54
+    queue? Twelve green PRs, and `main` has not advanced in 60
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
