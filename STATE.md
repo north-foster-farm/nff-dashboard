@@ -1,5 +1,3 @@
-LEASE: 2026-08-02T17:35:04Z run-0802-1735
-
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -7,35 +5,38 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T16:35Z — **Idle, by the guard** — thirty-fifth consecutive
+2026-08-02T17:35Z — **Idle, by the guard** — thirty-sixth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels, re-listed all seventeen PRs
-open and closed, re-checked `main`, released the lease. No build work,
-deliberately.
+Took the lease, re-read both channels, re-listed all seventeen PRs,
+re-checked `main`, released the lease. No build work, deliberately.
 
-Nothing moved since 15:35Z. Open PRs are still #6–#17 and closed are
-still #1–#5; not one open PR carries a label, a comment or a review.
-The most recent activity of any kind on the board is still #17's own
-creation at **08-01T04:41Z, 36 hours ago**. `main` is still `131bce1`
+Nothing moved since 16:35Z, and nothing has moved for a day and a
+half. Open PRs are still #6–#17, closed still #1–#5; not one open PR
+carries a label, a comment or a review, and every one still shows an
+`updated_at` equal to its own creation minute. The most recent
+activity of any kind on the board is #17's creation at
+**08-01T04:41Z, 37 hours ago**. `main` is still `131bce1`
 (`chore: add LGTM label auto-merge workflow`), commit date
-**2026-07-30T22:29Z** — the trunk has now not advanced in **66
-hours**, and #6, the oldest thing in the queue, is **63 hours** old.
+**2026-07-30T22:29Z** — the trunk has not advanced in **67 hours**,
+and #6, the oldest thing in the queue, is **64 hours** old.
 
-One thing worth recording because it briefly looked like news: my
-clone's cached `origin/main` pointed at `ee9a2e6`, one commit behind,
-so the first read suggested the trunk had moved. A fresh
-`git fetch origin main` settled it at `131bce1` — stale local ref, not
-a real advance. Nothing has landed.
+The stale-cached-`origin/main` effect I recorded last run repeated
+exactly: a fresh clone's ref starts at `ee9a2e6`, one commit behind,
+and only `git fetch origin main` settles it at `131bce1`. Worth
+remembering as normal, not news — it will look like an advance every
+single run.
 
 **Did not ping this run, on purpose.** The one ping went out at
-08-02T04:35Z; nothing has moved in the twelve hours since, and a
-second notification carrying the identical sentence would only teach
-you to ignore the first. Next ping is due **08-03T04:35Z** if the
-board is still frozen, or immediately if anything moves.
+08-02T04:35Z; thirteen hours later the board is character-for-
+character identical, and a second notification carrying the same
+sentence would only teach you to ignore the first. Next ping is due
+**08-03T04:35Z** if the board is still frozen, or immediately if
+anything moves.
 
-No new questions. Sixteen are open and the bank is deeper than your
-reading time; adding more would cost you attention without buying me
+No new questions. Sixteen are open — deeper than your reading time
+already — and every one of them is still a decision only you can
+make. Adding a seventeenth would cost you attention without buying me
 work.
 
 ### Standing note on #17 (unchanged, from the 04:34Z run)
@@ -54,8 +55,8 @@ the queue I would not want labelled on the strength of CI alone.
 ## Roadmap position
 
 **Parts 0–3 are exhausted for me except 3.2, and 3.2 needs a decision
-before it can be built (Q23).** Unchanged from last run — this is a
-real wall, not a pause:
+before it can be built (Q23).** Unchanged — this is a real wall, not
+a pause:
 
 - Part 0: done or PR'd.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
@@ -89,7 +90,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T16:35Z — no state change on
+comment or a review. Re-verified 08-02T17:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -119,7 +120,7 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Twenty-nine runs old now. If you only merge one thing, merge this:
+  Thirty runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
