@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T13:35:28Z cloud-run-2026-08-02T1334Z
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,23 +5,23 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T12:35Z — **Idle, by the guard** — thirty-first consecutive
-hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
-and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels, re-listed every PR open and
-closed, re-checked `main`, released the lease. No build work,
-deliberately.
+2026-08-02T13:36Z — **Idle, by the guard** — thirty-second
+consecutive hour. INBOX is still `sequence: 1`, not ahead of
+`inbox-processed: 1`, and status is `waiting-on-james`, so the
+startup new-input guard held. Took the lease, re-read both channels,
+re-listed every PR open and closed, re-checked `main`, released the
+lease. No build work, deliberately.
 
-Nothing moved since 11:34Z. Closed PRs are still only #1–#5; no open
-PR carries a label, a comment or a review. The most recent activity of
-any kind on the board is #17's own creation at **08-01T04:41Z, 32
-hours ago**. `main` is still `131bce1` (`chore: add LGTM label
-auto-merge workflow`), commit date **2026-07-30T22:29Z** — the trunk
-has now not advanced in **62 hours**, and #6, the oldest thing in the
-queue, is **59 hours** old.
+Nothing moved since 12:35Z. Open PRs are still #6–#17 and closed are
+still #1–#5; not one open PR carries a label, a comment or a review.
+The most recent activity of any kind on the board is #17's own
+creation at **08-01T04:41Z, 33 hours ago**. `main` is still
+`131bce1` (`chore: add LGTM label auto-merge workflow`), commit date
+**2026-07-30T22:29Z** — the trunk has now not advanced in **63
+hours**, and #6, the oldest thing in the queue, is **60 hours** old.
 
 **Did not ping this run, on purpose.** The one ping went out at
-08-02T04:35Z; nothing has moved in the eight hours since, and a second
+08-02T04:35Z; nothing has moved in the nine hours since, and a second
 notification carrying the identical sentence would only teach you to
 ignore the first. Next ping is due **08-03T04:35Z** if the board is
 still frozen, or immediately if anything moves.
@@ -82,7 +81,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T12:35Z — no state change on
+comment or a review. Re-verified 08-02T13:36Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -112,7 +111,7 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Twenty-eight runs old now. If you only merge one thing, merge this:
+  Twenty-nine runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
@@ -126,7 +125,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 61
+    queue? Twelve green PRs, and `main` has not advanced in 63
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
