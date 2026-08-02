@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T20:34:32Z run-2034
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,46 +5,34 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T19:34Z — **Idle, by the guard** — thirty-eighth
+2026-08-02T20:34Z — **Idle, by the guard** — thirty-ninth
 consecutive hour. INBOX is still `sequence: 1`, not ahead of
 `inbox-processed: 1`, and status is `waiting-on-james`, so the
-startup new-input guard held. Took the lease, re-read both channels,
-re-listed every PR including the closed ones, re-checked `main`,
-released the lease. No build work, deliberately.
+startup new-input guard held. Took the lease, read both channels,
+re-listed every PR open and closed, confirmed `main`, released the
+lease. No build work, deliberately.
 
-The board has not changed by a character since 18:34Z. Open #6–#17,
-closed #1–#5; no PR carries a label, a comment or a review, and every
-`updated_at` still equals its own creation minute. Newest activity of
-any kind is #17's creation at **08-01T04:41Z, 39 hours ago**. `main`
-is `131bce1` (`chore: add LGTM label auto-merge workflow`, committed
-**2026-07-30T22:29Z**): **69 hours** without an advance, and #6 is now
-**66 hours** old.
-
-Two corrections to my own ledger, both mine to own:
-
-- I have been writing "sixteen questions are open". Counted them
-  properly this run: **twenty-one** were live (Q4, Q5, Q16 retired).
-  The bank is deeper than I was telling you, which strengthens rather
-  than weakens the case for not adding more.
-- **Q1 is now retired into Q21.** It asked whether I may work
-  `[batch]` items out of order; Q21 asks the same thing in the
-  sharper form that actually matters (what `waiting-on-james` should
-  mean, and whether I may ever override a guard). Answering Q21
-  answers Q1. Twenty live now.
+Nothing has moved. Open #6–#17, closed #1–#5; no PR carries a label,
+a comment or a review, and every `updated_at` is byte-identical to
+last run's. Newest activity of any kind is still #17's creation at
+**08-01T04:41Z, 40 hours ago**. `main` is `131bce1` (`chore: add LGTM
+label auto-merge workflow`, 2026-07-30T22:29Z): **70 hours** without
+an advance, and #6 is now **67 hours** old.
 
 **Did not ping this run, on purpose.** The one ping went out at
-08-02T04:35Z; fifteen hours later the board is unchanged, and a second
-notification carrying the same sentence would only teach you to ignore
-the first. Next ping is due **08-03T04:35Z** if the board is still
-frozen, or immediately if anything moves.
+08-02T04:35Z and the board has not changed a character since. A
+second notification carrying the same sentence sixteen hours later
+would only teach you to ignore the first. Next ping is due
+**08-03T04:35Z** if the board is still frozen, or immediately if
+anything moves.
 
-I also considered, and rejected, doing the doc-only work I have asked
-permission for (Q10, Q24, Q17, Q18 are all offline, tracked-file
-tasks I could start without you). Rejected because the bottleneck is
-not my throughput — it is that twelve finished branches are unmerged,
-and all twelve conflict on `ROADMAP.md`. A thirteenth branch makes
-your merge afternoon worse, not better. If you would rather I fill the
-time that way regardless, say so and I will.
+Position unchanged from last run in every respect: twenty questions
+live, twelve green PRs unmerged, and no `[batch]` item I can start
+without one of Q14 / Q23 / Q25. I again considered filling the time
+with the offline doc-only work I have asked for (Q10, Q24, Q17,
+Q18) and again declined: a thirteenth branch conflicting on
+`ROADMAP.md` makes your merge afternoon worse, not better. Say the
+word and I will do it regardless.
 
 ### Standing note on #17 (unchanged)
 
@@ -102,7 +89,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T19:34Z — no state change on
+comment or a review. Re-verified 08-02T20:34Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -146,7 +133,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 69
+    queue? Twelve green PRs, and `main` has not advanced in 70
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
