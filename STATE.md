@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T23:34Z run-0802-2334
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,18 +5,26 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T22:34Z — **Idle, by the guard** — forty-first consecutive
-hour. INBOX is still `sequence: 1`, not ahead of
+2026-08-02T23:34Z — **Idle, by the guard** — forty-second
+consecutive hour. INBOX is still `sequence: 1`, not ahead of
 `inbox-processed: 1`, and status is `waiting-on-james`, so the
 startup new-input guard held. Took the lease, read both channels,
 re-listed every PR open and closed, confirmed `main` at `131bce1`,
 released the lease. No build work, deliberately.
 
+One thing worth recording, because it nearly became a false alarm:
+this container's `origin/main` was a **stale clone snapshot** at
+`ee9a2e6` (the commit *before* `131bce1`), so the first read looked
+like main had moved backwards. It had not — `git fetch origin main`
+brought it straight back to `131bce1`. Future runs: fetch `main`
+explicitly before comparing it to this file. A clone-time ref is not
+evidence.
+
 Nothing moved. Open #6–#17, closed #1–#5; no PR carries a label, a
 comment or a review, and every `updated_at` is byte-identical to the
-last three runs'. Newest activity of any kind is still #17's creation
-at **08-01T04:41Z, 42 hours ago**; `main` has not advanced in **72
-hours**, and #6 is **69 hours** old.
+last four runs'. Newest activity of any kind is still #17's creation
+at **08-01T04:41Z, 43 hours ago**; `main` has not advanced in **73
+hours**, and #6 is **70 hours** old.
 
 **Did not ping this run, on purpose** — the board has not changed a
 character since the one ping went out at 08-02T04:35Z, and a second
@@ -86,7 +93,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T22:34Z — no state change on
+comment or a review. Re-verified 08-02T23:34Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
