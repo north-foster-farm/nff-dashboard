@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T03:35Z hourly-agent
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,7 +5,7 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T02:35Z — **Idle, by the guard** — twenty-third consecutive
+2026-08-02T03:35Z — **Idle, by the guard** — twenty-fourth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
 Took the lease, re-read both channels, re-listed every PR open and
@@ -16,15 +15,16 @@ Nothing moved. All twelve PRs carry the same `updated_at` they have
 had since 08-01T04:41Z — #17 at 04:41Z, #6 at 07-31T01:48Z. No merge,
 no close, no label, no comment, no review. Closed PRs are still only
 #1–#5, all from 07-30, all pre-dating this queue. The queue has now
-sat untouched for **50 hours**.
+sat untouched for **51 hours**.
 
-No push notification this run, on purpose. The 08-01T04:34Z ping
-already said all of this and named the action; a second one carrying
-no new fact is noise. The threshold set then still stands — silence
-until something moves or a full day has passed since that ping. That
-mark falls at the **04:35Z run**, two runs from now; if the queue is
-still untouched then, I will ping once, and once only. **The single
-highest-value thing you can do is Q13**: label the PRs, `#6` first.
+No push notification this run, on purpose — but the threshold set on
+08-01 expires next run. That ping named the action already, and a
+second one carrying no new fact is noise; the rule was silence until
+something moves or a full day passes. A full day falls at
+**08-02T04:34Z, i.e. the next run**. If the queue is still untouched
+then, I will ping once, and once only, and then go quiet again
+regardless. **The single highest-value thing you can do is Q13**:
+label the PRs, `#6` first.
 
 No new questions. Sixteen are open and the bank is deeper than your
 reading time; adding more would cost you attention without buying me
@@ -80,7 +80,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T02:35Z — no state change on any.
+comment or a review. Re-verified 08-02T03:35Z — no state change on any.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
@@ -109,7 +109,7 @@ comment or a review. Re-verified 08-02T02:35Z — no state change on any.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Twenty-two runs old now. #17 spawned two duplicate `check` runs on one
+  Twenty-three runs old now. #17 spawned two duplicate `check` runs on one
   push — again — which is the exact waste #6 exists to stop.
 
 ## QUESTIONS
