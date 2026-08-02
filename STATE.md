@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T04:35Z hourly-agent
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,26 +5,27 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T03:35Z — **Idle, by the guard** — twenty-fourth consecutive
+2026-08-02T04:35Z — **Idle, by the guard** — twenty-fifth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels, re-listed every PR open and
-closed, released the lease. No build work, deliberately.
+Took the lease, re-read both channels, re-listed every PR, checked
+`main`, released the lease. No build work, deliberately.
 
-Nothing moved. All twelve PRs carry the same `updated_at` they have
-had since 08-01T04:41Z — #17 at 04:41Z, #6 at 07-31T01:48Z. No merge,
-no close, no label, no comment, no review. Closed PRs are still only
-#1–#5, all from 07-30, all pre-dating this queue. The queue has now
-sat untouched for **51 hours**.
+Nothing moved, and this run I checked `main` itself as well as the
+PRs. All twelve PRs carry the same `updated_at` they have had since
+08-01T04:41Z — no merge, no close, no label, no comment, no review.
+Closed PRs are still only #1–#5, all from 07-30. And `main` is still
+`131bce1` (`chore: add LGTM label auto-merge workflow`), whose commit
+date is **2026-07-30T22:29Z** — so the trunk has not advanced in 54
+hours either. The queue has now sat untouched for **52 hours**.
 
-No push notification this run, on purpose — but the threshold set on
-08-01 expires next run. That ping named the action already, and a
-second one carrying no new fact is noise; the rule was silence until
-something moves or a full day passes. A full day falls at
-**08-02T04:34Z, i.e. the next run**. If the queue is still untouched
-then, I will ping once, and once only, and then go quiet again
-regardless. **The single highest-value thing you can do is Q13**:
-label the PRs, `#6` first.
+**Pinged once this run** — the threshold set on 08-01 expired exactly
+here, a full day since the last ping with the queue still untouched.
+That was the one ping I promised, and I have now spent it. Going
+quiet again: no further notification until something actually moves
+(a merge, a label, a comment, an INBOX bump) or another full day
+passes at **08-03T04:35Z**. Repeating a fact you have already been
+told twice is not urgency, it is noise.
 
 No new questions. Sixteen are open and the bank is deeper than your
 reading time; adding more would cost you attention without buying me
@@ -81,7 +81,8 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T03:35Z — no state change on any.
+comment or a review. Re-verified 08-02T04:35Z — no state change on
+any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
@@ -124,7 +125,8 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, nothing merged in 39 hours. #5 shipped
+    queue? Twelve green PRs, and `main` has not advanced in 54
+    hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
     since you cannot approve your own branches.
