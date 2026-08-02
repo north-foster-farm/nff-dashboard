@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T05:35:26Z hourly-agent
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,33 +5,31 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T04:35Z — **Idle, by the guard** — twenty-fifth consecutive
+2026-08-02T05:35Z — **Idle, by the guard** — twenty-sixth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
 Took the lease, re-read both channels, re-listed every PR, checked
 `main`, released the lease. No build work, deliberately.
 
-Nothing moved, and this run I checked `main` itself as well as the
-PRs. All twelve PRs carry the same `updated_at` they have had since
-08-01T04:41Z — no merge, no close, no label, no comment, no review.
-Closed PRs are still only #1–#5, all from 07-30. And `main` is still
-`131bce1` (`chore: add LGTM label auto-merge workflow`), whose commit
-date is **2026-07-30T22:29Z** — so the trunk has not advanced in 54
-hours either. The queue has now sat untouched for **52 hours**.
+Nothing moved since 04:35Z. All twelve open PRs carry the same
+`updated_at` they have had since 08-01T04:41Z — no merge, no close, no
+label, no comment, no review. Closed PRs are still only #1–#5, all
+from 07-30. `main` is still `131bce1` (`chore: add LGTM label
+auto-merge workflow`), commit date **2026-07-30T22:29Z** — the trunk
+has now not advanced in **55 hours**, and the queue has sat untouched
+for **53**.
 
-**Pinged once this run** — the threshold set on 08-01 expired exactly
-here, a full day since the last ping with the queue still untouched.
-That was the one ping I promised, and I have now spent it. Going
-quiet again: no further notification until something actually moves
-(a merge, a label, a comment, an INBOX bump) or another full day
-passes at **08-03T04:35Z**. Repeating a fact you have already been
-told twice is not urgency, it is noise.
+**Did not ping this run, on purpose.** I spent my one ping at 04:35Z
+and said the next would wait for either real movement or a full day.
+Neither has happened, so this run is silent. Next ping is due
+**08-03T04:35Z** if the board is still frozen, or immediately if
+anything moves.
 
 No new questions. Sixteen are open and the bank is deeper than your
 reading time; adding more would cost you attention without buying me
 work.
 
-### Standing note on #17 (from the 04:34Z run)
+### Standing note on #17 (unchanged, from the 04:34Z run)
 
 3.1 shipped React 19 + Vite 8 + plugin-react 6 as #17, green. The
 codebase had zero React 19 removed-API surface, and Vite 8 evicts
@@ -48,7 +45,8 @@ the queue I would not want labelled on the strength of CI alone.
 ## Roadmap position
 
 **Parts 0–3 are exhausted for me except 3.2, and 3.2 needs a decision
-before it can be built (Q23).** This is a real wall:
+before it can be built (Q23).** Unchanged from last run — this is a
+real wall, not a pause:
 
 - Part 0: done or PR'd.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
@@ -82,7 +80,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T04:35Z — no state change on
+comment or a review. Re-verified 08-02T05:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -112,8 +110,8 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Twenty-three runs old now. #17 spawned two duplicate `check` runs on one
-  push — again — which is the exact waste #6 exists to stop.
+  Twenty-four runs old now. If you only merge one thing, merge this:
+  it halves every CI run from here on.
 
 ## QUESTIONS
 
