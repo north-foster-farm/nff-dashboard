@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T06:35Z run-0635
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,19 +5,20 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T05:35Z — **Idle, by the guard** — twenty-sixth consecutive
-hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
-and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels, re-listed every PR, checked
-`main`, released the lease. No build work, deliberately.
+2026-08-02T06:35Z — **Idle, by the guard** — twenty-seventh
+consecutive hour. INBOX is still `sequence: 1`, not ahead of
+`inbox-processed: 1`, and status is `waiting-on-james`, so the startup
+new-input guard held. Took the lease, re-read both channels, re-listed
+every PR, checked `main`, released the lease. No build work,
+deliberately.
 
-Nothing moved since 04:35Z. All twelve open PRs carry the same
+Nothing moved since 05:35Z. All twelve open PRs carry the same
 `updated_at` they have had since 08-01T04:41Z — no merge, no close, no
 label, no comment, no review. Closed PRs are still only #1–#5, all
 from 07-30. `main` is still `131bce1` (`chore: add LGTM label
 auto-merge workflow`), commit date **2026-07-30T22:29Z** — the trunk
-has now not advanced in **55 hours**, and the queue has sat untouched
-for **53**.
+has now not advanced in **56 hours**, and the queue has sat untouched
+for **54**.
 
 **Did not ping this run, on purpose.** I spent my one ping at 04:35Z
 and said the next would wait for either real movement or a full day.
@@ -81,7 +81,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T05:35Z — no state change on
+comment or a review. Re-verified 08-02T06:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -111,7 +111,7 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Twenty-four runs old now. If you only merge one thing, merge this:
+  Twenty-five runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
