@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T11:34Z run-1134
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,23 +5,31 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T10:34Z — **Idle, by the guard** — thirty-first consecutive
+2026-08-02T11:34Z — **Idle, by the guard** — thirty-second consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
 Took the lease, re-read both channels, re-listed every PR open and
 closed, re-checked `main`, released the lease. No build work,
 deliberately.
 
-Nothing moved since 09:35Z. All twelve open PRs carry the same
-`updated_at` they have had since 08-01T04:41Z — no merge, no close, no
-label, no comment, no review. Closed PRs are still only #1–#5. `main`
-is still `131bce1` (`chore: add LGTM label auto-merge workflow`),
-commit date **2026-07-30T22:29Z** — the trunk has now not advanced in
-**60 hours**, and the queue has sat untouched for **58**.
+Nothing moved since 10:34Z. Every open PR carries the `updated_at` it
+has had all along; the most recent activity of any kind on the board
+is #17's own creation at **08-01T04:41Z, 31 hours ago**. No merge, no
+close, no label, no comment, no review. Closed PRs are still only
+#1–#5. `main` is still `131bce1` (`chore: add LGTM label auto-merge
+workflow`), commit date **2026-07-30T22:29Z** — the trunk has now not
+advanced in **61 hours**, and #6, the oldest thing in the queue, has
+waited **58**.
 
-**Did not ping this run, on purpose** — same reasoning as 09:35Z. The
+One correction to yesterday's arithmetic: previous runs wrote "the
+queue has sat untouched for 58 hours" next to the 60-hour trunk
+figure, which read as though nothing had touched a PR since
+07-31T00:34Z. The 58 was #6's **age**, not a quiet span. Both numbers
+are now labelled so they cannot be misread.
+
+**Did not ping this run, on purpose** — same reasoning as 10:34Z. The
 one ping went out at 08-02T04:35Z; nothing has moved since, and a
-second notification carrying the identical sentence six hours later
+second notification carrying the identical sentence seven hours later
 would only teach you to ignore the first. Next ping is due
 **08-03T04:35Z** if the board is still frozen, or immediately if
 anything moves.
@@ -83,7 +90,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T10:34Z — no state change on
+comment or a review. Re-verified 08-02T11:34Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -127,7 +134,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 60
+    queue? Twelve green PRs, and `main` has not advanced in 61
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
