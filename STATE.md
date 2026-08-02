@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T12:35Z run-1235
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,34 +5,26 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T11:34Z — **Idle, by the guard** — thirty-second consecutive
+2026-08-02T12:35Z — **Idle, by the guard** — thirty-first consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
 Took the lease, re-read both channels, re-listed every PR open and
 closed, re-checked `main`, released the lease. No build work,
 deliberately.
 
-Nothing moved since 10:34Z. Every open PR carries the `updated_at` it
-has had all along; the most recent activity of any kind on the board
-is #17's own creation at **08-01T04:41Z, 31 hours ago**. No merge, no
-close, no label, no comment, no review. Closed PRs are still only
-#1–#5. `main` is still `131bce1` (`chore: add LGTM label auto-merge
-workflow`), commit date **2026-07-30T22:29Z** — the trunk has now not
-advanced in **61 hours**, and #6, the oldest thing in the queue, has
-waited **58**.
+Nothing moved since 11:34Z. Closed PRs are still only #1–#5; no open
+PR carries a label, a comment or a review. The most recent activity of
+any kind on the board is #17's own creation at **08-01T04:41Z, 32
+hours ago**. `main` is still `131bce1` (`chore: add LGTM label
+auto-merge workflow`), commit date **2026-07-30T22:29Z** — the trunk
+has now not advanced in **62 hours**, and #6, the oldest thing in the
+queue, is **59 hours** old.
 
-One correction to yesterday's arithmetic: previous runs wrote "the
-queue has sat untouched for 58 hours" next to the 60-hour trunk
-figure, which read as though nothing had touched a PR since
-07-31T00:34Z. The 58 was #6's **age**, not a quiet span. Both numbers
-are now labelled so they cannot be misread.
-
-**Did not ping this run, on purpose** — same reasoning as 10:34Z. The
-one ping went out at 08-02T04:35Z; nothing has moved since, and a
-second notification carrying the identical sentence seven hours later
-would only teach you to ignore the first. Next ping is due
-**08-03T04:35Z** if the board is still frozen, or immediately if
-anything moves.
+**Did not ping this run, on purpose.** The one ping went out at
+08-02T04:35Z; nothing has moved in the eight hours since, and a second
+notification carrying the identical sentence would only teach you to
+ignore the first. Next ping is due **08-03T04:35Z** if the board is
+still frozen, or immediately if anything moves.
 
 No new questions. Sixteen are open and the bank is deeper than your
 reading time; adding more would cost you attention without buying me
@@ -56,8 +47,7 @@ the queue I would not want labelled on the strength of CI alone.
 
 **Parts 0–3 are exhausted for me except 3.2, and 3.2 needs a decision
 before it can be built (Q23).** Unchanged from last run — this is a
-real wall, not a pause. Re-checked every `[batch]` marker in
-ROADMAP.md this run to be sure the claim is still true; it is:
+real wall, not a pause:
 
 - Part 0: done or PR'd.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
@@ -91,7 +81,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T11:34Z — no state change on
+comment or a review. Re-verified 08-02T12:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -121,7 +111,7 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Twenty-seven runs old now. If you only merge one thing, merge this:
+  Twenty-eight runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
