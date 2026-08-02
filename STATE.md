@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T18:34Z cloud-agent-run-1834
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,39 +5,44 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T17:35Z — **Idle, by the guard** — thirty-sixth consecutive
-hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
-and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels, re-listed all seventeen PRs,
-re-checked `main`, released the lease. No build work, deliberately.
+2026-08-02T18:34Z — **Idle, by the guard** — thirty-seventh
+consecutive hour. INBOX is still `sequence: 1`, not ahead of
+`inbox-processed: 1`, and status is `waiting-on-james`, so the
+startup new-input guard held. Took the lease, re-read both channels,
+re-listed every PR, re-checked `main`, released the lease. No build
+work, deliberately.
 
-Nothing moved since 16:35Z, and nothing has moved for a day and a
-half. Open PRs are still #6–#17, closed still #1–#5; not one open PR
-carries a label, a comment or a review, and every one still shows an
-`updated_at` equal to its own creation minute. The most recent
-activity of any kind on the board is #17's creation at
-**08-01T04:41Z, 37 hours ago**. `main` is still `131bce1`
-(`chore: add LGTM label auto-merge workflow`), commit date
-**2026-07-30T22:29Z** — the trunk has not advanced in **67 hours**,
-and #6, the oldest thing in the queue, is **64 hours** old.
+The board is byte-identical to 17:35Z. Open #6–#17, closed #1–#5; not
+one PR carries a label, a comment or a review, and every `updated_at`
+still equals its own creation minute. The newest activity of any kind
+is #17's creation at **08-01T04:41Z, 38 hours ago**. `main` is
+`131bce1` (`chore: add LGTM label auto-merge workflow`, commit date
+**2026-07-30T22:29Z**): **68 hours** without an advance, and #6 is now
+**65 hours** old. The stale-cached-`origin/main` effect repeated as
+always — a fresh clone starts at `ee9a2e6` and only `git fetch origin
+main` settles it at `131bce1`. Normal, not news.
 
-The stale-cached-`origin/main` effect I recorded last run repeated
-exactly: a fresh clone's ref starts at `ee9a2e6`, one commit behind,
-and only `git fetch origin main` settles it at `131bce1`. Worth
-remembering as normal, not news — it will look like an advance every
-single run.
+One thing I re-audited rather than inherited: the "Part 0 — done or
+PR'd" claim I have been repeating. **0.8** (quick-convert thought →
+event, `[batch, small]`) is the single Part-0 batch item with no PR
+behind it, so before idling on the strength of my own summary I went
+back through the ledger history to check it had not simply been
+skipped. It had not: an earlier run read `Inbox.jsx`'s `promote`
+handing the thought to the EventEditor prefilled with label + notes,
+with `SectionContent.jsx:146` passing `onOpenEvent` through, and
+recorded 0.8 as already shipped against a stale 06-03 handoff note.
+So the guard is honest — there is genuinely no unblocked `[batch]`
+item left in the file.
 
 **Did not ping this run, on purpose.** The one ping went out at
-08-02T04:35Z; thirteen hours later the board is character-for-
-character identical, and a second notification carrying the same
-sentence would only teach you to ignore the first. Next ping is due
+08-02T04:35Z; fourteen hours later the board has not changed by a
+character, and a second notification carrying the same sentence would
+only teach you to ignore the first. Next ping is due
 **08-03T04:35Z** if the board is still frozen, or immediately if
 anything moves.
 
-No new questions. Sixteen are open — deeper than your reading time
-already — and every one of them is still a decision only you can
-make. Adding a seventeenth would cost you attention without buying me
-work.
+No new questions. Sixteen are open — already deeper than your reading
+time — and every one is still a decision only you can make.
 
 ### Standing note on #17 (unchanged, from the 04:34Z run)
 
@@ -91,7 +95,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T17:35Z — no state change on
+comment or a review. Re-verified 08-02T18:34Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
