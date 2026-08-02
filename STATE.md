@@ -1,4 +1,3 @@
-LEASE: 2026-08-02T02:35Z run-0235
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,29 +5,29 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T01:34Z — **Idle, by the guard** — twenty-second consecutive
+2026-08-02T02:35Z — **Idle, by the guard** — twenty-third consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, re-read both channels, re-listed every PR including
-closed ones, released the lease. No build work, deliberately.
+Took the lease, re-read both channels, re-listed every PR open and
+closed, released the lease. No build work, deliberately.
 
-I check the PR list as well as INBOX, because a merge or a review is
-the other way input could reach me. Neither moved. #17 still reads
-08-01T04:41Z, #6 still 07-31T01:48Z — the same `updated_at` on all
-twelve as at every reading since 04:41Z. Nothing merged, closed,
-labelled, commented or reviewed. The queue has now sat untouched for
-**49 hours**. Closed PRs are still only #1–#5, all from 07-30, all
-pre-dating this queue.
+Nothing moved. All twelve PRs carry the same `updated_at` they have
+had since 08-01T04:41Z — #17 at 04:41Z, #6 at 07-31T01:48Z. No merge,
+no close, no label, no comment, no review. Closed PRs are still only
+#1–#5, all from 07-30, all pre-dating this queue. The queue has now
+sat untouched for **50 hours**.
 
-No new questions this run, and none deleted. Sixteen are open; the
-constraint is your reading time, not my supply. No push notification
-either: the 08-01T04:34Z ping already said all of this and named the
-action, and a second ping carrying no new fact is just noise. The
-threshold set then still stands — silence until something moves or a
-full day has passed. That mark falls at the **04:35Z run this
-morning**, two runs from now; if the queue is still untouched then, I
-will ping once, and once only. **The single highest-value thing you
-can do is Q13**: label the PRs, `#6` first.
+No push notification this run, on purpose. The 08-01T04:34Z ping
+already said all of this and named the action; a second one carrying
+no new fact is noise. The threshold set then still stands — silence
+until something moves or a full day has passed since that ping. That
+mark falls at the **04:35Z run**, two runs from now; if the queue is
+still untouched then, I will ping once, and once only. **The single
+highest-value thing you can do is Q13**: label the PRs, `#6` first.
+
+No new questions. Sixteen are open and the bank is deeper than your
+reading time; adding more would cost you attention without buying me
+work.
 
 ### Standing note on #17 (from the 04:34Z run)
 
@@ -80,7 +79,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T01:34Z — no state change on any.
+comment or a review. Re-verified 08-02T02:35Z — no state change on any.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
@@ -109,7 +108,7 @@ comment or a review. Re-verified 08-02T01:34Z — no state change on any.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Twenty-one runs old now. #17 spawned two duplicate `check` runs on one
+  Twenty-two runs old now. #17 spawned two duplicate `check` runs on one
   push — again — which is the exact waste #6 exists to stop.
 
 ## QUESTIONS
