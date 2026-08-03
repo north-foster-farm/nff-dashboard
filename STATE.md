@@ -1,4 +1,3 @@
-LEASE: 2026-08-03T06:35:55Z hourly-1785738955
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,58 +5,50 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-03T05:35Z — **Idle, by the guard** — forty-eighth
-consecutive hour. INBOX is still `sequence: 1`, not ahead of
-`inbox-processed: 1`, and status is `waiting-on-james`, so the startup
-new-input guard held. Took the lease, fetched `main` explicitly
-(`131bce1`, unchanged), re-listed every PR, released the lease. No
-build work, deliberately.
+2026-08-03T06:35Z — **Idle, by the guard** — forty-ninth consecutive
+hour. INBOX is still `sequence: 1`, status is `waiting-on-james`, so
+the startup new-input guard held. Took the lease, fetched `main`
+(`131bce1`, unchanged since 07-30T22:29Z — now **80 hours**),
+re-listed every PR, released the lease. No build work, deliberately.
 
-Nothing moved. Open #6–#17, closed #1–#5; every `updated_at` is again
-byte-identical to the last ten runs'. Newest activity of any kind is
-still #17's creation at **08-01T04:41Z, 49 hours ago**; `main` has not
-advanced in **79 hours**, and #6 is **76 hours** old.
+**The one thing to do, if you do one thing:** label #6 `LGTM`. It
+merges itself once `check` is green and halves every CI run from
+here on. Everything else on this page can wait; that one gets
+cheaper the sooner it happens and more expensive every hour.
 
-**No ping this run.** The daily one went out an hour ago at 04:34Z and
-nothing has happened since — a second notification carrying the same
-facts is noise, and noise is how a channel stops being read. Next one
-is due 08-04T04:35Z unless something actually changes first.
+Nothing moved on any PR — twelve open, zero labels, zero comments,
+zero reviews, every `updated_at` byte-identical to the last eleven
+runs'. Newest activity of any kind is still #17's creation at
+08-01T04:41Z, **50 hours ago**.
 
-**Added no questions this run, on purpose** — the same call as last
-run, for the same reason. Twenty are live and the bank is already
-deeper than the reading time available to answer it. The pipeline is
-full; what it is missing is a reply, not more depth.
+**No ping this run.** The daily one went out at 04:34Z, two hours
+ago, and nothing has changed since; a second notification carrying
+identical facts is noise. Next due 08-04T04:35Z unless something
+actually changes.
 
-Position unchanged in every respect: twenty questions live, twelve
-green PRs unmerged, no `[batch]` item startable without Q14 / Q23 /
-Q25. The standing offer below is unchanged — say the word and I will
-do the offline doc-only work (Q10, Q24, Q17, Q18) despite the
-`ROADMAP.md` conflict it adds.
+**Added no questions this run, on purpose** — third run running, same
+reason. Twenty are live and the bank is deeper than the reading time
+available to answer it. The pipeline is full; what it needs is a
+reply, not more depth. I have also cut this section short for the
+same reason — last run noted the ledger had grown past what a phone
+comfortably shows, and the narrative was the part in the way. The
+questions below are unchanged and are the payload.
 
-**One observation worth recording, since forty-eight hours of silence
-is itself data.** Every question below is answerable from a phone, but
-this file has grown past what a phone will comfortably show — the
-first thing you see on opening it is a wall of narrative, and the
-twenty decisions sit under it. If the reason nothing has come back is
-that the ledger is too long to face, that is a fixable problem and
-worth telling me so; I would then cut STATE.md to a short action list
-with the reasoning moved to a second file. I have not done that
-unilaterally because the protocol fixes this file's shape, and a
-format change you did not ask for is exactly the kind of thing that
-should not happen while you are not looking.
+Standing offer, unchanged: say the word and I will do the offline
+doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
+it adds to twelve branches.
 
 ### Standing note on #17 (unchanged)
 
-3.1 shipped React 19 + Vite 8 + plugin-react 6 as #17, green. The
-codebase had zero React 19 removed-API surface, and Vite 8 evicts
-esbuild entirely — the lockfile now has zero esbuild entries and
-`npm audit` reports 0 vulnerabilities, which is what retired Q9's
-lockfile half. Two things I could not verify: the preview fetch dies
-on `CONNECT tunnel failed, response 403`, so Netlify's build is
-confirmed but the page is not; and **this is a React major with no
-visual QA behind it** — 1200 green tests cover the pure-logic layer
-and say nothing about whether the app renders. It is the one PR in
-the queue I would not want labelled on the strength of CI alone.
+3.1 shipped React 19 + Vite 8 + plugin-react 6, green. Zero React 19
+removed-API surface in the codebase; Vite 8 evicts esbuild entirely,
+so the lockfile has zero esbuild entries and `npm audit` reports 0
+vulnerabilities — that retired Q9's lockfile half. Two things I could
+not verify: the preview fetch dies on `CONNECT tunnel failed, 403`,
+so Netlify's build is confirmed but the page is not; and **this is a
+React major with no visual QA behind it** — 1200 green tests cover
+the pure-logic layer and say nothing about whether the app renders.
+It is the one PR I would not label on the strength of CI alone.
 
 ## Roadmap position
 
@@ -101,7 +92,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-03T05:35Z — no state change on
+comment or a review. Re-verified 08-03T06:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -144,7 +135,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 79
+    queue? Twelve green PRs, and `main` has not advanced in 80
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
