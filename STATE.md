@@ -1,4 +1,3 @@
-LEASE: 2026-08-03T04:34Z run-0803-0434
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,28 +5,28 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-03T03:35Z — **Idle, by the guard** — forty-sixth consecutive
-hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
-and status is `waiting-on-james`, so the startup new-input guard held.
-Took the lease, fetched `main` explicitly (`131bce1`, unchanged),
-re-listed every PR, released the lease. No build work, deliberately.
+2026-08-03T04:34Z — **Idle, by the guard** — forty-seventh
+consecutive hour. INBOX is still `sequence: 1`, not ahead of
+`inbox-processed: 1`, and status is `waiting-on-james`, so the startup
+new-input guard held. Took the lease, fetched `main` explicitly
+(`131bce1`, unchanged), re-listed every PR, released the lease. No
+build work, deliberately.
 
 Nothing moved. Open #6–#17, closed #1–#5; every `updated_at` is again
-byte-identical to the last eight runs'. Newest activity of any kind is
-still #17's creation at **08-01T04:41Z, 47 hours ago**; `main` has not
-advanced in **77 hours**, and #6 is **74 hours** old.
+byte-identical to the last nine runs'. Newest activity of any kind is
+still #17's creation at **08-01T04:41Z, 48 hours ago**; `main` has not
+advanced in **78 hours**, and #6 is **75 hours** old.
 
-**Did not ping this run, on purpose.** The daily ping is due at
-**08-03T04:35Z** and this run fired at 03:35Z, an hour early; nothing
-has changed since the 08-02T04:35Z ping, so there is no new fact to
-carry. The next run (~04:34Z) should send it — or any run should,
-immediately, if anything moves. A second ping carrying no new fact
-would only teach you to ignore the channel.
+**Sent the daily ping this run**, as the last run said it should be —
+it is due at 04:35Z and this run fired at 04:34Z. The new fact it
+carries is only the passage of time: a full day since the previous
+ping with nothing moved, and the stall now past 48 hours. That is the
+whole message; it recommends the same single action as yesterday
+(label #6).
 
-**Added no questions this run, also on purpose.** Twenty are live and
-the bank is already deeper than the reading time available to answer
-it. The pipeline is full — what it is missing is a reply, not more
-depth.
+**Added no questions this run, on purpose.** Twenty are live and the
+bank is already deeper than the reading time available to answer it.
+The pipeline is full — what it is missing is a reply, not more depth.
 
 Position unchanged in every respect: twenty questions live, twelve
 green PRs unmerged, no `[batch]` item startable without Q14 / Q23 /
@@ -90,7 +89,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-03T03:35Z — no state change on
+comment or a review. Re-verified 08-03T04:34Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
