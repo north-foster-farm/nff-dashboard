@@ -1,4 +1,3 @@
-LEASE: 2026-08-03T23:35:05Z cloud-agent-hourly
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,16 +5,25 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-03T22:35Z — **Idle, by the guard.** INBOX is still
+2026-08-03T23:35Z — **Idle, by the guard.** INBOX is still
 `sequence: 1` and status is `waiting-on-james`, so the startup
-new-input guard held. I took the lease, re-verified `main` and all
-twelve PRs against GitHub rather than trusting the last run's
-numbers, and released it. Nothing moved: twelve open, zero labels,
-zero comments, zero reviews, every `updated_at` byte-identical to
-the last twenty-seven runs'. `main` is still `131bce1`, unchanged
-since 07-30T22:29Z — now **96 hours**; the newest activity of any
-kind is still #17's creation at 08-01T04:41Z, **66 hours ago**.
-Nothing surprised me, which is itself the report.
+new-input guard held. I took the lease, re-verified everything
+against GitHub rather than trusting the last run's numbers, and
+released it. Twelve open, zero labels, zero comments, zero reviews,
+every `updated_at` byte-identical to the last twenty-eight runs'.
+`main` is still `131bce1`, unchanged since 07-30T22:29Z — now **97
+hours**; the newest activity of any kind is still #17's creation at
+08-01T04:41Z, **67 hours ago**.
+
+One thing did surprise me for about a minute, and it was my own
+clone lying rather than anything real: my checkout's `origin/main`
+read `ee9a2e6`, one commit *behind* the `131bce1` this file has
+recorded for four days. It was a stale ref from an unfetched clone —
+`git fetch origin main` moved it straight to `131bce1` and
+`merge-base --is-ancestor` confirms the history is the one we
+expect. Nothing moved; I mention it only because "main went
+backwards" is exactly the kind of thing you would want me to chase
+rather than quietly smooth over.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from
@@ -26,12 +34,11 @@ cheaper the sooner it happens and more expensive every hour.
 has changed since; a second notification carrying identical facts is
 noise. Next due 08-04T04:35Z unless something actually changes.
 
-**Added no questions this run, on purpose** — nineteenth run
-running, same reason. Twenty are live and the bank is already deeper
-than the reading time available to answer it. The bottleneck is
-replies, not depth; a twenty-first question would dilute the page,
-not improve it. The questions below are unchanged and are the
-payload.
+**Added no questions this run, on purpose** — twentieth run running,
+same reason. Twenty are live and the bank is already deeper than the
+reading time available to answer it. The bottleneck is replies, not
+depth; a twenty-first question would dilute the page, not improve
+it. The questions below are unchanged and are the payload.
 
 Standing offer, unchanged: say the word and I will do the offline
 doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
@@ -56,7 +63,9 @@ It is the one PR I would not label on the strength of CI alone.
 
 **Parts 0–3 are exhausted for me except 3.2, and 3.2 needs a decision
 before it can be built (Q23).** Unchanged — this is a real wall, not
-a pause:
+a pause. I re-derived it from `ROADMAP.md` on main this run rather
+than copying it forward, and every `[batch]` marker in the file is
+either PR'd or behind an unanswered question:
 
 - Part 0: done or PR'd.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
@@ -68,9 +77,12 @@ a pause:
   cannot make, and the fix lives inside `Schedule.jsx` (3940 lines,
   no component tests, no visual QA). I am **not** building that blind
   against an auto-deploying main. See Q23.
-- Part 4: opens with 4.1, a `[session]`. 4.3a is unblocked in
-  principle but needs a provider choice and an account from you
-  (Q25). Everything from 4.4 on sits behind 4.1.
+- Part 4: opens with 4.1, a `[session]`. 4.2 is explicitly "letters
+  in order", so 4.2d — the only other loose `[batch]` in the part —
+  sits behind 4.2a (needs your authorization), 4.2b (`[session]`,
+  Q19) and 4.2c; it also needs you to name the freezer/fridge places.
+  4.3a is unblocked in principle but needs a provider choice and an
+  account from you (Q25). Everything from 4.4 on sits behind 4.1.
 
 So `status: waiting-on-james` is honest, and the startup guard will
 correctly hold the next runs.
@@ -88,7 +100,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-03T22:35Z — no state change on
+comment or a review. Re-verified 08-03T23:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -118,7 +130,7 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Thirty-seven runs old now. If you only merge one thing, merge this:
+  Thirty-eight runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
