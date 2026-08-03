@@ -1,4 +1,3 @@
-LEASE: 2026-08-03T05:35:44Z hourly-1785735344
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,7 +5,7 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-03T04:34Z — **Idle, by the guard** — forty-seventh
+2026-08-03T05:35Z — **Idle, by the guard** — forty-eighth
 consecutive hour. INBOX is still `sequence: 1`, not ahead of
 `inbox-processed: 1`, and status is `waiting-on-james`, so the startup
 new-input guard held. Took the lease, fetched `main` explicitly
@@ -14,26 +13,37 @@ new-input guard held. Took the lease, fetched `main` explicitly
 build work, deliberately.
 
 Nothing moved. Open #6–#17, closed #1–#5; every `updated_at` is again
-byte-identical to the last nine runs'. Newest activity of any kind is
-still #17's creation at **08-01T04:41Z, 48 hours ago**; `main` has not
-advanced in **78 hours**, and #6 is **75 hours** old.
+byte-identical to the last ten runs'. Newest activity of any kind is
+still #17's creation at **08-01T04:41Z, 49 hours ago**; `main` has not
+advanced in **79 hours**, and #6 is **76 hours** old.
 
-**Sent the daily ping this run**, as the last run said it should be —
-it is due at 04:35Z and this run fired at 04:34Z. The new fact it
-carries is only the passage of time: a full day since the previous
-ping with nothing moved, and the stall now past 48 hours. That is the
-whole message; it recommends the same single action as yesterday
-(label #6).
+**No ping this run.** The daily one went out an hour ago at 04:34Z and
+nothing has happened since — a second notification carrying the same
+facts is noise, and noise is how a channel stops being read. Next one
+is due 08-04T04:35Z unless something actually changes first.
 
-**Added no questions this run, on purpose.** Twenty are live and the
-bank is already deeper than the reading time available to answer it.
-The pipeline is full — what it is missing is a reply, not more depth.
+**Added no questions this run, on purpose** — the same call as last
+run, for the same reason. Twenty are live and the bank is already
+deeper than the reading time available to answer it. The pipeline is
+full; what it is missing is a reply, not more depth.
 
 Position unchanged in every respect: twenty questions live, twelve
 green PRs unmerged, no `[batch]` item startable without Q14 / Q23 /
 Q25. The standing offer below is unchanged — say the word and I will
 do the offline doc-only work (Q10, Q24, Q17, Q18) despite the
 `ROADMAP.md` conflict it adds.
+
+**One observation worth recording, since forty-eight hours of silence
+is itself data.** Every question below is answerable from a phone, but
+this file has grown past what a phone will comfortably show — the
+first thing you see on opening it is a wall of narrative, and the
+twenty decisions sit under it. If the reason nothing has come back is
+that the ledger is too long to face, that is a fixable problem and
+worth telling me so; I would then cut STATE.md to a short action list
+with the reasoning moved to a second file. I have not done that
+unilaterally because the protocol fixes this file's shape, and a
+format change you did not ask for is exactly the kind of thing that
+should not happen while you are not looking.
 
 ### Standing note on #17 (unchanged)
 
@@ -90,7 +100,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-03T04:34Z — no state change on
+comment or a review. Re-verified 08-03T05:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -120,7 +130,7 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Thirty-two runs old now. If you only merge one thing, merge this:
+  Thirty-three runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
@@ -133,7 +143,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 77
+    queue? Twelve green PRs, and `main` has not advanced in 79
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
