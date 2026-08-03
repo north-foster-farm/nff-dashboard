@@ -1,4 +1,3 @@
-LEASE: 2026-08-03T07:35Z run-0803-0735
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,10 +5,10 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-03T06:35Z — **Idle, by the guard** — forty-ninth consecutive
+2026-08-03T07:35Z — **Idle, by the guard** — fiftieth consecutive
 hour. INBOX is still `sequence: 1`, status is `waiting-on-james`, so
 the startup new-input guard held. Took the lease, fetched `main`
-(`131bce1`, unchanged since 07-30T22:29Z — now **80 hours**),
+(`131bce1`, unchanged since 07-30T22:29Z — now **81 hours**),
 re-listed every PR, released the lease. No build work, deliberately.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
@@ -18,22 +17,20 @@ here on. Everything else on this page can wait; that one gets
 cheaper the sooner it happens and more expensive every hour.
 
 Nothing moved on any PR — twelve open, zero labels, zero comments,
-zero reviews, every `updated_at` byte-identical to the last eleven
+zero reviews, every `updated_at` byte-identical to the last twelve
 runs'. Newest activity of any kind is still #17's creation at
-08-01T04:41Z, **50 hours ago**.
+08-01T04:41Z, **51 hours ago**.
 
-**No ping this run.** The daily one went out at 04:34Z, two hours
+**No ping this run.** The daily one went out at 04:34Z, three hours
 ago, and nothing has changed since; a second notification carrying
 identical facts is noise. Next due 08-04T04:35Z unless something
 actually changes.
 
-**Added no questions this run, on purpose** — third run running, same
+**Added no questions this run, on purpose** — fourth run running, same
 reason. Twenty are live and the bank is deeper than the reading time
 available to answer it. The pipeline is full; what it needs is a
-reply, not more depth. I have also cut this section short for the
-same reason — last run noted the ledger had grown past what a phone
-comfortably shows, and the narrative was the part in the way. The
-questions below are unchanged and are the payload.
+reply, not more depth. The questions below are unchanged and are the
+payload.
 
 Standing offer, unchanged: say the word and I will do the offline
 doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
@@ -57,25 +54,19 @@ It is the one PR I would not label on the strength of CI alone.
 before it can be built (Q23).** Unchanged — this is a real wall, not
 a pause:
 
-- Part 0: done or PR'd. (0.8 re-audited against the actual code, not
-  against my own summary: `Inbox.jsx`'s `promote` hands the thought to
-  the EventEditor prefilled with label + notes, and
-  `SectionContent.jsx:146` passes `onOpenEvent` through. Genuinely
-  shipped, not skipped.)
+- Part 0: done or PR'd.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
   Q22; 1.2 and 1.3 both implement the `[session]` 1.1.
 - Part 2: 2.2 is fully specified and buildable **the moment Q14's five
   words arrive**. Still the largest block of work you can hand me in
   one message.
-- Part 3: 3.1 done (#17). 3.2's Accept is *"navigation shows no stale
-  frame; recompute under 1s on the reference phone"* — both halves are
-  device measurements I cannot make, and the fix lives inside
-  `Schedule.jsx` (3940 lines, no component tests, no visual QA). I am
-  **not** building that blind against an auto-deploying main. See Q23.
-- Part 4: opens with 4.1, a `[session]`. Of the `[batch]` items
-  behind it, 4.3a is unblocked in principle but needs a provider
-  choice and an account from you (Q25); 4.3b/c/d are blocked as
-  described above. Everything from 4.4 on sits behind 4.1.
+- Part 3: 3.1 done (#17). 3.2's Accept is two device measurements I
+  cannot make, and the fix lives inside `Schedule.jsx` (3940 lines,
+  no component tests, no visual QA). I am **not** building that blind
+  against an auto-deploying main. See Q23.
+- Part 4: opens with 4.1, a `[session]`. 4.3a is unblocked in
+  principle but needs a provider choice and an account from you
+  (Q25). Everything from 4.4 on sits behind 4.1.
 
 So `status: waiting-on-james` is honest, and the startup guard will
 correctly hold the next runs.
@@ -93,7 +84,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-03T06:35Z — no state change on
+comment or a review. Re-verified 08-03T07:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -123,7 +114,7 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Thirty-three runs old now. If you only merge one thing, merge this:
+  Thirty-four runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
@@ -136,7 +127,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 80
+    queue? Twelve green PRs, and `main` has not advanced in 81
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
