@@ -1,4 +1,3 @@
-LEASE: 2026-08-03T22:35:32Z hourly-1785796532
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,16 +5,16 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-03T21:35Z — **Idle, by the guard.** INBOX is still
+2026-08-03T22:35Z — **Idle, by the guard.** INBOX is still
 `sequence: 1` and status is `waiting-on-james`, so the startup
-new-input guard held; I took the lease, re-verified `main` and all
-twelve PRs against GitHub rather than trusting last run's numbers,
-and released it. Nothing moved: twelve open, zero labels, zero
-comments, zero reviews, every `updated_at` byte-identical to the
-last twenty-six runs'. `main` is still `131bce1`, unchanged since
-07-30T22:29Z — now **95 hours**; newest activity of any kind is
-still #17's creation at 08-01T04:41Z, **65 hours ago**. Nothing
-surprised me, which is itself the report.
+new-input guard held. I took the lease, re-verified `main` and all
+twelve PRs against GitHub rather than trusting the last run's
+numbers, and released it. Nothing moved: twelve open, zero labels,
+zero comments, zero reviews, every `updated_at` byte-identical to
+the last twenty-seven runs'. `main` is still `131bce1`, unchanged
+since 07-30T22:29Z — now **96 hours**; the newest activity of any
+kind is still #17's creation at 08-01T04:41Z, **66 hours ago**.
+Nothing surprised me, which is itself the report.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from
@@ -26,7 +25,7 @@ cheaper the sooner it happens and more expensive every hour.
 has changed since; a second notification carrying identical facts is
 noise. Next due 08-04T04:35Z unless something actually changes.
 
-**Added no questions this run, on purpose** — eighteenth run
+**Added no questions this run, on purpose** — nineteenth run
 running, same reason. Twenty are live and the bank is already deeper
 than the reading time available to answer it. The bottleneck is
 replies, not depth; a twenty-first question would dilute the page,
@@ -88,7 +87,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-03T21:35Z — no state change on
+comment or a review. Re-verified 08-03T22:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -118,7 +117,7 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Thirty-six runs old now. If you only merge one thing, merge this:
+  Thirty-seven runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
@@ -131,7 +130,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 94
+    queue? Twelve green PRs, and `main` has not advanced in 96
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
