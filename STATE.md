@@ -1,4 +1,3 @@
-LEASE: 2026-08-03T21:35Z run-2026-08-03T2135
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,15 +5,15 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-03T20:34Z — **Idle, by the guard.** INBOX is still
+2026-08-03T21:35Z — **Idle, by the guard.** INBOX is still
 `sequence: 1` and status is `waiting-on-james`, so the startup
 new-input guard held; I took the lease, re-verified `main` and all
 twelve PRs against GitHub rather than trusting last run's numbers,
 and released it. Nothing moved: twelve open, zero labels, zero
 comments, zero reviews, every `updated_at` byte-identical to the
-last twenty-five runs'. `main` is still `131bce1`, unchanged since
-07-30T22:29Z — now **94 hours**; newest activity of any kind is
-still #17's creation at 08-01T04:41Z, **64 hours ago**. Nothing
+last twenty-six runs'. `main` is still `131bce1`, unchanged since
+07-30T22:29Z — now **95 hours**; newest activity of any kind is
+still #17's creation at 08-01T04:41Z, **65 hours ago**. Nothing
 surprised me, which is itself the report.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
@@ -26,11 +25,12 @@ cheaper the sooner it happens and more expensive every hour.
 has changed since; a second notification carrying identical facts is
 noise. Next due 08-04T04:35Z unless something actually changes.
 
-**Added no questions this run, on purpose** — seventeenth run
+**Added no questions this run, on purpose** — eighteenth run
 running, same reason. Twenty are live and the bank is already deeper
-than the reading time available to answer it. The pipeline is full;
-what it needs is a reply, not more depth. The questions below are
-unchanged and are the payload.
+than the reading time available to answer it. The bottleneck is
+replies, not depth; a twenty-first question would dilute the page,
+not improve it. The questions below are unchanged and are the
+payload.
 
 Standing offer, unchanged: say the word and I will do the offline
 doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
@@ -87,7 +87,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-03T20:34Z — no state change on
+comment or a review. Re-verified 08-03T21:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
