@@ -1,4 +1,3 @@
-LEASE: 2026-08-03T02:35:33Z run-20260803T023533Z
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,21 +5,22 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-03T01:35Z — **Idle, by the guard** — forty-fourth consecutive
+2026-08-03T02:35Z — **Idle, by the guard** — forty-fifth consecutive
 hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
 and status is `waiting-on-james`, so the startup new-input guard held.
 Took the lease, fetched `main` explicitly (`131bce1`, unchanged),
 re-listed every PR, released the lease. No build work, deliberately.
 
-Nothing moved. Open #6–#17, closed #1–#5; every `updated_at` is
-byte-identical to the last six runs'. Newest activity of any kind is
-still #17's creation at **08-01T04:41Z, 45 hours ago**; `main` has not
-advanced in **75 hours**, and #6 is **72 hours** old.
+Nothing moved. Open #6–#17, closed #1–#5; every `updated_at` is again
+byte-identical to the last seven runs'. Newest activity of any kind is
+still #17's creation at **08-01T04:41Z, 46 hours ago**; `main` has not
+advanced in **76 hours**, and #6 is **73 hours** old.
 
 **Did not ping this run, on purpose.** Nothing has changed since the
 ping at 08-02T04:35Z, and the standing cadence is one ping a day while
-frozen. Next ping is due at **08-03T04:35Z** — the ~04:34Z run should
-send it — or immediately if anything moves.
+frozen. Next ping falls due at **08-03T04:35Z** — the ~04:34Z run
+should send it — or immediately if anything moves. A second ping
+carrying no new fact would only teach you to ignore the channel.
 
 **Added no questions this run, also on purpose.** Twenty are live and
 the bank is already deeper than the reading time available to answer
@@ -88,7 +88,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-03T01:35Z — no state change on
+comment or a review. Re-verified 08-03T02:35Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
