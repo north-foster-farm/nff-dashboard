@@ -1,4 +1,3 @@
-LEASE: 2026-08-03T00:34Z run-0803a
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,37 +5,33 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-02T23:34Z — **Idle, by the guard** — forty-second
-consecutive hour. INBOX is still `sequence: 1`, not ahead of
-`inbox-processed: 1`, and status is `waiting-on-james`, so the
-startup new-input guard held. Took the lease, read both channels,
-re-listed every PR open and closed, confirmed `main` at `131bce1`,
-released the lease. No build work, deliberately.
-
-One thing worth recording, because it nearly became a false alarm:
-this container's `origin/main` was a **stale clone snapshot** at
-`ee9a2e6` (the commit *before* `131bce1`), so the first read looked
-like main had moved backwards. It had not — `git fetch origin main`
-brought it straight back to `131bce1`. Future runs: fetch `main`
-explicitly before comparing it to this file. A clone-time ref is not
-evidence.
+2026-08-03T00:34Z — **Idle, by the guard** — forty-third consecutive
+hour. INBOX is still `sequence: 1`, not ahead of `inbox-processed: 1`,
+and status is `waiting-on-james`, so the startup new-input guard held.
+Took the lease, fetched `main` explicitly (per last run's note — it
+came back at `131bce1`, no stale-snapshot confusion this time),
+re-listed every PR, released the lease. No build work, deliberately.
 
 Nothing moved. Open #6–#17, closed #1–#5; no PR carries a label, a
 comment or a review, and every `updated_at` is byte-identical to the
-last four runs'. Newest activity of any kind is still #17's creation
-at **08-01T04:41Z, 43 hours ago**; `main` has not advanced in **73
-hours**, and #6 is **70 hours** old.
+last five runs'. Newest activity of any kind is still #17's creation
+at **08-01T04:41Z, 44 hours ago**; `main` has not advanced in **74
+hours**, and #6 is **71 hours** old.
 
-**Did not ping this run, on purpose** — the board has not changed a
-character since the one ping went out at 08-02T04:35Z, and a second
-notification carrying the same sentence would only teach you to
-ignore the first. Next ping is due **08-03T04:35Z** if the board is
-still frozen, or immediately if anything moves.
+**Did not ping this run, on purpose.** The board has not changed a
+character since the ping at 08-02T04:35Z, and the standing cadence is
+one ping a day while frozen. Next ping is due at **08-03T04:35Z** —
+the ~04:34Z run should send it — or immediately if anything moves.
+
+**Added no questions this run, also on purpose.** Twenty are live;
+the bank is already deeper than the reading time available to answer
+it, so a twenty-first costs you reading and buys me nothing. The
+pipeline is full — what it is missing is a reply, not more depth.
 
 Position unchanged in every respect: twenty questions live, twelve
 green PRs unmerged, no `[batch]` item startable without Q14 / Q23 /
-Q25. The standing offer below is also unchanged — say the word and I
-will do the offline doc-only work (Q10, Q24, Q17, Q18) despite the
+Q25. The standing offer below is unchanged — say the word and I will
+do the offline doc-only work (Q10, Q24, Q17, Q18) despite the
 `ROADMAP.md` conflict it adds.
 
 ### Standing note on #17 (unchanged)
@@ -94,7 +89,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-02T23:34Z — no state change on
+comment or a review. Re-verified 08-03T00:34Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -129,16 +124,15 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 ## QUESTIONS
 
-No new questions this run. Twenty are live and the bank is deeper than
-your reading time — adding more would cost you reading, not buy me
-work. Q1 retired into Q21 this run; the rest are unchanged.
+No new questions this run — see "Last run" for why. Twenty are live
+and unchanged.
 
 Answer format, for a phone: one line each in INBOX.md under
 `## Answers`, e.g. `Q14: all five as recommended`, then bump
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 70
+    queue? Twelve green PRs, and `main` has not advanced in 74
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
