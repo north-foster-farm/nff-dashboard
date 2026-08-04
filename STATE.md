@@ -1,4 +1,3 @@
-LEASE: 2026-08-04T01:36:03Z hourly-1785807363
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,44 +5,40 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-04T00:34Z — **Idle, by the guard.** INBOX is still
-`sequence: 1` against `inbox-processed: 1`, and status is
+2026-08-04T01:35Z — **Idle, by the guard.** INBOX is still
+`sequence: 1` against `inbox-processed: 1` with status
 `waiting-on-james`, so the startup new-input guard held. I took the
-lease, re-verified everything against GitHub rather than trusting
-the last run's numbers, and released it. Twelve open, zero labels,
-zero comments, zero reviews, every `updated_at` byte-identical to
-the last twenty-nine runs'. `main` is still `131bce1`, unchanged
-since 07-30T22:29Z — now **98 hours**; the newest activity of any
-kind is still #17's creation at 08-01T04:41Z, **68 hours ago**.
+lease, re-verified against GitHub rather than trusting the last run's
+numbers, and released it. Twelve open PRs, zero labels, zero comments,
+zero reviews, every `updated_at` byte-identical to the last thirty
+runs'. `main` is still `131bce1`, unchanged since 07-30T22:29Z — now
+**99 hours**; the newest activity of any kind remains #17's creation
+at 08-01T04:41Z, **69 hours ago**.
 
-Nothing surprised me this run. The one thing that did last run — my
-checkout's `origin/main` reading one commit stale — was a clone
-artefact, and this run's fetch landed on `131bce1` directly, so it
-does not recur and needs no further chasing.
+One thing worth recording so a future run does not re-chase it: my
+clone's `origin/main` again read one commit stale (`ee9a2e6`) until I
+fetched `main` explicitly. That is the same clone artefact as two runs
+ago, it resolves on fetch, and it is not a real revert of main. I now
+fetch `main` before reading it, every run.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
-merges itself once `check` is green and halves every CI run from
-here on. Everything else on this page can wait; that one gets
-cheaper the sooner it happens and more expensive every hour.
+merges itself once `check` is green and halves every CI run from here
+on. Everything else on this page can wait; that one gets cheaper the
+sooner it happens and more expensive every hour.
 
-**No ping this run.** The daily one went out at 08-03T04:34Z and
-nothing has changed since; a second notification carrying identical
-facts is noise. Next due 08-04T04:35Z unless something actually
-changes.
+**No ping this run.** The daily one is due 08-04T04:35Z and nothing
+has changed since the last; a notification carrying identical facts
+at 21:35 your time is noise, not signal.
 
-**Added no questions this run, on purpose** — twenty-first run
+**Added no questions this run, on purpose** — twenty-second run
 running, same reason. Twenty are live and the bank is already deeper
 than the reading time available to answer it. The bottleneck is
-replies, not depth; a twenty-first question would dilute the page,
-not improve it. The questions below are unchanged and are the
+replies, not depth. The questions below are unchanged and are the
 payload.
 
 Standing offer, unchanged: say the word and I will do the offline
 doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
-it adds to twelve branches. The wall behind Part 4 is also unchanged
-(4.3b needs a YoLink key and a live sensor, 4.3c an anon-key prod
-read, 4.3d Netlify plus Stripe keys — all three also sit behind
-4.3a), so I did not re-read it.
+it adds to twelve branches.
 
 ### Standing note on #17 (unchanged)
 
@@ -60,10 +55,9 @@ It is the one PR I would not label on the strength of CI alone.
 ## Roadmap position
 
 **Parts 0–3 are exhausted for me except 3.2, and 3.2 needs a decision
-before it can be built (Q23).** Unchanged — this is a real wall, not
-a pause. I re-derived it from `ROADMAP.md` on main this run rather
-than copying it forward, and every `[batch]` marker in the file is
-either PR'd or behind an unanswered question:
+before it can be built (Q23).** Unchanged, and a real wall rather than
+a pause — every `[batch]` marker in `ROADMAP.md` is either PR'd or
+behind an unanswered question:
 
 - Part 0: done or PR'd.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
@@ -76,11 +70,9 @@ either PR'd or behind an unanswered question:
   no component tests, no visual QA). I am **not** building that blind
   against an auto-deploying main. See Q23.
 - Part 4: opens with 4.1, a `[session]`. 4.2 is explicitly "letters
-  in order", so 4.2d — the only other loose `[batch]` in the part —
-  sits behind 4.2a (needs your authorization), 4.2b (`[session]`,
-  Q19) and 4.2c; it also needs you to name the freezer/fridge places.
-  4.3a is unblocked in principle but needs a provider choice and an
-  account from you (Q25). Everything from 4.4 on sits behind 4.1.
+  in order", so 4.2d sits behind 4.2a, 4.2b (`[session]`, Q19) and
+  4.2c. 4.3a is unblocked in principle but needs a provider choice and
+  an account from you (Q25). Everything from 4.4 on sits behind 4.1.
 
 So `status: waiting-on-james` is honest, and the startup guard will
 correctly hold the next runs.
@@ -98,8 +90,8 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-04T00:34Z — no state change on
-any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
+comment or a review. Re-verified 08-04T01:35Z against the GitHub API —
+no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
@@ -128,7 +120,7 @@ any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Thirty-eight runs old now. If you only merge one thing, merge this:
+  Thirty-nine runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
