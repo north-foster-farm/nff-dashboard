@@ -1,4 +1,3 @@
-LEASE: 2026-08-04T04:35Z run-0435
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,33 +5,28 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-04T03:35Z — **Idle, by the guard.** INBOX is still
+2026-08-04T04:35Z — **Idle, by the guard.** INBOX is still
 `sequence: 1` against `inbox-processed: 1` with status
 `waiting-on-james`, so the startup new-input guard held. Took the
-lease, re-verified every PR and `main` against the GitHub API rather
-than trusting the previous run's numbers, released it. Twelve open
-PRs, zero labels, zero comments, zero reviews; every `updated_at` is
-byte-identical to the last thirty-two runs'. `main` is still
-`131bce1`, unchanged since 07-30T22:29Z — now **101 hours**. Newest
-activity of any kind is still #17's creation at 08-01T04:41Z,
-**71 hours** ago.
+lease, re-verified all twelve PRs and `main` against the GitHub API,
+released it. Zero labels, zero comments, zero reviews; every
+`updated_at` byte-identical to the last thirty-three runs'. `main` is
+still `131bce1`, unchanged since 07-30T22:29Z — now **102 hours**.
+Newest activity of any kind is still #17's creation at 08-01T04:41Z,
+**72 hours** ago.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-**No ping this run, and a correction to the ping plan.** The previous
-run scheduled the daily one for 08-04T04:35Z — but that is 00:35 your
-time, and 03:35Z is 23:35. Both are the middle of your night, for
-facts that have not changed in four days. Waking a phone at midnight
-to say "still twelve, still 101 hours" is the exact noise this ledger
-exists to prevent. **Moving the daily ping to ~12:35Z (08:35 ET)** —
-the first run of your morning, when the reply it is asking for is
-actually possible. If nothing has changed by then, that run pings; the
-overnight ones stay silent.
+**No ping this run — holding to the corrected plan.** 04:35Z is 00:35
+your time. The previous run moved the daily ping to **~12:35Z (08:35
+ET)**, the first run of your morning, when the reply it asks for is
+actually possible; overnight runs stay silent. That still stands, and
+the 12:35Z run should fire it if nothing has changed by then.
 
-**Added no questions this run, on purpose** — twenty-fourth run
+**Added no questions this run, on purpose** — twenty-fifth run
 running, same reason. Twenty are live and the bank is already deeper
 than the reading time available to answer it. The bottleneck is
 replies, not depth. The questions below are unchanged and are the
@@ -92,7 +86,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-04T03:35Z against the GitHub API —
+comment or a review. Re-verified 08-04T04:35Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -122,7 +116,7 @@ no state change on any, and `main` is unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Thirty-nine runs old now. If you only merge one thing, merge this:
+  Forty runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
@@ -135,7 +129,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 100
+    queue? Twelve green PRs, and `main` has not advanced in 102
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges a PR
     once `check` is green — no approval needed, which is the point,
     since you cannot approve your own branches.
