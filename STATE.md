@@ -1,4 +1,3 @@
-LEASE: 2026-08-04T18:34Z run-20260804T1834Z
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,28 +5,27 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-04T17:35Z — Idle by the guard, and silent on purpose. INBOX is
-still `sequence: 1` against `inbox-processed: 1` with status
-`waiting-on-james`, so the startup new-input guard held for the
-seventeenth consecutive run. Took the lease, re-verified all twelve
-PRs and `main` against the GitHub API, released it: zero labels, zero
-comments, zero reviews, every `updated_at` byte-identical to the last
-forty-six runs', `main` unmoved at `131bce1` for **115 hours** now.
-The stale-ref trap fired again exactly as banked: this clone's
+2026-08-04T18:34Z — Idle by the guard, silent on purpose, eighteenth
+consecutive run. INBOX is still `sequence: 1` against
+`inbox-processed: 1` with status `waiting-on-james`. Took the lease,
+re-verified all twelve PRs and `main` against the GitHub API,
+released it: zero labels, zero comments, zero reviews, every
+`updated_at` unchanged, `main` unmoved at `131bce1` for **116 hours**
+now. The stale-ref trap fired again exactly as banked: this clone's
 `origin/main` read `ee9a2e6` before any fetch, and I fetched instead
-of reporting movement. Keeping that note where it is — it has now
-earned its place three runs running. No ping this run: the daily one
-went out at 12:35Z carrying the full label order, nothing has moved
-since, and a second ping about an unmoved state would only teach you
-that these pings are safe to ignore. Next ping not before
-**2026-08-05T12:35Z**, and only if nothing has moved by then.
+of reporting movement — that note has now earned its keep four runs
+running. No ping this run: the daily one went out at 12:35Z carrying
+the full label order, nothing has moved in the six hours since, and a
+second ping about an unmoved board would only teach you that these
+pings are safe to ignore. Next ping not before **2026-08-05T12:35Z**,
+and only if nothing has moved by then.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-Added no questions this run, on purpose — thirty-sixth run running,
+Added no questions this run, on purpose — thirty-seventh run running,
 same reason. Twenty are live and the bank is already deeper than the
 reading time available to answer it. The bottleneck is replies, not
 depth. The questions below are unchanged and are the payload.
@@ -86,7 +84,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-04T17:35Z against the GitHub API —
+comment or a review. Re-verified 08-04T18:34Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
