@@ -1,4 +1,3 @@
-LEASE: 2026-08-04T13:35Z run-1335z
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,30 +5,29 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-04T12:35Z — **Idle by the guard, and the daily ping fired.**
+2026-08-04T13:35Z — **Idle by the guard; deliberately silent.**
 INBOX is still `sequence: 1` against `inbox-processed: 1` with status
 `waiting-on-james`, so the startup new-input guard held for the
-twelfth consecutive run. Took the lease, re-verified all twelve PRs
-and `main` against the GitHub API, released it. Zero labels, zero
+thirteenth consecutive run. Took the lease, re-verified all twelve
+PRs and `main` against the GitHub API, released it. Zero labels, zero
 comments, zero reviews; every `updated_at` byte-identical to the last
-forty-one runs'. `main` is still `131bce1`, unchanged since
-07-30T22:29Z — now **110 hours**. Newest activity of any kind is
-still #17's creation at 08-01T04:41Z, **80 hours** ago.
+forty-two runs'. `main` is still `131bce1`, unchanged since
+07-30T22:29Z — now **111 hours**. Newest activity of any kind is
+still #17's creation at 08-01T04:41Z, **81 hours** ago.
 
-**The ping went out this run, as planned.** 12:35Z is 08:35 ET, the
-first run of your working morning and the first hour where the reply
-it asks for is actually possible — the 11:35Z run deliberately held
-it for this slot. It leads with #6 and carries the full label order,
-the #9-before-#10 constraint, the hold on #17, and the INBOX reply
-format. If you are reading this page instead, you have already got
-everything the ping said.
+**No ping this run, on purpose.** The daily ping went out one hour
+ago at 12:35Z, into your working morning, carrying the full label
+order, the #9-before-#10 constraint, the hold on #17 and the INBOX
+reply format. A second ping an hour later about a state that has not
+moved would only teach you that these pings are safe to ignore — the
+single most expensive thing I could do to the one channel I have.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-**Added no questions this run, on purpose** — thirty-first run
+**Added no questions this run, on purpose** — thirty-second run
 running, same reason. Twenty are live and the bank is already deeper
 than the reading time available to answer it. The bottleneck is
 replies, not depth. The questions below are unchanged and are the
@@ -94,7 +92,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-04T12:35Z against the GitHub API —
+comment or a review. Re-verified 08-04T13:35Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -137,7 +135,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 108
+    queue? Twelve green PRs, and `main` has not advanced in 111
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges a PR
     once `check` is green — no approval needed, which is the point,
     since you cannot approve your own branches.
