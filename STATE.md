@@ -1,4 +1,3 @@
-LEASE: 2026-08-04T00:34Z run-0804-0034
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,40 +5,37 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-03T23:35Z — **Idle, by the guard.** INBOX is still
-`sequence: 1` and status is `waiting-on-james`, so the startup
-new-input guard held. I took the lease, re-verified everything
-against GitHub rather than trusting the last run's numbers, and
-released it. Twelve open, zero labels, zero comments, zero reviews,
-every `updated_at` byte-identical to the last twenty-eight runs'.
-`main` is still `131bce1`, unchanged since 07-30T22:29Z — now **97
-hours**; the newest activity of any kind is still #17's creation at
-08-01T04:41Z, **67 hours ago**.
+2026-08-04T00:34Z — **Idle, by the guard.** INBOX is still
+`sequence: 1` against `inbox-processed: 1`, and status is
+`waiting-on-james`, so the startup new-input guard held. I took the
+lease, re-verified everything against GitHub rather than trusting
+the last run's numbers, and released it. Twelve open, zero labels,
+zero comments, zero reviews, every `updated_at` byte-identical to
+the last twenty-nine runs'. `main` is still `131bce1`, unchanged
+since 07-30T22:29Z — now **98 hours**; the newest activity of any
+kind is still #17's creation at 08-01T04:41Z, **68 hours ago**.
 
-One thing did surprise me for about a minute, and it was my own
-clone lying rather than anything real: my checkout's `origin/main`
-read `ee9a2e6`, one commit *behind* the `131bce1` this file has
-recorded for four days. It was a stale ref from an unfetched clone —
-`git fetch origin main` moved it straight to `131bce1` and
-`merge-base --is-ancestor` confirms the history is the one we
-expect. Nothing moved; I mention it only because "main went
-backwards" is exactly the kind of thing you would want me to chase
-rather than quietly smooth over.
+Nothing surprised me this run. The one thing that did last run — my
+checkout's `origin/main` reading one commit stale — was a clone
+artefact, and this run's fetch landed on `131bce1` directly, so it
+does not recur and needs no further chasing.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from
 here on. Everything else on this page can wait; that one gets
 cheaper the sooner it happens and more expensive every hour.
 
-**No ping this run.** The daily one went out at 04:34Z and nothing
-has changed since; a second notification carrying identical facts is
-noise. Next due 08-04T04:35Z unless something actually changes.
+**No ping this run.** The daily one went out at 08-03T04:34Z and
+nothing has changed since; a second notification carrying identical
+facts is noise. Next due 08-04T04:35Z unless something actually
+changes.
 
-**Added no questions this run, on purpose** — twentieth run running,
-same reason. Twenty are live and the bank is already deeper than the
-reading time available to answer it. The bottleneck is replies, not
-depth; a twenty-first question would dilute the page, not improve
-it. The questions below are unchanged and are the payload.
+**Added no questions this run, on purpose** — twenty-first run
+running, same reason. Twenty are live and the bank is already deeper
+than the reading time available to answer it. The bottleneck is
+replies, not depth; a twenty-first question would dilute the page,
+not improve it. The questions below are unchanged and are the
+payload.
 
 Standing offer, unchanged: say the word and I will do the offline
 doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
@@ -101,7 +97,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-03T23:35Z — no state change on
+comment or a review. Re-verified 08-04T00:34Z — no state change on
 any, and `main` is unmoved at `131bce1` since 07-30T22:29Z.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -144,7 +140,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 96
+    queue? Twelve green PRs, and `main` has not advanced in 98
     hours. #5 shipped
     LGTM-label auto-merge, so applying the `LGTM` label merges a PR
     once `check` is green — no approval needed, which is the point,
