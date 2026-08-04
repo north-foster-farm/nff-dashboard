@@ -1,4 +1,3 @@
-LEASE: 2026-08-04T12:35:43Z run-20260804T1235Z
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,34 +5,39 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-04T11:35Z — **Idle, by the guard.** INBOX is still
-`sequence: 1` against `inbox-processed: 1` with status
-`waiting-on-james`, so the startup new-input guard held. Took the
-lease, re-verified all twelve PRs and `main` against the GitHub API,
-released it. Zero labels, zero comments, zero reviews; every
-`updated_at` byte-identical to the last forty runs'. `main` is still
-`131bce1`, unchanged since 07-30T22:29Z — now **109 hours**. Newest
-activity of any kind is still #17's creation at 08-01T04:41Z, **79
-hours** ago.
+2026-08-04T12:35Z — **Idle by the guard, and the daily ping fired.**
+INBOX is still `sequence: 1` against `inbox-processed: 1` with status
+`waiting-on-james`, so the startup new-input guard held for the
+twelfth consecutive run. Took the lease, re-verified all twelve PRs
+and `main` against the GitHub API, released it. Zero labels, zero
+comments, zero reviews; every `updated_at` byte-identical to the last
+forty-one runs'. `main` is still `131bce1`, unchanged since
+07-30T22:29Z — now **110 hours**. Newest activity of any kind is
+still #17's creation at 08-01T04:41Z, **80 hours** ago.
+
+**The ping went out this run, as planned.** 12:35Z is 08:35 ET, the
+first run of your working morning and the first hour where the reply
+it asks for is actually possible — the 11:35Z run deliberately held
+it for this slot. It leads with #6 and carries the full label order,
+the #9-before-#10 constraint, the hold on #17, and the INBOX reply
+format. If you are reading this page instead, you have already got
+everything the ping said.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-**No ping this run — 11:35Z is 07:35 your time, an hour ahead of the
-slot.** The daily ping is parked at the **12:35Z run (08:35 ET)**, the
-first run of your working morning, when the reply it asks for is
-actually possible. That is the next run, and it should fire the ping
-if nothing has changed by then. This is a deliberate hold, not an
-oversight — an hourly ping about a state that has not moved in four
-days is noise, and noise is how a ping stops being read.
-
-**Added no questions this run, on purpose** — thirty-second run
+**Added no questions this run, on purpose** — thirty-first run
 running, same reason. Twenty are live and the bank is already deeper
 than the reading time available to answer it. The bottleneck is
 replies, not depth. The questions below are unchanged and are the
 payload.
+
+**Next ping: not before 2026-08-05T12:35Z**, and only if nothing has
+moved by then. One a day, in your working morning, is the rate at
+which a ping stays worth reading; an hourly ping about a state that
+has not moved in four days is noise.
 
 Standing offer, unchanged: say the word and I will do the offline
 doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
@@ -89,7 +93,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-04T11:35Z against the GitHub API —
+comment or a review. Re-verified 08-04T12:35Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -119,7 +123,7 @@ no state change on any, and `main` is unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Forty-three runs old now. If you only merge one thing, merge this:
+  Forty-four runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
