@@ -1,4 +1,3 @@
-LEASE: 2026-08-04T02:35:00Z run-0804-0235
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,32 +5,26 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-04T01:35Z — **Idle, by the guard.** INBOX is still
+2026-08-04T02:35Z — **Idle, by the guard.** INBOX is still
 `sequence: 1` against `inbox-processed: 1` with status
-`waiting-on-james`, so the startup new-input guard held. I took the
-lease, re-verified against GitHub rather than trusting the last run's
-numbers, and released it. Twelve open PRs, zero labels, zero comments,
-zero reviews, every `updated_at` byte-identical to the last thirty
-runs'. `main` is still `131bce1`, unchanged since 07-30T22:29Z — now
-**99 hours**; the newest activity of any kind remains #17's creation
-at 08-01T04:41Z, **69 hours ago**.
-
-One thing worth recording so a future run does not re-chase it: my
-clone's `origin/main` again read one commit stale (`ee9a2e6`) until I
-fetched `main` explicitly. That is the same clone artefact as two runs
-ago, it resolves on fetch, and it is not a real revert of main. I now
-fetch `main` before reading it, every run.
+`waiting-on-james`, so the startup new-input guard held. Took the
+lease, re-verified every PR against the GitHub API rather than
+trusting the previous run's numbers, released it. Twelve open PRs,
+zero labels, zero comments, zero reviews; every `updated_at` is
+byte-identical to the last thirty-one runs'. `main` is still
+`131bce1`, unchanged since 07-30T22:29Z — now **100 hours**. Newest
+activity of any kind is still #17's creation at 08-01T04:41Z,
+**70 hours** ago.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-**No ping this run.** The daily one is due 08-04T04:35Z and nothing
-has changed since the last; a notification carrying identical facts
-at 21:35 your time is noise, not signal.
+**No ping this run.** The daily one is due 08-04T04:35Z; sending the
+same facts at 22:35 your time would be noise, not signal.
 
-**Added no questions this run, on purpose** — twenty-second run
+**Added no questions this run, on purpose** — twenty-third run
 running, same reason. Twenty are live and the bank is already deeper
 than the reading time available to answer it. The bottleneck is
 replies, not depth. The questions below are unchanged and are the
@@ -91,7 +84,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-04T01:35Z against the GitHub API —
+comment or a review. Re-verified 08-04T02:35Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -134,9 +127,8 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 98
-    hours. #5 shipped
-    LGTM-label auto-merge, so applying the `LGTM` label merges a PR
+    queue? Twelve green PRs, and `main` has not advanced in 100
+    hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges a PR
     once `check` is green — no approval needed, which is the point,
     since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14, #15,
