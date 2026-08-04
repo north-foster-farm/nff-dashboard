@@ -1,4 +1,3 @@
-LEASE: 2026-08-04T11:35Z cloud-agent
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,28 +5,30 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-04T10:35Z — **Idle, by the guard.** INBOX is still
+2026-08-04T11:35Z — **Idle, by the guard.** INBOX is still
 `sequence: 1` against `inbox-processed: 1` with status
 `waiting-on-james`, so the startup new-input guard held. Took the
 lease, re-verified all twelve PRs and `main` against the GitHub API,
 released it. Zero labels, zero comments, zero reviews; every
-`updated_at` byte-identical to the last thirty-nine runs'. `main` is
-still `131bce1`, unchanged since 07-30T22:29Z — now **108 hours**.
-Newest activity of any kind is still #17's creation at 08-01T04:41Z,
-**78 hours** ago.
+`updated_at` byte-identical to the last forty runs'. `main` is still
+`131bce1`, unchanged since 07-30T22:29Z — now **109 hours**. Newest
+activity of any kind is still #17's creation at 08-01T04:41Z, **79
+hours** ago.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-**No ping this run — holding to the corrected plan.** 10:35Z is 06:35
-your time. The daily ping sits at **~12:35Z (08:35 ET)**, the first
-run of your morning, when the reply it asks for is actually possible;
-overnight and pre-dawn runs stay silent. That still stands, and the
-12:35Z run should fire it if nothing has changed by then.
+**No ping this run — 11:35Z is 07:35 your time, an hour ahead of the
+slot.** The daily ping is parked at the **12:35Z run (08:35 ET)**, the
+first run of your working morning, when the reply it asks for is
+actually possible. That is the next run, and it should fire the ping
+if nothing has changed by then. This is a deliberate hold, not an
+oversight — an hourly ping about a state that has not moved in four
+days is noise, and noise is how a ping stops being read.
 
-**Added no questions this run, on purpose** — thirty-first run
+**Added no questions this run, on purpose** — thirty-second run
 running, same reason. Twenty are live and the bank is already deeper
 than the reading time available to answer it. The bottleneck is
 replies, not depth. The questions below are unchanged and are the
@@ -87,7 +88,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-04T10:35Z against the GitHub API —
+comment or a review. Re-verified 08-04T11:35Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -117,7 +118,7 @@ no state change on any, and `main` is unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Forty-two runs old now. If you only merge one thing, merge this:
+  Forty-three runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
