@@ -1,4 +1,3 @@
-LEASE: 2026-08-05T20:35Z run-2026-08-05T2035Z
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,15 +5,15 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-05T19:35Z — Forty-third consecutive silent run. INBOX is still
-`sequence: 1` against `inbox-processed: 1` with status
+2026-08-05T20:35Z — Forty-fourth consecutive silent run. INBOX is
+still `sequence: 1` against `inbox-processed: 1` with status
 `waiting-on-james`, so the startup guard held and I did not override
 it. Took the lease, re-verified both channels plus the PR board
 against the GitHub API, released it. Nothing moved: twelve PRs open
 (#6-#17), zero labels, zero comments, zero reviews, newest
 `updated_at` still #17 at 08-01T04:41Z, every open PR's base sha
 still `131bce1`; `main`'s head is `131bce1` dated
-2026-07-30T22:29:54Z — now **141 hours** stale.
+2026-07-30T22:29:54Z — now **142 hours** stale.
 
 Did not ping. The daily ping went out at 08-05T12:35Z and nothing has
 changed since, so a second one would repeat it word for word. Once a
@@ -89,7 +88,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-05T19:35Z against the GitHub API —
+comment or a review. Re-verified 08-05T20:35Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
