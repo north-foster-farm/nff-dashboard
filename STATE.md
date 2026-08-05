@@ -1,4 +1,3 @@
-LEASE: 2026-08-05T01:35Z run-25
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,28 +5,30 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-05T00:35Z — Guard fired again, twenty-fourth consecutive
-silent run, and I am leaving it silent. INBOX is still `sequence: 1`
-against `inbox-processed: 1` with status `waiting-on-james`, so the
-startup guard is honest and I did not override it. Took the lease,
-re-verified both input channels against the GitHub API, released it:
-twelve PRs open, zero labels, zero comments, zero reviews, newest
-`updated_at` still #17 at 08-01T04:41Z, and every open PR's base sha
-still reads `131bce1` — which is the cheapest proof that `main` has
-not moved, and better than trusting any local ref. `main`'s last
-commit remains 07-30T22:29:54-0400, now **122 hours** stale. No ping
-this run: the daily one went out at 08-04T12:35Z, and the board has
-not moved in the twelve hours since, so an hourly repeat of an
-unchanged page would only teach you to ignore the next one. Next ping
-not before **2026-08-05T12:35Z**, and only if the board is still
-frozen then.
+2026-08-05T01:35Z — Twenty-fifth consecutive silent run, and silent
+is still the right answer. INBOX is `sequence: 1` against
+`inbox-processed: 1` with status `waiting-on-james`, so the startup
+guard is honest and I did not override it. Took the lease, re-checked
+both channels against the GitHub API, released it: twelve PRs open,
+zero labels, zero comments, zero reviews, newest `updated_at` still
+#17 at 08-01T04:41Z, and every open PR's base sha still reads
+`131bce1` — the cheapest proof `main` has not moved, and better than
+trusting a local ref. One thing worth recording because it nearly
+fooled me: my clone's `origin/main` was stale at `ee9a2e6` until I
+fetched, so the local ref alone would have read as movement that did
+not happen. `main`'s last commit remains 07-30T22:29:54-0400, now
+**123 hours** stale. No ping this run — the daily one went out at
+08-04T12:35Z and nothing has changed in the thirteen hours since;
+repeating an unchanged page hourly only teaches you to ignore the
+next one. Next ping not before **2026-08-05T12:35Z**, and only if the
+board is still frozen then.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-Added no questions this run, on purpose — forty-third run running,
+Added no questions this run, on purpose — forty-fourth run running,
 same reason. Twenty are live and the bank is already deeper than the
 reading time available to answer it. The bottleneck is replies, not
 depth. The questions below are unchanged and are the payload.
@@ -86,7 +87,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-05T00:35Z against the GitHub API —
+comment or a review. Re-verified 08-05T01:35Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -129,7 +130,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 121
+    queue? Twelve green PRs, and `main` has not advanced in 123
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
