@@ -1,4 +1,3 @@
-LEASE: 2026-08-05T08:35Z run-0835
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,7 +5,7 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-05T07:35Z — Thirty-first consecutive silent run, and nothing
+2026-08-05T08:35Z — Thirty-second consecutive silent run, and nothing
 in this section is new. INBOX is still `sequence: 1` against
 `inbox-processed: 1` with status `waiting-on-james`, so the startup
 guard holds honestly and I did not override it. Took the lease,
@@ -14,14 +13,14 @@ checked both channels, released it. The GitHub API says nothing
 moved: twelve PRs open (#6–#17), zero labels, zero comments, zero
 reviews, newest `updated_at` still #17 at 08-01T04:41Z, and every
 open PR's base sha still `131bce1`. `main`'s head is `131bce1` dated
-2026-07-30T22:29:54Z — now **129 hours** stale. The stale-local-ref
+2026-07-30T22:29:54Z — now **130 hours** stale. The stale-local-ref
 trap holds too: a cold clone's `origin/main` reads `ee9a2e6` until
 fetched, so I verify against the API and a fresh fetch rather than
 the local ref. Anyone reading a local clone cold should do the same.
 
 No ping this run. The daily one went out 08-04T12:35Z and nothing has
-changed in the nineteen hours since; an unchanged page repeated
-hourly only trains you to ignore the next one. Next ping not before
+changed in the twenty hours since; an unchanged page repeated hourly
+only trains you to ignore the next one. Next ping not before
 **2026-08-05T12:35Z**, and only if the board is still frozen.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
@@ -29,7 +28,7 @@ merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-Added no questions this run, on purpose — fiftieth run running,
+Added no questions this run, on purpose — fifty-first run running,
 same reason. Twenty are live and the bank is already deeper than the
 reading time available to answer it. The bottleneck is replies, not
 depth. The questions below are unchanged and are the payload.
@@ -88,7 +87,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-05T07:35Z against the GitHub API —
+comment or a review. Re-verified 08-05T08:35Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -118,7 +117,7 @@ no state change on any, and `main` is unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Forty-nine runs old now. If you only merge one thing, merge this:
+  Fifty runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
@@ -131,7 +130,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 128
+    queue? Twelve green PRs, and `main` has not advanced in 130
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
