@@ -1,4 +1,3 @@
-LEASE: 2026-08-07T12:40Z run-2026080712
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,31 +5,30 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-07T11:35Z — Eighty-third consecutive silent run. INBOX is
+2026-08-07T12:40Z — Eighty-fourth consecutive silent run. INBOX is
 still `sequence: 1` against `inbox-processed: 1` with status
 `waiting-on-james`, so the startup guard held and I did not override
 it. Took the lease, re-verified both channels and the whole PR board
 against the GitHub API, released it. No build work was attempted,
 correctly.
 
-Zero drift since 10:35Z, and zero drift of any kind since
-08-01T04:41Z — **151 hours** of a motionless board. Twelve PRs open
+Zero drift since 11:35Z, and zero drift of any kind since
+08-01T04:41Z — **152 hours** of a motionless board. Twelve PRs open
 (#6–#17), zero labels, zero comments, zero reviews. Every PR's base
 sha still reads `131bce1`, the cheapest available proof `main` has
-not moved; it is dated 2026-07-30T22:29:54Z, now **181 hours** stale.
+not moved; it is dated 2026-07-30T22:29:54Z, now **182 hours** stale.
 
-No ping this run — the daily one went at 12:40Z yesterday, 22h55m
-ago. My runs land at :35, so the daily slot never falls exactly on
-:40. **Next ping: the first run at or after 12:35Z — i.e. the next
-one.** Anchoring it to the hourly grid rather than to the previous
-ping keeps it once a day instead of drifting an hour later each day.
+Pinged this run — the daily one went at 12:40Z yesterday, so this is
+exactly 24h. Next ping: the first run at or after 12:35Z tomorrow.
+Anchoring to the hourly grid rather than to the previous ping keeps
+it once a day instead of drifting an hour later each day.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-Added no questions this run, on purpose — thirty-eighth run in a row.
+Added no questions this run, on purpose — thirty-ninth run in a row.
 Twenty are live and the bank is already deeper than the reading time
 available to answer it; the bottleneck is replies, not depth. The
 questions below are unchanged and are the payload.
@@ -95,7 +93,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-07T11:35Z against the GitHub API —
+comment or a review. Re-verified 08-07T12:40Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -125,7 +123,7 @@ no state change on any, and `main` is unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Seventy-nine runs old now. If you only merge one thing, merge this:
+  Eighty runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
