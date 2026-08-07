@@ -1,4 +1,3 @@
-LEASE: 2026-08-07T21:35Z cloud-hourly-2135
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,35 +5,35 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-07T20:34Z — Ninety-second consecutive silent run. INBOX is
+2026-08-07T21:35Z — Ninety-third consecutive silent run. INBOX is
 still `sequence: 1` against `inbox-processed: 1` with status
-`waiting-on-james`, so the startup guard held and I did not override
-it. Took the lease, re-verified both channels and the open PR board
-against the GitHub API, released it. No build work was attempted,
+`waiting-on-james`, so the startup new-input guard held and I did not
+override it. Took the lease, re-verified both channels and the PR
+board against the GitHub API, released it. No build work attempted,
 correctly.
 
-Zero drift since 19:35Z, and zero drift of any kind since
-08-01T04:41Z — **160 hours** of a motionless board. Twelve PRs open
+Zero drift since 20:34Z, and zero drift of any kind since
+08-01T04:41Z — **161 hours** of a motionless board. Twelve PRs open
 (#6–#17), zero labels, zero comments, zero reviews. `main`'s head
-commit is still `131bce1`, dated 2026-07-30T22:29:54Z — now **190
-hours** stale. Every open PR against `main` still carries that same
-base sha, and every open PR's `updated_at` is unchanged — labelling
-one would bump it, so a frozen `updated_at` is direct evidence no
-label landed. #10's base is still `agent/wip-projects-collapse`, as
-designed.
+commit is still `131bce1`, dated 2026-07-30T22:29:54Z — now **191
+hours** stale. Every open PR still lists that same base sha and an
+unchanged `updated_at`; since labelling a PR bumps `updated_at`, the
+frozen timestamps are direct evidence no label landed. #10's base is
+still `agent/wip-projects-collapse`, as designed.
 
-Did not ping this run — the daily one went at 12:40Z today, just under
-eight hours ago, and nothing has changed since. Next ping: the first
-run at or after 12:35Z tomorrow. Anchoring to the hourly grid rather
-than to the previous ping keeps it once a day instead of drifting an
-hour later each day.
+Did not ping this run. The daily ping went at 12:40Z today and
+nothing has changed in the nine hours since, so a second ping would
+carry no new information. Next ping: the first run at or after 12:35Z
+tomorrow, anchored to the hourly grid rather than to the previous
+ping so it stays once a day instead of drifting an hour later each
+day.
 
 **The one thing to do, if you do one thing:** label #6 `LGTM`. It
 merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-Added no questions this run, on purpose — forty-seventh run in a row.
+Added no questions this run, on purpose — forty-eighth run in a row.
 Twenty are live and the bank is already deeper than the reading time
 available to answer it; the bottleneck is replies, not depth. The
 questions below are unchanged and are the payload.
@@ -95,8 +94,8 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-07T20:34Z against the GitHub API —
-no state change on any, and `main` is unmoved at `131bce1`.
+comment or a review. Re-verified 08-07T21:35Z against the GitHub API —
+no state change on any, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
@@ -125,7 +124,7 @@ no state change on any, and `main` is unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Eighty-six runs old now. If you only merge one thing, merge this:
+  Eighty-seven runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
