@@ -1,4 +1,3 @@
-LEASE: 2026-08-07T13:38Z run-1338
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,21 +5,21 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-07T12:40Z — Eighty-fourth consecutive silent run. INBOX is
+2026-08-07T13:38Z — Eighty-fifth consecutive silent run. INBOX is
 still `sequence: 1` against `inbox-processed: 1` with status
 `waiting-on-james`, so the startup guard held and I did not override
 it. Took the lease, re-verified both channels and the whole PR board
 against the GitHub API, released it. No build work was attempted,
 correctly.
 
-Zero drift since 11:35Z, and zero drift of any kind since
-08-01T04:41Z — **152 hours** of a motionless board. Twelve PRs open
+Zero drift since 12:40Z, and zero drift of any kind since
+08-01T04:41Z — **153 hours** of a motionless board. Twelve PRs open
 (#6–#17), zero labels, zero comments, zero reviews. Every PR's base
 sha still reads `131bce1`, the cheapest available proof `main` has
-not moved; it is dated 2026-07-30T22:29:54Z, now **182 hours** stale.
+not moved; it is dated 2026-07-30T22:29:54Z, now **183 hours** stale.
 
-Pinged this run — the daily one went at 12:40Z yesterday, so this is
-exactly 24h. Next ping: the first run at or after 12:35Z tomorrow.
+Did not ping this run — the daily one went at 12:40Z today, 58
+minutes ago. Next ping: the first run at or after 12:35Z tomorrow.
 Anchoring to the hourly grid rather than to the previous ping keeps
 it once a day instead of drifting an hour later each day.
 
@@ -29,7 +28,7 @@ merges itself once `check` is green and halves every CI run from here
 on. Everything else on this page can wait; that one gets cheaper the
 sooner it happens and more expensive every hour.
 
-Added no questions this run, on purpose — thirty-ninth run in a row.
+Added no questions this run, on purpose — fortieth run in a row.
 Twenty are live and the bank is already deeper than the reading time
 available to answer it; the bottleneck is replies, not depth. The
 questions below are unchanged and are the payload.
@@ -38,9 +37,10 @@ Standing offer, unchanged: say the word and I will do the offline
 doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
 it adds to twelve branches.
 
-Note on a stale local ref: a cold clone's `origin/main` reads
-`ee9a2e6` until fetched — mine did again this run — so verify against
-the API or a fresh fetch rather than the local ref.
+Note on a stale local ref, corrected: this run's clone came up with
+`origin/main` already at `131bce1`, matching the API. Earlier runs saw
+a cold clone read `ee9a2e6` until fetched, so the habit stands —
+verify against the API or a fresh fetch — but it is not every run.
 
 ### Standing note on #17 (unchanged)
 
@@ -94,7 +94,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-07T12:40Z against the GitHub API —
+comment or a review. Re-verified 08-07T13:38Z against the GitHub API —
 no state change on any, and `main` is unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -124,7 +124,7 @@ no state change on any, and `main` is unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Eighty runs old now. If you only merge one thing, merge this:
+  Eighty-one runs old now. If you only merge one thing, merge this:
   it halves every CI run from here on.
 
 ## QUESTIONS
@@ -137,7 +137,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 181
+    queue? Twelve green PRs, and `main` has not advanced in 183
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
