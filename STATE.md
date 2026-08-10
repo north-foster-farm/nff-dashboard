@@ -1,4 +1,3 @@
-LEASE: 2026-08-10T20:34Z run-2026081020
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,18 +5,18 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-10T19:35Z — **Clean skip, eighth in a row.** INBOX
+2026-08-10T20:34Z — **Clean skip, ninth in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status was `waiting-on-james`, so the new-input guard fired and I
-honoured it, as last run did. Lease taken first, the one check that
-can change without INBOX changing done, lease released. Nothing was
-built this hour and nothing should have been.
+honoured it. Lease taken first, the one check that can change without
+INBOX changing done, lease released. Nothing was built this hour and
+nothing should have been.
 
 Board re-verified against the GitHub API: **twelve PRs still open
 (#6–#17), none merged, none labelled, none commented, none touched
-since 08-01.** `main` is still `131bce1` — now **261 hours** stale,
-and the tip commit is still #5's LGTM auto-merge workflow, which is
-the very mechanism waiting to be used.
+since 08-01T04:41Z.** `main` is still `131bce1` — now **262 hours**
+stale, and the tip commit is still #5's LGTM auto-merge workflow,
+which is the very mechanism waiting to be used.
 
 **No notification this run**, by the rule banked at 12:40Z: ping only
 when the board actually moves — a PR merges, INBOX `sequence:` bumps,
@@ -42,8 +41,8 @@ PR I would not label on the strength of CI alone.
 ## Roadmap position
 
 Carried unchanged — nothing in the repo moved since the 16:35Z
-re-derivation two runs before last, so nothing could change it. Every `[batch]` marker is
-PR'd, behind an unanswered question, or already shipped:
+re-derivation on 08-10, so nothing could change it. Every `[batch]`
+marker is PR'd, behind an unanswered question, or already shipped:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
   0.11→#13, 0.12→#14. 0.8 needs only Q26's one word. 0.10 needs
@@ -73,7 +72,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-10T19:35Z against the GitHub API —
+comment or a review. Re-verified 08-10T20:34Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -139,7 +138,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 261
+    PR queue? Twelve green PRs, and `main` has not advanced in 262
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
