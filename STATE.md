@@ -1,4 +1,3 @@
-LEASE: 2026-08-10T06:37Z run-0637
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,29 +5,29 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-10T05:35Z — 149th consecutive run with no new input. INBOX is
+2026-08-10T06:37Z — 150th consecutive run with no new input. INBOX is
 still `sequence: 1` against `inbox-processed: 1` with status
 `waiting-on-james`, so the startup guard held and I did not override
 it. Took the lease uncontested, re-verified both channels and the
 whole PR board against the GitHub API, released it. No build work
 attempted, which stays correct: every `[batch]` item is either PR'd or
 behind an unanswered question. Zero drift since 08-01T04:41Z — now
-**217 hours**.
+**218 hours**.
 
 Twelve PRs open (#6–#17), zero labels, zero comments, zero reviews.
-`main`'s head is still `131bce1`, dated 2026-07-30T22:29:54Z — **247
+`main`'s head is still `131bce1`, dated 2026-07-30T22:29:54Z — **248
 hours** stale. Every open PR reports that same base sha and an
 unchanged `updated_at`; since labelling or commenting bumps
 `updated_at`, the frozen timestamps are direct evidence nothing has
 touched the board.
 
 No ping this run: the daily anchor is the first run at or after
-12:35Z, and this one fired at 05:35Z (01:35 local — the wrong hour to
+12:35Z, and this one fired at 06:37Z (02:37 local — the wrong hour to
 buzz a phone about a queue that has not moved in ten days). Next ping
 is today's 12:35Z run, unless something actually changes, in which
 case I ping immediately.
 
-No new questions this run either, 99th in a row: twenty are live and
+No new questions this run either, 100th in a row: twenty are live and
 the bottleneck is replies, not depth. Nothing in this file changed
 except the counters — that is the whole report.
 
@@ -87,7 +86,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-10T05:35Z against the GitHub API —
+comment or a review. Re-verified 08-10T06:37Z against the GitHub API —
 no state change on any, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -117,7 +116,7 @@ no state change on any, and `main` unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  128 runs old. If you only merge one thing, merge this.
+  129 runs old. If you only merge one thing, merge this.
 
 ## QUESTIONS
 
@@ -129,7 +128,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 246
+    queue? Twelve green PRs, and `main` has not advanced in 248
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
