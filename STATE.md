@@ -1,4 +1,3 @@
-LEASE: 2026-08-10T04:35Z hourly-agent
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,38 +5,36 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-10T03:34Z — One hundred and forty-seventh consecutive run
-with no new input. INBOX is still `sequence: 1` against
-`inbox-processed: 1` with status `waiting-on-james`, so the startup
-new-input guard held and I did not override it. Took the lease
-(uncontested), re-verified both channels and the whole PR board
-against the GitHub API, released it — no build work attempted, which
-remains correct: every `[batch]` item is either PR'd or behind an
-unanswered question. Nothing surprised me: zero drift of any kind
-since 08-01T04:41Z, now **215 hours**.
+2026-08-10T04:35Z — 148th consecutive run with no new input. INBOX is
+still `sequence: 1` against `inbox-processed: 1` with status
+`waiting-on-james`, so the startup guard held and I did not override
+it. Took the lease uncontested, re-verified both channels and the
+whole PR board against the GitHub API, released it. No build work
+attempted, which stays correct: every `[batch]` item is either PR'd or
+behind an unanswered question. Zero drift since 08-01T04:41Z — now
+**216 hours**.
 
-Twelve PRs open (#6-#17), zero labels, zero comments, zero reviews.
-`main`'s head is still `131bce1`, dated 2026-07-30T22:29:54Z — now
-**245 hours** stale. Every open PR still reports that same base sha
-and an unchanged `updated_at` (the newest is #17's, 08-01T04:41Z);
-since labelling or commenting on a PR bumps `updated_at`, the frozen
-timestamps are direct evidence nothing has touched the board.
-Nothing has merged since #5 on 07-30.
+Twelve PRs open (#6–#17), zero labels, zero comments, zero reviews.
+`main`'s head is still `131bce1`, dated 2026-07-30T22:29:54Z — **246
+hours** stale. Every open PR reports that same base sha and an
+unchanged `updated_at`; since labelling or commenting bumps
+`updated_at`, the frozen timestamps are direct evidence nothing has
+touched the board.
 
-Did not ping this run. The daily anchor is the first run at or after
-12:35Z and this one fired at 03:34Z, so the next ping is today's
-12:35Z run — unless something actually changes, in which case I ping
-immediately.
+No ping this run: the daily anchor is the first run at or after
+12:35Z, and this one fired at 04:35Z (00:35 local — the wrong hour to
+buzz a phone about a queue that has not moved in ten days). Next ping
+is today's 12:35Z run, unless something actually changes, in which
+case I ping immediately.
 
-**The one thing to do, if you do one thing:** label #6 `LGTM`. It
-merges itself once `check` is green and halves every CI run from here
-on. Everything else on this page can wait; that one gets cheaper the
-sooner it happens and more expensive every hour.
+I also cut this file down rather than adding to it. The questions are
+unchanged and complete; what was growing was the narration around
+them, which works against the one thing this page has to be — readable
+and answerable from a phone. No new questions this run either, 98th in
+a row: twenty are live and the bottleneck is replies, not depth.
 
-Added no questions this run, on purpose — ninety-seventh run in a
-row. Twenty are live and the bank is already deeper than the reading
-time available to answer it; the bottleneck is replies, not depth.
-The questions below are unchanged and are the payload.
+**If you do one thing:** label #6 `LGTM`. It halves every CI run from
+here on and gets more expensive to skip every hour.
 
 Standing offer, unchanged: say the word and I will do the offline
 doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
@@ -51,16 +48,15 @@ so the lockfile has zero esbuild entries and `npm audit` reports 0
 vulnerabilities — that retired Q9's lockfile half. Two things I could
 not verify: the preview fetch dies on `CONNECT tunnel failed, 403`,
 so Netlify's build is confirmed but the page is not; and **this is a
-React major with no visual QA behind it** — 1200 green tests cover
-the pure-logic layer and say nothing about whether the app renders.
-It is the one PR I would not label on the strength of CI alone.
+React major with no visual QA behind it** — 1200 green tests cover the
+pure-logic layer and say nothing about whether the app renders. It is
+the one PR I would not label on the strength of CI alone.
 
 ## Roadmap position
 
 **Parts 0–3 are exhausted for me except 3.2, and 3.2 needs a decision
-before it can be built (Q23).** Unchanged, and a real wall rather than
-a pause — every `[batch]` marker in `ROADMAP.md` is either PR'd or
-behind an unanswered question:
+before it can be built (Q23).** Every `[batch]` marker in `ROADMAP.md`
+is either PR'd or behind an unanswered question:
 
 - Part 0: done or PR'd.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
@@ -69,18 +65,15 @@ behind an unanswered question:
   words arrive**. Still the largest block of work you can hand me in
   one message.
 - Part 3: 3.1 done (#17). 3.2's Accept is two device measurements I
-  cannot make, and the fix lives inside `Schedule.jsx` (3940 lines,
-  no component tests, no visual QA). I am **not** building that blind
+  cannot make, and the fix lives inside `Schedule.jsx` (3940 lines, no
+  component tests, no visual QA). I am **not** building that blind
   against an auto-deploying main. See Q23.
-- Part 4: opens with 4.1, a `[session]`. 4.2 is explicitly "letters
-  in order", so 4.2d sits behind 4.2a, 4.2b (`[session]`, Q19) and
-  4.2c. 4.3 is *also* "letters in order" — so 4.3b (needs a YoLink
-  key anyway), 4.3c, 4.3d and 4.3e all sit behind 4.3a, which is
-  unblocked in principle but needs a provider choice and an account
-  from you (Q25). Everything from 4.4 on sits behind 4.1.
-
-So `status: waiting-on-james` is honest, and the startup guard will
-correctly hold the next runs.
+- Part 4: opens with 4.1, a `[session]`. 4.2 is explicitly "letters in
+  order", so 4.2d sits behind 4.2a, 4.2b (`[session]`, Q19) and 4.2c.
+  4.3 is *also* "letters in order" — so 4.3b (needs a YoLink key
+  anyway), 4.3c, 4.3d and 4.3e all sit behind 4.3a, which is unblocked
+  in principle but needs a provider choice and an account from you
+  (Q25). Everything from 4.4 on sits behind 4.1.
 
 **Resume point:** the moment an INBOX answer lands, work it first. If
 that answer is Q14, start 2.2 from a failing test in
@@ -88,14 +81,14 @@ that answer is Q14, start 2.2 from a failing test in
 is Q25, start 4.3a's provider-agnostic half. If it is only Q13/Q2,
 rebase the merged branches out and shrink the queue.
 
-`ROADMAP.md` still untouched across #6–#17 — **twelve** branches now
+`ROADMAP.md` is still untouched across #6–#17 — **twelve** branches
 conflict on that one file. Q2 remains the cheapest answer you can give
 me.
 
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-10T03:34Z against the GitHub API —
+comment or a review. Re-verified 08-10T04:35Z against the GitHub API —
 no state change on any, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -125,8 +118,7 @@ no state change on any, and `main` unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  One hundred and twenty-seven runs old now. If you only merge one thing,
-  merge this: it halves every CI run from here on.
+  128 runs old. If you only merge one thing, merge this.
 
 ## QUESTIONS
 
@@ -138,7 +130,7 @@ Answer format, for a phone: one line each in INBOX.md under
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
 Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 245
+    queue? Twelve green PRs, and `main` has not advanced in 246
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
