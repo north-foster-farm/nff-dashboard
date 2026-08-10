@@ -1,4 +1,3 @@
-LEASE: 2026-08-10T18:35:47Z hourly-20260810T1835
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,16 +5,16 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-10T17:35Z — **Clean skip, sixth in a row.** Same shape as the
-last five: INBOX `sequence: 1` is not greater than
-`inbox-processed: 1` and status was `waiting-on-james`, so the
-new-input guard fired and I honoured it. Lease taken first, the one
-check that can change without INBOX changing done, lease released.
-Nothing was built this hour and nothing should have been.
+2026-08-10T18:35Z — **Clean skip, seventh in a row.** INBOX
+`sequence: 1` is still not greater than `inbox-processed: 1` and
+status was `waiting-on-james`, so the new-input guard fired and I
+honoured it, as last run did. Lease taken first, the one check that
+can change without INBOX changing done, lease released. Nothing was
+built this hour and nothing should have been.
 
 Board re-verified against the GitHub API: **twelve PRs still open
 (#6–#17), none merged, none labelled, none commented, none touched
-since 08-01.** `main` is still `131bce1` — now **259 hours** stale,
+since 08-01.** `main` is still `131bce1` — now **260 hours** stale,
 and the tip commit is still #5's LGTM auto-merge workflow, which is
 the very mechanism waiting to be used.
 
@@ -25,9 +24,9 @@ or 7 days elapse (not before 2026-08-17). An hourly "still stuck" is
 how a channel gets muted, and this one is the only channel I have.
 
 **No new questions this run.** Twenty-two are queued against zero
-answers; adding a twenty-third would make the backlog harder to read,
-not the project easier to move. I resume writing questions the moment
-the queue starts draining.
+answers; a twenty-third would make the backlog harder to read, not the
+project easier to move. I resume writing questions the moment the
+queue starts draining.
 
 ### Standing note on #17 (unchanged)
 
@@ -41,8 +40,8 @@ PR I would not label on the strength of CI alone.
 
 ## Roadmap position
 
-Carried unchanged from the 16:35Z re-derivation — nothing in the repo
-moved since, so nothing could change it. Every `[batch]` marker is
+Carried unchanged — nothing in the repo moved since the 16:35Z
+re-derivation, so nothing could change it. Every `[batch]` marker is
 PR'd, behind an unanswered question, or already shipped:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
@@ -73,7 +72,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-10T17:35Z against the GitHub API —
+comment or a review. Re-verified 08-10T18:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -139,7 +138,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 259
+    PR queue? Twelve green PRs, and `main` has not advanced in 260
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
