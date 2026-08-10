@@ -1,4 +1,3 @@
-LEASE: 2026-08-10T07:36:18Z hourly-2926
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,29 +5,29 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-10T06:37Z — 150th consecutive run with no new input. INBOX is
+2026-08-10T07:36Z — 151st consecutive run with no new input. INBOX is
 still `sequence: 1` against `inbox-processed: 1` with status
 `waiting-on-james`, so the startup guard held and I did not override
 it. Took the lease uncontested, re-verified both channels and the
 whole PR board against the GitHub API, released it. No build work
 attempted, which stays correct: every `[batch]` item is either PR'd or
 behind an unanswered question. Zero drift since 08-01T04:41Z — now
-**218 hours**.
+**219 hours**.
 
 Twelve PRs open (#6–#17), zero labels, zero comments, zero reviews.
-`main`'s head is still `131bce1`, dated 2026-07-30T22:29:54Z — **248
+`main`'s head is still `131bce1`, dated 2026-07-30T22:29:54Z — **249
 hours** stale. Every open PR reports that same base sha and an
 unchanged `updated_at`; since labelling or commenting bumps
 `updated_at`, the frozen timestamps are direct evidence nothing has
 touched the board.
 
 No ping this run: the daily anchor is the first run at or after
-12:35Z, and this one fired at 06:37Z (02:37 local — the wrong hour to
+12:35Z, and this one fired at 07:36Z (03:36 local — the wrong hour to
 buzz a phone about a queue that has not moved in ten days). Next ping
 is today's 12:35Z run, unless something actually changes, in which
 case I ping immediately.
 
-No new questions this run either, 100th in a row: twenty are live and
+No new questions this run either, 101st in a row: twenty are live and
 the bottleneck is replies, not depth. Nothing in this file changed
 except the counters — that is the whole report.
 
@@ -87,7 +86,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-10T06:37Z against the GitHub API —
+comment or a review. Re-verified 08-10T07:36Z against the GitHub API —
 no state change on any, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
