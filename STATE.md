@@ -1,4 +1,3 @@
-LEASE: 2026-08-10T11:36:45Z run-20260810T1136Z
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,57 +5,61 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-10T10:34Z — 154th consecutive run with no new input. INBOX is
-still `sequence: 1` against `inbox-processed: 1` with status
-`waiting-on-james`, so the startup guard held and I did not override
-it. Took the lease uncontested, re-verified both channels and the
-whole PR board against the GitHub API, released it. No build work
-attempted, which stays correct: every `[batch]` item is either PR'd or
-behind an unanswered question. Zero drift since 08-01T04:41Z — now
-**222 hours**.
+2026-08-10T11:36Z — **I stopped trusting my own ledger and checked it,
+and it was wrong.** For ~154 runs this file has claimed "every
+`[batch]` marker in ROADMAP.md is either PR'd or behind an unanswered
+question". That is false: **0.8 (quick-convert thought → event,
+`[batch, small]`) has no PR, no question, and has never once been
+mentioned in this file.** Part 0 has no letters-in-order rule and the
+chores fence explicitly exempts the event half, so nothing was
+blocking it — I simply never tracked it.
 
-Twelve PRs open (#6–#17), zero labels, zero comments, zero reviews.
-`main`'s head is still `131bce1`, dated 2026-07-30T22:29:54Z — **252
-hours** stale. Every open PR reports that same base sha and an
-unchanged `updated_at`; since labelling or commenting bumps
-`updated_at`, the frozen timestamps are direct evidence nothing has
-touched the board.
+I then went to build it and found it **already implemented on main**:
+`Inbox.jsx` has a working "Promote to event" action, `App.jsx:256`
+wires `onOpenEvent`, and `EventEditor.jsx:593/601` honours
+`seed.label` / `seed.notes` with a code comment naming the Inbox as
+the caller. So 0.8's Accept ("a thought becomes an event via the app's
+real event-creation path") looks already met, and the roadmap line is
+stale. I did **not** open a 13th PR for behaviour that already ships —
+see Q26.
 
-No ping this run: the daily anchor is the first run at or after
-12:35Z, and this one fired at 10:34Z (06:34 local). Next ping is
-today's ~12:35Z run, unless something actually changes, in which case
-I ping immediately.
+Second correction: **Q9's lockfile half is not retired on main.** I
+marked it retired on the strength of #17's branch. On main today
+`npm ci` fails under npm 10 (`Missing: esbuild@0.28.2` plus every
+`@esbuild/*` platform package) because main's lockfile carries a
+Vite 8 subtree its `package.json` — `vite: ^5.4.11` — never asks for.
+CI does not see it: `check.yml` pins **node 26**. I worked around it
+with `npm install --no-save`, which left the lockfile untouched per
+Q9's "do not regenerate anything". Baseline verified after that:
+`TZ=America/New_York npm test` is **1196/1196 green**, and without
+`TZ` exactly the 2 `availability.test.js` failures Q9 predicts.
 
-No new questions this run either, 104th in a row: twenty are live and
-the bottleneck is replies, not depth. Nothing in this file changed
-except the counters — that is the whole report.
+Board state itself is unchanged: twelve PRs (#6–#17) open, zero
+labels, zero comments, zero reviews, `main` still `131bce1` and now
+**253 hours** stale. No build work this run — but for the first time
+in a long while the reason is not "everything is blocked", it is
+"the one unblocked item turned out to be already done".
 
 **If you do one thing:** label #6 `LGTM`. It halves every CI run from
 here on and gets more expensive to skip every hour.
 
-Standing offer, unchanged: say the word and I will do the offline
-doc-only work (Q10, Q24, Q17, Q18) despite the `ROADMAP.md` conflict
-it adds to twelve branches.
-
 ### Standing note on #17 (unchanged)
 
 3.1 shipped React 19 + Vite 8 + plugin-react 6, green. Zero React 19
-removed-API surface in the codebase; Vite 8 evicts esbuild entirely,
-so the lockfile has zero esbuild entries and `npm audit` reports 0
-vulnerabilities — that retired Q9's lockfile half. Two things I could
-not verify: the preview fetch dies on `CONNECT tunnel failed, 403`,
-so Netlify's build is confirmed but the page is not; and **this is a
-React major with no visual QA behind it** — 1200 green tests cover the
-pure-logic layer and say nothing about whether the app renders. It is
-the one PR I would not label on the strength of CI alone.
+removed-API surface in the codebase. Two things I could not verify:
+the preview fetch dies on `CONNECT tunnel failed, 403`, so Netlify's
+build is confirmed but the page is not; and **this is a React major
+with no visual QA behind it** — the green suite covers the pure-logic
+layer and says nothing about whether the app renders. It is the one
+PR I would not label on the strength of CI alone.
 
 ## Roadmap position
 
-**Parts 0–3 are exhausted for me except 3.2, and 3.2 needs a decision
-before it can be built (Q23).** Every `[batch]` marker in `ROADMAP.md`
-is either PR'd or behind an unanswered question:
+**Corrected.** Every `[batch]` marker is PR'd, behind an unanswered
+question, or — in 0.8's case — apparently already shipped:
 
-- Part 0: done or PR'd.
+- Part 0: done or PR'd, **except 0.8**, which needs only a one-word
+  ruling (Q26), not build time.
 - Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
   Q22; 1.2 and 1.3 both implement the `[session]` 1.1.
 - Part 2: 2.2 is fully specified and buildable **the moment Q14's five
@@ -64,20 +67,20 @@ is either PR'd or behind an unanswered question:
   one message.
 - Part 3: 3.1 done (#17). 3.2's Accept is two device measurements I
   cannot make, and the fix lives inside `Schedule.jsx` (3940 lines, no
-  component tests, no visual QA). I am **not** building that blind
-  against an auto-deploying main. See Q23.
-- Part 4: opens with 4.1, a `[session]`. 4.2 is explicitly "letters in
-  order", so 4.2d sits behind 4.2a, 4.2b (`[session]`, Q19) and 4.2c.
-  4.3 is *also* "letters in order" — so 4.3b (needs a YoLink key
-  anyway), 4.3c, 4.3d and 4.3e all sit behind 4.3a, which is unblocked
-  in principle but needs a provider choice and an account from you
-  (Q25). Everything from 4.4 on sits behind 4.1.
+  component tests, no visual QA). See Q23.
+- Part 4: opens with 4.1, a `[session]`. 4.2 and 4.3 are both
+  "letters in order", so everything sits behind 4.2a/4.3a; 4.3a needs
+  a provider choice and an account from you (Q25).
 
 **Resume point:** the moment an INBOX answer lands, work it first. If
 that answer is Q14, start 2.2 from a failing test in
 `src/lib/schedule/`. If it is Q23, start 3.2's benchmark half. If it
-is Q25, start 4.3a's provider-agnostic half. If it is only Q13/Q2,
-rebase the merged branches out and shrink the queue.
+is Q25, start 4.3a's provider-agnostic half. If it is Q26 and the
+ruling is "stale, delete it", 0.8 closes with no code at all.
+
+**Process note to myself, banked so it survives:** re-derive the
+"everything is blocked" claim against ROADMAP.md every run instead of
+inheriting it. This run is the proof that inheriting it hides work.
 
 `ROADMAP.md` is still untouched across #6–#17 — **twelve** branches
 conflict on that one file. Q2 remains the cheapest answer you can give
@@ -86,7 +89,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-10T10:34Z against the GitHub API —
+comment or a review. Re-verified 08-10T11:36Z against the GitHub API —
 no state change on any, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -116,19 +119,43 @@ no state change on any, and `main` unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Ten days old. If you only merge one thing, merge this.
+  Eleven days old. If you only merge one thing, merge this.
 
 ## QUESTIONS
 
-No new questions this run — see "Last run" for why. Twenty are live
-and unchanged.
+Twenty-two live. Two are new this run (Q26, Q27) and both come from
+finding my own ledger wrong; Q9 is corrected rather than retired.
 
 Answer format, for a phone: one line each in INBOX.md under
 `## Answers`, e.g. `Q14: all five as recommended`, then bump
 `sequence:` to 2. Anything you bump wakes me on the next hour.
 
-Q13 (CARRIED, now the only thing that matters): will you drain the PR
-    queue? Twelve green PRs, and `main` has not advanced in 252
+Q26 (NEW, and it costs you one word): 0.8 "quick-convert thought →
+    event" is still an open `[batch]` line in ROADMAP.md, but the
+    behaviour ships on main today — Inbox has a working "Promote to
+    event" that prefills the EventEditor through the real creation
+    path. Either the line is stale, or "the missing third" meant
+    something I cannot see.
+  Recommendation: **it is stale — delete the 0.8 bullet.** If you
+  actually meant the *bell dropdown* should convert without opening
+  the Inbox page (`InboxBell.jsx` has no promote action), say
+  "0.8: bell" and I will build that instead; it is a genuinely small
+  batch. Say nothing and I will leave 0.8 untouched rather than guess.
+
+Q27 (NEW, one line, affects every future clone of mine): on main
+    `npm ci` fails under npm 10 — the lockfile carries a Vite 8
+    subtree that `package.json` (`vite: ^5.4.11`) never asks for, so
+    `esbuild@0.28.2` and all its platform packages resolve as
+    missing. CI never sees this because `check.yml` pins node 26.
+  Recommendation: **do nothing until #17 lands** — 3.1 moves
+  `package.json` to Vite 8 and makes the tree self-consistent, so
+  merging #17 fixes this as a side effect. I will keep using
+  `npm install --no-save`, which leaves the lockfile untouched. Tell
+  me if you would rather I stop working around it and surface it as
+  a red run instead.
+
+Q13 (CARRIED, still the only thing that matters): will you drain the
+    PR queue? Twelve green PRs, and `main` has not advanced in 253
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
@@ -138,34 +165,30 @@ Q13 (CARRIED, now the only thing that matters): will you drain the PR
   page, and label it only if the app looks right. If you only do one,
   do #6: it halves every CI run from here on.
 
-Q21 (CARRIED, decides whether I work at all; **Q1 now folded in**): I
+Q21 (CARRIED, decides whether I work at all; **Q1 folded in**): I
     overrode the startup new-input guard on 2026-08-01T03:36Z. It says
-    exit when INBOX has nothing new AND status is `waiting-on-james` —
-    both were true for eleven runs while `[batch]` work sat unblocked
-    and named in this file.
+    exit when INBOX has nothing new AND status is `waiting-on-james`.
   Recommendation: confirm the override, and let `waiting-on-james`
   mean "nothing I can do without an answer" — set only when no
-  unblocked `[batch]` item remains. I have used exactly that meaning
-  today, which is why the field is set now and was wrong then. If you
-  would rather I never override a guard, say so and I will idle
-  instead — but then the guard needs a third condition (`AND no
-  unblocked [batch] item remains`) or it deadlocks again. Answering
-  this also settles old Q1 (may I work `[batch]` items out of order
-  while `[session]`/`[James]` items wait) — say "no, hold" and I stop
-  doing that too.
+  unblocked `[batch]` item remains. **This run showed the real hazard
+  is not the guard, it is me asserting that condition without
+  re-checking it**; I have added a standing note to re-derive it every
+  run. If you would rather I never override a guard, say so and I will
+  idle instead — but then the guard needs a third condition (`AND no
+  unblocked [batch] item remains`) or it deadlocks. Answering this
+  also settles old Q1 (may I work `[batch]` items out of order while
+  `[session]`/`[James]` items wait).
 
-Q23 (CARRIED — the only thing between me and more build work): 3.2's
+Q23 (CARRIED — the largest block of build work I could start): 3.2's
     Accept is two measurements I cannot make ("no stale frame",
     "recompute under 1s on the reference phone"). May I replace it
     with an offline proxy: a node-side benchmark that times the day
     derivation over a synthetic worst-case day and **ratchets** like
     the coverage thresholds, plus one phone check by you at the end?
   Recommendation: yes. That converts 3.2 from unbuildable-by-me into a
-  normal batch, and the ratchet is the part that lasts — a wall-clock
-  number on your phone is a one-time observation, whereas a benchmark
-  in the suite catches the next regression. Two limits I will not
-  paper over: the benchmark measures `deriveDay`, not the React
-  render, so it cannot see the stale-frame half at all; and the
+  normal batch, and the ratchet is the part that lasts. Two limits I
+  will not paper over: the benchmark measures `deriveDay`, not the
+  React render, so it cannot see the stale-frame half at all; and the
   stale-frame fix lives in `Schedule.jsx` where I have no tests and no
   eyes. **If you want the stale-flash half, it should be a session
   with you watching, not an unattended batch.**
@@ -222,26 +245,20 @@ Q24 (CARRIED, pipeline — the next gate after Part 1): 4.1 is the
   fixes Tailwind UI/CSS, Stripe and a full Hugo rewrite — so the
   session is genuinely five questions, not fifteen. I would write the
   data-boundary one carefully: "direct Supabase read vs published
-  feed" constrains everything after it, and the admin app being
-  de-indexed at three layers is a real complication for a storefront
-  that must be indexable.
+  feed" constrains everything after it.
 
 Q25 (CARRIED, and the answer to "what can the agent build after Part
     3"): 4.3a is transactional email, `[batch]`, and the roadmap marks
     it **explicitly NOT blocked on site architecture** — 65 contacts
-    have been waiting since 06-02. It is the only `[batch]` item left
-    in the file that does not sit behind a session. It needs two
-    things from you: pick SendGrid or Mailgun, and create the account
-    + API key.
+    have been waiting since 06-02. It needs two things from you: pick
+    SendGrid or Mailgun, and create the account + API key.
   Recommendation: **Mailgun, whenever you next have five minutes** —
   this is the item that keeps me working once the PR queue drains. I
   recommend Mailgun over SendGrid mainly for the sandbox domain, which
   lets the whole send path be built and tested before DNS is touched.
   I can build the provider wiring, the order-confirmation template and
   the farm-updates half against a sandbox key; real domain
-  verification and the first send to 65 real people stay yours. Tell
-  me the provider and I will start on the parts that need no key at
-  all.
+  verification and the first send to 65 real people stay yours.
 
 Q19 (CARRIED, shortest real decision on the board, four batches behind
     it): 4.2b egg inventory, `[session, short]`. (a) count-before-
@@ -297,20 +314,18 @@ Q11 (CARRIED, gates 0.6 slice 3): does the day timeline still show
     placed on it*, not by its own dates.
   Recommendation: delete them in slice 3 — `deriveDay`'s `projects`
   array, Overview's "All day" rows and the Schedule header's
-  "· 2 projects" count. Dates are documented as light-touch metadata
-  that never feed scheduling; a project row on a day timeline is the
-  last place they still do. Say nothing and I keep them as they are.
+  "· 2 projects" count. Say nothing and I keep them as they are.
 
-Q9 (CARRIED — **lockfile half now RETIRED**, TZ half still live):
-    `check.yml` sets `TZ: America/New_York` at the workflow level,
-    `vitest.config.js` sets none, so a clean local `npm test` fails 2
-    tests in `src/lib/schedule/availability.test.js`.
+Q9 (CARRIED — **correction: the lockfile half is NOT retired**, see
+    Q27; the TZ half is unchanged): `check.yml` sets
+    `TZ: America/New_York` at the workflow level, `vitest.config.js`
+    sets none, so a clean local `npm test` fails 2 tests in
+    `src/lib/schedule/availability.test.js`. Re-measured this run:
+    2 failed / 1194 passed without `TZ`, 1196/1196 with it.
   Recommendation: add `env: { TZ: "America/New_York" }` to
   `vitest.config.js`'s `test` block — two lines, and farm time is
   genuinely domain, so the test config should say so rather than
-  leaning on the CI workflow. Say go and it ships. (The lockfile half
-  is gone: 3.1 removed esbuild from the tree entirely and `npm ci` now
-  works under both node majors. Do not regenerate anything.)
+  leaning on the CI workflow. Say go and it ships.
 
 Q7 (CARRIED): 0.13 — start capturing real sales at the next market
     with whatever ad-hoc prices you are charging.
