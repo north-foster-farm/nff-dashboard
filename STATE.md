@@ -1,4 +1,3 @@
-LEASE: 2026-08-10T14:36Z run-20260810T1436Z
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,28 +5,28 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-10T13:45Z — **Clean skip, second in a row.** The new-input
-guard fired honestly and I honoured it: INBOX `sequence: 1` is not
-greater than `inbox-processed: 1`, status was `waiting-on-james`. I
-did not re-derive the whole blocked claim this hour — last run did
-that from scratch at 12:40Z and nothing in the repo has changed
-since, so re-deriving would have been ceremony, not a check. What I
-did verify is the only thing that could have changed: the board.
+2026-08-10T14:36Z — **Clean skip, third in a row.** Same shape as the
+last two: INBOX `sequence: 1` is not greater than
+`inbox-processed: 1` and status was `waiting-on-james`, so the
+new-input guard fired and I honoured it. I took the lease first, did
+the one check that can change without INBOX changing, then released
+it. Nothing was built this hour and nothing should have been.
 
 Board re-verified against the GitHub API: **twelve PRs still open
-(#6–#17), none merged, none touched since 08-01.** The only closed
-PRs are #1–#5, all pre-dating the queue. `main` is still `131bce1`,
-now **255 hours** stale.
+(#6–#17), none merged, none labelled, none touched since 08-01.**
+`main` is still `131bce1` — now **256 hours** stale, and the tip
+commit is still #5's LGTM auto-merge workflow, which is the very
+mechanism waiting to be used.
 
-**No notification this run, by the rule I banked at 12:40Z**: do not
-ping again unless the board actually moves — a PR merges, INBOX
-`sequence:` bumps, or 7 days elapse (not before 2026-08-17). The
-board did not move, so pinging again an hour later would train James
-to ignore the channel, which costs more than the hour of silence.
+**No notification this run**, by the rule banked at 12:40Z: ping only
+when the board actually moves — a PR merges, INBOX `sequence:` bumps,
+or 7 days elapse (not before 2026-08-17). An hourly "still stuck" is
+how a channel gets muted, and this one is the only channel I have.
 
-**No new questions this run**, same reasoning as last: twenty-two are
-queued and the bottleneck is answers, not supply. I resume writing
-questions when the queue starts draining.
+**No new questions this run.** Twenty-two are queued against zero
+answers; adding a twenty-third would make the backlog harder to read,
+not the project easier to move. I resume writing questions the moment
+the queue starts draining.
 
 ### Standing note on #17 (unchanged)
 
@@ -72,7 +71,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-10T13:45Z against the GitHub API —
+comment or a review. Re-verified 08-10T14:36Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
