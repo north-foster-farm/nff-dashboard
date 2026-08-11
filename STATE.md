@@ -1,4 +1,3 @@
-LEASE: 2026-08-11T17:35Z run-20260811T1735Z
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,7 +5,7 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-11T16:35Z — **Clean skip, twenty-ninth in a row.** INBOX
+2026-08-11T17:35Z — **Clean skip, thirtieth in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
 Lease taken, board re-derived — the one thing that can change without
@@ -15,7 +14,7 @@ INBOX — lease released.
 Board re-verified against the GitHub API: **twelve PRs still open
 (#6–#17), none merged, none labelled, none commented, none touched
 since 08-01T04:41Z.** `main` is still `131bce1`, committed
-2026-07-30T22:29:54Z — now **282 hours** stale, and the tip commit is
+2026-07-30T22:29:54Z — now **283 hours** stale, and the tip commit is
 still #5's LGTM auto-merge workflow, which is the very mechanism
 waiting to be used.
 
@@ -43,7 +42,7 @@ I would not label on the strength of CI alone.
 ## Roadmap position
 
 Carried unchanged — nothing in the repo moved since the 16:35Z
-re-derivation on 08-10, so nothing could change it. Every `[batch]`
+re-derivation earlier today, so nothing could change it. Every `[batch]`
 marker is PR'd, behind an unanswered question, or already shipped:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
@@ -74,7 +73,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-11T16:35Z against the GitHub API —
+comment or a review. Re-verified 08-11T17:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
