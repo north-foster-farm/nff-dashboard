@@ -1,4 +1,3 @@
-LEASE: 2026-08-12T21:34:55Z run-2134
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,17 +5,18 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-12T20:35Z — **Clean skip, fifty-seventh in a row.** INBOX
+2026-08-12T21:35Z — **Clean skip, fifty-eighth in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
 Lease taken, board re-derived against the GitHub API — the one thing
 that can change without INBOX — lease released.
 
 Board unchanged: **twelve PRs still open (#6–#17), none merged, none
-labelled, none commented, none touched since 08-01T04:41Z.** `main`'s
-tip is still `131bce1`, #5's LGTM auto-merge workflow, committed
-2026-07-30T22:29:54Z and now **310 hours** stale. The mechanism that
-would drain the queue is still the newest thing on the branch.
+labelled, none commented, none touched since 08-01T04:41Z.** Every one
+of #6–#17 still reports its base at `131bce1`, so `main` is provably
+unmoved: #5's LGTM auto-merge workflow, committed 2026-07-30T22:29:54Z
+and now **311 hours** stale. The mechanism that would drain the queue
+is still the newest thing on the branch.
 
 **No notification this run**, by the rule banked at 08-10T12:40Z: ping
 only when the board actually moves — a PR merges, INBOX `sequence:`
@@ -42,7 +42,7 @@ I would not label on the strength of CI alone.
 
 ## Roadmap position
 
-Carried unchanged — nothing in the repo has moved since the 08-12T20:35Z
+Carried unchanged — nothing in the repo has moved since the 08-12T21:35Z
 re-derivation, so nothing could change it. Every `[batch]` marker is
 PR'd, behind an unanswered question, or already shipped:
 
@@ -74,7 +74,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-12T20:35Z against the GitHub API —
+comment or a review. Re-verified 08-12T21:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
