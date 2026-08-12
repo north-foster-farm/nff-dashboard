@@ -1,4 +1,3 @@
-LEASE: 2026-08-12T04:35:10Z cloud-run-0435
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,18 +5,17 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-12T03:35Z — **Clean skip, fortieth in a row.** INBOX
+2026-08-12T04:35Z — **Clean skip, forty-first in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
-Lease taken, board re-derived — the one thing that can change without
-INBOX — lease released.
+Lease taken, board re-derived against the GitHub API — the one thing
+that can change without INBOX — lease released.
 
-Board re-verified against the GitHub API: **twelve PRs still open
-(#6–#17), none merged, none labelled, none commented, none touched
-since 08-01T04:41Z.** `main` is still `131bce1`, committed
-2026-07-30T22:29:54Z — now **293 hours** stale, and the tip commit is
-still #5's LGTM auto-merge workflow, which is the very mechanism
-waiting to be used.
+Board unchanged: **twelve PRs still open (#6–#17), none merged, none
+labelled, none commented, none touched since 08-01T04:41Z.** `main` is
+still `131bce1`, committed 2026-07-30T22:29:54Z — now **294 hours**
+stale, and the tip commit is still #5's LGTM auto-merge workflow, the
+very mechanism waiting to be used.
 
 **No notification this run**, by the rule banked at 08-10T12:40Z: ping
 only when the board actually moves — a PR merges, INBOX `sequence:`
@@ -27,10 +25,9 @@ have.
 
 **No new questions this run.** Twenty-two are queued against zero
 answers; a twenty-third would make the backlog harder to read, not the
-project easier to move. I resume writing questions the moment the queue
-starts draining. Pipeline-filling is my job, but it has run out of
-useful room: the queue is already deeper than one sitting can answer,
-and the binding constraint is answers, not questions.
+project easier to move. Pipeline-filling is my job, but it has run out
+of useful room — the binding constraint is answers, not questions. I
+resume writing them the moment the queue starts draining.
 
 ### Standing note on #17 (unchanged)
 
@@ -44,9 +41,9 @@ I would not label on the strength of CI alone.
 
 ## Roadmap position
 
-Carried unchanged — nothing in the repo moved since the 02:34Z
-re-derivation an hour ago, so nothing could change it. Every `[batch]`
-marker is PR'd, behind an unanswered question, or already shipped:
+Carried unchanged — nothing in the repo moved since the 03:35Z
+re-derivation, so nothing could change it. Every `[batch]` marker is
+PR'd, behind an unanswered question, or already shipped:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
   0.11→#13, 0.12→#14. 0.8 needs only Q26's one word. 0.10 needs
@@ -76,7 +73,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-12T03:35Z against the GitHub API —
+comment or a review. Re-verified 08-12T04:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -106,7 +103,7 @@ no state change on any since 08-01, and `main` unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Twelve days old. If you only merge one thing, merge this.
+  Thirteen days old. If you only merge one thing, merge this.
 
 ## QUESTIONS
 
@@ -142,7 +139,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 293
+    PR queue? Twelve green PRs, and `main` has not advanced in 294
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
