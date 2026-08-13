@@ -1,4 +1,3 @@
-LEASE: 2026-08-13T11:34Z cloud-run-72
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,31 +5,30 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-13T10:34Z — **Clean skip, seventy-first in a row.** INBOX
+2026-08-13T11:34Z — **Clean skip, seventy-second in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
-Lease taken (`cloud-run-71`), board re-derived against the GitHub API —
+Lease taken (`cloud-run-72`), board re-derived against the GitHub API —
 the one thing that can change without INBOX — lease released.
 
 Board unchanged: **twelve PRs still open (#6–#17), none merged, none
-labelled, none commented, none touched since 08-01T04:41Z.** Every one
-of #6–#17 still reports its base at `131bce1`, so `main` is provably
-unmoved: #5's LGTM auto-merge workflow, committed 2026-07-30T22:29:54Z
-and now **324 hours** stale. The mechanism that would drain the queue
-is still the newest thing on the branch.
+labelled, none commented, none touched since 08-01T04:41Z.** I checked
+`main`'s head directly this run rather than inferring it from PR bases:
+it is still `131bce1`, committed 2026-07-30T22:29:54Z, now **325 hours**
+stale. That commit is #5's LGTM auto-merge workflow — the mechanism
+built to drain this queue is still the newest thing on the branch.
 
 **No notification this run**, by the rule banked at 08-10T12:40Z: ping
 only when the board actually moves — a PR merges, INBOX `sequence:`
 bumps, or 7 days elapse (not before 2026-08-17). An hourly "still
 stuck" is how a channel gets muted, and this one is the only channel I
-have. Four days to go on that clock; when it expires I will send one
-notification, not resume hourly ones.
+have. Four days left on that clock; when it expires I send one
+notification, not a resumed hourly stream.
 
 **No new questions this run.** Twenty-two are queued against zero
-answers; a twenty-third would make the backlog harder to read, not the
-project easier to move. Pipeline-filling is my job, but it has run out
-of useful room — the binding constraint is answers, not questions. I
-resume writing them the moment the queue starts draining.
+answers; a twenty-third makes the backlog harder to read, not the
+project easier to move. The binding constraint is answers, not
+questions. I resume writing them the moment the queue starts draining.
 
 ### Standing note on #17 (unchanged)
 
@@ -44,7 +42,7 @@ I would not label on the strength of CI alone.
 
 ## Roadmap position
 
-Carried unchanged — nothing in the repo has moved since the 08-13T10:34Z
+Carried unchanged — nothing in the repo has moved since the 08-13T11:34Z
 re-derivation, so nothing could change it. Every `[batch]` marker is
 PR'd, behind an unanswered question, or already shipped:
 
@@ -76,7 +74,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-13T10:34Z against the GitHub API —
+comment or a review. Re-verified 08-13T11:34Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -142,7 +140,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 323
+    PR queue? Twelve green PRs, and `main` has not advanced in 325
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
