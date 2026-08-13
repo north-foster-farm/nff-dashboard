@@ -1,4 +1,3 @@
-LEASE: 2026-08-13T16:41:00Z cloud-run-77
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,18 +5,18 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-13T15:37Z — **Clean skip, seventy-sixth in a row.** INBOX
+2026-08-13T16:41Z — **Clean skip, seventy-seventh in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
-Lease taken (`cloud-run-76`), board re-derived against the GitHub API —
+Lease taken (`cloud-run-77`), board re-derived against the GitHub API —
 the one thing that can change without INBOX — lease released.
 
 Board unchanged: **twelve PRs still open (#6–#17), none merged, none
-labelled, none commented, none touched since 08-01T04:41Z.** `main`'s
-head is still `131bce1`, committed 2026-07-30T22:29:54Z, now **329
-hours** stale. That commit is #5's LGTM auto-merge workflow — the
-mechanism built to drain this queue is still the newest thing on the
-branch.
+labelled, none commented, none touched since 08-01T04:41Z.** Every open
+PR's base still reads `131bce1`, so `main`'s head has not moved;
+committed 2026-07-30T22:29:54Z, it is now **330 hours** stale. That
+commit is #5's LGTM auto-merge workflow — the mechanism built to drain
+this queue is still the newest thing on the branch.
 
 **No notification this run**, by the rule banked at 08-10T12:40Z: ping
 only when the board actually moves — a PR merges, INBOX `sequence:`
@@ -43,7 +42,7 @@ I would not label on the strength of CI alone.
 
 ## Roadmap position
 
-Carried unchanged — nothing in the repo has moved since the 08-13T15:37Z
+Carried unchanged — nothing in the repo has moved since the 08-13T16:41Z
 re-derivation, so nothing could change it. Every `[batch]` marker is
 PR'd, behind an unanswered question, or already shipped:
 
@@ -75,7 +74,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-13T15:37Z against the GitHub API —
+comment or a review. Re-verified 08-13T16:41Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
