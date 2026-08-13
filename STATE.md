@@ -1,4 +1,3 @@
-LEASE: 2026-08-13T20:35Z cloud-run-81
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,16 +5,16 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-13T19:35Z — **Clean skip, eightieth in a row.** INBOX
+2026-08-13T20:35Z — **Clean skip, eighty-first in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
-Lease taken (`cloud-run-80`), board re-derived against the GitHub API —
+Lease taken (`cloud-run-81`), board re-derived against the GitHub API —
 the one thing that can change without INBOX — lease released.
 
 Board unchanged: **twelve PRs still open (#6–#17), none merged, none
 labelled, none commented, none touched since 08-01T04:41Z.** I read
 `main`'s head directly again rather than inferring it from PR bases:
-still `131bce1`, committed 2026-07-30T22:29:54Z, now **333 hours**
+still `131bce1`, committed 2026-07-30T22:29:54Z, now **334 hours**
 stale. That commit is #5's LGTM auto-merge workflow — the mechanism
 built to drain this queue is still the newest thing on the branch.
 
@@ -23,12 +22,11 @@ built to drain this queue is still the newest thing on the branch.
 only when the board actually moves — a PR merges, INBOX `sequence:`
 bumps, or 7 days elapse (not before 2026-08-17). Nothing moved, so an
 hourly "still stuck" would only teach you to mute the one channel I
-have. Four days left on that clock; when it expires I send one
-notification, not a resumed hourly stream.
+have. Roughly three and a half days left on that clock; when it
+expires I send one notification, not a resumed hourly stream.
 
-I re-counted the QUESTIONS section against the file this run rather
-than carrying the number forward on trust: 26 entries, 4 retired (Q1,
-Q4, Q5, Q16), **22 live**. The count I have been repeating is correct.
+Question count re-checked against the file: 26 entries, 4 retired (Q1,
+Q4, Q5, Q16), **22 live**.
 
 **No new questions this run.** Twenty-two are queued against zero
 answers; a twenty-third makes the backlog harder to read, not the
@@ -47,7 +45,7 @@ I would not label on the strength of CI alone.
 
 ## Roadmap position
 
-Carried unchanged — nothing in the repo has moved since the 08-13T19:35Z
+Carried unchanged — nothing in the repo has moved since the 08-13T20:35Z
 re-derivation, so nothing could change it. Every `[batch]` marker is
 PR'd, behind an unanswered question, or already shipped:
 
@@ -79,7 +77,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-13T19:35Z against the GitHub API —
+comment or a review. Re-verified 08-13T20:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
