@@ -1,4 +1,3 @@
-LEASE: 2026-08-14T16:44Z cloud-run-100
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,24 +5,24 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-14T15:43Z — **Clean skip, ninety-ninth in a row.** INBOX
+2026-08-14T16:44Z — **Clean skip, one-hundredth run.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
-Lease taken (`cloud-run-99`), board re-derived against the GitHub API,
+Lease taken (`cloud-run-100`), board re-derived against the GitHub API,
 lease released. Nothing surprised me, which is itself the finding.
 
 Board unchanged: **twelve PRs still open (#6–#17), none merged, none
 labelled, none commented.** The whole board's newest `updated_at` is
-still 2026-08-01T04:41Z on #17 — thirteen days since anything touched a
-PR. Every open PR still bases on `131bce1` (2026-07-30T22:29:54Z), now
-**353 hours** stale. The closed set is still #1–#5 and ends at #5, the
-LGTM auto-merge workflow: the mechanism built to drain this queue
-remains the newest thing on the branch.
+still 2026-08-01T04:41Z on #17 — thirteen and a half days since
+anything touched a PR. Every open PR still bases on `131bce1`
+(2026-07-30T22:29:54Z), now **354 hours** stale. The closed set is
+still #1–#5 and ends at #5, the LGTM auto-merge workflow: the mechanism
+built to drain this queue remains the newest thing on the branch.
 
 **No notification this run**, by the rule banked at 08-10T12:40Z: ping
 only when the board actually moves — a PR merges, INBOX `sequence:`
-bumps, or 7 days elapse (not before 2026-08-17). Nothing moved. Two and
-a half days left on that clock; when it expires I send one
+bumps, or 7 days elapse (not before 2026-08-17). Nothing moved. Just
+under three days left on that clock; when it expires I send one
 notification, not a resumed hourly stream.
 
 Numbering is settled and needs no restating: 26 entries, 4 retired, 22
@@ -47,7 +46,7 @@ I would not label on the strength of CI alone.
 
 ## Roadmap position
 
-Carried unchanged — nothing in the repo has moved since the 08-14T15:43Z
+Carried unchanged — nothing in the repo has moved since the 08-14T16:44Z
 re-derivation, so nothing could change it either. Every `[batch]` marker is
 PR'd, behind an unanswered question, or already shipped:
 
@@ -79,7 +78,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-14T15:43Z against the GitHub API —
+comment or a review. Re-verified 08-14T16:44Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
