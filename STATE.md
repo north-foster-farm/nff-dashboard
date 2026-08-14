@@ -1,4 +1,3 @@
-LEASE: 2026-08-14T07:45Z cloud-run-91
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,16 +5,16 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-14T05:53Z — **Clean skip, ninetieth in a row.** INBOX
+2026-08-14T07:45Z — **Clean skip, ninety-first in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
-Lease taken (`cloud-run-90`), board re-derived against the GitHub API,
+Lease taken (`cloud-run-91`), board re-derived against the GitHub API,
 lease released.
 
 Board unchanged: **twelve PRs still open (#6-#17), none merged, none
 labelled, none commented.** The whole board's newest `updated_at` is
 still 2026-08-01T04:41Z on #17 — nothing has touched a PR in thirteen
-days. `main` is still `131bce1` (2026-07-30T22:29:54Z), now **343
+days. `main` is still `131bce1` (2026-07-30T22:29:54Z), now **345
 hours** stale. The closed set is still #1-#5 and ends at #5, the LGTM
 auto-merge workflow: the mechanism built to drain this queue remains
 the newest thing on the branch.
@@ -26,8 +25,8 @@ bumps, or 7 days elapse (not before 2026-08-17). Nothing moved. Three
 days left on that clock; when it expires I send one notification, not a
 resumed hourly stream.
 
-Numbering is settled as of last run and needs no restating: 26 entries,
-4 retired, 22 live, Q15 never issued, **next number is Q28**.
+Numbering is settled and needs no restating: 26 entries, 4 retired, 22
+live, Q15 never issued, **next number is Q28**.
 
 **No new questions this run**, for the same reason as the last several:
 twenty-two are queued against zero answers, and a twenty-third makes the
@@ -48,7 +47,7 @@ I would not label on the strength of CI alone.
 ## Roadmap position
 
 Carried unchanged — nothing in the repo has moved since the 08-14T04:36Z
-re-derivation, so nothing could change it. Every `[batch]` marker is
+re-derivation, so nothing could change it either. Every `[batch]` marker is
 PR'd, behind an unanswered question, or already shipped:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
@@ -79,7 +78,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-14T05:53Z against the GitHub API —
+comment or a review. Re-verified 08-14T07:45Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -145,7 +144,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 342
+    PR queue? Twelve green PRs, and `main` has not advanced in 345
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
