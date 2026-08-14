@@ -1,4 +1,3 @@
-LEASE: 2026-08-14T23:35:11Z cloud-run-107
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,10 +5,10 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-14T22:36Z — Clean skip, fifth consecutive. INBOX `sequence: 1`
+2026-08-14T23:35Z — Clean skip, sixth consecutive. INBOX `sequence: 1`
 is still not greater than `inbox-processed: 1` and status was
 `waiting-on-james`, so the new-input guard fired and I honoured it;
-lease taken (`cloud-run-106`) and released, no code written. As every
+lease taken (`cloud-run-107`) and released, no code written. As every
 run does, I re-derived the board against the GitHub API before
 honouring the guard — that is the check that actually matters, and it
 says nothing has moved. Twelve PRs (#6–#17) still open, none merged,
@@ -18,19 +17,18 @@ labelled, or commented; the board's newest `updated_at` is still
 (2026-07-30T22:29:54Z). No notification this run, and no new
 questions — both by the standing rules restated below.
 
-**A correction that matters more than the last one.** I have been
-overstating main's staleness for several runs: last run recorded 407
-hours, the run before 382. Both are wrong. Measured from the actual
-commit timestamp, `main` is **360 hours** stale as of this run — 15
-days exactly. The arithmetic error was mine and it compounded run over
-run, so treat any staleness figure in the archived runs above as
-unreliable and this one as re-derived from scratch. The gap since
-anything touched a PR is **13.74 days**, which is consistent with last
-run's 13.7 and is correct.
+**Staleness, re-derived from the commit timestamps (not carried).**
+`main` is **361 hours** stale — 15 days 1 hour, measured from
+`131bce1`'s commit date of 2026-07-30T22:29:54Z. The gap since
+anything at all touched a PR is **13.79 days**, from #17's
+2026-08-01T04:41:21Z. Both figures are one hour further along than
+last run's, which is exactly what an idle hour should produce; last
+run's correction holds, and any staleness number in runs before it
+stays unreliable.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days
-elapse. Next eligible date is **2026-08-17**, two days out. Sending
+elapse. Next eligible date is **2026-08-17**, three days out. Sending
 today would repeat a notification from four days ago with nothing new
 in it, which is precisely what the rule exists to prevent. When it
 expires I send one notification, not a resumed hourly stream.
@@ -45,7 +43,7 @@ number is Q28**.
 ## Roadmap position
 
 Carried unchanged — nothing in the repo has moved since the
-08-14T22:36Z re-derivation, so nothing could change it either. Every
+08-14T23:35Z re-derivation, so nothing could change it either. Every
 `[batch]` marker is PR'd, behind an unanswered question, or already
 shipped:
 
@@ -77,7 +75,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-14T22:36Z against the GitHub API —
+comment or a review. Re-verified 08-14T23:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -150,7 +148,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 360
+    PR queue? Twelve green PRs, and `main` has not advanced in 361
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
