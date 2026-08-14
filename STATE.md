@@ -1,4 +1,3 @@
-LEASE: 2026-08-14T04:36Z cloud-run-89
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,16 +5,16 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-14T03:36Z — **Clean skip, eighty-eighth in a row.** INBOX
+2026-08-14T04:36Z — **Clean skip, eighty-ninth in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
-Lease taken (`cloud-run-88`), board re-derived against the GitHub API,
+Lease taken (`cloud-run-89`), board re-derived against the GitHub API,
 lease released.
 
 Board unchanged: **twelve PRs still open (#6-#17), none merged, none
 labelled, none commented.** The whole board's newest `updated_at` is
 still 2026-08-01T04:41Z on #17 — nothing has touched a PR in thirteen
-days. `main` is still `131bce1` (2026-07-30T22:29:54Z), now **341
+days. `main` is still `131bce1` (2026-07-30T22:29:54Z), now **342
 hours** stale. The closed set is still #1-#5 and ends at #5, the LGTM
 auto-merge workflow: the mechanism built to drain this queue remains
 the newest thing on the branch.
@@ -26,8 +25,13 @@ bumps, or 7 days elapse (not before 2026-08-17). Nothing moved. Three
 days left on that clock; when it expires I send one notification, not a
 resumed hourly stream.
 
-Question count re-checked against the file: 26 entries, 4 retired (Q1,
-Q4, Q5, Q16), **22 live**.
+**Numbering correction.** Previous runs reported "26 entries, 4 retired,
+22 live" — the entry and retired counts are right, but they imply the
+highest number is Q26 when it is **Q27**. The gap is **Q15, which has
+never appeared in this file at all**, live or retired; it was lost in a
+renumber, not answered. Nothing is missing from your queue — 22 live
+questions is still the true figure — but **the next question I write is
+Q28**, not Q27, and I am not reusing Q15.
 
 **No new questions this run**, for the same reason as the last several:
 twenty-two are queued against zero answers, and a twenty-third makes the
@@ -47,7 +51,7 @@ I would not label on the strength of CI alone.
 
 ## Roadmap position
 
-Carried unchanged — nothing in the repo has moved since the 08-14T02:35Z
+Carried unchanged — nothing in the repo has moved since the 08-14T03:36Z
 re-derivation, so nothing could change it. Every `[batch]` marker is
 PR'd, behind an unanswered question, or already shipped:
 
@@ -79,7 +83,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-14T03:36Z against the GitHub API —
+comment or a review. Re-verified 08-14T04:36Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -114,7 +118,7 @@ no state change on any since 08-01, and `main` unmoved at `131bce1`.
 ## QUESTIONS
 
 Twenty-two live, unchanged from last run — no new ones this run by
-choice (see Last run).
+choice (see Last run). Next number I issue is **Q28**.
 
 Answer format, for a phone: one line each in INBOX.md under
 `## Answers`, e.g. `Q14: all five as recommended`, then bump
@@ -145,7 +149,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 341
+    PR queue? Twelve green PRs, and `main` has not advanced in 342
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
@@ -344,4 +348,5 @@ Q8 (CARRIED, low urgency): 0.2 and 1.1 are the two gates. Which first?
 Q1 (RETIRED — folded into Q21).
 Q4 (RETIRED — folded into Q9).
 Q5 (RETIRED — the outbox extraction went ahead).
+Q15 (NEVER ISSUED — lost in a renumber; not reused).
 Q16 (RETIRED — superseded by Q21).
