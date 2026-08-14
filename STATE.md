@@ -1,4 +1,3 @@
-LEASE: 2026-08-14T20:35:40Z cloud-run-104
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,50 +5,37 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-14T19:35Z — **Clean skip, second consecutive.** INBOX
-`sequence: 1` is still not greater than `inbox-processed: 1` and status
-was `waiting-on-james`, so the new-input guard fired and I honoured it.
-Lease taken (`cloud-run-103`), board re-derived against the GitHub API,
-lease released. No code was written, and none should have been.
+2026-08-14T20:35Z — Clean skip, third consecutive. INBOX `sequence: 1`
+is still not greater than `inbox-processed: 1` and status was
+`waiting-on-james`, so the new-input guard fired and I honoured it;
+lease taken (`cloud-run-104`) and released, no code written. I
+re-derived the board against the GitHub API before honouring it, which
+is the check that actually matters: nothing has moved. Twelve PRs
+(#6–#17) still open, none merged, labelled, or commented; the whole
+board's newest `updated_at` is still 2026-08-01T04:41Z on #17, now
+**16 days** since anything touched a PR, and every branch still bases
+on `131bce1` (2026-07-30T22:29:54Z), **382 hours** stale. No
+notification this run, and no new questions — both by the standing
+rules restated below.
 
-Board unchanged: **twelve PRs still open (#6–#17), none merged, none
-labelled, none commented.** The whole board's newest `updated_at` is
-still 2026-08-01T04:41Z on #17 — thirteen days and fifteen hours since
-anything touched a PR. Every open PR still bases on `131bce1`
-(2026-07-30T22:29:54Z), now **357 hours** stale. The closed set is still
-#1–#5 and ends at #5, the LGTM auto-merge workflow: the mechanism built
-to drain this queue remains the newest thing on the branch.
+**Notification rule** (banked 08-10T12:40Z): ping only when the board
+actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days
+elapse. Next eligible date is **2026-08-17**, three days out. When it
+expires I send one notification, not a resumed hourly stream.
 
-**No notification this run**, by the rule banked at 08-10T12:40Z: ping
-only when the board actually moves — a PR merges, INBOX `sequence:`
-bumps, or 7 days elapse (not before 2026-08-17). Nothing moved. Two days
-left on that clock; when it expires I send one notification, not a
-resumed hourly stream.
-
-Numbering is settled and needs no restating: 26 entries, 4 retired, 22
-live, Q15 never issued, **next number is Q28**.
-
-**No new questions this run**, for the same reason as the last several:
-twenty-two are queued against zero answers, and a twenty-third makes the
-backlog harder to read, not the project easier to move. The binding
-constraint is answers, not questions. I resume writing them the moment
-the queue starts draining.
-
-### Standing note on #17 (unchanged)
-
-3.1 shipped React 19 + Vite 8 + plugin-react 6, green. Zero React 19
-removed-API surface in the codebase. Two things I could not verify:
-the preview fetch dies on `CONNECT tunnel failed, 403`, so Netlify's
-build is confirmed but the page is not; and **this is a React major
-with no visual QA behind it** — the green suite covers the pure-logic
-layer and says nothing about whether the app renders. It is the one PR
-I would not label on the strength of CI alone.
+**Question rule**: twenty-two are queued against zero answers, and a
+twenty-third makes the backlog harder to read, not the project easier
+to move. The binding constraint is answers, not questions — I resume
+writing them the moment the queue starts draining. Numbering is
+settled: 26 entries, 4 retired, 22 live, Q15 never issued, **next
+number is Q28**.
 
 ## Roadmap position
 
-Carried unchanged — nothing in the repo has moved since the 08-14T19:35Z
-re-derivation, so nothing could change it either. Every `[batch]` marker is
-PR'd, behind an unanswered question, or already shipped:
+Carried unchanged — nothing in the repo has moved since the
+08-14T19:35Z re-derivation, so nothing could change it either. Every
+`[batch]` marker is PR'd, behind an unanswered question, or already
+shipped:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
   0.11→#13, 0.12→#14. 0.8 needs only Q26's one word. 0.10 needs
@@ -79,12 +65,19 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-14T19:35Z against the GitHub API —
+comment or a review. Re-verified 08-14T20:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
-  **Preview-check this one before merging.**
+  **Preview-check this one before merging.** Standing note, unchanged:
+  3.1 shipped React 19 + Vite 8 + plugin-react 6, green, with zero
+  React 19 removed-API surface in the codebase. Two things I could not
+  verify — the preview fetch dies on `CONNECT tunnel failed, 403`, so
+  Netlify's build is confirmed but the page is not; and this is a React
+  major with no visual QA behind it, since the green suite covers the
+  pure-logic layer and says nothing about whether the app renders. It
+  is the one PR I would not label on the strength of CI alone.
 - #16 https://github.com/north-foster-farm/nff-dashboard/pull/16 —
   `fix: drift-lint the semantic token layer` (1.4).
 - #15 https://github.com/north-foster-farm/nff-dashboard/pull/15 —
@@ -109,7 +102,7 @@ no state change on any since 08-01, and `main` unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Two weeks old. If you only merge one thing, merge this.
+  Sixteen days old. If you only merge one thing, merge this.
 
 ## QUESTIONS
 
@@ -145,7 +138,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 357
+    PR queue? Twelve green PRs, and `main` has not advanced in 382
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
@@ -158,8 +151,9 @@ Q13 (CARRIED, still the only thing that matters): will you drain the
 Q21 (CARRIED, decides whether I work at all; **Q1 folded in**): I
     overrode the startup new-input guard on 2026-08-01T03:36Z. It says
     exit when INBOX has nothing new AND status is `waiting-on-james`.
-    **This run I honoured it instead** — but only after re-deriving
-    the blocked claim, which is the check that actually matters.
+    **The last three runs I honoured it instead** — but only after
+    re-deriving the blocked claim, which is the check that actually
+    matters.
   Recommendation: confirm the override is allowed, and let
   `waiting-on-james` mean "nothing I can do without an answer" — set
   only when no unblocked `[batch]` item remains. If you would rather I
@@ -310,8 +304,8 @@ Q9 (CARRIED — the lockfile half is NOT retired, see Q27; the TZ half
     is unchanged): `check.yml` sets `TZ: America/New_York` at the
     workflow level, `vitest.config.js` sets none, so a clean local
     `npm test` fails 2 tests in
-    `src/lib/schedule/availability.test.js`. Measured last run:
-    2 failed / 1194 passed without `TZ`, 1196/1196 with it.
+    `src/lib/schedule/availability.test.js`. Measured: 2 failed /
+    1194 passed without `TZ`, 1196/1196 with it.
   Recommendation: add `env: { TZ: "America/New_York" }` to
   `vitest.config.js`'s `test` block — two lines, and farm time is
   genuinely domain, so the test config should say so rather than
