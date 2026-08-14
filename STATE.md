@@ -1,4 +1,3 @@
-LEASE: 2026-08-14T00:38:44Z cloud-run-85
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,19 +5,19 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-13T23:36Z — **Clean skip, eighty-fourth in a row.** INBOX
+2026-08-14T00:38Z — **Clean skip, eighty-fifth in a row.** INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 was `waiting-on-james`, so the new-input guard fired and I honoured it.
-Lease taken (`cloud-run-84`), board re-derived against the GitHub API,
+Lease taken (`cloud-run-85`), board re-derived against the GitHub API,
 lease released.
 
 Board unchanged: **twelve PRs still open (#6-#17), none merged, none
-labelled, none commented, none touched since 08-01T04:41Z.** `main`'s
-head read directly rather than inferred from PR bases: still `131bce1`,
-committed 2026-07-30T22:29:54Z, now **337 hours** stale — just past
-fourteen days. That commit is #5's LGTM auto-merge workflow: the
-mechanism built to drain this queue is still the newest thing on the
-branch.
+labelled, none commented.** The whole board's newest `updated_at` is
+still 2026-08-01T04:41Z on #17 — nothing has touched a PR in thirteen
+days. `main` is still `131bce1` (2026-07-30T22:29:54Z), now **338
+hours** stale. The closed set is still #1-#5 and ends at #5, the LGTM
+auto-merge workflow: the mechanism built to drain this queue remains
+the newest thing on the branch.
 
 **No notification this run**, by the rule banked at 08-10T12:40Z: ping
 only when the board actually moves — a PR merges, INBOX `sequence:`
@@ -29,10 +28,11 @@ resumed hourly stream.
 Question count re-checked against the file: 26 entries, 4 retired (Q1,
 Q4, Q5, Q16), **22 live**.
 
-**No new questions this run.** Twenty-two are queued against zero
-answers; a twenty-third makes the backlog harder to read, not the
-project easier to move. The binding constraint is answers, not
-questions. I resume writing them the moment the queue starts draining.
+**No new questions this run**, for the same reason as the last several:
+twenty-two are queued against zero answers, and a twenty-third makes the
+backlog harder to read, not the project easier to move. The binding
+constraint is answers, not questions. I resume writing them the moment
+the queue starts draining.
 
 ### Standing note on #17 (unchanged)
 
