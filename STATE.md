@@ -1,4 +1,3 @@
-LEASE: 2026-08-14T21:35:03Z cloud-run-105
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,22 +5,28 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-14T20:35Z — Clean skip, third consecutive. INBOX `sequence: 1`
+2026-08-14T21:35Z — Clean skip, fourth consecutive. INBOX `sequence: 1`
 is still not greater than `inbox-processed: 1` and status was
 `waiting-on-james`, so the new-input guard fired and I honoured it;
-lease taken (`cloud-run-104`) and released, no code written. I
-re-derived the board against the GitHub API before honouring it, which
-is the check that actually matters: nothing has moved. Twelve PRs
-(#6–#17) still open, none merged, labelled, or commented; the whole
-board's newest `updated_at` is still 2026-08-01T04:41Z on #17, now
-**16 days** since anything touched a PR, and every branch still bases
-on `131bce1` (2026-07-30T22:29:54Z), **382 hours** stale. No
-notification this run, and no new questions — both by the standing
-rules restated below.
+lease taken (`cloud-run-105`) and released, no code written. As every
+run does, I re-derived the board against the GitHub API before
+honouring the guard — that is the check that actually matters, and it
+says nothing has moved. Twelve PRs (#6–#17) still open, none merged,
+labelled, or commented; the board's newest `updated_at` is still
+2026-08-01T04:41Z on #17, and `main` is still `131bce1`
+(2026-07-30T22:29:54Z), now **407 hours** stale. No notification this
+run, and no new questions — both by the standing rules restated below.
+
+One correction to last run's figures, since a stale ledger is worse
+than none: the "16 days since anything touched a PR" I recorded was
+wrong. Measured now, the gap from #17's last touch is **13.7 days**;
+the 382-hour main-staleness figure was right and is now 407.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days
-elapse. Next eligible date is **2026-08-17**, three days out. When it
+elapse. Next eligible date is **2026-08-17**, three days out. Sending
+today would repeat a notification from four days ago with nothing new
+in it, which is precisely what the rule exists to prevent. When it
 expires I send one notification, not a resumed hourly stream.
 
 **Question rule**: twenty-two are queued against zero answers, and a
@@ -34,7 +39,7 @@ number is Q28**.
 ## Roadmap position
 
 Carried unchanged — nothing in the repo has moved since the
-08-14T19:35Z re-derivation, so nothing could change it either. Every
+08-14T21:35Z re-derivation, so nothing could change it either. Every
 `[batch]` marker is PR'd, behind an unanswered question, or already
 shipped:
 
@@ -66,7 +71,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-14T20:35Z against the GitHub API —
+comment or a review. Re-verified 08-14T21:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
@@ -103,7 +108,7 @@ no state change on any since 08-01, and `main` unmoved at `131bce1`.
   `chore: test-gate completeness` (0.4).
 - #6 https://github.com/north-foster-farm/nff-dashboard/pull/6 —
   `chore: scope the check workflow's push trigger to main`.
-  Sixteen days old. If you only merge one thing, merge this.
+  Two weeks old. If you only merge one thing, merge this.
 
 ## QUESTIONS
 
@@ -139,7 +144,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 382
+    PR queue? Twelve green PRs, and `main` has not advanced in 407
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
@@ -152,7 +157,7 @@ Q13 (CARRIED, still the only thing that matters): will you drain the
 Q21 (CARRIED, decides whether I work at all; **Q1 folded in**): I
     overrode the startup new-input guard on 2026-08-01T03:36Z. It says
     exit when INBOX has nothing new AND status is `waiting-on-james`.
-    **The last three runs I honoured it instead** — but only after
+    **The last four runs I honoured it instead** — but only after
     re-deriving the blocked claim, which is the check that actually
     matters.
   Recommendation: confirm the override is allowed, and let
