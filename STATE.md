@@ -1,4 +1,3 @@
-LEASE: 2026-08-15T00:34:56Z cloud-run-108
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,32 +5,42 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-14T23:35Z — Clean skip, sixth consecutive. INBOX `sequence: 1`
-is still not greater than `inbox-processed: 1` and status was
-`waiting-on-james`, so the new-input guard fired and I honoured it;
-lease taken (`cloud-run-107`) and released, no code written. As every
-run does, I re-derived the board against the GitHub API before
-honouring the guard — that is the check that actually matters, and it
-says nothing has moved. Twelve PRs (#6–#17) still open, none merged,
-labelled, or commented; the board's newest `updated_at` is still
-2026-08-01T04:41:21Z on #17, and `main` is still `131bce1`
-(2026-07-30T22:29:54Z). No notification this run, and no new
-questions — both by the standing rules restated below.
+2026-08-15T00:35Z — Clean skip, seventh consecutive. INBOX
+`sequence: 1` is still not greater than `inbox-processed: 1` and
+status was `waiting-on-james`, so the new-input guard fired and I
+honoured it; lease taken (`cloud-run-108`) and released, no code
+written. Before honouring it I did the two checks that actually
+matter rather than carrying last run's word for them: re-derived the
+board against the GitHub API, and re-derived the "nothing unblocked"
+claim by re-reading every marker in `ROADMAP.md` on main. Both hold.
+Twelve PRs (#6–#17) still open, none merged, labelled or commented;
+newest `updated_at` is still 2026-08-01T04:41:21Z on #17, and `main`
+is still `131bce1` (2026-07-30T22:29:54Z). No notification and no new
+questions this run — both by the standing rules restated below.
 
-**Staleness, re-derived from the commit timestamps (not carried).**
-`main` is **361 hours** stale — 15 days 1 hour, measured from
-`131bce1`'s commit date of 2026-07-30T22:29:54Z. The gap since
-anything at all touched a PR is **13.79 days**, from #17's
-2026-08-01T04:41:21Z. Both figures are one hour further along than
-last run's, which is exactly what an idle hour should produce; last
-run's correction holds, and any staleness number in runs before it
-stays unreliable.
+**The blocked claim, re-derived not carried.** Walking every
+`[batch]` marker in ROADMAP.md against the open PRs: 0.1→#6, 0.4→#7,
+0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12, 0.11→#13, 1.4→#16, 1.5→#15,
+3.1→#17. Of what remains, 0.2's fix wave waits on its `[session]`
+walkthrough, 1.2 and 1.3 both implement the `[session]` 1.1, 2.2
+executes 2.1 (Q14), 3.2 is Q23, 2.3 is Q17, and every Part 4 batch
+except 4.3a sits behind the `[session]` 4.1 — 4.3a itself needs a
+provider and an account from you (Q25). There is no unblocked
+`[batch]` item on the board. That is the finding, and it is the same
+finding as last run.
+
+**Staleness, re-derived from the commit timestamps.** `main` is
+**362 hours** stale — 15 days 2 hours, measured from `131bce1`'s
+commit date of 2026-07-30T22:29:54Z. The gap since anything at all
+touched a PR is **13.83 days**, from #17's 2026-08-01T04:41:21Z. Both
+are one hour further along than last run's, which is exactly what an
+idle hour should produce.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days
-elapse. Next eligible date is **2026-08-17**, three days out. Sending
-today would repeat a notification from four days ago with nothing new
-in it, which is precisely what the rule exists to prevent. When it
+elapse. Next eligible is **2026-08-17**, two days out. Sending today
+would repeat a notification from five days ago with nothing new in
+it, which is precisely what the rule exists to prevent. When it
 expires I send one notification, not a resumed hourly stream.
 
 **Question rule**: twenty-two are queued against zero answers, and a
@@ -43,10 +52,9 @@ number is Q28**.
 
 ## Roadmap position
 
-Carried unchanged — nothing in the repo has moved since the
-08-14T23:35Z re-derivation, so nothing could change it either. Every
-`[batch]` marker is PR'd, behind an unanswered question, or already
-shipped:
+Unchanged, and re-derived this run rather than carried (see above).
+Every `[batch]` marker is PR'd, behind an unanswered question, or
+already shipped:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
   0.11→#13, 0.12→#14. 0.8 needs only Q26's one word. 0.10 needs
@@ -76,8 +84,11 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-14T23:35Z against the GitHub API —
+comment or a review. Re-verified 08-15T00:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
+Because `main` has not moved, none of them can have gone stale against
+it; the only conflicts they carry are with each other, on `ROADMAP.md`,
+and GitHub will not surface those until the first one merges.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1).
