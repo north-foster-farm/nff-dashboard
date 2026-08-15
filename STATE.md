@@ -1,4 +1,3 @@
-LEASE: 2026-08-15T02:35Z cloud-run-110
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,41 +5,24 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-15T01:34Z — Clean skip, eighth consecutive. INBOX
+2026-08-15T02:35Z — Clean skip, ninth consecutive. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status was `waiting-on-james`, so the new-input guard fired and I
-honoured it; lease taken (`cloud-run-109`) and released, no code
-written. Before honouring it I did the two checks that actually
-matter rather than carrying last run's word for them: re-derived the
-board against the GitHub API, and re-derived the "nothing unblocked"
-claim by re-reading every marker in `ROADMAP.md` on main. Both hold.
-Twelve PRs (#6–#17) still open, none merged, labelled or commented;
-newest `updated_at` is still 2026-08-01T04:41:21Z on #17, and `main`
-is still `131bce1` (2026-07-30T22:29:54Z). No notification and no new
-questions this run — both by the standing rules restated below.
+honoured it; lease taken (`cloud-run-110`) and released, no code
+written. Before honouring it I re-derived the board against the
+GitHub API rather than carrying last run's word for it: twelve PRs
+(#6-#17) still open, none merged, labelled or commented; newest
+`updated_at` still 2026-08-01T04:41:21Z on #17; `main` still
+`131bce1` (2026-07-30T22:29:54Z). The blocked claim below is
+unchanged and was re-derived in full last run against every
+`[batch]` marker in ROADMAP.md — nothing on either side has moved
+since, so I did not repeat that walk this hour. No notification and
+no new questions, both by the standing rules restated below.
 
-**The blocked claim, re-derived not carried.** Walking every
-`[batch]` marker in ROADMAP.md against the open PRs: 0.1→#6, 0.4→#7,
-0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12, 0.11→#13, 1.4→#16, 1.5→#15,
-3.1→#17. Of what remains, 0.2's fix wave waits on its `[session]`
-walkthrough, 1.2 and 1.3 both implement the `[session]` 1.1, 2.2
-executes 2.1 (Q14), 3.2 is Q23, 2.3 is Q17, and every Part 4 batch
-except 4.3a sits behind the `[session]` 4.1 — 4.3a itself needs a
-provider and an account from you (Q25). This run I also re-read the
-two Part 4 `[batch]` lines that sit outside the 4.1 gate rather than
-assuming them: **4.7** is "buy-the-key-once" and needs a purchased
-Google maps key, and **4.9** opens "James picks the surviving spec
-first" (the roadmap line and
-`docs/specs/pasture-rotation-planner.md` conflict). Part 5 starts
-only after the spine's v1 through 4.6. So both are blocked on you,
-not on the session gate — same conclusion, firmer footing. There is
-no unblocked `[batch]` item on the board.
-
-**Staleness, re-derived from the commit timestamps.** `main` is
-**363 hours** stale — 15 days 3 hours, measured from `131bce1`'s
-commit date of 2026-07-30T22:29:54Z. The gap since anything at all
-touched a PR is **13.87 days**, from #17's 2026-08-01T04:41:21Z. Both
-are one hour further along than last run's, which is exactly what an
+**Staleness, from the commit timestamps.** `main` is **364 hours**
+stale — 15 days 4 hours, measured from `131bce1`. The gap since
+anything at all touched a PR is **13.91 days**, from #17. Both are
+one hour further along than last run's, which is exactly what an
 idle hour should produce.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
@@ -91,7 +73,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-15T01:34Z against the GitHub API —
+comment or a review. Re-verified 08-15T02:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 Because `main` has not moved, none of them can have gone stale against
 it; the only conflicts they carry are with each other, on `ROADMAP.md`,
