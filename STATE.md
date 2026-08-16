@@ -1,4 +1,3 @@
-LEASE: 2026-08-16T19:35Z cloud-run-113
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,30 +5,30 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-16T18:35Z — Clean skip, eleventh consecutive. INBOX
+2026-08-16T19:35Z — Clean skip, twelfth consecutive. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status was `waiting-on-james`, so the new-input guard fired and I
-honoured it; lease taken (`cloud-run-112`) and released, no code
+honoured it; lease taken (`cloud-run-113`) and released, no code
 written. As every run, I re-derived the board against the GitHub API
 before honouring it rather than trusting last run's word: twelve PRs
 (#6–#17) still open, none merged, labelled, reviewed or commented;
 newest `updated_at` still 2026-08-01T04:41:21Z on #17; `main` still
 `131bce1` (2026-07-30T22:29:54Z). The blocked claim below was
-re-derived in full against every `[batch]` marker in ROADMAP.md three
+re-derived in full against every `[batch]` marker in ROADMAP.md four
 runs ago; nothing on either side has moved since, so I did not repeat
 that walk this hour. No notification and no new questions, both by the
 standing rules restated below.
 
-**Staleness, from the commit timestamps.** `main` is **404 hours**
-stale — 16 days 20 hours, measured from `131bce1`. The gap since
-anything at all touched a PR is **15.58 days**, from #17. Both are one
+**Staleness, from the commit timestamps.** `main` is **405 hours**
+stale — 16 days 21 hours, measured from `131bce1`. The gap since
+anything at all touched a PR is **15.62 days**, from #17. Both are one
 hour further along than last run's, which is exactly what an idle hour
 should produce.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days
 elapse. The 7-day mark falls at **2026-08-17T12:40Z**, roughly
-eighteen hours out, so today's run is still inside the window and
+seventeen hours out, so today's run is still inside the window and
 sending now would just repeat a week-old notification with nothing new
 in it. **The first run at or after that timestamp sends one
 notification** — one, not a resumed hourly stream — and then the clock
@@ -76,7 +75,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-16T18:35Z against the GitHub API —
+comment or a review. Re-verified 08-16T19:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 Because `main` has not moved, none of them can have gone stale against
 it; the only conflicts they carry are with each other, on `ROADMAP.md`,
@@ -152,7 +151,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 365
+    PR queue? Twelve green PRs, and `main` has not advanced in 405
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
@@ -165,7 +164,7 @@ Q13 (CARRIED, still the only thing that matters): will you drain the
 Q21 (CARRIED, decides whether I work at all; **Q1 folded in**): I
     overrode the startup new-input guard on 2026-08-01T03:36Z. It says
     exit when INBOX has nothing new AND status is `waiting-on-james`.
-    **The last five runs I honoured it instead** — but only after
+    **The last six runs I honoured it instead** — but only after
     re-deriving the blocked claim, which is the check that actually
     matters.
   Recommendation: confirm the override is allowed, and let
