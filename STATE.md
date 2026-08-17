@@ -1,4 +1,3 @@
-LEASE: 2026-08-17T05:35:23Z cloud-run-123
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,10 +5,10 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-17T04:35Z — Clean skip, twenty-first consecutive. INBOX
+2026-08-17T05:35Z — Clean skip, twenty-second consecutive. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status was `waiting-on-james`, so the new-input guard fired and I
-honoured it; lease taken (`cloud-run-122`) and released, no code
+honoured it; lease taken (`cloud-run-123`) and released, no code
 written. As every run, I re-derived the board against the GitHub API
 before honouring it rather than trusting last run's word — all
 seventeen PRs, open and closed, so a merge that had dropped off the
@@ -19,19 +18,19 @@ still open, none merged, labelled, reviewed or commented; newest
 `131bce1` (2026-07-30T22:29:54Z), confirmed from the fetched ref
 itself, not only from the PR bases. The blocked claim below was
 re-derived in full against every `[batch]` marker in ROADMAP.md
-thirteen runs ago; nothing on either side has moved since, so I did
+fourteen runs ago; nothing on either side has moved since, so I did
 not repeat that walk this hour. No notification and no new questions,
 both by the standing rules restated below.
 
-**Staleness, from the commit timestamps.** `main` is **414 hours**
-stale — 17 days 6 hours, measured from `131bce1`. The gap since
-anything at all touched a PR is **16.00 days**, from #17. Both are one
+**Staleness, from the commit timestamps.** `main` is **415 hours**
+stale — 17 days 7 hours, measured from `131bce1`. The gap since
+anything at all touched a PR is **16.04 days**, from #17. Both are one
 hour further along than last run's, which is exactly what an idle hour
 should produce.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days
-elapse. The 7-day mark falls at **2026-08-17T12:40Z**, **eight hours**
+elapse. The 7-day mark falls at **2026-08-17T12:40Z**, **seven hours**
 out, so today's run is still inside the window and sending now
 would just repeat a week-old notification with nothing new in it.
 **The first run at or after that timestamp sends one notification** —
@@ -81,7 +80,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-17T04:35Z against the GitHub API —
+comment or a review. Re-verified 08-17T05:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 Because `main` has not moved, none of them can have gone stale against
 it; the only conflicts they carry are with each other, on `ROADMAP.md`,
