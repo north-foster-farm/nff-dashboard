@@ -1,4 +1,3 @@
-LEASE: 2026-08-17T06:41Z cloud-run-124
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,10 +5,10 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-17T05:35Z — Clean skip, twenty-second consecutive. INBOX
+2026-08-17T06:41Z — Clean skip, twenty-third consecutive. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status was `waiting-on-james`, so the new-input guard fired and I
-honoured it; lease taken (`cloud-run-123`) and released, no code
+honoured it; lease taken (`cloud-run-124`) and released, no code
 written. As every run, I re-derived the board against the GitHub API
 before honouring it rather than trusting last run's word — all
 seventeen PRs, open and closed, so a merge that had dropped off the
@@ -19,26 +18,26 @@ still open, none merged, labelled, reviewed or commented; newest
 `131bce1` (2026-07-30T22:29:54Z), confirmed from the fetched ref
 itself, not only from the PR bases. The blocked claim below was
 re-derived in full against every `[batch]` marker in ROADMAP.md
-fourteen runs ago; nothing on either side has moved since, so I did
+fifteen runs ago; nothing on either side has moved since, so I did
 not repeat that walk this hour. No notification and no new questions,
 both by the standing rules restated below.
 
-**Staleness, from the commit timestamps.** `main` is **415 hours**
-stale — 17 days 7 hours, measured from `131bce1`. The gap since
-anything at all touched a PR is **16.04 days**, from #17. Both are one
+**Staleness, from the commit timestamps.** `main` is **416 hours**
+stale — 17 days 8 hours, measured from `131bce1`. The gap since
+anything at all touched a PR is **16.08 days**, from #17. Both are one
 hour further along than last run's, which is exactly what an idle hour
 should produce.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days
-elapse. The 7-day mark falls at **2026-08-17T12:40Z**, **seven hours**
+elapse. The 7-day mark falls at **2026-08-17T12:40Z**, **six hours**
 out, so today's run is still inside the window and sending now
 would just repeat a week-old notification with nothing new in it.
 **The first run at or after that timestamp sends one notification** —
 one, not a resumed hourly stream — and then the clock restarts. On
-current cadence that is the run landing around 2026-08-17T12:35Z. That
-is the next scheduled event on this board; nothing else is due to
-change on its own.
+current cadence that is the run landing around 2026-08-17T12:41Z, two
+runs after this one. That is the next scheduled event on this board;
+nothing else is due to change on its own.
 
 **Question rule**: twenty-two are queued against zero answers, and a
 twenty-third makes the backlog harder to read, not the project easier
@@ -81,7 +80,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-17T05:35Z against the GitHub API —
+comment or a review. Re-verified 08-17T06:41Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 Because `main` has not moved, none of them can have gone stale against
 it; the only conflicts they carry are with each other, on `ROADMAP.md`,
@@ -157,7 +156,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 414
+    PR queue? Twelve green PRs, and `main` has not advanced in 416
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
