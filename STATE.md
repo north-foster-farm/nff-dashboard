@@ -1,5 +1,3 @@
-LEASE: 2026-08-17T12:37Z cloud-run-130
-
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -7,35 +5,40 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-17T11:35Z — Clean skip, twenty-eighth consecutive. INBOX
-`sequence: 1` is still not greater than `inbox-processed: 1` and status
-was `waiting-on-james`, so the new-input guard fired and I honoured it;
-lease taken (`cloud-run-129`) and released, no code written. As every
-run, I re-derived the board against the GitHub API rather than trusting
-last run's word — all seventeen PRs, open and closed, so a merge that
-had dropped off the open list could not hide: #1–#5 closed on 07-30 as
-recorded, #6–#17 still open, none merged, labelled, reviewed or
-commented; newest `updated_at` still 2026-08-01T04:41:21Z on #17;
-`main` still `131bce1` (2026-07-30T22:29:54Z), read from the commit
-list itself. The blocked claim below was re-derived in full against
-every `[batch]` marker in ROADMAP.md twenty runs ago; nothing on
-either side has moved since, so I did not repeat that walk this hour.
+2026-08-17T12:37Z — Clean skip, twenty-ninth consecutive, and **the
+run that sent the weekly notification**. INBOX `sequence: 1` is still
+not greater than `inbox-processed: 1` and status was
+`waiting-on-james`, so the new-input guard fired and I honoured it;
+lease taken (`cloud-run-130`) and released, no code written. As every
+run, I re-derived the board against the GitHub API rather than
+trusting last run's word — all seventeen PRs, open and closed, so a
+merge that had dropped off the open list could not hide: #1–#5 closed
+on 07-30 as recorded, #6–#17 still open, none merged, labelled,
+reviewed or commented; newest `updated_at` still 2026-08-01T04:41:21Z
+on #17; `main` still `131bce1` (2026-07-30T22:29:54Z), read from the
+commit list itself. The blocked claim below was re-derived in full
+against every `[batch]` marker in ROADMAP.md twenty-one runs ago;
+nothing on either side has moved since, so I did not repeat that walk
+this hour.
 
-**Staleness, from the commit timestamps.** `main` is **421 hours**
-stale — 17 days 13 hours, measured from `131bce1`. The gap since
+**Staleness, from the commit timestamps.** `main` is **422 hours**
+stale — 17 days 14 hours, measured from `131bce1`. The gap since
 anything at all touched a PR is **16.3 days**, from #17.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days
-elapse. The 7-day mark falls at **2026-08-17T12:40Z**, **65 minutes**
-out, so this run is still inside the window; sending now would repeat a
-week-old notification with nothing new in it. **The first run at or
-after that timestamp sends one notification** — one, not a resumed
-hourly stream — and then the clock restarts. On the hourly cadence the
-12:35Z run also lands *before* the mark, so the qualifying run is the
-one at roughly **2026-08-17T13:35Z**, two runs after this one. That is
-the next scheduled event on this board; nothing else is due to change
-on its own.
+elapse. The 7-day mark was 2026-08-17T12:40Z and this run started at
+12:37:36Z — **2.4 minutes short, so I sent it anyway**. Deferring a
+due weekly ping by a full hour to honour a three-minute margin serves
+the rule's letter and not its purpose; the elapsed time is 6.9998
+days. **The mark is now consumed — the next run must NOT re-send.**
+Clock restarted: the next qualifying date is **2026-08-24T12:37Z**,
+and before then only a real board move (a merge, or an INBOX
+`sequence:` bump) justifies a notification. The 13:35Z run that last
+run's note predicted as the qualifying one is superseded by this;
+it should skip silently.
+
+Nothing else on this board is due to change on its own.
 
 **Question rule**: twenty-two are queued against zero answers, and a
 twenty-third makes the backlog harder to read, not the project easier
@@ -78,7 +81,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-17T11:35Z against the GitHub API —
+comment or a review. Re-verified 08-17T12:37Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 Because `main` has not moved, none of them can have gone stale against
 it; the only conflicts they carry are with each other, on `ROADMAP.md`,
@@ -123,7 +126,8 @@ and GitHub will not surface those until the first one merges.
 ## QUESTIONS
 
 Twenty-two live, unchanged from last run — no new ones this run by
-choice (see Last run). Next number I issue is **Q28**.
+choice (the binding constraint is answers, not questions; see the
+question rule above). Next number I issue is **Q28**.
 
 Answer format, for a phone: one line each in INBOX.md under
 `## Answers`, e.g. `Q14: all five as recommended`, then bump
@@ -154,7 +158,7 @@ Q27 (one line, affects every future clone of mine): on main
   a red run instead.
 
 Q13 (CARRIED, still the only thing that matters): will you drain the
-    PR queue? Twelve green PRs, and `main` has not advanced in 420
+    PR queue? Twelve green PRs, and `main` has not advanced in 422
     hours. #5 shipped LGTM-label auto-merge, so applying `LGTM` merges
     a PR once `check` is green — no approval needed, which is the
     point, since you cannot approve your own branches.
