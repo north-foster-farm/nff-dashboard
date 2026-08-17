@@ -1,4 +1,3 @@
-LEASE: 2026-08-17T13:37:13Z cloud-run-131
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,38 +5,35 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-17T12:37Z — Clean skip, twenty-ninth consecutive, and **the
-run that sent the weekly notification**. INBOX `sequence: 1` is still
-not greater than `inbox-processed: 1` and status was
-`waiting-on-james`, so the new-input guard fired and I honoured it;
-lease taken (`cloud-run-130`) and released, no code written. As every
-run, I re-derived the board against the GitHub API rather than
-trusting last run's word — all seventeen PRs, open and closed, so a
-merge that had dropped off the open list could not hide: #1–#5 closed
-on 07-30 as recorded, #6–#17 still open, none merged, labelled,
-reviewed or commented; newest `updated_at` still 2026-08-01T04:41:21Z
-on #17; `main` still `131bce1` (2026-07-30T22:29:54Z), read from the
-commit list itself. The blocked claim below was re-derived in full
-against every `[batch]` marker in ROADMAP.md twenty-one runs ago;
-nothing on either side has moved since, so I did not repeat that walk
-this hour.
+2026-08-17T13:37Z — Clean skip, thirtieth consecutive, and the run
+last hour's note predicted would be the qualifying weekly ping. It
+is not, and I sent nothing: last run consumed the 7-day mark at
+12:37Z, so the clock now runs to 2026-08-24T12:37Z. INBOX
+`sequence: 1` is still not greater than `inbox-processed: 1` and
+status was `waiting-on-james`, so the new-input guard fired and I
+honoured it; lease taken (`cloud-run-131`) and released, no code
+written. As every run, I re-derived the board against the GitHub API
+rather than trusting last run's word — all seventeen PRs, open and
+closed, so a merge that had dropped off the open list could not
+hide: #1–#5 closed on 07-30 as recorded, #6–#17 still open, none
+merged, labelled, reviewed or commented; newest `updated_at` still
+2026-08-01T04:41:21Z on #17; `main` still `131bce1`
+(2026-07-30T22:29:54Z), read from the commit list itself. The
+blocked claim below was re-derived in full against every `[batch]`
+marker in ROADMAP.md twenty-two runs ago; nothing on either side has
+moved since, so I did not repeat that walk this hour.
 
-**Staleness, from the commit timestamps.** `main` is **422 hours**
-stale — 17 days 14 hours, measured from `131bce1`. The gap since
-anything at all touched a PR is **16.3 days**, from #17.
+**Staleness, from the commit timestamps.** `main` is **423 hours**
+stale — 17 days 15 hours, measured from `131bce1`. The gap since
+anything at all touched a PR is **16.4 days**, from #17.
 
-**Notification rule** (banked 08-10T12:40Z): ping only when the board
-actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days
-elapse. The 7-day mark was 2026-08-17T12:40Z and this run started at
-12:37:36Z — **2.4 minutes short, so I sent it anyway**. Deferring a
-due weekly ping by a full hour to honour a three-minute margin serves
-the rule's letter and not its purpose; the elapsed time is 6.9998
-days. **The mark is now consumed — the next run must NOT re-send.**
-Clock restarted: the next qualifying date is **2026-08-24T12:37Z**,
-and before then only a real board move (a merge, or an INBOX
-`sequence:` bump) justifies a notification. The 13:35Z run that last
-run's note predicted as the qualifying one is superseded by this;
-it should skip silently.
+**Notification rule** (banked 08-10T12:40Z, mark consumed
+08-17T12:37Z): ping only when the board actually moves — a PR
+merges, INBOX `sequence:` bumps, or 7 days elapse. Next qualifying
+date **2026-08-24T12:37Z**; until then only a real board move earns
+a ping, and this run had none. Sending an hourly "still nothing"
+into a phone is the one behaviour that would make the routine worth
+turning off.
 
 Nothing else on this board is due to change on its own.
 
@@ -82,7 +78,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-17T12:37Z against the GitHub API —
+comment or a review. Re-verified 08-17T13:37Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 Because `main` has not moved, none of them can have gone stale against
 it; the only conflicts they carry are with each other, on `ROADMAP.md`,
