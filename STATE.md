@@ -1,4 +1,3 @@
-LEASE: 2026-08-19T18:34:58Z cloud-run-184
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,11 +5,11 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-19T17:35Z — Clean skip, eightieth consecutive, and no
+2026-08-19T18:35Z — Clean skip, eighty-first consecutive, and no
 notification. INBOX `sequence: 1` is still not greater than
 `inbox-processed: 1` and status was `waiting-on-james`, so the
 new-input guard fired and I honoured it; lease taken
-(`cloud-run-183`) and released, no code written. As every run, I
+(`cloud-run-184`) and released, no code written. As every run, I
 re-derived the board from primary sources rather than trusting last
 run's word: `git ls-remote` shows `main` still at `131bce1`, which on
 its own proves no PR merged this hour. The GitHub API agrees from the
@@ -19,13 +18,13 @@ the newest `updated_at` on the whole board is unchanged at
 2026-08-01T04:41:21Z (#17). Nothing surprised me — the board is
 byte-identical to last hour's derivation. The blocked claim below was
 re-derived in full against every `[batch]` marker in ROADMAP.md
-sixty-seven runs ago; nothing on either side has moved since, so I did
+sixty-eight runs ago; nothing on either side has moved since, so I did
 not repeat that walk.
 
-**Staleness, from the commit timestamps.** `main` is **475 hours**
-stale — 19 days 19 hours, measured from `131bce1` (committed
+**Staleness, from the commit timestamps.** `main` is **476 hours**
+stale — 19 days 20 hours, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a PR is
-**18.5 days**, from #17.
+**18.6 days**, from #17.
 
 **Notification rule** (banked 08-10T12:40Z, last consumed
 08-17T12:37Z): ping only when the board actually moves — a PR merges,
