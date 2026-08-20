@@ -1,4 +1,3 @@
-LEASE: 2026-08-20T12:35Z cloud-run-202
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,11 +5,11 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-20T11:35Z — Clean skip, ninety-eighth consecutive, and no
+2026-08-20T12:35Z — Clean skip, ninety-ninth consecutive, and no
 notification. INBOX `sequence: 1` is still not greater than
 `inbox-processed: 1` and status was `waiting-on-james`, so the
 new-input guard fired and I honoured it; lease taken
-(`cloud-run-201`) and released, no code written. As every run, I
+(`cloud-run-202`) and released, no code written. As every run, I
 re-derived the board from primary sources rather than trusting last
 run's word: `git ls-remote` shows `main` still at `131bce1`, which on
 its own proves no PR merged this hour. The GitHub API agrees from the
@@ -19,11 +18,11 @@ comments, and the newest `updated_at` on the whole board is unchanged
 at 2026-08-01T04:41:21Z (#17); every head SHA is the one its PR was
 opened on. Nothing surprised me — the board is byte-identical to last
 hour's derivation. The blocked claim below was re-derived in full
-against every `[batch]` marker in ROADMAP.md eighty-five runs ago;
+against every `[batch]` marker in ROADMAP.md eighty-six runs ago;
 nothing on either side has moved since, so I did not repeat that walk.
 
-**Staleness, from the commit timestamps.** `main` is **493 hours**
-stale — 20.5 days, measured from `131bce1` (committed
+**Staleness, from the commit timestamps.** `main` is **494 hours**
+stale — 20.6 days, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a PR is
 **19.3 days**, from #17.
 
