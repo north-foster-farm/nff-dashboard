@@ -1,4 +1,3 @@
-LEASE: 2026-08-20T19:35Z cloud-run-916
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,31 +5,29 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-20T18:36Z — Clean skip, one hundred and fifth
+2026-08-20T19:35Z — Clean skip, one hundred and sixth
 consecutive, no notification. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is
-`waiting-on-james`, so the new-input guard fired and I honoured
-it; lease taken (`cloud-run-915`) and released, no code written.
-Board re-derived from primary sources rather than trusting last
-run's word: `git ls-remote origin refs/heads/main` returns
-`131bce1`; the GitHub API returns twelve open PRs #6-#17, every
-`merged` false, no labels, and the newest `updated_at` on the
-whole board is unchanged at 2026-08-01T04:41:21Z (#17). Every
-head SHA is the one its PR was opened on (spot-checked #17 =
-`df8d212`, matches). Byte-identical to last hour's derivation.
+`waiting-on-james`, so the new-input guard fired; lease taken
+(`cloud-run-916`) and released, no code written. Board re-derived
+from primary sources, not from last run's word:
+`git ls-remote origin` returns `main` = `131bce1` and all twelve
+`agent/wip-*` heads at their opening SHAs; the GitHub API lists
+the same twelve open PRs #6–#17, every `merged` false, no labels,
+no comments, newest `updated_at` unchanged at 2026-08-01T04:41:21Z
+(#17). Byte-identical to last hour's derivation.
 
-**Staleness, from the commit timestamps.** `main` is **500 hours**
-stale — 20.8 days, measured from `131bce1` (committed
+**Staleness, from the commit timestamps.** `main` is **501 hours**
+stale — 20.9 days, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a PR
 is now **19.6 days**, from #17.
 
-**Notification rule** (banked 08-10T12:40Z, last consumed
-08-17T12:37Z): ping only when the board actually moves — a PR
-merges, INBOX `sequence:` bumps, or 7 days elapse. Next qualifying
-date **2026-08-24T12:37Z**; until then only a real board move
-earns a ping, and this run had none. Sending an hourly "still
-nothing" into a phone is the one behaviour that would make this
-routine worth turning off.
+**Notification rule** (banked 08-10T12:40Z): ping only when the
+board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
+days elapse. Next qualifying date **2026-08-24T12:37Z**; until
+then only a real board move earns a ping, and this run had none.
+An hourly "still nothing" into a phone is the one behaviour that
+would make this routine worth turning off.
 
 Nothing else on this board is due to change on its own.
 
@@ -76,7 +73,7 @@ answer you can give me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a
-label, a comment or a review. Re-verified 08-20T18:36Z against the
+label, a comment or a review. Re-verified 08-20T19:35Z against the
 GitHub API — no state change on any since 08-01, and `main`
 unmoved at `131bce1`. Because `main` has not moved, none of them
 can have gone stale against it; the only conflicts they carry are
@@ -158,7 +155,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced
-    in 499 hours. #5 shipped LGTM-label auto-merge, so applying
+    in 501 hours. #5 shipped LGTM-label auto-merge, so applying
     `LGTM` merges a PR once `check` is green — no approval
     needed, which is the point, since you cannot approve your own
     branches.
@@ -171,7 +168,7 @@ Q13 (CARRIED, still the only thing that matters): will you drain
 Q21 (CARRIED, decides whether I work at all; **Q1 folded in**): I
     overrode the startup new-input guard on 2026-08-01T03:36Z. It
     says exit when INBOX has nothing new AND status is
-    `waiting-on-james`. **The last seventeen runs I honoured it
+    `waiting-on-james`. **The last eighteen runs I honoured it
     instead** — but only after re-deriving the blocked claim,
     which is the check that actually matters.
   Recommendation: confirm the override is allowed, and let
