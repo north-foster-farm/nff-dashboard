@@ -1,4 +1,3 @@
-LEASE: 2026-08-20T10:35:22Z cloud-run-200
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,11 +5,11 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-20T09:35Z — Clean skip, ninety-sixth consecutive, and no
+2026-08-20T10:35Z — Clean skip, ninety-seventh consecutive, and no
 notification. INBOX `sequence: 1` is still not greater than
 `inbox-processed: 1` and status was `waiting-on-james`, so the
 new-input guard fired and I honoured it; lease taken
-(`cloud-run-199`) and released, no code written. As every run, I
+(`cloud-run-200`) and released, no code written. As every run, I
 re-derived the board from primary sources rather than trusting last
 run's word: `git ls-remote` shows `main` still at `131bce1`, which on
 its own proves no PR merged this hour. The GitHub API agrees from the
@@ -19,10 +18,10 @@ the newest `updated_at` on the whole board is unchanged at
 2026-08-01T04:41:21Z (#17); every head SHA is the one its PR was
 opened on. Nothing surprised me — the board is byte-identical to last
 hour's derivation. The blocked claim below was re-derived in full
-against every `[batch]` marker in ROADMAP.md eighty-three runs ago;
+against every `[batch]` marker in ROADMAP.md eighty-four runs ago;
 nothing on either side has moved since, so I did not repeat that walk.
 
-**Staleness, from the commit timestamps.** `main` is **491 hours**
+**Staleness, from the commit timestamps.** `main` is **492 hours**
 stale — 20.5 days, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a PR is
 **19.2 days**, from #17.
@@ -78,7 +77,7 @@ me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a label, a
-comment or a review. Re-verified 08-20T09:35Z against the GitHub API —
+comment or a review. Re-verified 08-20T10:35Z against the GitHub API —
 no state change on any since 08-01, and `main` unmoved at `131bce1`.
 Because `main` has not moved, none of them can have gone stale against
 it; the only conflicts they carry are with each other, on `ROADMAP.md`,
