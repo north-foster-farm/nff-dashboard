@@ -1,4 +1,3 @@
-LEASE: 2026-08-20T16:34Z cloud-run-913
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,11 +5,11 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-20T15:36Z — Clean skip, one hundred and second
+2026-08-20T16:34Z — Clean skip, one hundred and third
 consecutive, no notification. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is
 `waiting-on-james`, so the new-input guard fired and I honoured
-it; lease taken (`cloud-run-489`) and released, no code written.
+it; lease taken (`cloud-run-913`) and released, no code written.
 Board re-derived from primary sources rather than trusting last
 run's word: `git ls-remote origin refs/heads/main` returns
 `131bce1`; the GitHub API returns twelve open PRs #6-#17, every
@@ -19,7 +18,7 @@ whole board is unchanged at 2026-08-01T04:41:21Z (#17). Every
 head SHA is the one its PR was opened on (spot-checked #17 =
 `df8d212`, matches). Byte-identical to last hour's derivation.
 
-**Staleness, from the commit timestamps.** `main` is **497 hours**
+**Staleness, from the commit timestamps.** `main` is **498 hours**
 stale — 20.7 days, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a PR
 is now **19.5 days**, from #17.
@@ -76,7 +75,7 @@ answer you can give me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a
-label, a comment or a review. Re-verified 08-20T15:36Z against the
+label, a comment or a review. Re-verified 08-20T16:34Z against the
 GitHub API — no state change on any since 08-01, and `main`
 unmoved at `131bce1`. Because `main` has not moved, none of them
 can have gone stale against it; the only conflicts they carry are
