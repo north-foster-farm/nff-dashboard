@@ -1,4 +1,3 @@
-LEASE: 2026-08-21T11:34Z cloud-run-1134
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,23 +5,23 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-21T10:34Z — Clean skip, one hundred and twenty-first
+2026-08-21T11:34Z — Clean skip, one hundred and twenty-second
 consecutive, no notification. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is
 `waiting-on-james`, so the new-input guard fired; lease taken
-(`cloud-run-1034`) and released, no code written. Board
+(`cloud-run-1134`) and released, no code written. Board
 re-derived from primary sources again rather than trusted from
 last run: `git ls-remote origin` returns `main` = `131bce1` and
 all twelve `agent/wip-*` heads at their opening SHAs; the GitHub
 API lists the same twelve open PRs #6–#17, every `merged` false,
 no labels, newest `updated_at` unchanged at 2026-08-01T04:41:21Z
 (#17). Byte-identical to last hour's derivation, and to the
-hundred and twenty before it.
+hundred and twenty-one before it.
 
-**Staleness, from the commit timestamps.** `main` is **516
+**Staleness, from the commit timestamps.** `main` is **517
 hours** stale — 21.5 days, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a
-PR is now **20.2 days**, from #17.
+PR is now **20.3 days**, from #17.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
@@ -75,7 +74,7 @@ answer you can give me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a
-label, a comment or a review. Re-verified 08-21T10:34Z against the
+label, a comment or a review. Re-verified 08-21T11:34Z against the
 GitHub API — no state change on any since 08-01, and `main`
 unmoved at `131bce1`. Because `main` has not moved, none of them
 can have gone stale against it; the only conflicts they carry are
