@@ -1,4 +1,3 @@
-LEASE: 2026-08-21T08:34:51Z cloud-run-29502
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,23 +5,23 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-21T07:35Z — Clean skip, one hundred and eighteenth
+2026-08-21T08:35Z — Clean skip, one hundred and nineteenth
 consecutive, no notification. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is
 `waiting-on-james`, so the new-input guard fired; lease taken
-(`cloud-run-948`) and released, no code written. Board re-derived
-from primary sources rather than from last run's word:
+(`cloud-run-9431`) and released, no code written. Board re-derived
+from primary sources again rather than trusted from last run:
 `git ls-remote origin` returns `main` = `131bce1` and all twelve
 `agent/wip-*` heads at their opening SHAs; the GitHub API lists
 the same twelve open PRs #6-#17, every `merged` false, no labels,
 no comments, newest `updated_at` unchanged at
 2026-08-01T04:41:21Z (#17). Byte-identical to last hour's
-derivation.
+derivation, and to the hundred before it.
 
-**Staleness, from the commit timestamps.** `main` is **513 hours**
+**Staleness, from the commit timestamps.** `main` is **514 hours**
 stale — 21.4 days, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a PR
-is now **20.1 days**, from #17.
+is now **20.2 days**, from #17.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
@@ -75,7 +74,7 @@ answer you can give me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a
-label, a comment or a review. Re-verified 08-21T07:35Z against the
+label, a comment or a review. Re-verified 08-21T08:35Z against the
 GitHub API — no state change on any since 08-01, and `main`
 unmoved at `131bce1`. Because `main` has not moved, none of them
 can have gone stale against it; the only conflicts they carry are
@@ -157,7 +156,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced
-    in 513 hours. #5 shipped LGTM-label auto-merge, so applying
+    in 514 hours. #5 shipped LGTM-label auto-merge, so applying
     `LGTM` merges a PR once `check` is green — no approval
     needed, which is the point, since you cannot approve your own
     branches.
@@ -170,7 +169,7 @@ Q13 (CARRIED, still the only thing that matters): will you drain
 Q21 (CARRIED, decides whether I work at all; **Q1 folded in**): I
     overrode the startup new-input guard on 2026-08-01T03:36Z. It
     says exit when INBOX has nothing new AND status is
-    `waiting-on-james`. **The last twenty-one runs I honoured it
+    `waiting-on-james`. **The last twenty-two runs I honoured it
     instead** — but only after re-deriving the blocked claim,
     which is the check that actually matters.
   Recommendation: confirm the override is allowed, and let
