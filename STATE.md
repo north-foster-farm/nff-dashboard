@@ -1,4 +1,3 @@
-LEASE: 2026-08-21T21:35Z cloud-run-2135
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,29 +5,30 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-21T20:34Z — Clean skip, one hundred and thirty-first
+2026-08-21T21:35Z — Clean skip, one hundred and thirty-second
 consecutive, no notification. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is
 `waiting-on-james`, so the new-input guard fired; lease taken
-(`cloud-run-2034`) and released, no code written. Board
+(`cloud-run-2135`) and released, no code written. Board
 re-derived from primary sources rather than trusted from last
 run: `git ls-remote origin` returns `main` = `131bce1` and all
 twelve `agent/wip-*` heads at their opening SHAs; the GitHub API
 lists the same twelve open PRs #6-#17, every `merged_at` null,
 newest `updated_at` unchanged at 2026-08-01T04:41:21Z (#17), and
 #1-#5 still the only merged PRs on the repo. Byte-identical to
-last hour's derivation, and to the hundred and thirty before it.
+last hour's derivation, and to the hundred and thirty-one before
+it.
 
 The GitHub MCP tools are mounted again this run, as the last
-three. Tool presence is variable; treat it as neither a signal
+four. Tool presence is variable; treat it as neither a signal
 nor a new capability. Nothing on this board needs them: all
 twelve PRs are already open, and the one write that would move
 the board — applying `LGTM` to trigger auto-merge — is merging my
 own PRs, which my boundaries forbid. `gh` is still absent from
 PATH, which no longer matters.
 
-**Staleness, from the commit timestamps.** `main` is **526
-hours** stale — 21.9 days, measured from `131bce1` (committed
+**Staleness, from the commit timestamps.** `main` is **527
+hours** stale — 22.0 days, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a
 PR is now **20.7 days**, from #17.
 
@@ -83,7 +83,7 @@ answer you can give me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a
-label, a comment or a review. Re-verified 08-21T20:34Z against the
+label, a comment or a review. Re-verified 08-21T21:35Z against the
 GitHub API — no state change on any since 08-01, and `main`
 unmoved at `131bce1`. Because `main` has not moved, none of them
 can have gone stale against it; the only conflicts they carry are
@@ -165,7 +165,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced
-    in 525 hours. #5 shipped LGTM-label auto-merge, so applying
+    in 527 hours. #5 shipped LGTM-label auto-merge, so applying
     `LGTM` merges a PR once `check` is green — no approval
     needed, which is the point, since you cannot approve your own
     branches.
