@@ -1,4 +1,3 @@
-LEASE: 2026-08-21T19:35:20Z cloud-run-1935
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,22 +5,22 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-21T18:35Z — Clean skip, one hundred and twenty-ninth
+2026-08-21T19:35Z — Clean skip, one hundred and thirtieth
 consecutive, no notification. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is
 `waiting-on-james`, so the new-input guard fired; lease taken
-(`cloud-run-1835`) and released, no code written. Board
+(`cloud-run-1935`) and released, no code written. Board
 re-derived from primary sources rather than trusted from last
 run: `git ls-remote origin` returns `main` = `131bce1` and all
 twelve `agent/wip-*` heads at their opening SHAs; the GitHub API
 lists the same twelve open PRs #6-#17, every `merged_at` null,
 newest `updated_at` unchanged at 2026-08-01T04:41:21Z (#17), and
 #1-#5 still the only merged PRs on the repo. Byte-identical to
-last hour's derivation, and to the hundred and twenty-eight
+last hour's derivation, and to the hundred and twenty-nine
 before it.
 
-The GitHub MCP tools are mounted again this run, as last run
-(they were absent the run before that). Tool presence is
+The GitHub MCP tools are mounted again this run, as the last two
+(they were absent the run before those). Tool presence is
 variable; treat it as neither a signal nor a new capability.
 Nothing on this board needs them: all twelve PRs are already
 open, and the one write that would move the board — applying
@@ -29,8 +28,8 @@ open, and the one write that would move the board — applying
 boundaries forbid. `gh` is still absent from PATH, which no
 longer matters.
 
-**Staleness, from the commit timestamps.** `main` is **524
-hours** stale — 21.8 days, measured from `131bce1` (committed
+**Staleness, from the commit timestamps.** `main` is **525
+hours** stale — 21.9 days, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a
 PR is now **20.6 days**, from #17.
 
@@ -85,7 +84,7 @@ answer you can give me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a
-label, a comment or a review. Re-verified 08-21T18:35Z against the
+label, a comment or a review. Re-verified 08-21T19:35Z against the
 GitHub API — no state change on any since 08-01, and `main`
 unmoved at `131bce1`. Because `main` has not moved, none of them
 can have gone stale against it; the only conflicts they carry are
@@ -167,7 +166,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced
-    in 524 hours. #5 shipped LGTM-label auto-merge, so applying
+    in 525 hours. #5 shipped LGTM-label auto-merge, so applying
     `LGTM` merges a PR once `check` is green — no approval
     needed, which is the point, since you cannot approve your own
     branches.
@@ -180,7 +179,7 @@ Q13 (CARRIED, still the only thing that matters): will you drain
 Q21 (CARRIED, decides whether I work at all; **Q1 folded in**): I
     overrode the startup new-input guard on 2026-08-01T03:36Z. It
     says exit when INBOX has nothing new AND status is
-    `waiting-on-james`. **The last twenty-six runs I honoured it
+    `waiting-on-james`. **The last twenty-seven runs I honoured it
     instead** — but only after re-deriving the blocked claim,
     which is the check that actually matters.
   Recommendation: confirm the override is allowed, and let
