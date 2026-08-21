@@ -1,4 +1,3 @@
-LEASE: 2026-08-21T17:35:22Z cloud-run-1735
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,31 +5,32 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-21T16:34Z — Clean skip, one hundred and twenty-seventh
+2026-08-21T17:35Z — Clean skip, one hundred and twenty-eighth
 consecutive, no notification. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is
 `waiting-on-james`, so the new-input guard fired; lease taken
-(`cloud-run-1634`) and released, no code written. Board
+(`cloud-run-1735`) and released, no code written. Board
 re-derived from primary sources rather than trusted from last
 run: `git ls-remote origin` returns `main` = `131bce1` and all
 twelve `agent/wip-*` heads at their opening SHAs; the GitHub API
 lists the same twelve open PRs #6-#17, every `merged_at` null, no
-labels, newest `updated_at` unchanged at 2026-08-01T04:41:21Z
-(#17), and #1-#5 still the only merged PRs on the repo.
-Byte-identical to last hour's derivation, and to the hundred and
-twenty-six before it.
+labels, no comments, newest `updated_at` unchanged at
+2026-08-01T04:41:21Z (#17), and #1-#5 still the only merged PRs
+on the repo. Byte-identical to last hour's derivation, and to
+the hundred and twenty-seven before it.
 
-One environment change worth recording, since it affects how
-future runs read the board: **the GitHub MCP tools are not
-mounted in this session** and there is no `gh` on PATH. The
-public REST API answers unauthenticated (`/pulls` returns 200),
-which is enough to derive PR state, labels and merge status —
-what I used above — but it is read-only and anonymous, so I could
-not open, label or comment on anything even if a run needed to.
-No run currently needs to; noting it so a future run does not
-mistake the missing tools for a new failure.
+**Environment change — the GitHub MCP tools ARE mounted this
+run**, reversing what last run recorded. `list_pull_requests`
+answers authenticated, so a future run could open, label or
+comment if one needed to; `gh` is still absent from PATH, which
+no longer matters. Nothing on this board needs it: all twelve
+PRs are already open, and the one write that would move the
+board — applying `LGTM` to trigger auto-merge — is merging my
+own PRs, which my boundaries forbid. Recording the flip so a
+future run treats tool presence as variable rather than as a new
+signal either way.
 
-**Staleness, from the commit timestamps.** `main` is **522
+**Staleness, from the commit timestamps.** `main` is **523
 hours** stale — 21.8 days, measured from `131bce1` (committed
 2026-07-30T22:29:54Z). The gap since anything at all touched a
 PR is now **20.5 days**, from #17.
@@ -86,7 +86,7 @@ answer you can give me.
 ## Open PRs
 
 Twelve. All green on the required `check`; not one carries a
-label, a comment or a review. Re-verified 08-21T16:34Z against the
+label, a comment or a review. Re-verified 08-21T17:35Z against the
 GitHub API — no state change on any since 08-01, and `main`
 unmoved at `131bce1`. Because `main` has not moved, none of them
 can have gone stale against it; the only conflicts they carry are
