@@ -1,4 +1,3 @@
-LEASE: 2026-08-22T19:34:33Z cloud-run-0054
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,31 +5,32 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-22T18:35Z — Clean skip, one hundred and fifty-third
+2026-08-22T19:34Z — Clean skip, one hundred and fifty-fourth
 consecutive, no notification sent. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is `waiting-on-james`,
-so the new-input guard fired; lease `cloud-run-0053` taken and
+so the new-input guard fired; lease `cloud-run-0054` taken and
 released, no code written. As every run, I re-derived the board
 from primary sources rather than trusting this file: one
 `state: all` API listing returns all seventeen PRs at once — #6–#17
 open with every `merged_at` null, no labels, no comments, newest
 `updated_at` unchanged at 2026-08-01T04:41:21Z (#17), and #1–#5 the
 only merged ones, all from 07-30. `main` is still `131bce1`
-(committed 2026-07-30T22:29:54Z), now **548 hours** stale (22.8
+(committed 2026-07-30T22:29:54Z), now **549 hours** stale (22.9
 days); nothing has touched a PR in **21.6 days**.
 
-Nothing surprised me and nothing below has moved. I kept the run to
-the single check that could falsify the blocked claim: the twelve
-heads still sit at their opening SHAs, so no PR has drifted, and
-`main` has not advanced, so none of them can have gone stale
-against it. No method refinement was available this run — last
-run's fold into one `state: all` listing is already the cheapest
-form of this check, so the run cost one API call. The picture is
-unchanged and worth restating plainly: the queue is not blocked on
-anything I can do. Twenty-two questions stand against zero answers,
-and the twelve PRs behind them are all green. Per the banked
-notification rule this run stays silent; the next qualifying ping is
-2026-08-24T12:37Z, under two days out, unless the board moves first.
+Nothing surprised me and nothing below has moved. This run I
+recorded the twelve head SHAs explicitly under "Open PRs" rather
+than asserting they were unchanged — the previous entries claimed
+"identical" without writing down what they were identical to, which
+is a claim this file could not itself check. That is the only
+method change available; the single `state: all` listing is already
+the cheapest form of the check, so the run cost one API call. The
+picture is otherwise unchanged and worth restating plainly: the
+queue is not blocked on anything I can do. Twenty-two questions
+stand against zero answers, and the twelve PRs behind them are all
+green. Per the banked notification rule this run stays silent; the
+next qualifying ping is 2026-08-24T12:37Z, under two days out,
+unless the board moves first.
 
 ## Roadmap position
 
@@ -75,10 +75,12 @@ comment or a review — re-listed from the API this run, states and
 head SHAs identical. Because `main` has not moved, none can have
 gone stale against it; the only conflicts they carry are with each
 other, on `ROADMAP.md`, and GitHub will not surface those until the
-first one merges.
+first one merges. Each head SHA is written out below from this
+run's listing, so a future run can diff against a recorded value
+instead of taking "unchanged" on trust.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
-  `chore: react 19 + vite 8 + plugin-react 6` (3.1).
+  `chore: react 19 + vite 8 + plugin-react 6` (3.1). Head `df8d212`.
   **Preview-check this one before merging.** It is a React major
   with no visual QA behind it — the green suite covers the
   pure-logic layer and says nothing about whether the app renders —
@@ -86,22 +88,29 @@ first one merges.
   Netlify's build is confirmed but the page is not. The one PR I
   would not label on the strength of CI alone.
 - #16 …/pull/16 — `fix: drift-lint the semantic token layer` (1.4).
+  Head `471eab4`.
 - #15 …/pull/15 — `fix: self-host Lora + Inter` (1.5).
+  Head `61c0e95`.
 - #14 …/pull/14 — `docs: bank the multi-device concurrency lesson`
-  (0.12).
+  (0.12). Head `3cbdc97`.
 - #13 …/pull/13 — `fix: finish the "Anytime" removal` (0.11).
+  Head `9e67b2f`.
 - #12 …/pull/12 — `fix: sun-anchored breaks now trim the project
-  gap` (0.9).
+  gap` (0.9). Head `05b0229`.
 - #11 …/pull/11 — `fix: one project create path` (0.7).
+  Head `faf2ef4`.
 - #10 …/pull/10 — `fix: retire the vestigial project status column
-  path` (0.6 slice 2). **Base is #9's branch** — merge #9 first and
-  GitHub retargets this one to main by itself.
+  path` (0.6 slice 2). Head `dfea655`. **Base is #9's branch** —
+  merge #9 first and GitHub retargets this one to main by itself.
 - #9 …/pull/9 — `fix: one project activity model` (0.6 slice 1).
+  Head `302f0f7`.
 - #8 …/pull/8 — `chore: pin the additive-merge guarantee` (0.5).
+  Head `baa31e0`.
 - #7 …/pull/7 — `chore: test-gate completeness` (0.4).
+  Head `6b2b255`.
 - #6 …/pull/6 — `chore: scope the check workflow's push trigger to
-  main`. Opened 07-31 — twenty-two days ago. If you only merge one
-  thing, merge this.
+  main`. Head `a363039`. Opened 07-31 — twenty-two days ago. If you
+  only merge one thing, merge this.
 
 ## QUESTIONS
 
