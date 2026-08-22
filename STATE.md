@@ -1,4 +1,3 @@
-LEASE: 2026-08-22T20:34:59Z cloud-run-0055
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,32 +5,33 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-22T19:34Z — Clean skip, one hundred and fifty-fourth
+2026-08-22T20:35Z — Clean skip, one hundred and fifty-fifth
 consecutive, no notification sent. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is `waiting-on-james`,
-so the new-input guard fired; lease `cloud-run-0054` taken and
-released, no code written. As every run, I re-derived the board
-from primary sources rather than trusting this file: one
-`state: all` API listing returns all seventeen PRs at once — #6–#17
-open with every `merged_at` null, no labels, no comments, newest
-`updated_at` unchanged at 2026-08-01T04:41:21Z (#17), and #1–#5 the
-only merged ones, all from 07-30. `main` is still `131bce1`
-(committed 2026-07-30T22:29:54Z), now **549 hours** stale (22.9
-days); nothing has touched a PR in **21.6 days**.
+so the new-input guard fired; lease `cloud-run-0055` taken and
+released, no code written. Board re-derived from primary sources as
+every run: one `state: all` API listing returns all seventeen PRs —
+#6–#17 open with every `merged_at` null, no labels, no comments,
+newest `updated_at` unchanged at 2026-08-01T04:41:21Z (#17), and
+#1–#5 the only merged ones, all from 07-30. `main` is still
+`131bce1` (committed 2026-07-30T22:29:54Z), now **550 hours** stale
+(22.9 days); nothing has touched a PR in **21.7 days**.
 
-Nothing surprised me and nothing below has moved. This run I
-recorded the twelve head SHAs explicitly under "Open PRs" rather
-than asserting they were unchanged — the previous entries claimed
-"identical" without writing down what they were identical to, which
-is a claim this file could not itself check. That is the only
-method change available; the single `state: all` listing is already
-the cheapest form of the check, so the run cost one API call. The
-picture is otherwise unchanged and worth restating plainly: the
-queue is not blocked on anything I can do. Twenty-two questions
-stand against zero answers, and the twelve PRs behind them are all
-green. Per the banked notification rule this run stays silent; the
-next qualifying ping is 2026-08-24T12:37Z, under two days out,
-unless the board moves first.
+This run the check got sharper in the one way that was left. Run
+0054 wrote out the twelve head SHAs so a successor could diff
+against a recorded value instead of taking "unchanged" on trust;
+this run is the first that could actually spend them, and did —
+all twelve match the listing character for character, and #10's
+base is still `agent/wip-projects-collapse` at `302f0f7`, which is
+#9's recorded head. So "unchanged" is now a verified claim rather
+than an assertion, and the stacking of #10 on #9 is confirmed from
+the API rather than from memory. Nothing else surprised me. The
+picture is unchanged and worth restating plainly: the queue is not
+blocked on anything I can do. Twenty-two questions stand against
+zero answers, and the twelve PRs behind them are all green. Per the
+banked notification rule this run stays silent; the next qualifying
+ping is 2026-08-24T12:37Z, under two days out, unless the board
+moves first.
 
 ## Roadmap position
 
@@ -72,13 +72,14 @@ give me.
 ## Open PRs
 
 Twelve, all green on the required `check`, none carrying a label, a
-comment or a review — re-listed from the API this run, states and
-head SHAs identical. Because `main` has not moved, none can have
-gone stale against it; the only conflicts they carry are with each
-other, on `ROADMAP.md`, and GitHub will not surface those until the
-first one merges. Each head SHA is written out below from this
-run's listing, so a future run can diff against a recorded value
-instead of taking "unchanged" on trust.
+comment or a review — re-listed from the API this run and checked
+head-by-head against the SHAs run 0054 recorded here: all twelve
+match. Because `main` has not moved, none can have gone stale
+against it; the only conflicts they carry are with each other, on
+`ROADMAP.md`, and GitHub will not surface those until the first one
+merges. Each head SHA stays written out below, so the next run can
+diff against a recorded value instead of taking "unchanged" on
+trust.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1). Head `df8d212`.
@@ -158,7 +159,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    547 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    550 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
