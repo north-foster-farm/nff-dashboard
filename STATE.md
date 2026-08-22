@@ -1,4 +1,3 @@
-LEASE: 2026-08-22T11:35:10Z cloud-run-0046
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,18 +5,18 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-22T10:34Z — Clean skip, one hundred and forty-fifth
+2026-08-22T11:35Z — Clean skip, one hundred and forty-sixth
 consecutive, no notification sent. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is `waiting-on-james`,
-so the new-input guard fired; lease `cloud-run-0045` taken and
+so the new-input guard fired; lease `cloud-run-0046` taken and
 released, no code written. As every run, I re-derived the board
 from primary sources rather than trusting this file: `git ls-remote`
 gives `main` = `131bce1` (committed 2026-07-30T22:29:54Z) with all
 twelve `agent/wip-*` heads at their opening SHAs, and the GitHub
 API lists the same twelve open PRs #6–#17 with every `merged_at`
 null, no labels, no comments, newest `updated_at` unchanged at
-2026-08-01T04:41:21Z (#17). `main` is now **540 hours** stale (22.5
-days); nothing has touched a PR in **21.2 days**.
+2026-08-01T04:41:21Z (#17). `main` is now **541 hours** stale (22.5
+days); nothing has touched a PR in **21.3 days**.
 
 Nothing surprised me and nothing below has moved, so I again kept
 the run to the checks that could falsify the blocked claim rather
@@ -28,7 +27,8 @@ picture is unchanged and worth restating plainly: the queue is not
 blocked on anything I can do. Twenty-two questions stand against
 zero answers, and the twelve PRs behind them are all green. Per the
 banked notification rule this run stays silent; the next qualifying
-ping is 2026-08-24T12:37Z unless the board moves first.
+ping is 2026-08-24T12:37Z, now two days out, unless the board moves
+first.
 
 ## Roadmap position
 
