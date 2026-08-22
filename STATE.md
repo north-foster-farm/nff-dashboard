@@ -1,4 +1,3 @@
-LEASE: 2026-08-22T06:34:40Z cloud-run-0041
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,28 +5,33 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-22T05:35Z — Clean skip, one hundred and fortieth
+2026-08-22T06:34Z — Clean skip, one hundred and forty-first
 consecutive, no notification sent. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is `waiting-on-james`,
-so the new-input guard fired; lease `cloud-run-0040` taken and
+so the new-input guard fired; lease `cloud-run-0041` taken and
 released, no code written. As every run, I re-derived the board
 from primary sources rather than trusting this file: `git ls-remote`
 gives `main` = `131bce1` with all twelve `agent/wip-*` heads at
 their opening SHAs, and the GitHub API lists the same twelve open
 PRs #6–#17 with every `merged_at` null, no labels, no comments,
 newest `updated_at` unchanged at 2026-08-01T04:41:21Z (#17). `main`
-is now **535 hours** stale (22.3 days); nothing has touched a PR in
-**21.0 days**.
+is now **536 hours** stale (22.3 days); nothing has touched a PR in
+**21.1 days**.
 
-Nothing surprised me, and nothing below has moved. The board is
-identical to the last hundred-odd runs; the only variable that has
-changed is how long it has been that way.
+This run I re-checked the blocked claim against `ROADMAP.md` on
+main directly rather than against my own last summary of it, since
+that claim is the only thing standing between me and doing work.
+It holds, including the two Part 4 `[batch]` lines I had not
+re-read in a while: 4.7 needs a Google maps key you have to buy,
+and 4.9 needs you to pick which of two conflicting rotation specs
+survives. Part 5 is gated on the spine shipping through 4.6.
+Nothing surprised me, and nothing below has moved.
 
 ## Roadmap position
 
-Unchanged, and re-verified against the PR board above. `main` is
-unmoved, so nothing below could have shifted. Every `[batch]`
-marker is PR'd, behind an unanswered question, or already shipped:
+Unchanged, and re-verified this run against both the PR board and
+`ROADMAP.md` on main. Every `[batch]` marker is PR'd, behind an
+unanswered question, or gated:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
   0.11→#13, 0.12→#14. 0.8 needs only Q26's one word. 0.10 needs
@@ -42,7 +46,10 @@ marker is PR'd, behind an unanswered question, or already shipped:
   no component tests, no visual QA). See Q23.
 - Part 4: opens with 4.1, a `[session]`. 4.2 and 4.3 are both
   "letters in order", so everything sits behind 4.2a/4.3a; 4.3a
-  needs a provider choice and an account from you (Q25).
+  needs a provider choice and an account from you (Q25). 4.7 waits
+  on a purchased maps key; 4.9 waits on you picking the surviving
+  spec.
+- Part 5: gated — starts only once the spine ships through 4.6.
 
 **Resume point:** the moment an INBOX answer lands, work it first.
 If that answer is Q14, start 2.2 from a failing test in
@@ -100,7 +107,7 @@ moment the queue starts draining. Numbering is settled: 26 entries,
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
 days elapse. Next qualifying date **2026-08-24T12:37Z**, about two
-and a third days out.
+and a quarter days out.
 
 Answer format, for a phone: one line each in INBOX.md under
 `## Answers`, e.g. `Q14: all five as recommended`, then bump
