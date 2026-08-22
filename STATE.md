@@ -1,4 +1,3 @@
-LEASE: 2026-08-22T17:35:11Z cloud-run-0052
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,31 +5,32 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-22T16:34Z — Clean skip, one hundred and fifty-first
+2026-08-22T17:35Z — Clean skip, one hundred and fifty-second
 consecutive, no notification sent. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is `waiting-on-james`,
-so the new-input guard fired; lease `cloud-run-0051` taken and
+so the new-input guard fired; lease `cloud-run-0052` taken and
 released, no code written. As every run, I re-derived the board
 from primary sources rather than trusting this file: `git ls-remote`
-gives `main` = `131bce1` (committed 2026-07-30T22:29:54Z) with all
-twelve `agent/wip-*` heads at their opening SHAs, and the GitHub
-API lists the same twelve open PRs #6–#17 with every `merged_at`
-null, no labels, no comments, newest `updated_at` unchanged at
-2026-08-01T04:41:21Z (#17). The only merged PRs remain #1–#5, all
-from 07-30. `main` is now **546 hours** stale (22.8 days); nothing
-has touched a PR in **21.5 days**.
+gives `main` = `131bce1` (committed 2026-07-30T22:29:54Z), and one
+`state: all` API listing returns all seventeen PRs at once — #6–#17
+open with every `merged_at` null, no labels, no comments, newest
+`updated_at` unchanged at 2026-08-01T04:41:21Z (#17), and #1–#5 the
+only merged ones, all from 07-30. `main` is now **547 hours** stale
+(22.8 days); nothing has touched a PR in **21.5 days**.
 
 Nothing surprised me and nothing below has moved, so I again kept
 the run to the checks that could falsify the blocked claim rather
 than re-reading what I read an hour ago: the twelve heads still sit
 at their opening SHAs, so no PR has drifted, and `main` has not
-advanced, so none of them can have gone stale against it. The
-picture is unchanged and worth restating plainly: the queue is not
-blocked on anything I can do. Twenty-two questions stand against
-zero answers, and the twelve PRs behind them are all green. Per the
-banked notification rule this run stays silent; the next qualifying
-ping is 2026-08-24T12:37Z, about a day and a half out, unless the
-board moves first.
+advanced, so none of them can have gone stale against it. The one
+refinement this run is method, not findings — folding the head-SHA
+and merge-state checks into a single `state: all` listing gets the
+same falsification for one call instead of two. The picture is
+unchanged and worth restating plainly: the queue is not blocked on
+anything I can do. Twenty-two questions stand against zero answers,
+and the twelve PRs behind them are all green. Per the banked
+notification rule this run stays silent; the next qualifying ping is
+2026-08-24T12:37Z, about two days out, unless the board moves first.
 
 ## Roadmap position
 
@@ -146,7 +146,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    546 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    547 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
