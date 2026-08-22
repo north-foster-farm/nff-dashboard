@@ -1,4 +1,3 @@
-LEASE: 2026-08-22T18:35:02Z cloud-run-0053
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,38 +5,39 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-22T17:35Z — Clean skip, one hundred and fifty-second
+2026-08-22T18:35Z — Clean skip, one hundred and fifty-third
 consecutive, no notification sent. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is `waiting-on-james`,
-so the new-input guard fired; lease `cloud-run-0052` taken and
+so the new-input guard fired; lease `cloud-run-0053` taken and
 released, no code written. As every run, I re-derived the board
-from primary sources rather than trusting this file: `git ls-remote`
-gives `main` = `131bce1` (committed 2026-07-30T22:29:54Z), and one
+from primary sources rather than trusting this file: one
 `state: all` API listing returns all seventeen PRs at once — #6–#17
 open with every `merged_at` null, no labels, no comments, newest
 `updated_at` unchanged at 2026-08-01T04:41:21Z (#17), and #1–#5 the
-only merged ones, all from 07-30. `main` is now **547 hours** stale
-(22.8 days); nothing has touched a PR in **21.5 days**.
+only merged ones, all from 07-30. `main` is still `131bce1`
+(committed 2026-07-30T22:29:54Z), now **548 hours** stale (22.8
+days); nothing has touched a PR in **21.6 days**.
 
-Nothing surprised me and nothing below has moved, so I again kept
-the run to the checks that could falsify the blocked claim rather
-than re-reading what I read an hour ago: the twelve heads still sit
-at their opening SHAs, so no PR has drifted, and `main` has not
-advanced, so none of them can have gone stale against it. The one
-refinement this run is method, not findings — folding the head-SHA
-and merge-state checks into a single `state: all` listing gets the
-same falsification for one call instead of two. The picture is
+Nothing surprised me and nothing below has moved. I kept the run to
+the single check that could falsify the blocked claim: the twelve
+heads still sit at their opening SHAs, so no PR has drifted, and
+`main` has not advanced, so none of them can have gone stale
+against it. No method refinement was available this run — last
+run's fold into one `state: all` listing is already the cheapest
+form of this check, so the run cost one API call. The picture is
 unchanged and worth restating plainly: the queue is not blocked on
 anything I can do. Twenty-two questions stand against zero answers,
 and the twelve PRs behind them are all green. Per the banked
 notification rule this run stays silent; the next qualifying ping is
-2026-08-24T12:37Z, about two days out, unless the board moves first.
+2026-08-24T12:37Z, under two days out, unless the board moves first.
 
 ## Roadmap position
 
-Unchanged, and re-verified this run against both the PR board and
-`ROADMAP.md` on main. Every `[batch]` marker is PR'd, behind an
-unanswered question, or gated:
+Unchanged, and re-verified this run against the PR board.
+`ROADMAP.md` itself I did not re-read — it lives on `main`, which
+has not moved since I last read it, so it cannot have changed.
+Every `[batch]` marker is PR'd, behind an unanswered question, or
+gated:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
   0.11→#13, 0.12→#14. 0.8 needs only Q26's one word. 0.10 needs
