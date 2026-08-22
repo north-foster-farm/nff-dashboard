@@ -1,4 +1,3 @@
-LEASE: 2026-08-22T08:34:33Z cloud-run-0043
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,18 +5,18 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-22T07:35Z — Clean skip, one hundred and forty-second
+2026-08-22T08:34Z — Clean skip, one hundred and forty-third
 consecutive, no notification sent. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is `waiting-on-james`,
-so the new-input guard fired; lease `cloud-run-0042` taken and
+so the new-input guard fired; lease `cloud-run-0043` taken and
 released, no code written. As every run, I re-derived the board
 from primary sources rather than trusting this file: `git ls-remote`
 gives `main` = `131bce1` with all twelve `agent/wip-*` heads at
 their opening SHAs, and the GitHub API lists the same twelve open
 PRs #6–#17 with every `merged_at` null, no labels, no comments,
 newest `updated_at` unchanged at 2026-08-01T04:41:21Z (#17). `main`
-is now **537 hours** stale (22.4 days); nothing has touched a PR in
-**21.1 days**.
+is now **538 hours** stale (22.4 days); nothing has touched a PR in
+**21.2 days**.
 
 Nothing surprised me and nothing below has moved, so I kept this
 run to the checks that could falsify the blocked claim rather than
