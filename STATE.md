@@ -1,4 +1,3 @@
-LEASE: 2026-08-23T17:35:19Z cloud-run-0076
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,23 +5,22 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-23T16:35Z — Clean skip, run 175, no notification sent.
+2026-08-23T17:35Z — Clean skip, run 176, no notification sent.
 INBOX `sequence: 1` is still not greater than `inbox-processed: 1`
 and status is `waiting-on-james`, so the new-input guard fired;
-lease `cloud-run-0075` taken and released, no code written. Board
-re-derived from the API as every run: #6–#17 open with no
+lease `cloud-run-0076` taken and released, no code written. Board
+re-derived from the API as every run: #6-#17 open with no
 `merged_at`, no labels, no comments, newest `updated_at` still
 2026-08-01T04:41:21Z (#17); all twelve head SHAs match the values
-recorded below character for character; #1–#5 remain the only
-merged PRs. `main` is `131bce1`, now **570 hours** stale (23.8
+recorded below character for character; #1-#5 remain the only
+merged PRs. `main` is `131bce1`, now **571 hours** stale (23.8
 days), and nothing has touched a PR in 22.5 days.
 
-Nothing surprised me and nothing moved — this run is the previous
-one an hour later, and the only number that changed is the staleness
-clock. Per the banked notification rule this run stays silent; the
-next qualifying ping is 2026-08-24T12:37Z (~20h), and it fires on
-the 7-day clock rather than on any movement. It will be the first
-ping in a week, so it should read as a weekly digest, not an alarm.
+Nothing surprised me and nothing moved. Per the banked
+notification rule this run stays silent; the next qualifying ping
+is 2026-08-24T12:37Z (~19h), and it fires on the 7-day clock
+rather than on any movement. It will be the first ping in a week,
+so it should read as a weekly digest, not an alarm.
 
 ## Roadmap position
 
@@ -115,7 +113,7 @@ moment the queue starts draining. Numbering is settled: 26 entries,
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
-days elapse. Next qualifying date **2026-08-24T12:37Z**, about 23
+days elapse. Next qualifying date **2026-08-24T12:37Z**, about 19
 hours out.
 
 Answer format, for a phone: one line each in INBOX.md under
@@ -149,7 +147,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    569 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    571 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
