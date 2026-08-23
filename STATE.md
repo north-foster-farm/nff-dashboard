@@ -1,4 +1,3 @@
-LEASE: 2026-08-23T14:35:14Z cloud-run-0073
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,22 +5,22 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-23T13:35Z — Clean skip, run 172, no notification sent.
+2026-08-23T14:35Z — Clean skip, run 173, no notification sent.
 INBOX `sequence: 1` is still not greater than `inbox-processed: 1`
 and status is `waiting-on-james`, so the new-input guard fired;
-lease `cloud-run-0072` taken and released, no code written. Board
+lease `cloud-run-0073` taken and released, no code written. Board
 re-derived from the API as every run: #6–#17 open with no
 `merged_at`, no labels, no comments, newest `updated_at` still
 2026-08-01T04:41:21Z (#17); all twelve head SHAs match the values
 recorded below character for character; #1–#5 remain the only
-merged PRs. `main` is `131bce1`, now **567 hours** stale (23.6
+merged PRs. `main` is `131bce1`, now **568 hours** stale (23.7
 days), and nothing has touched a PR in 22.4 days.
 
 Nothing surprised me and nothing moved. The picture is one line
 long: 22 questions against zero answers, twelve green PRs behind
 them, and no unblocked work I can start without one of those
 answers. Per the banked notification rule this run stays silent;
-next qualifying ping 2026-08-24T12:37Z (~23h), unless the board
+next qualifying ping 2026-08-24T12:37Z (~22h), unless the board
 moves first — that one will fire on the 7-day clock, not on
 movement. It is the first ping in a week, so it should read as a
 weekly digest, not an alarm.
