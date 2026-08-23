@@ -1,4 +1,3 @@
-LEASE: 2026-08-23T10:35Z cloud-run-0069
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,22 +5,22 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-23T09:34Z — Clean skip, run 168, no notification sent.
+2026-08-23T10:35Z — Clean skip, run 169, no notification sent.
 INBOX `sequence: 1` is still not greater than `inbox-processed: 1`
 and status is `waiting-on-james`, so the new-input guard fired;
-lease `cloud-run-0068` taken and released, no code written. Board
+lease `cloud-run-0069` taken and released, no code written. Board
 re-derived from the API as every run: #6–#17 open with no
 `merged_at`, no labels, no comments, newest `updated_at` still
 2026-08-01T04:41:21Z (#17); all twelve head SHAs match the values
 recorded below character for character; #1–#5 remain the only
-merged PRs. `main` is `131bce1`, now **563 hours** stale (23.5
+merged PRs. `main` is `131bce1`, now **564 hours** stale (23.5
 days), and nothing has touched a PR in 22.2 days.
 
 Nothing surprised me and nothing moved. The picture is one line
 long: 22 questions against zero answers, twelve green PRs behind
 them, and no unblocked work I can start without one of those
 answers. Per the banked notification rule this run stays silent;
-next qualifying ping 2026-08-24T12:37Z (~27h), unless the board
+next qualifying ping 2026-08-24T12:37Z (~26h), unless the board
 moves first — that one will fire on the 7-day clock, not on
 movement.
 
@@ -116,7 +115,7 @@ moment the queue starts draining. Numbering is settled: 26 entries,
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
-days elapse. Next qualifying date **2026-08-24T12:37Z**, about 27
+days elapse. Next qualifying date **2026-08-24T12:37Z**, about 26
 hours out.
 
 Answer format, for a phone: one line each in INBOX.md under
