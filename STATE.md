@@ -1,4 +1,3 @@
-LEASE: 2026-08-23T02:35:20Z cloud-run-0061
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,30 +5,30 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-23T01:35Z — Clean skip, one hundred and sixtieth
+2026-08-23T02:35Z — Clean skip, one hundred and sixty-first
 consecutive, no notification sent. INBOX `sequence: 1` is still not
 greater than `inbox-processed: 1` and status is `waiting-on-james`,
-so the new-input guard fired; lease `cloud-run-0060` taken and
+so the new-input guard fired; lease `cloud-run-0061` taken and
 released, no code written. Board re-derived from primary sources as
 every run: one `state: all` API listing returns all seventeen PRs —
 #6–#17 open with every `merged_at` absent, no labels, no comments,
 newest `updated_at` unchanged at 2026-08-01T04:41:21Z (#17), and
 #1–#5 the only merged ones, all from 07-30. `main` is still
-`131bce1` (committed 2026-07-30T22:29:54Z), now **555 hours** stale
-(23.1 days); nothing has touched a PR in **21.9 days**.
+`131bce1` (committed 2026-07-30T22:29:54Z), now **556 hours** stale
+(23.2 days); nothing has touched a PR in **21.9 days**.
 
-The head-SHA diff run 0054 set up held for a sixth run: all twelve
-heads match the recorded values character for character, and #10's
-base is still `agent/wip-projects-collapse` at `302f0f7`, which is
-#9's recorded head. So the stacking of #10 on #9 and the whole
-"unchanged" claim stay verified against the API rather than
+The head-SHA diff run 0054 set up held for a seventh run: all
+twelve heads match the recorded values character for character, and
+#10's base is still `agent/wip-projects-collapse` at `302f0f7`,
+which is #9's recorded head. So the stacking of #10 on #9 and the
+whole "unchanged" claim stay verified against the API rather than
 asserted from memory. Nothing surprised me. The picture restated
 plainly, because it is the only thing there is to report: the queue
 is not blocked on anything I can do. Twenty-two questions stand
 against zero answers, and the twelve PRs behind them are all green.
 Per the banked notification rule this run stays silent; the next
-qualifying ping is 2026-08-24T12:37Z, about a day and a half out,
-unless the board moves first.
+qualifying ping is 2026-08-24T12:37Z, about 34 hours out, unless
+the board moves first.
 
 ## Roadmap position
 
@@ -122,8 +121,8 @@ moment the queue starts draining. Numbering is settled: 26 entries,
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
-days elapse. Next qualifying date **2026-08-24T12:37Z**, about a
-day and a half out.
+days elapse. Next qualifying date **2026-08-24T12:37Z**, about 34
+hours out.
 
 Answer format, for a phone: one line each in INBOX.md under
 `## Answers`, e.g. `Q14: all five as recommended`, then bump
