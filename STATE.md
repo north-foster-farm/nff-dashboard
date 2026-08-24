@@ -1,4 +1,3 @@
-LEASE: 2026-08-24T13:35:25Z cloud-run-0096
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,30 +5,30 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-24T12:37Z — Clean skip, run 195, **and the 7-day
-notification fired**. INBOX `sequence: 1` is still not greater
-than `inbox-processed: 1` and status is `waiting-on-james`, so
-the new-input guard fired as it has every run since 08-01; lease
-`cloud-run-0095` taken and released, no code written. Board
-re-derived from the API as every run: #6–#17 open with no
-`merged_at`, no labels, no comments, newest `updated_at` still
-2026-08-01T04:41:21Z (#17); all twelve head SHAs match the values
-recorded below character for character; #1–#5 remain the only
-merged PRs. `main` is `131bce1`, committed 2026-07-30T22:29:54Z
-and now **590 hours** stale (24.6 days); nothing has touched a PR
-in 23.3 days.
+2026-08-24T13:35Z — Clean skip, run 196, and **no
+notification** — correctly, since the digest went out 58 minutes
+ago on the 7-day arm and nothing has moved since. INBOX
+`sequence: 1` is still not greater than `inbox-processed: 1` and
+status is `waiting-on-james`, so the new-input guard fired as it
+has every run since 08-01; lease `cloud-run-0096` taken and
+released, no code written. Board re-derived from the API as
+every run: #6–#17 open with no `merged_at`, no labels, no
+comments, newest `updated_at` still 2026-08-01T04:41:21Z (#17);
+all twelve head SHAs match the values recorded below character
+for character; #1–#5 remain the only merged PRs. `main` is
+`131bce1`, committed 2026-07-30T22:29:54Z and now **591 hours**
+stale (24.6 days); nothing has touched a PR in 23.4 days.
 
-The one thing that changed is the clock. Last run reasoned the
-13:35Z run would cross the 7-day mark and that this one would
-land two minutes short — that arithmetic was off by the wrong
-side of the minute: this run started at 12:36:44Z, sixteen
-seconds before 2026-08-24T12:37Z, and crossed it mid-run. So the
-digest went out now rather than an hour later, which is the right
-outcome either way and costs nothing. It led with Q13 (drain the
-queue, #6 first, `LGTM` auto-merges) and named the 590-hour
-figure, rather than re-listing twenty-two questions at a phone.
-Nothing else surprised me. Next qualifying date is
-**2026-08-31T12:37Z** unless the board moves first.
+Nothing surprised me, and there was nothing to surprise me with:
+this is the first run after a digest, so the one thing that could
+have changed the picture — James reading the 12:37Z ping and
+labelling a PR or bumping `sequence:` — had not happened by the
+time I looked. That is expected an hour out, not a signal. I
+deliberately wrote no new question: the queue stands at
+twenty-two live against zero answers, and a twenty-third makes it
+harder to read at a phone, not easier. Next qualifying
+notification date is **2026-08-31T12:37Z** unless the board moves
+first — and a merge or an INBOX bump wakes it on the next hour.
 
 ## Roadmap position
 
@@ -123,9 +122,10 @@ issued, **next number is Q28**.
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
-days elapse. Fired this run at 2026-08-24T12:37Z on the 7-day
-arm. Next qualifying date **2026-08-31T12:37Z**; a merge or an
-INBOX bump wakes the digest sooner.
+days elapse. Last fired 2026-08-24T12:37Z on the 7-day arm; not
+fired this run, correctly — nothing moved in the hour since.
+Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX
+bump wakes the digest sooner.
 
 Answer format, for a phone: one line each in INBOX.md under
 `## Answers`, e.g. `Q14: all five as recommended`, then bump
