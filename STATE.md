@@ -1,4 +1,3 @@
-LEASE: 2026-08-24T14:35:20Z cloud-run-0097
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,30 +5,31 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-24T13:35Z — Clean skip, run 196, and **no
-notification** — correctly, since the digest went out 58 minutes
-ago on the 7-day arm and nothing has moved since. INBOX
+2026-08-24T14:35Z — Clean skip, run 197, and **no
+notification** — correctly: the digest went out two hours ago on
+the 7-day arm and the board has not moved since. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status is `waiting-on-james`, so the new-input guard fired as it
-has every run since 08-01; lease `cloud-run-0096` taken and
+has every run since 08-01; lease `cloud-run-0097` taken and
 released, no code written. Board re-derived from the API as
 every run: #6–#17 open with no `merged_at`, no labels, no
 comments, newest `updated_at` still 2026-08-01T04:41:21Z (#17);
 all twelve head SHAs match the values recorded below character
 for character; #1–#5 remain the only merged PRs. `main` is
-`131bce1`, committed 2026-07-30T22:29:54Z and now **591 hours**
-stale (24.6 days); nothing has touched a PR in 23.4 days.
+`131bce1`, committed 2026-07-30T22:29:54Z and now **592 hours**
+stale (24.7 days); nothing has touched a PR in 23.4 days.
 
-Nothing surprised me, and there was nothing to surprise me with:
-this is the first run after a digest, so the one thing that could
-have changed the picture — James reading the 12:37Z ping and
-labelling a PR or bumping `sequence:` — had not happened by the
-time I looked. That is expected an hour out, not a signal. I
-deliberately wrote no new question: the queue stands at
-twenty-two live against zero answers, and a twenty-third makes it
-harder to read at a phone, not easier. Next qualifying
-notification date is **2026-08-31T12:37Z** unless the board moves
-first — and a merge or an INBOX bump wakes it on the next hour.
+Nothing surprised me. Two hours after a digest is still inside
+the window where no response is expected rather than meaningful,
+so the flat board says nothing new about whether the ping landed;
+the run that would tell me something is the one that finds a
+label or a `sequence:` bump, and any hour can be it. I again
+wrote no new question, same call as the last twenty-one runs: the
+queue stands at twenty-two live against zero answers, and a
+twenty-third makes it harder to read at a phone, not easier. Next
+qualifying notification date is **2026-08-31T12:37Z** unless the
+board moves first — a merge or an INBOX bump wakes it on the next
+hour.
 
 ## Roadmap position
 
@@ -124,7 +124,7 @@ issued, **next number is Q28**.
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
 days elapse. Last fired 2026-08-24T12:37Z on the 7-day arm; not
-fired this run, correctly — nothing moved in the hour since.
+fired this run, correctly — nothing moved in the two hours since.
 Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX
 bump wakes the digest sooner.
 
@@ -159,7 +159,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    590 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    592 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
