@@ -1,3 +1,4 @@
+LEASE: 2026-08-24T08:35Z cloud-run-0091
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
