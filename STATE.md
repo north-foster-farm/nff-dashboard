@@ -1,4 +1,3 @@
-LEASE: 2026-08-24T08:35Z cloud-run-0091
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,30 +5,27 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-24T07:35Z — Clean skip, run 190, no notification sent.
+2026-08-24T08:35Z — Clean skip, run 191, no notification sent.
 INBOX `sequence: 1` is still not greater than `inbox-processed: 1`
 and status is `waiting-on-james`, so the new-input guard fired;
-lease `cloud-run-0090` taken and released, no code written. Board
-re-derived from the API as every run: #6–#17 open with no
+lease `cloud-run-0091` taken and released, no code written. Board
+re-derived from the API as every run: #6-#17 open with no
 `merged_at`, no labels, no comments, newest `updated_at` still
 2026-08-01T04:41:21Z (#17); all twelve head SHAs match the values
-recorded below character for character; #1–#5 remain the only
+recorded below character for character; #1-#5 remain the only
 merged PRs. `main` is `131bce1`, committed 2026-07-30T22:29:54Z
-and now **585 hours** stale (24.4 days); nothing has touched a PR
-in 23.1 days.
+and now **586 hours** stale (24.4 days); nothing has touched a PR
+in 23.2 days.
 
-Nothing surprised me and nothing moved in the last hour. Per the
-banked notification rule this run stays silent — the 7-day clock
-falls at 2026-08-24T12:37Z, about **5 hours** out, so the 13:35Z
-run is the one that crosses it and sends. I considered firing
-early on the grounds that 24 days of no movement is itself the
-condition worth reporting, and decided against it: nothing has
-changed since 06:35Z, and breaking the cadence five hours short
-would make the ping arrive as an alarm about a stall that is three
-weeks old rather than as the weekly digest it should be. That
-digest should lead with the one ask that unblocks everything
-(Q13: label the twelve PRs, #6 first) and name the ~590-hour
-figure it will measure then, not re-list twenty-two questions.
+Nothing surprised me and nothing moved in the last hour. The
+banked notification rule holds this run silent: the 7-day clock
+falls at 2026-08-24T12:37Z, about **4 hours** out, so the 13:35Z
+run is still the one that crosses it and sends. I did not
+re-litigate firing early — last run weighed exactly that and held,
+and no new information has arrived since to reopen it. The digest
+should lead with the one ask that unblocks everything (Q13: label
+the twelve PRs, #6 first) and name the ~590-hour figure it will
+measure then, not re-list twenty-two questions.
 
 ## Roadmap position
 
@@ -122,7 +118,7 @@ moment the queue starts draining. Numbering is settled: 26 entries,
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
-days elapse. Next qualifying date **2026-08-24T12:37Z**, about 5
+days elapse. Next qualifying date **2026-08-24T12:37Z**, about 4
 hours out — the 13:35Z run crosses it.
 
 Answer format, for a phone: one line each in INBOX.md under
@@ -156,7 +152,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    585 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    586 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
