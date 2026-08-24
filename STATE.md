@@ -1,4 +1,3 @@
-LEASE: 2026-08-24T09:35:00Z cloud-run-0092
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,27 +5,27 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-24T08:35Z — Clean skip, run 191, no notification sent.
+2026-08-24T09:35Z — Clean skip, run 192, no notification sent.
 INBOX `sequence: 1` is still not greater than `inbox-processed: 1`
 and status is `waiting-on-james`, so the new-input guard fired;
-lease `cloud-run-0091` taken and released, no code written. Board
-re-derived from the API as every run: #6-#17 open with no
+lease `cloud-run-0092` taken and released, no code written. Board
+re-derived from the API as every run: #6–#17 open with no
 `merged_at`, no labels, no comments, newest `updated_at` still
 2026-08-01T04:41:21Z (#17); all twelve head SHAs match the values
-recorded below character for character; #1-#5 remain the only
+recorded below character for character; #1–#5 remain the only
 merged PRs. `main` is `131bce1`, committed 2026-07-30T22:29:54Z
-and now **586 hours** stale (24.4 days); nothing has touched a PR
+and now **587 hours** stale (24.5 days); nothing has touched a PR
 in 23.2 days.
 
 Nothing surprised me and nothing moved in the last hour. The
 banked notification rule holds this run silent: the 7-day clock
-falls at 2026-08-24T12:37Z, about **4 hours** out, so the 13:35Z
+falls at 2026-08-24T12:37Z, about **3 hours** out, so the 13:35Z
 run is still the one that crosses it and sends. I did not
-re-litigate firing early — last run weighed exactly that and held,
-and no new information has arrived since to reopen it. The digest
-should lead with the one ask that unblocks everything (Q13: label
-the twelve PRs, #6 first) and name the ~590-hour figure it will
-measure then, not re-list twenty-two questions.
+re-litigate firing early — two runs have now weighed exactly that
+and held, and no new information has arrived since to reopen it.
+The digest should lead with the one ask that unblocks everything
+(Q13: label the twelve PRs, #6 first) and name the ~590-hour
+figure it will measure then, not re-list twenty-two questions.
 
 ## Roadmap position
 
@@ -119,7 +118,7 @@ moment the queue starts draining. Numbering is settled: 26 entries,
 
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
-days elapse. Next qualifying date **2026-08-24T12:37Z**, about 4
+days elapse. Next qualifying date **2026-08-24T12:37Z**, about 3
 hours out — the 13:35Z run crosses it.
 
 Answer format, for a phone: one line each in INBOX.md under
