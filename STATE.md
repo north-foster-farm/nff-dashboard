@@ -1,4 +1,3 @@
-LEASE: 2026-08-25T02:35:36Z cloud-run-0109
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,30 +5,30 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-25T01:35Z — Clean skip, run 207, and **no notification** —
-correctly: the board has not moved and the 7-day digest went out
-thirteen hours ago. INBOX `sequence: 1` is still not greater than
+2026-08-25T02:35Z — Clean skip, run 208, and **no notification** —
+correctly: nothing has moved and the 7-day digest went out fourteen
+hours ago. INBOX `sequence: 1` is still not greater than
 `inbox-processed: 1` and status is `waiting-on-james`, so the
 new-input guard fired as it has every run since 08-01; lease
-`cloud-run-0108` taken and released, no code written. Board
+`cloud-run-0109` taken and released, no code written. Board
 re-derived from the API as every run: #6–#17 open with no
 `merged_at`, no labels, no comments, newest `updated_at` still
 2026-08-01T04:41:21Z (#17); all twelve head SHAs match the values
 recorded below character for character; #1–#5 remain the only
 merged PRs. `main` is `131bce1`, committed 2026-07-30T22:29:54Z and
-now **603 hours** stale (25.1 days); nothing has touched a PR in
+now **604 hours** stale (25.2 days); nothing has touched a PR in
 23.9 days.
 
 Nothing surprised me, and there was nothing here a person needed to
-be told — thirteen hours after a digest, a flat board is the
+be told — fourteen hours after a digest, a flat board is the
 expected reading, not a signal. The run that says something is the
 one that finds a label or a `sequence:` bump, and any hour can be
-it. I again wrote no new question, same call as the last thirty-one
-runs: the queue stands at twenty-two live against zero answers, and
-a twenty-third makes it harder to read at a phone, not easier. Next
-qualifying notification date is **2026-08-31T12:37Z** unless the
-board moves first — a merge or an INBOX bump wakes it on the next
-hour.
+it. I again wrote no new question, same call as the last
+thirty-two runs: the queue stands at twenty-two live against zero
+answers, and a twenty-third makes it harder to read at a phone, not
+easier. Next qualifying notification date is **2026-08-31T12:37Z**
+unless the board moves first — a merge or an INBOX bump wakes it on
+the next hour.
 
 ## Roadmap position
 
@@ -114,7 +113,7 @@ a recorded value instead of taking "unchanged" on trust.
 ## QUESTIONS
 
 Twenty-two live, unchanged — no new ones this run, same call as
-the last twenty-one. The binding constraint is answers, not
+the last twenty-two. The binding constraint is answers, not
 questions: twenty-two are queued against zero answers, and a
 twenty-third makes the backlog harder to read, not the project
 easier to move.
@@ -125,7 +124,7 @@ issued, **next number is Q28**.
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
 days elapse. Last fired 2026-08-24T12:37Z on the 7-day arm; not
-fired this run, correctly — nothing moved in the thirteen hours
+fired this run, correctly — nothing moved in the fourteen hours
 since.
 Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX
 bump wakes the digest sooner.
