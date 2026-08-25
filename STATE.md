@@ -1,4 +1,3 @@
-LEASE: 2026-08-25T13:37:42Z cloud-run-0120
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,24 +5,24 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-25T12:38Z — Clean skip, run 218, no notification. INBOX
+2026-08-25T13:37Z — Clean skip, run 219, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status is `waiting-on-james`, so the new-input guard fired as it
-has every run since 08-01; lease `cloud-run-0119` taken and
+has every run since 08-01; lease `cloud-run-0120` taken and
 released, no code written. Board re-derived from the API rather
 than assumed: #6–#17 open, none merged, no labels, no comments, no
 reviews, newest `updated_at` still 2026-08-01T04:41:21Z (#17), and
 all twelve head SHAs match the values recorded below character for
 character. `main` is `131bce1`, committed 2026-07-30T22:29:54Z and
-now **614 hours** stale (25.6 days); nothing has touched a PR in
-24.3 days.
+now **615 hours** stale (25.6 days); nothing has touched a PR in
+24.4 days.
 
 Nothing surprised me, and there was nothing here a person needed to
 be told — a flat board one hour after a flat board is not a signal,
 and the 7-day digest went out yesterday. The run that says
 something is the one that finds a label or a `sequence:` bump, and
 any hour can be it. I again wrote no new question, same call as the
-last forty-two runs: the queue stands at twenty-two live against
+last forty-three runs: the queue stands at twenty-two live against
 zero answers, and a twenty-third makes it harder to read at a
 phone, not easier. Next qualifying notification date is
 **2026-08-31T12:37Z** unless the board moves first — a merge or an
@@ -123,7 +122,7 @@ issued, **next number is Q28**.
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
 days elapse. Last fired 2026-08-24T12:37Z on the 7-day arm; not
-fired this run, correctly — nothing moved in the twenty hours
+fired this run, correctly — nothing moved in the twenty-five hours
 since.
 Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX
 bump wakes the digest sooner.
@@ -159,7 +158,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    614 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    615 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
