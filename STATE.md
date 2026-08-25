@@ -1,4 +1,3 @@
-LEASE: 2026-08-25T11:35:09Z cloud-run-0118
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,23 +5,23 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-25T10:34Z — Clean skip, run 216, no notification. INBOX
+2026-08-25T11:35Z — Clean skip, run 217, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status is `waiting-on-james`, so the new-input guard fired as it
-has every run since 08-01; lease `cloud-run-0117` taken and
+has every run since 08-01; lease `cloud-run-0118` taken and
 released, no code written. Board re-derived from the API rather
 than assumed: #6–#17 open, none merged, no labels, no comments, no
 reviews, newest `updated_at` still 2026-08-01T04:41:21Z (#17), and
 all twelve head SHAs match the values recorded below character for
 character. `main` is `131bce1`, committed 2026-07-30T22:29:54Z and
-now **612 hours** stale (25.5 days); nothing has touched a PR in
-24.2 days.
+now **613 hours** stale (25.5 days); nothing has touched a PR in
+24.3 days.
 
 Nothing surprised me, and there was nothing here a person needed to
 be told — a flat board one hour after a flat board is not a signal.
 The run that says something is the one that finds a label or a
 `sequence:` bump, and any hour can be it. I again wrote no new
-question, same call as the last forty runs: the queue stands at
+question, same call as the last forty-one runs: the queue stands at
 twenty-two live against zero answers, and a twenty-third makes it
 harder to read at a phone, not easier. Next qualifying
 notification date is **2026-08-31T12:37Z** unless the board moves
