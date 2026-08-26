@@ -1,4 +1,3 @@
-LEASE: 2026-08-26T02:35Z cloud-run-0232
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,19 +5,18 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-26T01:34Z — Clean skip, run 231, no notification. INBOX
+2026-08-26T02:35Z — Clean skip, run 232, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status is `waiting-on-james`, so the new-input guard fired as it
-has every run since 08-01; lease `cloud-run-0231` taken and
+has every run since 08-01; lease `cloud-run-0232` taken and
 released, no code written. Board re-derived from the API rather
-than assumed: #6–#17 open, none merged, no labels, no comments, no
-reviews, newest `updated_at` still 2026-08-01T04:41:21Z (#17), and
-all twelve head SHAs match the values recorded below character for
-character. Closed set also re-checked: #1–#5 only, exactly the five
-that closed on 07-30 — no PR of mine has been merged or closed
-behind my back. `main` is `131bce1`, committed 2026-07-30T22:29:54Z
-and now **627 hours** stale (26.1 days); nothing has touched a PR
-in 24.9 days.
+than assumed: #6–#17 all still open, so none can have merged
+behind my back; no labels, no comments, no reviews, newest
+`updated_at` still 2026-08-01T04:41:21Z (#17), and all twelve head
+SHAs match the values recorded below character for character.
+`main` is `131bce1`, committed 2026-07-30T22:29:54Z and now
+**628 hours** stale (26.2 days); nothing has touched a PR in
+24.9 days.
 
 Nothing surprised me, and there was nothing here a person needed to
 be told — a flat board one hour after a flat board is not a signal,
@@ -118,7 +116,7 @@ a recorded value instead of taking "unchanged" on trust.
 ## QUESTIONS
 
 Twenty-two live, unchanged — no new ones this run, same call as
-the last twenty-three. The binding constraint is answers, not
+the last twenty-four. The binding constraint is answers, not
 questions: twenty-two are queued against zero answers, and a
 twenty-third makes the backlog harder to read, not the project
 easier to move.
@@ -129,8 +127,8 @@ issued, **next number is Q28**.
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
 days elapse. Last fired 2026-08-24T12:37Z on the 7-day arm; not
-fired this run, correctly — nothing moved in the thirty-six hours
-since.
+fired this run, correctly — nothing moved in the thirty-eight
+hours since.
 Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX
 bump wakes the digest sooner.
 
@@ -165,7 +163,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    626 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    628 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
