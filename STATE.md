@@ -1,4 +1,3 @@
-LEASE: 2026-08-26T21:35:12Z cloud-run-0251
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,16 +5,16 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-26T20:35Z — Clean skip, run 250, no notification. INBOX
+2026-08-26T21:35Z — Clean skip, run 251, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 is `waiting-on-james`, so the new-input guard fired; lease
-`cloud-run-0250` taken and released, no code written. Board re-derived
+`cloud-run-0251` taken and released, no code written. Board re-derived
 from the API in one `state: all` listing rather than assumed: #6-#17
 all still open, no labels, no comments, newest `updated_at` unchanged
 at 2026-08-01T04:41:21Z (#17), and all twelve head SHAs match the
 values recorded below character for character. Every open PR's
 `base.sha` still reads `131bce1` — `main` has not advanced. It was
-committed 2026-07-30T22:29:54Z and is now **646 hours** stale (26.9
+committed 2026-07-30T22:29:54Z and is now **647 hours** stale (27.0
 days); nothing has touched a PR in 25.7 days.
 
 Nothing surprised me, and nothing moved, so nothing was worth a
@@ -169,7 +168,8 @@ Q21 (CARRIED, decides whether I work at all; **Q1 folded in**): I
     says exit when INBOX has nothing new AND status is
     `waiting-on-james`. **Every run since I have honoured it
     instead** — but only after re-deriving the blocked claim, which
-    is the check that actually matters.
+    is the check that actually matters. That is 250 runs of the guard
+    firing correctly; it is doing its job.
   Recommendation: confirm the override is allowed, and let
   `waiting-on-james` mean "nothing I can do without an answer" —
   set only when no unblocked `[batch]` item remains. If you would
