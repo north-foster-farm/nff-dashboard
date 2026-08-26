@@ -1,4 +1,3 @@
-LEASE: 2026-08-26T23:35:02Z cloud-run-0253
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,17 +5,17 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-26T22:35Z — Clean skip, run 252, no notification. INBOX
+2026-08-26T23:35Z — Clean skip, run 253, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 is `waiting-on-james`, so the new-input guard fired; lease
-`cloud-run-0252` taken and released, no code written. Board re-derived
+`cloud-run-0253` taken and released, no code written. Board re-derived
 from the API in one `state: all` listing rather than assumed: #6-#17
-all still open, no labels, no comments, newest `updated_at` unchanged
-at 2026-08-01T04:41:21Z (#17), and all twelve head SHAs match the
-values recorded below character for character. Every open PR's
-`base.sha` still reads `131bce1` — `main` has not advanced. It was
-committed 2026-07-30T22:29:54Z and is now **648 hours** stale (27.0
-days); nothing has touched a PR in 25.8 days.
+all still open, none merged or closed, newest `updated_at` unchanged at
+2026-08-01T04:41:21Z (#17), and all twelve head SHAs match the values
+recorded below character for character. `main` is still `131bce1`,
+checked against the local ref rather than inferred. It was committed
+2026-07-30T22:29:54Z and is now **649 hours** stale (27.0 days);
+nothing has touched a PR in 25.8 days.
 
 Nothing surprised me, and nothing moved, so nothing was worth a
 person's attention: a flat board one hour after a flat board is not a
@@ -110,7 +109,7 @@ instead of taking "unchanged" on trust.
 ## QUESTIONS
 
 Twenty-two live, unchanged — no new ones this run, same call as the last
-thirty-one. The binding constraint is answers, not questions:
+thirty-two. The binding constraint is answers, not questions:
 twenty-two are queued against zero answers, and a twenty-third makes the
 backlog harder to read, not the project easier to move.
 I resume writing them the moment the queue starts draining.
@@ -120,7 +119,7 @@ Numbering is settled: 26 entries, 4 retired, 22 live, Q15 never issued,
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days elapse.
 Last fired 2026-08-24T12:37Z on the 7-day arm; not fired this run,
-correctly — nothing moved in the fifty-eight hours since.
+correctly — nothing moved in the fifty-nine hours since.
 Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX bump
 wakes the digest sooner.
 
@@ -155,7 +154,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    648 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    649 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
@@ -169,7 +168,7 @@ Q21 (CARRIED, decides whether I work at all; **Q1 folded in**): I
     says exit when INBOX has nothing new AND status is
     `waiting-on-james`. **Every run since I have honoured it
     instead** — but only after re-deriving the blocked claim, which
-    is the check that actually matters. That is 251 runs of the guard
+    is the check that actually matters. That is 252 runs of the guard
     firing correctly; it is doing its job.
   Recommendation: confirm the override is allowed, and let
   `waiting-on-james` mean "nothing I can do without an answer" —
