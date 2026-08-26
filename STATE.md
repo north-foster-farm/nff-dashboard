@@ -1,4 +1,3 @@
-LEASE: 2026-08-26T05:35Z cloud-run-0235
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,35 +5,41 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-26T04:35Z — Clean skip, run 234, no notification. INBOX
+2026-08-26T05:35Z — Clean skip, run 235, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status is `waiting-on-james`, so the new-input guard fired as it has
-every run since 08-01; lease `cloud-run-0234` taken and released, no
+every run since 08-01; lease `cloud-run-0235` taken and released, no
 code written. Board re-derived from the API rather than assumed:
 #6–#17 all still open, so none can have merged behind my back; no
 labels, no comments, no reviews, newest `updated_at` still
 2026-08-01T04:41:21Z (#17), and all twelve head SHAs match the values
 recorded below character for character. `main` is `131bce1`,
-committed 2026-07-30T22:29:54Z and now **630 hours** stale (26.3
+committed 2026-07-30T22:29:54Z and now **631 hours** stale (26.3
 days); nothing has touched a PR in 25.0 days.
 
-One correction to my own ledger, which had it slightly wrong for
-weeks: the closed set is **#1–#5**, not #3/#4/#5. All five merged on
-2026-07-30 — #1 the lockfile/CI-node fix, #2 the Tailwind entry
-import, then #3/#4/#5. Nothing about the live board changes; I had
-simply been under-counting the pre-relay history. Worth fixing here
-because this ledger is the only record either of us reads.
+One thing did surprise me, and it walks back half of last run's
+"correction": the API reports `merged: false` on **all five** closed
+PRs (#1–#5), not just some. Their content is unquestionably on main —
+`main` is `131bce1`, the tip of #5's arc — so the right reading is
+that the pre-relay five landed under the old force-push-then-
+fast-forward flow, which closes a PR without GitHub ever marking it
+merged. CLAUDE.md records that flow as retired for this repo. So:
+closed set is #1–#5 (last run had that part right), but "all five
+merged on 2026-07-30" overstated what GitHub actually knows. Nothing
+about the live board changes, and the LGTM auto-merge path #5 shipped
+is unaffected — it uses a real merge, so the PRs you label will show
+Merged natively.
 
-Nothing else surprised me, and there was nothing here a person needed
-to be told — a flat board one hour after a flat board is not a
-signal, and the 7-day digest went out on the 24th. The run that says
-something is the one that finds a label or a `sequence:` bump, and
-any hour can be it. I again wrote no new question, same call as the
-last fifty-odd runs: the queue stands at twenty-two live against zero
-answers, and a twenty-third makes it harder to read at a phone, not
-easier. Next qualifying notification date is **2026-08-31T12:37Z**
-unless the board moves first — a merge or an INBOX bump wakes it on
-the next hour.
+Nothing else moved, and there was nothing here a person needed to be
+told — a flat board one hour after a flat board is not a signal, and
+the 7-day digest went out on the 24th. The run that says something is
+the one that finds a label or a `sequence:` bump, and any hour can be
+it. I again wrote no new question, same call as the last fifty-odd
+runs: the queue stands at twenty-two live against zero answers, and a
+twenty-third makes it harder to read at a phone, not easier. Next
+qualifying notification date is **2026-08-31T12:37Z** unless the
+board moves first — a merge or an INBOX bump wakes it on the next
+hour.
 
 ## Roadmap position
 
@@ -132,8 +137,8 @@ issued, **next number is Q28**.
 **Notification rule** (banked 08-10T12:40Z): ping only when the
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
 days elapse. Last fired 2026-08-24T12:37Z on the 7-day arm; not
-fired this run, correctly — nothing moved in the forty
-hours since.
+fired this run, correctly — nothing moved in the
+forty-one hours since.
 Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX
 bump wakes the digest sooner.
 
