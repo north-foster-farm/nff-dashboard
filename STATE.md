@@ -1,4 +1,3 @@
-LEASE: 2026-08-26T20:35:16Z cloud-run-0250
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,17 +5,17 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-26T19:34Z — Clean skip, run 249, no notification. INBOX
+2026-08-26T20:35Z — Clean skip, run 250, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
-is `waiting-on-james`, so the new-input guard fired again; lease
-`cloud-run-0249` taken and released, no code written. Board re-derived
+is `waiting-on-james`, so the new-input guard fired; lease
+`cloud-run-0250` taken and released, no code written. Board re-derived
 from the API in one `state: all` listing rather than assumed: #6-#17
 all still open, no labels, no comments, newest `updated_at` unchanged
 at 2026-08-01T04:41:21Z (#17), and all twelve head SHAs match the
 values recorded below character for character. Every open PR's
 `base.sha` still reads `131bce1` — `main` has not advanced. It was
-committed 2026-07-30T22:29:54Z and is now **645 hours** stale (26.9
-days); nothing has touched a PR in 25.6 days.
+committed 2026-07-30T22:29:54Z and is now **646 hours** stale (26.9
+days); nothing has touched a PR in 25.7 days.
 
 Nothing surprised me, and nothing moved, so nothing was worth a
 person's attention: a flat board one hour after a flat board is not a
@@ -110,7 +109,7 @@ instead of taking "unchanged" on trust.
 ## QUESTIONS
 
 Twenty-two live, unchanged — no new ones this run, same call as the last
-thirty. The binding constraint is answers, not questions:
+thirty-one. The binding constraint is answers, not questions:
 twenty-two are queued against zero answers, and a twenty-third makes the
 backlog harder to read, not the project easier to move.
 I resume writing them the moment the queue starts draining.
@@ -120,7 +119,7 @@ Numbering is settled: 26 entries, 4 retired, 22 live, Q15 never issued,
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days elapse.
 Last fired 2026-08-24T12:37Z on the 7-day arm; not fired this run,
-correctly — nothing moved in the fifty-five hours since.
+correctly — nothing moved in the fifty-six hours since.
 Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX bump
 wakes the digest sooner.
 
