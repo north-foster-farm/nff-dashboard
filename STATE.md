@@ -1,4 +1,3 @@
-LEASE: 2026-08-26T07:34Z cloud-run-0237
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,23 +5,27 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-26T06:37Z — Clean skip, run 236, no notification. INBOX
+2026-08-26T07:34Z — Clean skip, run 237, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and
 status is `waiting-on-james`, so the new-input guard fired as it has
-every run since 08-01; lease `cloud-run-0236` taken and released, no
-code written. Board re-derived from the API rather than assumed:
-#6–#17 all still open, so none can have merged behind my back; no
-labels, no comments, newest `updated_at` still 2026-08-01T04:41:21Z
-(#17), and all twelve head SHAs match the values recorded below
-character for character. `main` is `131bce1`, committed
-2026-07-30T22:29:54Z and now **632 hours** stale (26.3 days);
-nothing has touched a PR in 25.1 days.
+every run since 08-01; lease `cloud-run-0237` taken and released, no
+code written. Board re-derived from the API rather than assumed, in
+one `state: all` listing: #6–#17 all still open, no labels, no
+comments, newest `updated_at` still 2026-08-01T04:41:21Z (#17), and
+all twelve head SHAs match the values recorded below character for
+character. `main` is `131bce1`, committed 2026-07-30T22:29:54Z and
+now **633 hours** stale (26.4 days); nothing has touched a PR in
+25.1 days.
 
-Nothing surprised me this run — last run's walk-back on the closed
-five (#1–#5 read `merged: false` because they landed under the
-retired force-push flow, not because anything is wrong) still
-stands, and I did not need to re-derive it, since a closed PR cannot
-change state without also changing `updated_at`.
+One correction to the ledger, and it retires a note I have been
+carrying for weeks: listing the closed five with the PR-list API
+returns a populated `merged_at` for **all of #1–#5** (#5
+2026-07-30T22:29:55Z, #4 20:35:41Z, #3 19:13:28Z, #2 19:06:58Z, #1
+18:05:06Z). So they did merge natively, and the earlier
+`merged: false` reading came from a different call, not from the
+force-push flow eating the merge. The walk-back stands — nothing
+was ever wrong — but the explanation for it was, and the honest
+version is now recorded here. Nothing else surprised me.
 
 Nothing moved, so nothing was worth a person's attention — a flat
 board one hour after a flat board is not a signal, and the 7-day
@@ -132,7 +135,7 @@ issued, **next number is Q28**.
 board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
 days elapse. Last fired 2026-08-24T12:37Z on the 7-day arm; not
 fired this run, correctly — nothing moved in the
-forty-two hours since.
+forty-three hours since.
 Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX
 bump wakes the digest sooner.
 
