@@ -1,4 +1,3 @@
-LEASE: 2026-08-26T08:34:35Z cloud-run-0238
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,72 +5,68 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-26T07:34Z — Clean skip, run 237, no notification. INBOX
-`sequence: 1` is still not greater than `inbox-processed: 1` and
-status is `waiting-on-james`, so the new-input guard fired as it has
-every run since 08-01; lease `cloud-run-0237` taken and released, no
-code written. Board re-derived from the API rather than assumed, in
-one `state: all` listing: #6–#17 all still open, no labels, no
-comments, newest `updated_at` still 2026-08-01T04:41:21Z (#17), and
-all twelve head SHAs match the values recorded below character for
-character. `main` is `131bce1`, committed 2026-07-30T22:29:54Z and
-now **633 hours** stale (26.4 days); nothing has touched a PR in
-25.1 days.
+2026-08-26T08:34Z — Clean skip, run 238, no notification. INBOX
+`sequence: 1` is still not greater than `inbox-processed: 1` and status
+is `waiting-on-james`, so the new-input guard fired as it has every run
+since 08-01; lease `cloud-run-0238` taken and released, no code written.
+Board re-derived from the API rather than assumed, in one `state: all`
+listing: #6–#17 all still open, no labels, no comments, newest
+`updated_at` still 2026-08-01T04:41:21Z (#17), and all twelve head SHAs
+match the values recorded below character for character. Every open PR's
+`base.sha` still reads `131bce1`, which is the same fact from the other
+side: `main` has not advanced. It was committed 2026-07-30T22:29:54Z and
+is now **634 hours** stale (26.4 days); nothing has touched a PR in 25.2
+days.
 
-One correction to the ledger, and it retires a note I have been
-carrying for weeks: listing the closed five with the PR-list API
-returns a populated `merged_at` for **all of #1–#5** (#5
-2026-07-30T22:29:55Z, #4 20:35:41Z, #3 19:13:28Z, #2 19:06:58Z, #1
-18:05:06Z). So they did merge natively, and the earlier
-`merged: false` reading came from a different call, not from the
-force-push flow eating the merge. The walk-back stands — nothing
-was ever wrong — but the explanation for it was, and the honest
-version is now recorded here. Nothing else surprised me.
+Nothing surprised me this run, and there was nothing left to re-derive —
+the `merged_at` correction banked in run 237 (all of #1–#5 show a
+populated `merged_at`, so they merged natively and the old
+`merged: false` reading came from a different call) still holds on this
+listing, and it needs no further checking.
 
-Nothing moved, so nothing was worth a person's attention — a flat
-board one hour after a flat board is not a signal, and the 7-day
-digest went out on the 24th. The run that says something is the one
-that finds a label or a `sequence:` bump, and any hour can be it. I
-again wrote no new question, same call as the last fifty-odd runs:
-the queue stands at twenty-two live against zero answers, and a
-twenty-third makes it harder to read at a phone, not easier. Next
-qualifying notification date is **2026-08-31T12:37Z** unless the
-board moves first — a merge or an INBOX bump wakes it on the next
-hour.
+Nothing moved, so nothing was worth a person's attention — a flat board
+one hour after a flat board is not a signal, and the 7-day digest went
+out on the 24th. The run that says something is the one that finds a
+label or a `sequence:` bump, and any hour can be it. I again wrote no
+new question, same call as the last fifty-odd runs: the queue stands at
+twenty-two live against zero answers, and a twenty-third makes it harder
+to read at a phone, not easier. Next qualifying notification date is
+**2026-08-31T12:37Z** unless the board moves first — a merge or an INBOX
+bump wakes it on the next hour.
 
 ## Roadmap position
 
-Unchanged, and re-verified this run against the PR board.
-`ROADMAP.md` itself I did not re-read — it lives on `main`, which has
-not moved since I last read it, so it cannot have changed. Every
-`[batch]` marker is PR'd, behind an unanswered question, or gated:
+Unchanged, and re-verified this run against the PR board. `ROADMAP.md`
+itself I did not re-read — it lives on `main`, which has not moved since
+I last read it, so it cannot have changed. Every `[batch]` marker is
+PR'd, behind an unanswered question, or gated:
 
 - Part 0: 0.1→#6, 0.4→#7, 0.5→#8, 0.6→#9/#10, 0.7→#11, 0.9→#12,
   0.11→#13, 0.12→#14. 0.8 needs only Q26's one word. 0.10 needs Q12.
   0.2/0.3/0.13 are `[session]`/`[James]`.
-- Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs
-  Q22; 1.2 and 1.3 both implement the `[session]` 1.1.
-- Part 2: 2.2 is fully specified and buildable **the moment Q14's
-  five words arrive**. Still the largest block of work you can hand
-  me in one message.
+- Part 1: 1.4 (#16) and 1.5 (#15) shipped; 1.4's second half needs Q22;
+  1.2 and 1.3 both implement the `[session]` 1.1.
+- Part 2: 2.2 is fully specified and buildable **the moment Q14's five
+  words arrive**. Still the largest block of work you can hand me in one
+  message.
 - Part 3: 3.1 done (#17). 3.2's Accept is two device measurements I
-  cannot make, and the fix lives inside `Schedule.jsx` (3940 lines,
-  no component tests, no visual QA). See Q23.
-- Part 4: opens with 4.1, a `[session]`. 4.2 and 4.3 are both
-  "letters in order", so everything sits behind 4.2a/4.3a; 4.3a needs
-  a provider choice and an account from you (Q25). 4.7 waits on a
-  purchased maps key; 4.9 waits on you picking the surviving spec.
+  cannot make, and the fix lives inside `Schedule.jsx` (3940 lines, no
+  component tests, no visual QA). See Q23.
+- Part 4: opens with 4.1, a `[session]`. 4.2 and 4.3 are both "letters
+  in order", so everything sits behind 4.2a/4.3a; 4.3a needs a provider
+  choice and an account from you (Q25). 4.7 waits on a purchased maps
+  key; 4.9 waits on you picking the surviving spec.
 - Part 5: gated — starts only once the spine ships through 4.6.
 
 **Resume point:** the moment an INBOX answer lands, work it first. If
 that answer is Q14, start 2.2 from a failing test in
-`src/lib/schedule/`. If it is Q23, start 3.2's benchmark half. If it
-is Q25, start 4.3a's provider-agnostic half. If it is Q26 and the
-ruling is "stale, delete it", 0.8 closes with no code at all.
+`src/lib/schedule/`. If it is Q23, start 3.2's benchmark half. If it is
+Q25, start 4.3a's provider-agnostic half. If it is Q26 and the ruling is
+"stale, delete it", 0.8 closes with no code at all.
 
 `ROADMAP.md` is still untouched across #6–#17 — **twelve** branches
-conflict on that one file. Q2 remains the cheapest answer you can
-give me.
+conflict on that one file. Q2 remains the cheapest answer you can give
+me.
 
 Also re-confirmed this run: #10 still bases on
 `agent/wip-projects-collapse`, so #9 must land before it; every other
@@ -81,21 +76,21 @@ open PR bases on `main`.
 
 Twelve, all green on the required `check`, none carrying a label, a
 comment or a review — re-listed from the API this run and checked
-head-by-head against the SHAs recorded here: all twelve match.
-Because `main` has not moved, none can have gone stale against it;
-the only conflicts they carry are with each other, on `ROADMAP.md`,
-and GitHub will not surface those until the first one merges. Each
-head SHA stays written out below, so the next run can diff against a
-recorded value instead of taking "unchanged" on trust.
+head-by-head against the SHAs recorded here: all twelve match. Because
+`main` has not moved, none can have gone stale against it; the only
+conflicts they carry are with each other, on `ROADMAP.md`, and GitHub
+will not surface those until the first one merges. Each head SHA stays
+written out below, so the next run can diff against a recorded value
+instead of taking "unchanged" on trust.
 
 - #17 https://github.com/north-foster-farm/nff-dashboard/pull/17 —
   `chore: react 19 + vite 8 + plugin-react 6` (3.1). Head `df8d212`.
-  **Preview-check this one before merging.** It is a React major with
-  no visual QA behind it — the green suite covers the pure-logic
-  layer and says nothing about whether the app renders — and my
-  preview fetch dies on `CONNECT tunnel failed, 403`, so Netlify's
-  build is confirmed but the page is not. The one PR I would not
-  label on the strength of CI alone.
+  **Preview-check this one before merging.** It is a React major with no
+  visual QA behind it — the green suite covers the pure-logic layer and
+  says nothing about whether the app renders — and my preview fetch dies
+  on `CONNECT tunnel failed, 403`, so Netlify's build is confirmed but
+  the page is not. The one PR I would not label on the strength of CI
+  alone.
 - #16 …/pull/16 — `fix: drift-lint the semantic token layer` (1.4).
   Head `471eab4`.
 - #15 …/pull/15 — `fix: self-host Lora + Inter` (1.5).
@@ -109,8 +104,8 @@ recorded value instead of taking "unchanged" on trust.
 - #11 …/pull/11 — `fix: one project create path` (0.7).
   Head `faf2ef4`.
 - #10 …/pull/10 — `fix: retire the vestigial project status column
-  path` (0.6 slice 2). Head `dfea655`. **Base is #9's branch** —
-  merge #9 first and GitHub retargets this one to main by itself.
+  path` (0.6 slice 2). Head `dfea655`. **Base is #9's branch** — merge
+  #9 first and GitHub retargets this one to main by itself.
 - #9 …/pull/9 — `fix: one project activity model` (0.6 slice 1).
   Head `302f0f7`.
 - #8 …/pull/8 — `chore: pin the additive-merge guarantee` (0.5).
@@ -118,31 +113,29 @@ recorded value instead of taking "unchanged" on trust.
 - #7 …/pull/7 — `chore: test-gate completeness` (0.4).
   Head `6b2b255`.
 - #6 …/pull/6 — `chore: scope the check workflow's push trigger to
-  main`. Head `a363039`. Opened 07-31 — twenty-six days ago. If you
-  only merge one thing, merge this.
+  main`. Head `a363039`. Opened 07-31 — twenty-six days ago. If you only
+  merge one thing, merge this.
 
 ## QUESTIONS
 
-Twenty-two live, unchanged — no new ones this run, same call as
-the last twenty-six. The binding constraint is answers, not
-questions: twenty-two are queued against zero answers, and a
-twenty-third makes the backlog harder to read, not the project
-easier to move.
+Twenty-two live, unchanged — no new ones this run, same call as the last
+twenty-seven. The binding constraint is answers, not questions:
+twenty-two are queued against zero answers, and a twenty-third makes the
+backlog harder to read, not the project easier to move.
 I resume writing them the moment the queue starts draining.
-Numbering is settled: 26 entries, 4 retired, 22 live, Q15 never
-issued, **next number is Q28**.
+Numbering is settled: 26 entries, 4 retired, 22 live, Q15 never issued,
+**next number is Q28**.
 
-**Notification rule** (banked 08-10T12:40Z): ping only when the
-board actually moves — a PR merges, INBOX `sequence:` bumps, or 7
-days elapse. Last fired 2026-08-24T12:37Z on the 7-day arm; not
-fired this run, correctly — nothing moved in the
-forty-three hours since.
-Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX
-bump wakes the digest sooner.
+**Notification rule** (banked 08-10T12:40Z): ping only when the board
+actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days elapse.
+Last fired 2026-08-24T12:37Z on the 7-day arm; not fired this run,
+correctly — nothing moved in the forty-four hours since.
+Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX bump
+wakes the digest sooner.
 
 Answer format, for a phone: one line each in INBOX.md under
-`## Answers`, e.g. `Q14: all five as recommended`, then bump
-`sequence:` to 2. Anything you bump wakes me on the next hour.
+`## Answers`, e.g. `Q14: all five as recommended`, then bump `sequence:`
+to 2. Anything you bump wakes me on the next hour.
 
 Q26 (and it costs you one word): 0.8 "quick-convert thought →
     event" is still an open `[batch]` line in ROADMAP.md, but the
@@ -171,7 +164,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    632 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    634 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
