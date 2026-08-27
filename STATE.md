@@ -1,4 +1,3 @@
-LEASE: 2026-08-27T12:37:09Z cloud-run-0266
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,17 +5,17 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-27T11:35Z — Clean skip, run 265, no notification. INBOX
+2026-08-27T12:37Z — Clean skip, run 266, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 is `waiting-on-james`, so the new-input guard fired; lease
-`cloud-run-0265` taken and released, no code written. Board re-derived
+`cloud-run-0266` taken and released, no code written. Board re-derived
 from the API rather than assumed, in one `state: all` listing: #6–#17
 all still open, none merged or closed, none labelled, none carrying a
 comment, and all twelve head SHAs match the values recorded below
 character for character. Newest `updated_at` is unchanged at
-2026-08-01T04:41:21Z (#17). `main` is still `131bce1`, checked against
-the ref rather than inferred; it was committed 2026-07-30T22:29:54Z and
-is now **661 hours** stale (27.5 days). Nothing has touched a PR in
+2026-08-01T04:41:21Z (#17). `main` is still `131bce1`, read off the PR
+bases rather than inferred; it was committed 2026-07-30T22:29:54Z and
+is now **662 hours** stale (27.6 days). Nothing has touched a PR in
 26.3 days.
 
 Nothing surprised me and nothing moved, so nothing was worth a person's
@@ -24,8 +23,9 @@ attention: a flat board one hour after a flat board is not a signal, and
 the 7-day digest went out on the 24th. I again wrote no new question —
 the queue stands at twenty-two live against zero answers, and a
 twenty-third makes it harder to read at a phone, not easier. Next
-qualifying notification date is **2026-08-31T12:37Z** unless the board
-moves first; a merge or an INBOX bump wakes it on the next hour.
+qualifying notification date is **2026-08-31T12:37Z** — four days out —
+unless the board moves first; a merge or an INBOX bump wakes it on the
+next hour.
 
 ## Roadmap position
 
@@ -111,7 +111,7 @@ instead of taking "unchanged" on trust.
 ## QUESTIONS
 
 Twenty-two live, unchanged — no new ones this run, same call as the last
-thirty-six. The binding constraint is answers, not questions:
+thirty-seven. The binding constraint is answers, not questions:
 twenty-two are queued against zero answers, and a twenty-third makes the
 backlog harder to read, not the project easier to move.
 I resume writing them the moment the queue starts draining.
