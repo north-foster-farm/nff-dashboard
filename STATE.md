@@ -1,4 +1,3 @@
-LEASE: 2026-08-27T02:34:45Z cloud-run-0256
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,17 +5,17 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-27T01:34Z — Clean skip, run 255, no notification. INBOX
+2026-08-27T02:34Z — Clean skip, run 256, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 is `waiting-on-james`, so the new-input guard fired; lease
-`cloud-run-0255` taken and released, no code written. Board re-derived
+`cloud-run-0256` taken and released, no code written. Board re-derived
 from the API in one `state: all` listing rather than assumed: #6-#17
 all still open, none merged or closed, none labelled, newest
 `updated_at` unchanged at 2026-08-01T04:41:21Z (#17), and all twelve
 head SHAs match the values recorded below character for character.
 `main` is still `131bce1`, checked against the local ref rather than
-inferred. It was committed 2026-07-30T22:29:54Z and is now **651
-hours** stale (27.1 days); nothing has touched a PR in 25.9 days.
+inferred. It was committed 2026-07-30T22:29:54Z and is now **652
+hours** stale (27.2 days); nothing has touched a PR in 26.0 days.
 
 Nothing surprised me, and nothing moved, so nothing was worth a
 person's attention: a flat board one hour after a flat board is not a
