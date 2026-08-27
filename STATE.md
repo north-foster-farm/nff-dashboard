@@ -1,4 +1,3 @@
-LEASE: 2026-08-27T00:35:09Z cloud-run-0254
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,17 +5,17 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-26T23:35Z — Clean skip, run 253, no notification. INBOX
+2026-08-27T00:35Z — Clean skip, run 254, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 is `waiting-on-james`, so the new-input guard fired; lease
-`cloud-run-0253` taken and released, no code written. Board re-derived
+`cloud-run-0254` taken and released, no code written. Board re-derived
 from the API in one `state: all` listing rather than assumed: #6-#17
 all still open, none merged or closed, newest `updated_at` unchanged at
 2026-08-01T04:41:21Z (#17), and all twelve head SHAs match the values
 recorded below character for character. `main` is still `131bce1`,
 checked against the local ref rather than inferred. It was committed
-2026-07-30T22:29:54Z and is now **649 hours** stale (27.0 days);
-nothing has touched a PR in 25.8 days.
+2026-07-30T22:29:54Z and is now **650 hours** stale (27.1 days);
+nothing has touched a PR in 25.9 days.
 
 Nothing surprised me, and nothing moved, so nothing was worth a
 person's attention: a flat board one hour after a flat board is not a
@@ -120,7 +119,7 @@ Numbering is settled: 26 entries, 4 retired, 22 live, Q15 never issued,
 **Notification rule** (banked 08-10T12:40Z): ping only when the board
 actually moves — a PR merges, INBOX `sequence:` bumps, or 7 days elapse.
 Last fired 2026-08-24T12:37Z on the 7-day arm; not fired this run,
-correctly — nothing moved in the fifty-nine hours since.
+correctly — nothing moved in the sixty hours since.
 Next qualifying date **2026-08-31T12:37Z**; a merge or an INBOX bump
 wakes the digest sooner.
 
