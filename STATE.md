@@ -156,7 +156,7 @@ Q27 (one line, affects every future clone of mine): on main
 
 Q13 (CARRIED, still the only thing that matters): will you drain
     the PR queue? Twelve green PRs, and `main` has not advanced in
-    676 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
+    677 hours. #5 shipped LGTM-label auto-merge, so applying `LGTM`
     merges a PR once `check` is green — no approval needed, which
     is the point, since you cannot approve your own branches.
   Recommendation: label #6, #7, #8, #9, #10, #11, #12, #13, #14,
