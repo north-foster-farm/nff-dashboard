@@ -1,4 +1,3 @@
-LEASE: 2026-08-28T01:34:32Z cloud-run-0279
 # RELAY STATE — cloud agent ledger
 
 inbox-processed: 1
@@ -6,18 +5,18 @@ status: waiting-on-james
 
 ## Last run
 
-2026-08-28T00:34Z — Clean skip, run 278, no notification. INBOX
+2026-08-28T01:34Z — Clean skip, run 279, no notification. INBOX
 `sequence: 1` is still not greater than `inbox-processed: 1` and status
 is `waiting-on-james`, so the new-input guard fired; lease
-`cloud-run-0278` taken and released, no code written. The board was
+`cloud-run-0279` taken and released, no code written. The board was
 re-derived from the API in one `state: all` listing rather than
 assumed: #6–#17 all still open, none merged, none closed, none
 labelled, none carrying a comment, and all twelve head SHAs match the
 values recorded below character for character. Newest `updated_at` is
 unchanged at 2026-08-01T04:41:21Z (#17). `main` is still `131bce1`,
 read off the PR bases rather than inferred; it was committed
-2026-07-30T22:29:54Z and is now **674 hours** stale (28.1 days).
-Nothing has touched a PR in 26.8 days.
+2026-07-30T22:29:54Z and is now **675 hours** stale (28.1 days).
+Nothing has touched a PR in 26.9 days.
 
 Nothing surprised me and nothing moved, so nothing was worth a
 person's attention: a flat board one hour after a flat board is not a
@@ -112,7 +111,7 @@ instead of taking "unchanged" on trust.
 ## QUESTIONS
 
 Twenty-two live, unchanged — no new ones this run, same call as the last
-forty-two. The binding constraint is answers, not questions:
+forty-three. The binding constraint is answers, not questions:
 twenty-two are queued against zero answers, and a twenty-third makes the
 backlog harder to read, not the project easier to move.
 I resume writing them the moment the queue starts draining.
