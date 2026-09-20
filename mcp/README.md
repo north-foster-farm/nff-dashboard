@@ -46,7 +46,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`
   "mcpServers": {
     "nff-dashboard": {
       "command": "node",
-      "args": ["/Users/james/Code/nff-dashboard/mcp/server.mjs"]
+      "args": ["/Users/james/Code/nff/nff-dashboard/mcp/server.mjs"]
     }
   }
 }
@@ -58,8 +58,10 @@ run, with steps for teardown, framing, and hardware cloth."*
 
 ### Claude Code
 
+From the repository root:
+
 ```sh
-claude mcp add nff-dashboard -- node /Users/james/Code/nff-dashboard/mcp/server.mjs
+claude mcp add --scope user nff-dashboard -- node "$PWD/mcp/server.mjs"
 ```
 
 (or add the same `mcpServers` block to a project `.mcp.json`).
