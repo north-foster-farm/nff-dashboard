@@ -94,7 +94,7 @@ change the drafts:
 1. **`copy.html` is not lost.** The voice guide cites "28 versions of the
    homepage update copy, May 2024 – Feb 2026" as its source. That file is
    alive in the sibling repo —
-   `/Users/james/Code/north-foster-farm/layouts/partials/home/copy.html` —
+   `../north-foster-farm/layouts/partials/home/copy.html` —
    with 29 commits of history. That's the farm talking in its own words
    across two years, and it settles several open questions.
 2. **The pricing worksheet is the authoritative product list** —
