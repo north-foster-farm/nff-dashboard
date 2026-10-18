@@ -58,3 +58,21 @@ jobs:
       # Fails on a version under 7 days old with no recorded waiver,
       # and on a package with no attestation James has not approved.
       - run: npm run check:supply
+
+  # npm audit over both lockfiles and the GitHub advisory database over
+  # the Actions in use, set against security/exceptions.json. It fails
+  # while a known vulnerability has neither an update nor a recorded
+  # exception. The log is public: counts only. The token is the run's
+  # own, to lift the advisory API's rate limit.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - run: npm run check:audit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
