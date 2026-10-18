@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint . && stylelint 'src/**/*.css' 'public/style-guide/assets/*.css'",
     "check": "npm run lint && npm run test:coverage && bash scripts/check-format.sh",
+    "check:supply": "node scripts/supply/check.mjs package-lock.json mcp/package-lock.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
