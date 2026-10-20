@@ -3,8 +3,8 @@
 # eslint (errors gate; warnings are the backlog), stylelint, and the
 # house format rules (trailing whitespace; max-len 80 ratchet on
 # added non-template lines — scripts/check-format.sh).
-# Installed via `git config core.hooksPath .githooks` (one-time,
-# per clone; scripts/setup-hooks.sh does it for you).
+# Installed via `git config core.hooksPath .githooks`, which
+# `npm install` runs (the `prepare` script in package.json).
 # Goes through `npm run check` deliberately: that script is the
 # single definition of "ready to commit", so anything added to it
 # (coverage thresholds, new linters) is enforced here too instead of

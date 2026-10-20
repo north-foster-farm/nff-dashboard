@@ -18,8 +18,7 @@ Custom internal admin app for [North Foster Farm](https://northfosterfarm.com)
 ## Develop
 
 ```bash
-npm install
-bash scripts/setup-hooks.sh     # installs the pre-commit gate
+npm install                     # also installs the pre-commit gate
 cp .env.example .env.local      # then fill in real values
 npm run dev                     # http://localhost:5173
 npm test                        # vitest; must be green to commit
