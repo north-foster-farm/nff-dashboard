@@ -9,8 +9,8 @@ TDD is how code gets written in this repo. `npm test` runs the unit
 suite (vitest, the pure-logic layer — `src/lib` plus a few pure
 helpers beside their component); a green `npm run check` (suite +
 lint + format — see Quality gates below) is a hard commit
-requirement, enforced by `.githooks/pre-commit` (installed
-per-clone via `scripts/setup-hooks.sh`; never bypass with
+requirement, enforced by `.githooks/pre-commit` (installed by
+`npm install`'s `prepare` script; never bypass with
 `--no-verify`).
 
 The loop, exactly:
