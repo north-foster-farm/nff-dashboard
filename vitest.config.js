@@ -1,5 +1,11 @@
 import { defineConfig } from "vitest/config";
 
+// The suite resolves sun-anchored windows (suncalc) in local time; in
+// UTC the farm's sunset lands past midnight and the F15 tests fail.
+// Farm time is the domain's timezone, so every run uses it, local or
+// CI. Set before the workers start, so they inherit it.
+process.env.TZ = "America/New_York";
+
 // Separate from vite.config.js on purpose: the tests here are pure
 // logic (no React render, no DOM) — mostly `src/lib/**`, plus a few
 // pure helpers that live beside their component (e.g.
