@@ -6,13 +6,14 @@
 //   node scripts/svg/clean.mjs [files...]           npm run svg:clean
 //   node scripts/svg/clean.mjs --check [files...]   npm run check:svg
 //
-// With no files it takes every tracked .svg outside EXCLUDE. The
-// check fails when a file differs from what the clean-up would write;
+// With no files it takes every tracked .svg, each with its override in
+// svgo.config.mjs. The check fails when a file differs from what the
+// clean-up would write;
 // `npm run check` runs it, so the pre-commit hook and CI do too.
 //
 // Before it drops a class or an id, it looks for that name in the
 // app's stylesheets, scripts, pages and tests. A name in use stops the
-// run and says where: add the class to KEEP in scripts/svg/strip.mjs
+// run and says where: give the file an override in svgo.config.mjs
 // with the reason, or point the reference at something SVGO keeps.
 
 import { execFileSync } from "node:child_process";
@@ -22,17 +23,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { optimize } from "svgo";
 
-import config from "../../svgo.config.mjs";
+import { configFor } from "../../svgo.config.mjs";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
-
-// Not cleaned. The farm map's ids are its layer names: MapPage binds
-// each layer to a place by place_geometry.svg_layer_id rows in the
-// database, or by the layer id matching a place's name
-// (src/lib/farmMap.js). SVGO's cleanupIds would drop them all and turn
-// every place into background art, and the guard below cannot see a
-// name that lives in a database row.
-export const EXCLUDE = ["public/farm-map_v1.svg"];
 
 // Where a class or id the app uses would be named. SVGs and this
 // tool's own files are left out, and so is the static style guide:
@@ -52,8 +45,7 @@ const git = (...args) =>
   execFileSync("git", args, { cwd: ROOT, encoding: "utf8" })
     .split("\n").filter(Boolean);
 
-export const trackedSvgs = () => git("ls-files", "*.svg")
-  .filter((file) => !EXCLUDE.includes(file));
+export const trackedSvgs = () => git("ls-files", "*.svg");
 
 export const corpus = () => git("ls-files")
   .filter((file) => CORPUS.test(file))
@@ -61,7 +53,7 @@ export const corpus = () => git("ls-files")
   .map((file) => ({ file, text: readFileSync(join(ROOT, file), "utf8") }));
 
 export const clean = (markup, path) =>
-  optimize(markup, { ...config, path }).data;
+  optimize(markup, { ...configFor(path), path }).data;
 
 const names = (markup, attr) => new Set([...markup.matchAll(
   new RegExp(`\\s${attr}="([^"]*)"`, "g"))]
@@ -122,8 +114,8 @@ export const run = (files, { check = false } = {}) => {
 const report = ({ file, changed, blocked }, check) => {
   for (const { kind, name, files: where } of blocked) {
     console.error(`${file}: SVGO would drop the ${kind} "${name}", ` +
-      `which ${where.join(", ")} uses. Keep it (scripts/svg/strip.mjs, ` +
-      "KEEP) or stop naming it.");
+      `which ${where.join(", ")} uses. Keep it (OVERRIDES in ` +
+      "svgo.config.mjs) or stop naming it.");
   }
   if (check && changed) {
     console.error(`${file}: not cleaned. Run npm run svg:clean.`);
@@ -137,8 +129,7 @@ const report = ({ file, changed, blocked }, check) => {
 const main = (args) => {
   const check = args.includes("--check");
   const given = args.filter((arg) => arg !== "--check")
-    .map((file) => relative(ROOT, resolve(file)))
-    .filter((file) => !EXCLUDE.includes(file));
+    .map((file) => relative(ROOT, resolve(file)));
   const results = run(given.length ? given : trackedSvgs(), { check });
   const failed = results.map((r) => report(r, check)).some(Boolean);
   const changed = results.filter((r) => r.changed).length;

@@ -7,8 +7,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import config, { FEATURES } from "../../svgo.config.mjs";
-import { clean, EXCLUDE, guard, trackedSvgs } from "./clean.mjs";
+import { optimize } from "svgo";
+
+import config, {
+  configFor, FEATURES, OVERRIDES, plugins,
+} from "../../svgo.config.mjs";
+import { clean, guard, trackedSvgs } from "./clean.mjs";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const cleanScript = join(repoRoot, "scripts/svg/clean.mjs");
@@ -122,8 +126,53 @@ describe("check:svg", () => {
     expect(pkg.scripts.check).toMatch(/npm run check:svg/);
   });
 
-  it("leaves the farm map alone: its layer ids bind it to places", () => {
-    expect(EXCLUDE).toContain("public/farm-map_v1.svg");
-    expect(trackedSvgs()).not.toContain("public/farm-map_v1.svg");
+  it("checks the farm map too, with its override", () => {
+    expect(trackedSvgs()).toContain("public/farm-map_v1.svg");
+    expect(runCheck(join(repoRoot, "public/farm-map_v1.svg")).status)
+      .toBe(0);
+  });
+});
+
+describe("per-file overrides", () => {
+  const tracked = new Set(trackedSvgs());
+  const featuresOn = new Set(
+    FEATURES.filter(([, on]) => on).map(([name]) => name),
+  );
+  const readRepoFile = (file) => readFileSync(join(repoRoot, file), "utf8");
+
+  it("keep the farm map's layer ids, which bind it to places", () => {
+    const map = "public/farm-map_v1.svg";
+
+    expect(Object.keys(OVERRIDES[map].off)).toEqual(["cleanupIds"]);
+    expect(clean(readRepoFile(map), map)).toMatch(/id="Pasture-A"/);
+  });
+
+  it("name tracked files and SVGOMG features, each with a reason", () => {
+    for (const [file, { off = {}, classes = {} }] of
+      Object.entries(OVERRIDES)) {
+      expect(tracked.has(file), file).toBe(true);
+      for (const feature of Object.keys(off)) {
+        expect(featuresOn.has(feature), feature).toBe(true);
+      }
+      for (const reason of [...Object.values(off), ...Object.values(classes)]) {
+        expect(reason.length, file).toBeGreaterThan(20);
+      }
+    }
+  });
+
+  it("turn off only what the file needs", () => {
+    for (const [file, override] of Object.entries(OVERRIDES)) {
+      for (const feature of Object.keys(override.off ?? {})) {
+        const rest = Object.fromEntries(Object.entries(override.off)
+          .filter(([name]) => name !== feature));
+        const withFeatureOn = optimize(readRepoFile(file), {
+          ...configFor(file), path: file,
+          plugins: plugins({ ...override, off: rest }),
+        }).data;
+
+        expect(withFeatureOn, `${file}: ${feature}`)
+          .not.toBe(readRepoFile(file));
+      }
+    }
   });
 });
