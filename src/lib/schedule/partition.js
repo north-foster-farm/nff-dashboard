@@ -23,7 +23,9 @@ import { storedBufferWindow } from "./buffers.js";
 // Function-level cycle with availability.js (it imports
 // subtractIntervals from here) — safe: neither side uses the other's
 // exports during module init.
-import { availableDuring, projectBand } from "./availability.js";
+import {
+  availableDuring, projectBand, resolveWindow,
+} from "./availability.js";
 
 // Farm-wide defaults (v1 — the per-day override editor is deferred).
 export const PROJECT_DEFAULT_START = 8 * 60; // 8:00a earliest project start
@@ -200,9 +202,13 @@ export function projectGaps({
     .map((b) => storedBufferWindow(b))
     .filter(Boolean)
     .map((w) => ({ s: w.startMin, e: w.endMin }));
+  // Breaks resolve through the SAME resolveWindow the availability
+  // engine uses (0.9) — a sun-anchored break stores null minutes, and
+  // reading those raw made the hole start at 0 and swallow the gap.
   for (const br of availability?.breaks ?? []) {
     if (br.isActive === false) continue;
-    bufHoles.push({ s: br.startMin, e: br.endMin });
+    const win = resolveWindow(br, date);
+    if (win) bufHoles.push({ s: win.startMin, e: win.endMin });
   }
   const availOpts = availability
     ? { date, availability, roster }

@@ -465,11 +465,17 @@ retirement (`reflow.js:11`).
   `projectGaps` pushes break holes as raw
   `{ s: br.startMin, e: br.endMin }` (`partition.js:200`) with no sun
   resolution — and `createBreak` permits a sun-only row with null
-  minutes (`useAvailability.js:245`). `subtractIntervals` skips
-  `!(h.e > h.s)`, so such a break is *silently ignored* by the
-  partitioner instead of crashing. A sunset-anchored break therefore
-  shrinks a person's availability but does not trim the project block
-  drawn over it.
+  minutes (`useAvailability.js:245`). A sunset-anchored break
+  therefore shrinks a person's availability but does not trim the
+  project block drawn over it. **Fixed 2026-07-31 (0.9)** — both
+  engines now share `resolveWindow`.
+  Corrected while fixing it: this entry said `subtractIntervals`
+  skips `!(h.e > h.s)` so such a break is *silently ignored*. That
+  holds only when BOTH sides are null. A sun-only row keeps its
+  fixed side, so with a null `startMin` the comparison ran against
+  null-as-0, the hole spanned `0 -> endMin`, and the day's project
+  time was swallowed whole. The failure was a day with no project
+  segments at all, not an untrimmed gap.
 - **The capture substrate's regression net was never built.**
   `docs/specs/versioned-capture-substrate.md` §2.3 specifies "a
   golden-file test per version pins old fixtures rendering under the
@@ -520,10 +526,12 @@ retirement (`reflow.js:11`).
    0040, turned out to be applied** (verified 2026-07-29 — see
    `platform-and-infra.md`), so the commit-body flag is weak evidence
    here in both directions.
-2. **Fix sun-anchored break resolution in `projectGaps`** — route
-   break holes through the same `resolveWindow` the availability
-   engine uses. TDD: a sunset-anchored break should trim the evening
-   project gap.
+2. **Fix sun-anchored break resolution in `projectGaps`** —
+   **DONE 2026-07-31 (0.9)**. `resolveWindow` is now exported from
+   `availability.js` and both engines resolve break rows through it;
+   an unresolvable window is dropped rather than carved. Pinned by
+   the TDD case this thread asked for (a dusk break trims the evening
+   gap to that date's sunset), in `partition.test.js`.
 3. **Golden-file upcaster tests for `schedule.confirmed_day`** before
    a v2 schema ever ships. Also unresolved in
    `docs/specs/versioned-capture-substrate.md` §5: sub-decision 4
