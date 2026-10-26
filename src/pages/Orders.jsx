@@ -19,6 +19,7 @@ import {
   skuLabel,
 } from "../lib/productCatalog.js";
 import { formatDate } from "../lib/dates.js";
+import { safeHttpUrl } from "../lib/safeUrl.js";
 import {
   BTN_ACCENT as btnAccentCls, BTN_GHOST as btnGhostCls,
   INPUT_CLS as inputCls, LABEL_CLS as labelCls, StatusPill,
@@ -1004,9 +1005,9 @@ function ShipmentCard({ shipment, db, allowedStates }) {
                   .filter(Boolean).join(" · ")}
                 {shipment.trackingNumber && (
                   <span className="text-muted">
-                    {" "}· {shipment.trackingUrl ? (
+                    {" "}· {safeHttpUrl(shipment.trackingUrl) ? (
                       <a
-                        href={shipment.trackingUrl}
+                        href={safeHttpUrl(shipment.trackingUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="text-accent underline"
