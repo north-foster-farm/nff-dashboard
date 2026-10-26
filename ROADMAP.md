@@ -74,10 +74,6 @@ e-commerce arc; this file is the sequence.
   `.githooks/pre-commit` so human commits hit it too.
   Accept: `npm run check` runs the partition property test; a
   human commit with mismatched versions is blocked.
-- 0.5 **outbox.js unit coverage** [batch]. 756 lines carrying the
-  additive-merge guarantee, zero tests — the highest-value test
-  gap in the repo. Accept: the additive-merge property has a
-  failing-first suite; coverage ratchet raised.
 - 0.6 **Projects model collapse** [batch]. Retire `isActiveProject`
   for `queue_state` + `completed_at` + `archived_at` across
   deriveDay/Schedule/sections (closes F96, 06-04); fixes F16
