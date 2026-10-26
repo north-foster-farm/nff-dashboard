@@ -12,13 +12,14 @@
 // the day's project gaps from this queue is retired — see the note above
 // nextRankedStep.
 
+import { isQueuedProject } from "../projects.js";
+
 // ── The ranked project queue (new model) ──────────────────────────────
 // Ranked, actionable projects in priority order. Dates are intentionally
 // ignored (scheduling on them would defeat the forced ranking).
 export function rankedActiveProjects(projects) {
   return (projects ?? [])
-    .filter((p) =>
-      p.queueState === "ranked" && !p.completedAt && !p.archivedAt)
+    .filter(isQueuedProject)
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }
 

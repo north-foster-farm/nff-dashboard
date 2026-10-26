@@ -52,7 +52,7 @@ import { weekDays } from "../lib/schedule/weekView.js";
 import { monthFullness } from "../lib/schedule/monthView.js";
 import { blockStartDrift, dayReviews } from "../lib/schedule/lookBack.js";
 import { useRunHistory } from "../lib/data/useRunHistory.js";
-import { isActiveProject } from "../lib/projects.js";
+import { isQueuedProject } from "../lib/projects.js";
 import { nextRankedStep } from "../lib/schedule/reflow.js";
 import { segmentForStart, buildDaySegments } from "../lib/schedule/placement.js";
 import { resolveFocusBucket } from "../lib/schedule/focus.js";
@@ -931,7 +931,7 @@ export default function Schedule({ data }) {
   const projectNodes = useMemo(() => {
     const out = [];
     for (const p of (data.projects ?? [])) {
-      if (!isActiveProject(p, dateISO)) continue;
+      if (!isQueuedProject(p)) continue;
       for (const s of (p.steps ?? [])) {
         if (s.completedAt) continue;
         out.push({

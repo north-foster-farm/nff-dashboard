@@ -7,7 +7,7 @@ import {
   UserPlus, ClipboardList, CalendarDays, Newspaper, Map, MapPin, Eye,
   Lightbulb, ChartLine, Palette, Bot
 } from "lucide-react";
-import { isActiveProject } from "./lib/projects.js";
+import { isQueuedProject } from "./lib/projects.js";
 import { choresRemainingToday } from "./lib/chores.js";
 import { Sheep, Chicken } from "./components/animalIcons.jsx";
 
@@ -88,12 +88,9 @@ export const SECTIONS = [
   // `kind: "takeover"` and renders a custom item with a live label.
   { id: "rounds", group: "Planning", label: "Do rounds", icon: ListChecks, description: "Full-screen surface for actually doing chores.", kind: "takeover", getCount: () => null },
   { id: "projects", group: "Planning", label: "Projects", icon: FolderKanban, description: "Discrete, time-bound work — phases, steps, and checklists with assignees, dates, and progress.",
-    // Projects active today and not yet complete (Batch 22: archived
-    // projects are filtered out by the loader).
-    getCount: (d) => {
-      const today = new Date().toISOString().slice(0, 10);
-      return d.projects.filter(p => isActiveProject(p, today)).length;
-    }
+    // Live work: the ranked queue, minus completed and archived
+    // (0.6 — one activity model; dates no longer gate the count).
+    getCount: (d) => d.projects.filter(isQueuedProject).length
   },
   { id: "processes", group: "Planning", label: "Processes", icon: Workflow, description: "Templates tied to event kinds — when a matching event lands on the schedule, the process expands into prep tasks and chore changes around it.", getCount: () => null },
 

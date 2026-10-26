@@ -245,36 +245,26 @@ describe("deriveDay — event folding (S17, round-5 zero-width-range regression 
   });
 });
 
-describe("deriveDay — active project folding", () => {
-  it("includes a project active on the day and excludes a completed one", () => {
+describe("deriveDay — project folding", () => {
+  it("folds in only the projects actually running on the day", () => {
     const dayISO = "2026-06-06";
+    const queued = (over) => ({
+      queueState: "ranked", startedAt: "2026-06-01", ...over,
+    });
     const data = {
       chores: { definitions: [] },
       events: { kinds: [] },
       projects: [
-        { id: "p1", status: "planned" },
-        { id: "p2", status: "completed" },
+        queued({ id: "runningToday" }),
+        queued({ id: "undated", startedAt: null }),
+        queued({ id: "finished", completedAt: "2026-06-05" }),
       ],
     };
     const out = deriveDay({
       data, dayDate: d(2026, 6, 6), dayUTC: new Date(Date.UTC(2026, 5, 6)),
       dayISO, ruleOpts: { blocks: [] },
     });
-    expect(out.projects.map((p) => p.id)).toEqual(["p1"]);
-  });
-
-  it("excludes a project whose startedAt is still in the future", () => {
-    const dayISO = "2026-06-06";
-    const data = {
-      chores: { definitions: [] },
-      events: { kinds: [] },
-      projects: [{ id: "p1", status: "planned", startedAt: "2026-07-01" }],
-    };
-    const out = deriveDay({
-      data, dayDate: d(2026, 6, 6), dayUTC: new Date(Date.UTC(2026, 5, 6)),
-      dayISO, ruleOpts: { blocks: [] },
-    });
-    expect(out.projects).toEqual([]);
+    expect(out.projects.map((p) => p.id)).toEqual(["runningToday"]);
   });
 });
 
