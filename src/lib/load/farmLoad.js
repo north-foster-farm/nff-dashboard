@@ -14,6 +14,7 @@
 // Nothing is re-derived; this is why it cannot drift from the surfaces it
 // replaces.
 import { rollupChoresForDay } from "../schedule/deriveDay.js";
+import { blockLabel } from "../schedule/placement.js";
 import {
   weekFullness, weekDays,
 } from "../schedule/weekView.js";
@@ -38,7 +39,7 @@ import { resolveBlockMinutes, formatMinutesOfDay } from "../sunTimes.js";
 // project = --c-project; F23/F26), not by a load-state ramp.
 
 // A block's resolved [start, start+duration) window for the day, or nulls for
-// the block-less "anytime" bucket. Mirrors Schedule's `blockWindow`.
+// the block-less orphan bucket. Mirrors Schedule's `blockWindow`.
 function blockWindowFor(block, date) {
   if (!block) return { startMin: null, endMin: null };
   const start = resolveBlockMinutes(date, block.startKind, block.startMinutes)
@@ -144,7 +145,7 @@ export function farmLoad({
     } else state = "committed";
     return {
       blockId: b.rollup.bucket,
-      name: b.rollup.block?.name ?? "Anytime",
+      name: blockLabel(b.rollup.block),
       kind: "chore",
       startMin: b.win.startMin,
       endMin: b.win.endMin,

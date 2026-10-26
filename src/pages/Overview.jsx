@@ -30,6 +30,9 @@ import { batchLifecycle, isMeatSpecies, weeksTimeline } from "../lib/metrics.js"
 import { isActiveProject } from "../lib/projects.js";
 import { Pane, LoadSpine, AttentionCard, NowRule } from "../components/ui.jsx";
 import { farmLoad } from "../lib/load/farmLoad.js";
+import {
+  blockLabel, NO_BLOCK_BUCKET, NO_BLOCK_LABEL,
+} from "../lib/schedule/placement.js";
 import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
 import { useCurrentWeather, roundUpToHalfHour } from "../lib/browser/weather.js";
 import { useActivityLog } from "../lib/data/useActivityLog.js";
@@ -554,7 +557,8 @@ function buildTimelineItems({
       timeLabel: isSunset
         ? sundownLabel
         : (r.startMin != null ? formatTime12hShort(minutesToHHMM(r.startMin)) : ""),
-      title: r.block ? `${r.block.name} chores` : "Anytime chores",
+      title: r.block
+        ? `${r.block.name} chores` : `${NO_BLOCK_LABEL} chores`,
       detail,
       detailIcon: r.assignee ? "user" : null,
       modifiedCount
@@ -700,12 +704,12 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
   // Group by block, ordered by the block's resolved start time.
   const byBlock = {};
   for (const inst of upcoming) {
-    (byBlock[inst.chore.blockId ?? "anytime"] ??= []).push(inst);
+    (byBlock[inst.chore.blockId ?? NO_BLOCK_BUCKET] ??= []).push(inst);
   }
   const blockById = new Map((blocks ?? []).map(b => [b.id, b]));
   const startOf = (key) => {
     const b = blockById.get(key);
-    if (!b) return 99999; // anytime / unknown → last
+    if (!b) return 99999; // block-less / unknown → last
     return resolveBlockMinutes(today, b.startKind, b.startMinutes)
       ?? b.startMinutes ?? 99998;
   };
@@ -739,7 +743,7 @@ function UpcomingChoresCard({ data, today, blocks, ruleOpts }) {
 function UpcomingBlockGroup({
   block, instances, blocks, completions, placesById, choreCtx,
 }) {
-  const label = block?.name ?? "Anytime";
+  const label = blockLabel(block);
   const timeLabel = blockTimeLabel(block);
   return (
     <div>

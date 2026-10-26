@@ -4,6 +4,7 @@
 // to compute for seven days. This is the "answers the one fair charge"
 // surface from the design: the day's shape is one glance away.
 import { rollupChoresForDay } from "./deriveDay.js";
+import { blockLabel } from "./placement.js";
 
 // The seven dates of the week containing `date` (Sunday-first, to match the
 // app's week elsewhere). Local dates, midnight.
@@ -19,14 +20,14 @@ export function weekDays(date) {
 }
 
 // Per-block chore counts for one day: [{ bucket, name, count }], ordered by
-// block start (the block-less "anytime" bucket last). Counts are the chore
+// block start (the block-less orphan bucket last). Counts are the chore
 // fan-out only — enough for a silhouette.
 export function blockFullness(data, date, ruleOpts) {
   const rollups = rollupChoresForDay(data, date, ruleOpts);
   return rollups
     .map((r) => ({
       bucket: r.bucket,
-      name: r.block?.name ?? "Anytime",
+      name: blockLabel(r.block),
       block: r.block ?? null,
       count: r.items.length,
       startMin: r.startMin,

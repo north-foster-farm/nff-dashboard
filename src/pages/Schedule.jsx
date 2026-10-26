@@ -54,7 +54,10 @@ import { blockStartDrift, dayReviews } from "../lib/schedule/lookBack.js";
 import { useRunHistory } from "../lib/data/useRunHistory.js";
 import { isActiveProject } from "../lib/projects.js";
 import { nextRankedStep } from "../lib/schedule/reflow.js";
-import { segmentForStart, buildDaySegments } from "../lib/schedule/placement.js";
+import {
+  segmentForStart, buildDaySegments, blockLabel,
+  NO_BLOCK_BUCKET, NO_BLOCK_LABEL,
+} from "../lib/schedule/placement.js";
 import { resolveFocusBucket } from "../lib/schedule/focus.js";
 import {
   overnightWindow, inOvernight, OVERNIGHT_LEAD, OVERNIGHT_TRAIL,
@@ -104,7 +107,7 @@ function ymdLocal(d) {
   return `${y}-${m}-${day}`;
 }
 
-// Sort key: real blocks by resolved start time, the block-less "anytime"
+// Sort key: real blocks by resolved start time, the block-less orphan
 // bucket last. The LEADING overnight (this morning's pre-dawn continuation of
 // last night) pins FIRST — its window's start-minute is last night's evening,
 // but on this day's page it precedes the morning chore blocks (the scope's
@@ -573,21 +576,22 @@ function DraggableRow({
 
 // The toolbar "add a one-off task" bar (F58): single-line entry + a block
 // selector pulling the current day's blocks (incl. Overnight). Defaults to
-// the NOW block (falling back to the day's first); "Anytime" — the app's
-// documented no-block landing spot (the edit sheet offers the same) — sits
-// LAST, a deliberate choice rather than the default. Replaces the
+// the NOW block (falling back to the day's first). F30: the block-less
+// bucket is NOT offered here — a one-off always lands in a real block or
+// a project gap. Replaces the
 // per-block foot inputs — a bottom inline input implied the task joined
 // the block above it. A specific-time one-off is deferred (James, triage
 // 2026-07-01).
 function AddTaskBar({ targets, defaultTarget, onAdd, onClose }) {
   const [text, setText] = useState("");
-  const [target, setTarget] = useState(defaultTarget ?? "anytime");
+  const [target, setTarget] =
+    useState(defaultTarget ?? targets[0]?.bucket ?? "");
   const inputRef = useRef(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
   const submit = () => {
     const t = text.trim();
     if (!t) return;
-    onAdd(t, target === "anytime" ? null : target);
+    onAdd(t, target || null);
     onClose();
   };
   return (
@@ -612,7 +616,6 @@ function AddTaskBar({ targets, defaultTarget, onAdd, onClose }) {
         {targets.map((t) => (
           <option key={t.bucket} value={t.bucket}>{t.label}</option>
         ))}
-        <option value="anytime">Anytime</option>
       </select>
       <button
         type="button"
@@ -963,7 +966,7 @@ export default function Schedule({ data }) {
     }
     return m;
   }, [blocks, today]);
-  const isRealBlock = (bucket) => bucket !== "anytime" && blocksById.has(bucket);
+  const isRealBlock = (bucket) => bucket !== NO_BLOCK_BUCKET && blocksById.has(bucket);
 
   // The one derived day (S3): chore rollups + event occurrences + active
   // projects, folded with this day's deltas. Both the accordion (chores)
@@ -1019,7 +1022,7 @@ export default function Schedule({ data }) {
   // segmentForStart — into a Project gap rather than a chore block. Grouped by
   // the "project:<startMin>" bucket; `ids` lets the chore-block fold below drop
   // them so they render once, in the project segment. Untimed project-step adds
-  // (the legacy 41.14 path) have no clock_time and stay in "anytime".
+  // (the legacy 41.14 path) have no clock_time and stay block-less.
   const projectPlacements = useMemo(() => {
     const byBucket = new Map();
     const ids = new Set();
@@ -1294,8 +1297,8 @@ export default function Schedule({ data }) {
       entries.sort((a, b) => a.order - b.order);
       out.push({
         bucket,
-        block: bucket === "anytime" ? null : (blocksById.get(bucket) ?? null),
-        startMin: bucket === "anytime" ? null : (startMinByBucket.get(bucket) ?? null),
+        block: bucket === NO_BLOCK_BUCKET ? null : (blocksById.get(bucket) ?? null),
+        startMin: bucket === NO_BLOCK_BUCKET ? null : (startMinByBucket.get(bucket) ?? null),
         rows: entries.map((e) => ({ ...e.row, _order: e.order })),
       });
     }
@@ -1303,8 +1306,8 @@ export default function Schedule({ data }) {
   }, [rawBlockRows, overrideDeltas, blocksById, startMinByBucket]);
 
   // F58 — the toolbar one-off entry's block choices: the day's real chore
-  // blocks AND its project gaps (round 4), merged in time order; "Anytime"
-  // is the null option the control adds itself. Overnight is excluded
+  // blocks AND its project gaps (round 4), merged in time order. Overnight
+  // is excluded
   // (O7 — not pickable for adds). A project-gap choice carries the gap's
   // start as `clockTime` so the add routes by time (segmentForStart lands
   // it back in the gap), not by block id.
@@ -1365,7 +1368,7 @@ export default function Schedule({ data }) {
 
   // Block window [start, start+duration) for overlap tests.
   const blockWindow = (bucket) => {
-    const start = bucket === "anytime" ? null : (startMinByBucket.get(bucket) ?? null);
+    const start = bucket === NO_BLOCK_BUCKET ? null : (startMinByBucket.get(bucket) ?? null);
     if (start == null) return { start: null, end: null };
     return { start, end: start + (blocksById.get(bucket)?.durationMinutes ?? 0) };
   };
@@ -1534,7 +1537,7 @@ export default function Schedule({ data }) {
     const w = farm.warming?.byBucket.get(b.bucket);
     return {
       bucket: b.bucket,
-      name: b.block?.name ?? "Anytime",
+      name: blockLabel(b.block),
       block: b.block,
       startMin: b.startMin,
       endMin: b.startMin != null
@@ -2229,7 +2232,7 @@ export default function Schedule({ data }) {
   const openEdit = (row, b, idx) => setEditing({
     row,
     bucket: b.bucket,
-    fromBlockName: b.block?.name ?? "Anytime",
+    fromBlockName: blockLabel(b.block),
     isFirstInBlock: idx === 0,
     currentClockTime: row.edit?.clockTime ?? row.commitment?.clock_time ?? null,
     canMoveDay: row.kind === "adhoc" || row.kind === "project" || !!row.deltaId,
@@ -2238,7 +2241,8 @@ export default function Schedule({ data }) {
   });
 
   const bucketName = (id) =>
-    id === "anytime" ? "Anytime" : (blocksById.get(id)?.name ?? "a block");
+    id === NO_BLOCK_BUCKET
+      ? NO_BLOCK_LABEL : (blocksById.get(id)?.name ?? "a block");
 
   // Write a change to a row: a DERIVED chore becomes/updates an 'override'
   // commitment (kept in its block unless moved); a commitment-backed row is
@@ -3490,7 +3494,7 @@ export default function Schedule({ data }) {
                 >
                   <KindBadge kind="chore" size={16} title="Chores" />
                   <span className="flex-1 min-w-0 truncate text-[14px] text-fg">
-                    {b.block?.name ?? "Anytime"}
+                    {blockLabel(b.block)}
                   </span>
                   {nowHere && <NowTag />}
                   <span className="shrink-0 text-[12px] [font-variant-numeric:tabular-nums] text-dim">
@@ -3695,7 +3699,7 @@ export default function Schedule({ data }) {
                 }>
                   <KindBadge kind="chore" size={16} title="Chores" />
                   <span className="flex-1 min-w-0 leading-snug font-heading text-[15px] font-semibold text-fg -tracking-[0.01em]">
-                    {b.block?.name ?? "Anytime"}
+                    {blockLabel(b.block)}
                   </span>
                   {nowHere && <NowTag />}
                   {b.startMin != null && (
