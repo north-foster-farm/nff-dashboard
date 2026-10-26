@@ -7,6 +7,83 @@
    Token values are mirrored from index.html (the app's source of truth).
    ========================================================================= */
 
+/* ---- Inter + Lora, self-hosted alongside Nacelle (1.5). The docs
+   used to pull these two off the Google Fonts CDN, which meant the
+   design library rendered in fallback type on a cold offline load —
+   documenting a system in fonts that are not the system's. Same
+   absolute /fonts/ paths and same weights as the app shell. ---- */
+@font-face {
+  font-family: Inter;
+  src: url('/fonts/Inter-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url('/fonts/Inter-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url('/fonts/Inter-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Lora;
+  src: url('/fonts/Lora-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Lora;
+  src: url('/fonts/Lora-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Lora;
+  src: url('/fonts/Lora-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Lora;
+  src: url('/fonts/Lora-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Lora;
+  src: url('/fonts/Lora-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Lora;
+  src: url('/fonts/Lora-MediumItalic.woff2') format('woff2');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
 /* ---- Real Nacelle body font (served at /fonts/ when same-origin; falls
    back to system-ui standalone / over file://) ---- */
 @font-face {
@@ -88,7 +165,8 @@ html[data-theme="light"] {
   --c-cat-default: #7a7666;
 }
 
-/* ---- Type roles (Nacelle vendored in-app; system fallback in docs) ---- */
+/* ---- Type roles (all three families vendored above; the stacks below
+   still name fallbacks for file:// where /fonts/ does not resolve) ---- */
 :root {
   --font-body: "Nacelle", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-heading: "Lora", georgia, "Times New Roman", serif;
