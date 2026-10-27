@@ -157,9 +157,9 @@ Every commit on this repo follows one consistent shape. Match it.
     Roadmap: the farm-map north-star artifacts are now retired — this
     file is the capture point.
 
-## Stale notes and logging (James, 2026-10-27)
+## Stale notes, logging and dependencies (James, 2026-10-27)
 
-Both rules hold across the workspace (`~/Code/nff/CLAUDE.md`).
+These rules hold across the workspace (`~/Code/nff/CLAUDE.md`).
 
 - **Fix a stale note on sight.** When James corrects something, or the
   code, a tool or production contradicts a note (a CLAUDE.md, a doc,
@@ -175,6 +175,13 @@ Both rules hold across the workspace (`~/Code/nff/CLAUDE.md`).
   mask each part, keeping its first three and last three characters.
   Log records are append-only and follow the data retention rules. A
   new production write ships with its log line and a test.
+- **Dependencies** (replaces any "no new dependencies" habit). A new
+  package is allowed when it gives clear value, above all where a
+  well-tested one replaces code that breaks subtly (encoders,
+  parsers, crypto, dates). Lean toward fewer: write small simple code
+  yourself. James approves every new package first: propose the
+  package, version, license, maintenance, what it replaces and why it
+  beats hand-rolling, and wait. Approved packages are pinned.
 
 ## Data safety — the app is LIVE in production
 
