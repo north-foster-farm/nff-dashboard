@@ -157,6 +157,25 @@ Every commit on this repo follows one consistent shape. Match it.
     Roadmap: the farm-map north-star artifacts are now retired — this
     file is the capture point.
 
+## Stale notes and logging (James, 2026-10-27)
+
+Both rules hold across the workspace (`~/Code/nff/CLAUDE.md`).
+
+- **Fix a stale note on sight.** When James corrects something, or the
+  code, a tool or production contradicts a note (a CLAUDE.md, a doc,
+  an issue body, a handoff), rewrite or delete the stale line then and
+  there, date the change, and say in one sentence what changed. Never
+  work around stale information.
+- **Logging.** Log every change a person or the CLI makes to a
+  production record: time, who acted, action, target, values before
+  and after; money and membership changes always. Don't log reads,
+  dry runs, previews, jobs that changed nothing, or non-production
+  unless debugging needs it. Never log secrets, tokens, payment
+  details, or a full email address, phone number or street address:
+  mask each part, keeping its first three and last three characters.
+  Log records are append-only and follow the data retention rules. A
+  new production write ships with its log line and a test.
+
 ## Data safety — the app is LIVE in production
 
 **As of 2026-06-01 the linked Supabase project is in production.**
