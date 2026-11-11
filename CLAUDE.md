@@ -157,6 +157,16 @@ Every commit on this repo follows one consistent shape. Match it.
     Roadmap: the farm-map north-star artifacts are now retired — this
     file is the capture point.
 
+## Screenshots in issues and PRs (2026-11-11)
+
+Post screenshots with `bin/gh-shot [--issue N] [--alt text] FILE...`
+(ported from the site; it uploads to this repo's `screenshots` branch
+and prints a markdown image line to paste into the comment). The
+branch is public and permanent, and the dashboard shows real
+customers and farm records, so **never post a production screen**:
+only mock-ups and development screens made with test data. Test:
+`scripts/gh-shot.test.js`.
+
 ## Data safety — the app is LIVE in production
 
 **As of 2026-06-01 the linked Supabase project is in production.**
