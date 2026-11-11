@@ -12,7 +12,7 @@ const MIGRATION = readFileSync(
 
 // What the site records as payment.via (north-foster-farm
 // netlify/functions/lib/checkout.mjs).
-const SITE_PAYMENT_VIA = ["square", "venmo"];
+const SITE_PAYMENT_VIA = ["square", "venmo", "credit"];
 
 // The quoted values of the first `in (...)` list that follows `anchor`.
 function allowedValues(anchor) {

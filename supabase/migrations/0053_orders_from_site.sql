@@ -3,10 +3,12 @@
 -- projects meet"): make Supabase the record of the orders the public
 -- site takes, so the Square Dashboard stops being the farm's only
 -- view of one. The site pays through Square (cards, wallets) and
--- PayPal (Venmo), so payment_provider and order_events.source allow
--- `square` and `venmo`, the two values the site writes as
--- payment.via. (Corrected 2026-11-11, #29: it said `stripe`, which
--- the Square launch overtook, and so rejected every Venmo order.)
+-- PayPal (Venmo), and a buying-group member's credit can cover a
+-- whole order, so payment_provider and order_events.source allow
+-- `square`, `venmo` and `credit`, the values the site writes as
+-- payment.via (#471). (Corrected 2026-11-11, #29: it said `stripe`,
+-- which the Square launch overtook, and so rejected every Venmo
+-- order.)
 --
 -- Additive-only. Nothing in the app reads the new columns yet; the
 -- site's functions write them next (step 2) and the Orders page
@@ -75,7 +77,7 @@ begin
     alter table public.orders
       add constraint orders_payment_provider_check
       check (payment_provider is null
-        or payment_provider in ('square', 'venmo'));
+        or payment_provider in ('square', 'venmo', 'credit'));
   end if;
   if not exists (
     select 1 from pg_constraint
@@ -150,7 +152,8 @@ create table if not exists public.order_events (
   source text not null default 'dashboard',
   detail jsonb,
   created_at timestamptz not null default now(),
-  check (source in ('dashboard', 'site', 'pos', 'square', 'venmo'))
+  check (source in ('dashboard', 'site', 'pos', 'square', 'venmo',
+    'credit'))
 );
 
 create unique index if not exists order_events_once

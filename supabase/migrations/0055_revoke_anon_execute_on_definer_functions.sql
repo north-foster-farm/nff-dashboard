@@ -1,4 +1,4 @@
--- 0054: take EXECUTE away from anon on every SECURITY DEFINER function
+-- 0055: take EXECUTE away from anon on every SECURITY DEFINER function
 -- that still had it.
 --
 -- Supabase grants anon and authenticated execute on a new function by
