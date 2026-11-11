@@ -1,0 +1,92 @@
+[
+  {
+    "package": "vite",
+    "advisory": "GHSA-4w7w-66w2-5vf9",
+    "why": "The fix is vite 8.3.8, a major bump from 5.4.21. 8.3.8 was published 2026-11-11, inside the 7-day cooldown, which ends 2026-11-18.",
+    "exposure": "Build and dev tooling; vite is not part of the deployed bundle.",
+    "plan": "Move to vite 8.3.8 or newer in its own PR once the cooldown ends, then delete this entry.",
+    "expires": "2026-11-25",
+    "reraisedFor": "vite@8.3.8"
+  },
+  {
+    "package": "vite",
+    "advisory": "GHSA-v6wh-96g9-6wx3",
+    "why": "The fix is vite 8.3.8, a major bump from 5.4.21. 8.3.8 was published 2026-11-11, inside the 7-day cooldown, which ends 2026-11-18.",
+    "exposure": "Build and dev tooling; vite is not part of the deployed bundle.",
+    "plan": "Move to vite 8.3.8 or newer in its own PR once the cooldown ends, then delete this entry.",
+    "expires": "2026-11-25",
+    "reraisedFor": "vite@8.3.8"
+  },
+  {
+    "package": "vite",
+    "advisory": "GHSA-698v-4r3x-3vcv",
+    "why": "The fix is vite 8.3.8, a major bump from 5.4.21. 8.3.8 was published 2026-11-11, inside the 7-day cooldown, which ends 2026-11-18.",
+    "exposure": "Build and dev tooling; vite is not part of the deployed bundle.",
+    "plan": "Move to vite 8.3.8 or newer in its own PR once the cooldown ends, then delete this entry.",
+    "expires": "2026-11-25",
+    "reraisedFor": "vite@8.3.8"
+  },
+  {
+    "package": "vite",
+    "advisory": "GHSA-r825-w8mm-5pxw",
+    "why": "The fix is vite 8.3.8, a major bump from 5.4.21. 8.3.8 was published 2026-11-11, inside the 7-day cooldown, which ends 2026-11-18.",
+    "exposure": "Build and dev tooling; vite is not part of the deployed bundle.",
+    "plan": "Move to vite 8.3.8 or newer in its own PR once the cooldown ends, then delete this entry.",
+    "expires": "2026-11-25",
+    "reraisedFor": "vite@8.3.8"
+  },
+  {
+    "package": "vite",
+    "advisory": "GHSA-587h-7wmj-h5pm",
+    "why": "The fix is vite 8.3.8, a major bump from 5.4.21. 8.3.8 was published 2026-11-11, inside the 7-day cooldown, which ends 2026-11-18.",
+    "exposure": "Build and dev tooling; vite is not part of the deployed bundle.",
+    "plan": "Move to vite 8.3.8 or newer in its own PR once the cooldown ends, then delete this entry.",
+    "expires": "2026-11-25",
+    "reraisedFor": "vite@8.3.8"
+  },
+  {
+    "package": "vite",
+    "advisory": "GHSA-9jrq-w75r-8gcw",
+    "why": "The fix is vite 8.3.8, a major bump from 5.4.21. 8.3.8 was published 2026-11-11, inside the 7-day cooldown, which ends 2026-11-18.",
+    "exposure": "Build and dev tooling; vite is not part of the deployed bundle.",
+    "plan": "Move to vite 8.3.8 or newer in its own PR once the cooldown ends, then delete this entry.",
+    "expires": "2026-11-25",
+    "reraisedFor": "vite@8.3.8"
+  },
+  {
+    "package": "vite",
+    "advisory": "GHSA-rq7h-c2jc-7f22",
+    "why": "The fix is vite 8.3.8, a major bump from 5.4.21. 8.3.8 was published 2026-11-11, inside the 7-day cooldown, which ends 2026-11-18.",
+    "exposure": "Build and dev tooling; vite is not part of the deployed bundle.",
+    "plan": "Move to vite 8.3.8 or newer in its own PR once the cooldown ends, then delete this entry.",
+    "expires": "2026-11-25",
+    "reraisedFor": "vite@8.3.8"
+  },
+  {
+    "package": "vite",
+    "advisory": "GHSA-fx2h-pf6j-xcff",
+    "why": "The fix is vite 8.3.8, a major bump from 5.4.21. 8.3.8 was published 2026-11-11, inside the 7-day cooldown, which ends 2026-11-18.",
+    "exposure": "Build and dev tooling; vite is not part of the deployed bundle.",
+    "plan": "Move to vite 8.3.8 or newer in its own PR once the cooldown ends, then delete this entry.",
+    "expires": "2026-11-25",
+    "reraisedFor": "vite@8.3.8"
+  },
+  {
+    "package": "esbuild",
+    "advisory": "GHSA-67mh-4wv8-2f99",
+    "why": "esbuild comes in through vite 5.4.21; the fix arrives with the vite 8.3.8 bump, which is inside its 7-day cooldown until 2026-11-18.",
+    "exposure": "Build and dev tooling; esbuild is not part of the deployed bundle.",
+    "plan": "Cleared by the same vite bump; delete this entry with the vite ones.",
+    "expires": "2026-11-25",
+    "reraisedFor": "vite@8.3.8"
+  },
+  {
+    "package": "minimatch",
+    "advisory": "GHSA-g3hv-75wg-m249",
+    "why": "The fixed minimatch 11.0.1 needs @isaacs/nonrecursive-glob-match 1.1.0, published 2026-11-05 and inside the 7-day cooldown until 2026-11-12. npm audit names eslint 9.39.5 as the fix, which would be a downgrade from the pinned eslint 10.8.0.",
+    "exposure": "Lint tooling only (eslint 10.8.0 pulls it in); not part of the deployed bundle.",
+    "plan": "Hold minimatch at 11.0.1 with an override once the cooldown ends, in its own PR, then delete this entry.",
+    "expires": "2026-11-25",
+    "reraisedFor": "eslint@9.39.5"
+  }
+]

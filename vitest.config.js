@@ -15,7 +15,7 @@ process.env.TZ = "America/New_York";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.js"],
+    include: ["src/**/*.test.js", "scripts/**/*.test.js"],
     coverage: {
       // Terminal summary only — no coverage/ artifact tree to
       // ignore, stage by accident, or go stale.

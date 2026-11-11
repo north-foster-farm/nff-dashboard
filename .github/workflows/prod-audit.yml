@@ -1,0 +1,50 @@
+name: production audit
+
+# Advisories are published when no build is running, so CI alone never
+# sees a new one. Once a day this audits the lockfile production runs
+# (scripts/audit/prod.mjs: main, which Netlify deploys) and pings a
+# Healthchecks check: a plain ping when clean, /fail with the findings
+# when not, which Healthchecks pushes to James. The run goes red on an
+# alert too. GitHub starts scheduled runs only from the default branch.
+# The log is public, so it holds counts only; the findings go to
+# Healthchecks, which is private.
+#
+# PROD_AUDIT_PING_URL is the ping URL of a Healthchecks check named
+# "Dashboard production audit" with a one-day period and a grace of a
+# few hours, so a day with no run alerts as well. It is the only secret.
+
+on:
+  schedule:
+    - cron: "53 9 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - name: Audit production's lockfile
+        env:
+          PROD_AUDIT_PING_URL: ${{ secrets.PROD_AUDIT_PING_URL }}
+          PROD_URL: https://admin.northfosterfarm.com/
+        run: node scripts/audit/prod.mjs
+
+      # Signed out, with only the public anon key, try to read every
+      # table. Both values are public (the app ships them), so they are
+      # Actions variables, not secrets; the step is skipped until James
+      # sets them. The run goes red if any table hands back a row. The
+      # log holds counts only.
+      - name: Read every table as anon
+        if: ${{ !cancelled() && vars.SUPABASE_URL != '' && vars.SUPABASE_ANON_KEY != '' }}
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: npm run check:rls
