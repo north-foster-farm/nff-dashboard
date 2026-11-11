@@ -23,4 +23,7 @@ VITE_VAPID_PUBLIC_KEY | 2026-11-11 | production | seed | James
 VITE_SUPABASE_PUBLISHABLE_KEY | 2026-11-11 | production | seed | James
 Google OAuth client secret | 2026-11-11 | production | seed | James
 PROD_AUDIT_PING_URL | 2026-11-11 | production | seed | James
+Supabase CLI login | 2026-11-11 | James's Mac | seed | James
+Supabase database password | 2026-11-11 | production | seed | James
+Claude Action token | planned | production | planned, not done | James
 PUSH_CALLER_SECRET | planned | production | planned, not done | James

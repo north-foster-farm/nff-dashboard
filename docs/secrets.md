@@ -56,6 +56,9 @@ repository (`docs/secrets.md` there), and the rules below follow it.
 | `Google OAuth client secret` | secret | Supabase Auth provider settings | password manager | Google |
 | `PUSH_CALLER_SECRET` | secret | Netlify production; callers | `.env.local`, password manager | us |
 | `PROD_AUDIT_PING_URL` | ping URL | GitHub Actions secret | password manager | healthchecks.io |
+| `Supabase CLI login` | secret | James's Mac (the CLI's own store) | none | Supabase |
+| `Supabase database password` | secret | James's Mac (read by `supabase db push --linked`) | password manager | Supabase |
+| `Claude Action token` | secret | GitHub Actions secret, once PR #86 lands | password manager | Anthropic |
 
 `VITE_SUPABASE_URL`, `SUPABASE_URL` and `VAPID_SUBJECT` are
 configuration, not secrets. A name beginning `VITE_` is bundled into
@@ -68,8 +71,10 @@ without a signed-in user. Rotate: Supabase dashboard, Project
 Settings, API Keys, create a new secret key, set `SUPABASE_SECRET_KEY`
 on Netlify production, deploy, check `/.netlify/functions/heartbeat`
 answers `ok`, then delete the old key after the overlap. Also update
-`.env.local`, since `scripts/backup-db.mjs` and `scripts/prod-read.sh`
-read it. Who: James.
+`.env.local`, since it is also read by `mcp/supa.mjs`,
+`scripts/backup-db.mjs`, `scripts/restore-db.mjs`,
+`scripts/check-consistency.mjs`, `scripts/chores-cutover.mjs` and
+`scripts/prod-read.sh`. Who: James.
 
 ## VAPID key pair
 
@@ -96,14 +101,15 @@ in once to prove it, then delete the old secret after the overlap.
 Who: James. Sign-in uses the `admins` allowlist, so a failed rotation
 locks the farm out; keep the old secret until a sign-in works.
 
-## Push caller secret (#57, not yet set)
+## Push caller secret (planned, #57)
 
-`PUSH_CALLER_SECRET` lets `notify-run-done` and `schedule-reminder`
-refuse callers that do not hold it. It is planned: its log line says
+Planned work: `PUSH_CALLER_SECRET` will let `notify-run-done` and
+`schedule-reminder` accept only callers that hold it. Its log line says
 `planned` until James sets it on Netlify. The name is provisional;
-rename it here and in `.env.example` if #57 chooses another. We
-generate it ourselves, so a rotation swaps it at once on Netlify and in
-every caller in one sitting, with no overlap. Who: James.
+rename it here and in the log if #57 chooses another, and add it to
+`.env.example` when #57 lands. We generate it ourselves, so a rotation
+swaps it at once on Netlify and in every caller in one sitting, with no
+overlap. Who: James.
 
 ## Healthchecks ping URL
 
@@ -111,7 +117,25 @@ every caller in one sitting, with no overlap. Who: James.
 production audit pings. The URL is the credential: anyone holding it
 can fake a healthy run. Rotate only on a leak: make a new check URL in
 healthchecks.io, update the GitHub secret, delete the old check. Who:
-James.
+James. The workflow that uses this secret lands with PR #30; until
+then the secret has no reader.
+
+## Supabase CLI login and database password
+
+The CLI's login (`supabase login`) and the database password that
+`supabase db push --linked` asks for live on James's Mac, outside
+`.env.local`. Rotate the login by logging out, revoking the access
+token under Supabase account settings and logging in again. Rotate the
+database password under Project Settings, Database, then save it in the
+password manager. A new password does not disturb the functions, which
+use the secret key. Who: James.
+
+## Claude Action token
+
+When PR #86 lands, the Claude GitHub Action reads a token kept as a
+GitHub Actions secret. Planned until then. Rotate by creating a new
+token with the issuer, replacing the GitHub secret and revoking the old
+token after the overlap. Who: James.
 
 ## Accounts and two-factor sign-in
 
@@ -123,6 +147,8 @@ the password manager. James confirms each on #68.
 
 Treat every value in `.env.local` as leaked. In order: revoke the
 Supabase secret key and create a new one; reset the VAPID pair; rotate
-the Google OAuth client secret; rotate `PUSH_CALLER_SECRET`; sign the
+the Google OAuth client secret; rotate `PUSH_CALLER_SECRET`; log the
+Supabase CLI out and revoke its token; change the Supabase database
+password; replace the Claude Action token once it exists; sign the
 lost device out of GitHub, Netlify, Supabase and the password manager.
 Log each as reason `lost device`.
