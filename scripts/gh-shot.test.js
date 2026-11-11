@@ -9,7 +9,7 @@ import { join } from "node:path";
 
 import {
   BRANCH, checkImage, checkRepo, ensureBranch, markdown, MAX_BYTES,
-  parseArgs, readImage, shotPath, shotUrl, upload,
+  parseArgs, readImage, shotPath, shotUrl, stripJpeg, stripPng, upload,
 } from "../bin/shot/lib.mjs";
 
 const NOW = new Date("2026-10-22T14:05:09Z");
@@ -150,5 +150,65 @@ describe("gh-shot", () => {
       + "north-foster-farm/blob/screenshots/misc/2026-10-22/a%20b.png"
       + "?raw=true");
     assert.equal(markdown("a [b]", url), `![a b](${url})`);
+  });
+
+  it("keeps ')', '<' and newlines out of the alt text", () => {
+    const alt = "a](http://x)\n<img src=y> (z)";
+    assert.equal(markdown(alt, "https://u"),
+      "![ahttp://x img src=y z](https://u)");
+  });
+});
+
+// Minimal files: only the structure the strippers read.
+const segment = (marker, body) => {
+  const head = Buffer.from([0xff, marker, 0, 0]);
+  head.writeUInt16BE(body.length + 2, 2);
+  return Buffer.concat([head, Buffer.from(body)]);
+};
+const chunk = (type, body) => {
+  const data = Buffer.from(body);
+  const head = Buffer.alloc(8);
+  head.writeUInt32BE(data.length, 0);
+  head.write(type, 4, "latin1");
+  return Buffer.concat([head, data, Buffer.alloc(4)]);
+};
+const GPS = "GPS 41.5N 71.7W";
+
+describe("gh-shot metadata", () => {
+  it("drops EXIF, IPTC and comments from a jpeg, keeping the rest", () => {
+    const keep = [segment(0xe0, "JFIF"), segment(0xe2, "ICC_PROFILE")];
+    const scan = Buffer.from([0xff, 0xda, 0, 2, 1, 2, 3, 0xff, 0xd9]);
+    const photo = Buffer.concat([
+      JPEG.subarray(0, 2), keep[0], segment(0xe1, `Exif ${GPS}`),
+      segment(0xed, "IPTC"), segment(0xfe, "note"), keep[1], scan,
+    ]);
+
+    const clean = stripJpeg(photo);
+
+    assert.equal(clean.includes(GPS), false);
+    assert.deepEqual(clean,
+      Buffer.concat([JPEG.subarray(0, 2), ...keep, scan]));
+  });
+
+  it("drops text and EXIF chunks from a png, keeping the rest", () => {
+    const keep = [chunk("IHDR", "0123456789abc"), chunk("IDAT", "pixels"),
+      chunk("IEND", "")];
+    const photo = Buffer.concat([
+      PNG, keep[0], chunk("tEXt", `Comment\0${GPS}`), chunk("eXIf", GPS),
+      chunk("iTXt", GPS), chunk("tIME", "1234567"), keep[1], keep[2],
+    ]);
+
+    const clean = stripPng(photo);
+
+    assert.equal(clean.includes(GPS), false);
+    assert.deepEqual(clean, Buffer.concat([PNG, ...keep]));
+  });
+
+  it("refuses a truncated jpeg or png rather than upload it", () => {
+    const cutJpeg = Buffer.concat([JPEG, Buffer.from([0xff, 0xe1, 9, 9])]);
+    const cutPng = Buffer.concat([PNG, chunk("tEXt", GPS).subarray(0, 10)]);
+
+    assert.throws(() => stripJpeg(cutJpeg), /well-formed/);
+    assert.throws(() => stripPng(cutPng), /well-formed/);
   });
 });

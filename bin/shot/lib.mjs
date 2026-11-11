@@ -50,6 +50,9 @@ markdown line for it, ready for gh issue comment --body or a body file.
   --repo      owner/name (default: ${DASHBOARD_REPO})
   --any-repo  allow a repo other than the farm's own two
 
+EXIF and other metadata is stripped from jpegs and pngs before upload;
+a webp that carries any is refused.
+
 Public: only mockups and development or staging screens, never
 customer data or production.`;
 
@@ -143,15 +146,108 @@ export function checkImage(file, data) {
   }
 }
 
-// Read an image for upload. Symlinks are refused so a link can't point
-// the upload at some other file.
+// The branch is public and permanent, and a camera photo carries its
+// GPS position, so metadata comes out before an image goes up.
+//
+// JPEG: drop APP1 (EXIF, XMP), APP13 (IPTC) and comments; the color
+// profile (APP2) and the rest stay. Everything from the start of the
+// scan on is copied untouched.
+const JPEG_DROPPED = new Set([0xe1, 0xed, 0xfe]);
+
+export function stripJpeg(data) {
+  const parts = [data.subarray(0, 2)];
+  let at = 2;
+  while (at < data.length) {
+    if (data[at] !== 0xff) {
+      throw new Error("not a well-formed jpeg");
+    }
+    const marker = data[at + 1];
+    if (marker === 0xff) {
+      at += 1;
+      continue;
+    }
+    if (marker === 0xda) {
+      parts.push(data.subarray(at));
+      return Buffer.concat(parts);
+    }
+    // Markers with no length: SOI, EOI, RSTn and TEM.
+    const bare = marker === 0xd8 || marker === 0xd9 || marker === 0x01
+      || (marker >= 0xd0 && marker <= 0xd7);
+    const end = bare ? at + 2 : at + 2 + data.readUInt16BE(at + 2);
+    if (end > data.length) {
+      throw new Error("not a well-formed jpeg");
+    }
+    if (!JPEG_DROPPED.has(marker)) {
+      parts.push(data.subarray(at, end));
+    }
+    at = end;
+  }
+  return Buffer.concat(parts);
+}
+
+// PNG: drop the text chunks (tEXt, zTXt, iTXt), the EXIF chunk and
+// the modification time; keep every other chunk byte for byte.
+const PNG_DROPPED = new Set(["tEXt", "zTXt", "iTXt", "eXIf", "tIME"]);
+
+export function stripPng(data) {
+  const parts = [data.subarray(0, 8)];
+  let at = 8;
+  while (at < data.length) {
+    if (at + 12 > data.length) {
+      throw new Error("not a well-formed png");
+    }
+    const end = at + 12 + data.readUInt32BE(at);
+    if (end > data.length) {
+      throw new Error("not a well-formed png");
+    }
+    const type = data.toString("latin1", at + 4, at + 8);
+    if (!PNG_DROPPED.has(type)) {
+      parts.push(data.subarray(at, end));
+    }
+    at = end;
+  }
+  return Buffer.concat(parts);
+}
+
+// WEBP and GIF are rare here. A WEBP that carries EXIF or XMP is
+// refused rather than rewritten.
+function checkWebp(data) {
+  let at = 12;
+  while (at + 8 <= data.length) {
+    const type = data.toString("latin1", at, at + 4);
+    if (type === "EXIF" || type === "XMP ") {
+      throw new Error("carries metadata; export it again without");
+    }
+    at += 8 + data.readUInt32LE(at + 4) + (data.readUInt32LE(at + 4) % 2);
+  }
+}
+
+export function stripMetadata(ext, data) {
+  if (ext === ".jpg" || ext === ".jpeg") {
+    return stripJpeg(data);
+  }
+  if (ext === ".png") {
+    return stripPng(data);
+  }
+  if (ext === ".webp") {
+    checkWebp(data);
+  }
+  return data;
+}
+
+// Read an image for upload, without its metadata. Symlinks are
+// refused so a link can't point the upload at some other file.
 export function readImage(file) {
   if (lstatSync(file).isSymbolicLink()) {
     throw new Error(`${file}: is a symlink; refusing to upload`);
   }
   const data = readFileSync(file);
   checkImage(file, data);
-  return data;
+  try {
+    return stripMetadata(extname(file).toLowerCase(), data);
+  } catch (error) {
+    throw new Error(`${file}: ${error.message}`, { cause: error });
+  }
 }
 
 // Where an image goes on the branch: grouped by issue and day, with
@@ -177,7 +273,9 @@ export function shotUrl(repo, path) {
 }
 
 export function markdown(alt, url) {
-  const text = alt.replace(/[[\]\\]/g, "");
+  // Nothing that could close the alt text, open a tag or break the
+  // line; a newline becomes a space so words don't run together.
+  const text = alt.replace(/[\r\n]+/g, " ").replace(/[[\]\\()<>]/g, "");
   return `![${text}](${url})`;
 }
 
