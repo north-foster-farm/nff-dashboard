@@ -15,6 +15,8 @@ process.env.TZ = "America/New_York";
 export default defineConfig({
   test: {
     environment: "node",
+    // No leaked key, no live network: see src/test/isolation.js.
+    setupFiles: ["src/test/setup.js"],
     include: ["src/**/*.test.js"],
     coverage: {
       // Terminal summary only — no coverage/ artifact tree to
