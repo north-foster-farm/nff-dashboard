@@ -219,3 +219,15 @@ Run through this before every commit:
 5. **Never amend a commit already pushed to `origin/main`** — follow-up
    fixes go in a new commit. Ask before each commit; don't push unless
    asked.
+
+## No customer data in the repo (C1, #55, 2026-11-11)
+
+This repository is public, and its history is permanent. Never commit
+a customer's or family member's email address, phone number or street
+address, or a credential: not in a seed migration, a fixture, a
+comment, a doc or a commit message. Fixtures use placeholders on
+reserved domains (`jane@example.com`) and fake names. Real contact
+lists live in production only, loaded through the app or the CLI.
+`src/lib/noCustomerData.test.js` fails on contact data in a tracked
+file outside its short, reasoned allowlist; extend the allowlist only
+for public business facts (a venue's address), never for a person.

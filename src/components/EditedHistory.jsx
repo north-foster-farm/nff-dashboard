@@ -79,7 +79,7 @@ function fmt(iso) {
   });
 }
 
-// "james.boynton0+claude@gmail.com" -> "James". Keeps the log readable
+// "jane.doe+claude@example.com" -> "Jane". Keeps the log readable
 // without leaking the full address; first name capitalized (round 4).
 function shortWho(email) {
   const name = String(email).split("@")[0].split("+")[0];

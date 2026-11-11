@@ -121,7 +121,7 @@ describe("addresses", () => {
   });
 
   it("cleanAddress drops keys outside the address shape", () => {
-    const out = cleanAddress({ name: "Ada", email: "a@x.com" });
+    const out = cleanAddress({ name: "Ada", email: "a@example.com" });
     expect(out).not.toHaveProperty("email");
   });
 
@@ -208,9 +208,9 @@ describe("orderTotalCents", () => {
 
 describe("orderCustomerName", () => {
   const byId = new Map([
-    ["c1", { displayName: "Ada", name: "Ada L.", email: "a@x.com" }],
+    ["c1", { displayName: "Ada", name: "Ada L.", email: "a@example.com" }],
     ["c2", { name: "Bob" }],
-    ["c3", { email: "carol@x.com" }],
+    ["c3", { email: "carol@example.com" }],
   ]);
 
   it("prefers the linked customer's displayName, then name, then " +
@@ -218,7 +218,7 @@ describe("orderCustomerName", () => {
     expect(orderCustomerName({ customerId: "c1" }, byId)).toBe("Ada");
     expect(orderCustomerName({ customerId: "c2" }, byId)).toBe("Bob");
     expect(orderCustomerName({ customerId: "c3" }, byId))
-      .toBe("carol@x.com");
+      .toBe("carol@example.com");
   });
 
   it("falls back to the walk-in name when the link doesn't resolve", () => {
