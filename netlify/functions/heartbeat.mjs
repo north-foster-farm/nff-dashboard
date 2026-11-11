@@ -23,6 +23,7 @@
 // Manual invocation for testing:
 //   curl -X POST https://<site>.netlify.app/.netlify/functions/heartbeat
 import { createClient } from "@supabase/supabase-js";
+import { logError } from "./lib/log.mjs";
 
 const HEARTBEAT_ID = 1; // Single-row table; id=1 is the only row we touch.
 
@@ -53,7 +54,7 @@ export default async () => {
     .upsert({ id: HEARTBEAT_ID, last_ping: new Date().toISOString() });
 
   if (error) {
-    console.error("heartbeat upsert failed:", error);
+    logError("heartbeat.upsert_failed", error);
     return new Response(
       JSON.stringify({ ok: false, error: error.message }),
       { status: 500, headers: { "content-type": "application/json" } }

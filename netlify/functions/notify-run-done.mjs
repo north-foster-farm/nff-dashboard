@@ -24,6 +24,7 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import SunCalc from "suncalc";
+import { logError } from "./lib/log.mjs";
 
 // Foster, RI — same coordinates the dashboard uses everywhere else
 // for sun events. Hardcoded to match.
@@ -121,7 +122,7 @@ export default async (req) => {
             .delete().eq("id", sub.id);
         } catch (e) { /* ignore */ }
       } else {
-        console.error("[notify-run-done] push failed", code, err?.body || err);
+        logError("notify-run-done.push_failed", err);
       }
     }
   }));

@@ -21,6 +21,7 @@
 //   curl -X POST https://<site>.netlify.app/.netlify/functions/schedule-reminder
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { logError } from "./lib/log.mjs";
 
 // The farm's local day (Foster, RI) as YYYY-MM-DD — the business day the
 // capture's subject_id is keyed on. en-CA formats as ISO; the timeZone keeps
@@ -122,7 +123,7 @@ export default async () => {
           await supabase.from("push_subscriptions").delete().eq("id", sub.id);
         } catch (e) { /* ignore */ }
       } else {
-        console.error("[schedule-reminder] push failed", code, err?.body || err);
+        logError("schedule-reminder.push_failed", err);
       }
     }
   }));
