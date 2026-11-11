@@ -9,9 +9,13 @@ import { readFileSync } from "node:fs";
 
 const EMAIL =
   /[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,})/g;
-const PHONE =
-  /(?<![\d.])(?:\+?1[-. ])?\(?\d{3}\)?[-. ]\d{3}[-. ]\d{4}(?![\d.])/;
-const STREET_SUFFIX = "St|Street|Rd|Road|Ave|Avenue|Ln|Lane|Dr|Drive|Way";
+const PHONE = new RegExp(
+  "(?<![\\w.-])(?:\\+?1[-. ]?)?(?:\\(\\d{3}\\)[-. ]?|[2-9]\\d{2}[-. ]?)" +
+    "\\d{3}[-. ]?\\d{4}(?![\\w.-])",
+);
+const STREET_SUFFIX =
+  "St|Street|Rd|Road|Ave|Avenue|Ln|Lane|Dr|Drive|Way|Pike|Route|Rte|" +
+  "Court|Ct|Blvd|Boulevard|Hwy|Highway|Pkwy|Parkway|Circle|Cir|Place|Pl";
 const STREET = new RegExp(
   "\\b\\d{1,5} (?:[A-Z][a-z]+ ){1,3}(?:" + STREET_SUFFIX + ")\\b",
 );
@@ -83,6 +87,19 @@ describe("tracked files hold no customer contact data", () => {
     ].join("\n");
     const kinds = findContactData("x", sample).map((h) => h.split(" ")[1]);
     expect(kinds).toEqual(["email", "phone", "street"]);
+  });
+
+  it("recognizes phone and street variants", () => {
+    const variants = [
+      "call (555) 555-5555",
+      "call 5555555555",
+      "call +1 555 555 5555",
+      "at 9 Old Plain Pike",
+      "at 140 Hartford Route",
+      "at 7 Quiet Court",
+    ];
+    for (const line of variants)
+      expect(findContactData("x", line), line).toHaveLength(1);
   });
 
   it("accepts placeholders on reserved domains", () => {
