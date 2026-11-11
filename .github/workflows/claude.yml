@@ -137,9 +137,12 @@ jobs:
             git -c core.hooksPath=/dev/null \
               -c "http.extraheader=AUTHORIZATION: basic $auth" "$@"
           }
-          # Count the commits of $2 whose change is not in $1.
-          unique() {
-            git cherry "$1" "$2" origin/main | grep -c '^+' || true
+          # Count the commits of $1's cherry output marked +. The output
+          # is captured by plain assignment before this runs, so a
+          # failed `git cherry` stops the step under `set -e` instead
+          # of reading as a count of 0 (there is no pipefail).
+          pluses() {
+            printf '%s\n' "$1" | grep -c '^+' || true
           }
           url="https://github.com/$REPO"
           tipref="refs/remotes/lane/$branch"
@@ -150,13 +153,16 @@ jobs:
             tip="origin/main"
             lease=""
           fi
-          if [ "$(unique "$tip" HEAD)" = "0" ]; then
+          added="$(git cherry "$tip" HEAD origin/main)"
+          if [ "$(pluses "$added")" = "0" ]; then
             echo "No new commits past $tip; no push."
             exit 0
           fi
-          if [ "$tip" != "origin/main" ] && [ "$(unique HEAD "$tip")" != "0" ]
-          then
-            echo "HEAD drops commits already on $branch; not pushing."
-            exit 1
+          if [ "$tip" != "origin/main" ]; then
+            dropped="$(git cherry HEAD "$tip" origin/main)"
+            if [ "$(pluses "$dropped")" != "0" ]; then
+              echo "HEAD drops commits already on $branch; not pushing."
+              exit 1
+            fi
           fi
           git_push push --no-verify $lease "$url" "HEAD:refs/heads/$branch"
