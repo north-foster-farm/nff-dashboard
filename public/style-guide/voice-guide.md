@@ -29,6 +29,7 @@ Two overrides to know straight away:
 - **W17: subjects are plain, about the thing, no riddles.** The launch email's subject is "Order our chicken and eggs online 🐓 🥚".
 - **Welcome and list email:** "short and in the farm's voice, not a marketing welcome sequence."
 - **Q4c and R-POST: James writes his own story.** He writes the About people section and the rewrite of the tour post. Agents don't pre-draft another version, and no placeholder copy ships in a section's place.
+- **Consistency (#303, restated in the site's #400 brief):** "pickup" is the noun and "pick-up" the adjective (a pickup day; a pick-up time). "Submitting" is the busy word for forms and "Sending" for email links. The four restock labels are "Back in [season]" (spring unless the item says otherwise), "Returning soon", "On hiatus" and "Not available", as in the site's `restock-label.html`. Contact links go to sales@northfosterfarm.com, not info@ (the site's CLAUDE.md, #410).
 - **Fixed words:** you **pay** on the order page and the order is **placed**; "the drop site", with Scituate only as the place; "pasture-raised" hyphenated; "non-GMO" in that casing; "farm news" lowercase; American English (favorite, color, flavor); no semicolons in prose; "email address" when it means the address.
 
 ### Patterns James has rejected
