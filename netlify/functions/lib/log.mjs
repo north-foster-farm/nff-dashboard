@@ -17,6 +17,8 @@ export const mask = (part) => {
 const EMAIL = /([A-Za-z0-9._%+'-]+)@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)/g;
 const URL_RE = /https?:\/\/([^\s/"'<>]+)[^\s"'<>]*/g;
 const PHONE = /[+(]?\d[\d\s().-]{8,}\d/g;
+const JWT = /\beyJ[\w-]+\.[\w-]+\.[\w-]+/g;
+const KEY = /\b(?:sk|pk|rk)_[A-Za-z0-9_]{8,}/g;
 const BEARER = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi;
 
 // Order matters: bearer tokens and emails go before URLs, whose
@@ -24,6 +26,8 @@ const BEARER = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi;
 export const scrub = (value) =>
   String(value)
     .replace(BEARER, "$1 [removed]")
+    .replace(JWT, "[removed]")
+    .replace(KEY, "[removed]")
     .replace(EMAIL, (_, local, domain) => `${mask(local)}@${mask(domain)}`)
     .replace(URL_RE, (_, host) => `[url:${mask(host)}]`)
     .replace(PHONE, (m) => (m.replace(/\D/g, "").length >= 10 ? "[phone]" : m));

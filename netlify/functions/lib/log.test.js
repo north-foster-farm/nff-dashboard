@@ -33,12 +33,25 @@ describe("scrub", () => {
   });
 
   it("masks a phone number", () => {
-    expect(scrub("call 401-555-0142")).not.toContain("0142-");
-    expect(scrub("call 401-555-0142")).not.toContain("555");
+    expect(scrub("call 401-555-0142 now")).toBe("call [phone] now");
+    expect(scrub("call (401) 555 0142")).toBe("call [phone]");
   });
 
   it("removes bearer tokens", () => {
     expect(scrub(`auth ${TOKEN}`)).not.toContain("ABCDEFGH");
+  });
+});
+
+describe("scrub of bare secrets", () => {
+  it("removes a JWT with no Bearer prefix", () => {
+    const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.c2lnbmF0dXJl";
+    expect(scrub(`token ${jwt} bad`)).toBe("token [removed] bad");
+  });
+
+  it("removes an sk_ style key with no Bearer prefix", () => {
+    expect(scrub("key sk_live_ABCDEFGHIJKLMNOP1234 bad")).toBe(
+      "key [removed] bad",
+    );
   });
 });
 
