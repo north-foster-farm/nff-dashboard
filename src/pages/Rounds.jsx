@@ -538,7 +538,7 @@ function isOverran(block, run) {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-// "james.boynton0@gmail.com" → "James" — display name for the
+// "jane.doe@example.com" → "Jane" — display name for the
 // waiting-on banner. Mirrors the activity-log convention.
 function nameFromEmail(email) {
   if (!email) return "the other person";

@@ -205,8 +205,8 @@ describe("describeModifierSource", () => {
   });
 
   it("labels a hand-added modifier with the creator's local-part email", () => {
-    expect(describeModifierSource({ source: "manual", createdByEmail: "james@northfosterfarm.com" }))
-      .toBe("Added by james");
+    expect(describeModifierSource({ source: "manual", createdByEmail: "jane@example.com" }))
+      .toBe("Added by jane");
   });
 
   it("falls back to 'Added by hand' with no email on record", () => {
