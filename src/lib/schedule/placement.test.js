@@ -2,9 +2,8 @@
 // + ad-hoc add all share this — scope §2.2). The randomized INVARIANTS
 // (tiling never overlaps, segmentForStart is total, the shrink-to-nothing
 // re-home case) already have dedicated property-test coverage over 4,000+
-// generated configurations: scripts/test-schedule-partition.mjs, run via
-// `npm run test:partition` (plain node, no framework — the repo's existing
-// convention, predates this vitest suite). This file is DELIBERATELY
+// generated configurations: `src/lib/schedule/partition.property.test.js`,
+// which `npm run check` runs with everything else. This file is DELIBERATELY
 // NARROWER and complementary: hand-picked, named boundary cases that read
 // as documentation of the exact half-open contract (O-B3) — a regression
 // here fails on ONE readable case instead of a fuzzer counterexample.
