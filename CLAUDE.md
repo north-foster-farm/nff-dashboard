@@ -91,6 +91,11 @@ squash/fast-forward-push strategy does not apply here.
 - Delete the branch after merge. Netlify deploys the merge — so a
   deploy can only ever be a checked commit.
 
+Cloud lanes: a comment or issue by James that names the Claude app
+starts a run (`.github/workflows/claude.yml`) that pushes
+`lane/cloud-<issue>`; the coordinator opens the PR. Rules for those
+runs: `docs/cloud-lanes.md`.
+
 ## Commit style
 
 Every commit on this repo follows one consistent shape. Match it.
