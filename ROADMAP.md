@@ -68,12 +68,6 @@ e-commerce arc; this file is the sequence.
   list --linked` (needs a real terminal login). If unapplied:
   backup → push per data-safety rules. Failure mode while unknown:
   un-confirming a day silently no-ops under RLS.
-- 0.4 **Test-gate completeness** [batch]. Fold
-  `test-schedule-partition.mjs` (~4,000 randomized partitioner
-  runs) into vitest; move the version-sync check into
-  `.githooks/pre-commit` so human commits hit it too.
-  Accept: `npm run check` runs the partition property test; a
-  human commit with mismatched versions is blocked.
 - 0.5 **outbox.js unit coverage** [batch]. 756 lines carrying the
   additive-merge guarantee, zero tests — the highest-value test
   gap in the repo. Accept: the additive-merge property has a
