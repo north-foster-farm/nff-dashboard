@@ -9,6 +9,34 @@
 # single definition of "ready to commit", so anything added to it
 # (coverage thresholds, new linters) is enforced here too instead of
 # being bypassed.
+#
+# Git hands a hook its own environment (GIT_DIR, GIT_INDEX_FILE,
+# GIT_WORK_TREE and more). Inherited by the suite, it points every git
+# command a test runs at this repository, whatever repository the test
+# meant: on 2026-11-22 that pushed a sandbox's branches to origin
+# (#99). So the suite gets none of it. The one fact the checks need is
+# what this commit stages, read from its own index (a temporary one
+# under `git commit -a` or `git commit <path>`). The hook writes that
+# diff to a private file, removed on exit, and check-format.sh reads
+# the file named by NFF_STAGED_DIFF, so no check sees the index.
+NFF_STAGED_DIFF=$(mktemp "${TMPDIR:-/tmp}/nff-staged-diff.XXXXXX") ||
+  exit 1
+trap 'rm -f "$NFF_STAGED_DIFF"' EXIT
+trap 'exit 1' HUP INT TERM
+chmod 600 "$NFF_STAGED_DIFF"
+if git diff --cached -U0 --no-color >"$NFF_STAGED_DIFF" 2>/dev/null; then
+  export NFF_STAGED_DIFF
+else
+  # No readable index: check-format.sh reads the staged diff itself.
+  rm -f "$NFF_STAGED_DIFF"
+  unset NFF_STAGED_DIFF
+  echo "pre-commit: warning: git could not read this commit's index," \
+    "so max-len may judge the wrong lines." >&2
+fi
+for name in $(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p'); do
+  unset "$name"
+done
+
 echo "pre-commit: running checks (npm run check)..."
 npm run check --silent
 status=$?
