@@ -1,13 +1,14 @@
-// restore-db.mjs — reimport a backup (from backup-db.mjs) after a reset.
+// restore-db.mjs — reimport a backup (from backup-db.mjs).
 //
-// Pre-production workflow (until v1.0 rollout): migrations are amended
-// in place, so applying a change means `supabase db reset`, which wipes
-// runtime data and re-seeds baseline rows with FRESH uuids. This script
-// puts your data back.
+// Disaster recovery only (docs/rollback.md, "Restore the database").
+// Production is live and migrations are additive-only, so a
+// `supabase db reset --linked` is never run (CLAUDE.md, "Data
+// safety"). Corrected 2026-11-22: this header described the
+// pre-production reset-and-restore workflow, retired 2026-06-01.
 //
-//   node scripts/backup-db.mjs                       # before reset
-//   supabase db reset --linked                       # apply migrations
+//   node scripts/backup-db.mjs                       # current state
 //   node scripts/restore-db.mjs <backupDir> --yes    # put data back
+//   node scripts/restore-db.mjs <backupDir> --only=a,b --yes
 //
 // Strategy — REPLACE mode (the backup is authoritative):
 //   For each table present in the backup (and in the live DB), delete
