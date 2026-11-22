@@ -1,0 +1,107 @@
+#!/bin/bash
+# A stand-in for the `gh` command, for the bin/promote approval criteria
+# test (#75). It answers `gh api` GETs from recorded GitHub answers and
+# never reaches the network. A port of the site's test/fixtures/github/
+# fake-gh.mjs, routing by each recording's own request.
+#
+# $FAKE_GH_DIR holds the recordings this run may answer with, one JSON
+# file each, as fixtures/github/README.md describes:
+#   { "_source": {...}, "request": "GET path?query", "response": body }
+# A call is answered by the recording whose request is the same method,
+# path and query (query parameters in any order; `{owner}/{repo}` and
+# `:owner/:repo` read as this repository, as gh reads them in a clone of
+# it). Anything else is refused with exit 2, naming the call. Every call
+# is appended to $FAKE_GH_DIR/calls.log as "METHOD path?query".
+#
+# Of gh's flags it keeps what changes the answer: -X/--method,
+# --paginate (a recording is one page), --slurp (the pages wrapped in
+# one array) and -q/--jq (applied with jq, strings printed raw, as gh
+# does). A field (-f, -F) without -X GET makes gh send a POST, so it is
+# refused here like any other unrecorded call.
+set -u
+
+REPO="north-foster-farm/nff-dashboard"
+dir="${FAKE_GH_DIR:?fake gh: FAKE_GH_DIR is not set}"
+
+refuse() {
+  echo "fake gh: $1" >&2
+  exit 2
+}
+
+[ "${1:-}" = "api" ] || {
+  printf '%s\n' "UNRECORDED gh $*" >> "$dir/calls.log"
+  refuse "only gh api is recorded, not: gh $*"
+}
+shift
+
+method=""
+jq_expr=""
+slurp=0
+fields=0
+path=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -X|--method) method="$2"; shift 2 ;;
+    --method=*) method="${1#--method=}"; shift ;;
+    -q|--jq) jq_expr="$2"; shift 2 ;;
+    --jq=*) jq_expr="${1#--jq=}"; shift ;;
+    --slurp) slurp=1; shift ;;
+    --paginate) shift ;;
+    -f|--raw-field|-F|--field) fields=1; shift 2 ;;
+    -t|--template|--input) refuse "$1 is not recorded" ;;
+    -H|--header|--hostname|--cache|-p|--preview) shift 2 ;;
+    -*) shift ;;
+    *)
+      [ -z "$path" ] || refuse "two paths: $path and $1"
+      path="$1"; shift ;;
+  esac
+done
+
+if [ -z "$method" ]; then
+  if [ "$fields" -eq 1 ]; then method="POST"; else method="GET"; fi
+fi
+
+# The request as a comparable string: no leading slash, this
+# repository's placeholders filled in, query parameters sorted.
+normal() {
+  local request="$1" verb rest bare query
+  verb="${request%% *}"
+  rest="${request#* }"
+  rest="${rest#/}"
+  rest="${rest//\{owner\}\/\{repo\}/$REPO}"
+  rest="${rest//:owner\/:repo/$REPO}"
+  bare="${rest%%\?*}"
+  query=""
+  if [ "$bare" != "$rest" ]; then
+    query="$(printf '%s' "${rest#*\?}" | tr '&' '\n' | LC_ALL=C sort \
+      | paste -sd '&' -)"
+  fi
+  if [ -n "$query" ]; then
+    printf '%s %s?%s' "$verb" "$bare" "$query"
+  else
+    printf '%s %s' "$verb" "$bare"
+  fi
+}
+
+[ -n "$path" ] || refuse "gh api with no path"
+call="$(normal "$method $path")"
+printf '%s\n' "${call}" >> "$dir/calls.log"
+
+for recording in "$dir"/*.json; do
+  [ -e "$recording" ] || break
+  recorded="$(jq -r '.request' "$recording")"
+  [ "$(normal "$recorded")" = "$call" ] || continue
+  if [ "$slurp" -eq 1 ]; then
+    body="$(jq -c '[.response]' "$recording")"
+  else
+    body="$(jq -c '.response' "$recording")"
+  fi
+  if [ -n "$jq_expr" ]; then
+    printf '%s' "$body" | jq -r "$jq_expr"
+    exit "${PIPESTATUS[1]}"
+  fi
+  printf '%s\n' "$body"
+  exit 0
+done
+
+refuse "no recorded answer for $call"
