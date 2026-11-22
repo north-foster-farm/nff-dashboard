@@ -43,13 +43,25 @@ fi
 # ── 2. max-len 80 on added lines ─────────────────────────────────────
 # Staged diff when invoked from the hook; falls back to the working
 # tree diff so `npm run check` behaves the same outside a commit.
-long=$(git diff --cached -U0 --no-color \
-    -- '*.js' '*.mjs' '*.sql' '*.sh' '*.css' \
-    ':(exclude)*.test.js' |
+# The hook strips git's environment and writes the commit's staged
+# diff to the file named by NFF_STAGED_DIFF (#99); read that when set.
+# Only .js/.mjs/.sql/.sh/.css files count, never a *.test.js.
+staged_diff() {
+  if [ -n "${NFF_STAGED_DIFF:-}" ]; then
+    cat "$NFF_STAGED_DIFF"
+  else
+    git diff --cached -U0 --no-color
+  fi
+}
+long=$(staged_diff |
   awk '
-    /^\+\+\+ b\// { file = substr($0, 7) }
+    /^\+\+\+ / {
+      file = ($0 ~ /^\+\+\+ b\//) ? substr($0, 7) : ""
+      keep = file ~ /\.(js|mjs|sql|sh|css)$/ && file !~ /\.test\.js$/
+      next
+    }
     /^@@/ { match($0, /\+[0-9]+/); ln = substr($0, RSTART + 1) + 0 }
-    /^\+/ && !/^\+\+\+/ {
+    keep && /^\+/ {
       line = substr($0, 2)
       if (length(line) > 80 && line !~ /:\/\//)
         print file ":" ln ": " length(line) " chars"
