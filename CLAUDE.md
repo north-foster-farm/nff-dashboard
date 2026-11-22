@@ -76,20 +76,53 @@ never loosen to make a commit pass:
   chore block reference and farm-map binding resolves. Run it after
   anything that touches blocks, deadlines, places, or the map SVG.
 
-## Branch & merge — THIS REPO OVERRIDES the global flow (2026-07-30)
+## Branch & merge: `next`, `staging`, `main` (F2.1, 2026-11-22)
 
-Since deploys fire on anything reaching main, main is gated by a
-GitHub ruleset (James's H5 call): **no direct pushes**. The global
-squash/fast-forward-push strategy does not apply here.
+Netlify deploys whatever reaches `main` to admin.northfosterfarm.com,
+so nothing reaches `main` that has not passed through the two stages
+before it. This is the site's flow, adopted for the dashboard by #75;
+it replaces the 2026-07-30 override (PRs rebase-merged straight into
+`main`).
 
-- Work on a feature branch; squash to atomic commits as usual.
-- Open a PR; the `check` workflow (`.github/workflows/check.yml`)
-  must pass — it's the required status.
-- Merge with GitHub's **"Rebase and merge"** (keeps history linear;
-  commits get new SHAs; the PR shows Merged natively — the old
-  force-push-then-fast-forward dance is retired for this repo).
-- Delete the branch after merge. Netlify deploys the merge — so a
-  deploy can only ever be a checked commit.
+- **`next`** is where work lands. Every change is a pull request from
+  a feature branch into `next`, squashed to atomic commits, merged by
+  rebase so history stays linear. `check`
+  (`.github/workflows/check.yml`) runs on the PR and on the push to
+  `next`, and must be green.
+- **`staging`** takes only fast-forwards from `next`, once `check` is
+  green on that commit. It deploys to the staging back end (F1.1,
+  #73), never to production, and is where James looks before a
+  release.
+- **`main`** takes only fast-forwards from `staging`, through a
+  `staging` into `main` release pull request that James approves.
+  Once he approves, `bin/promote main` fast-forwards `main`, which
+  marks the pull request merged; GitHub's merge button would rewrite
+  the commits. Netlify publishes it.
+- No stage takes a force-push, a deletion or a merge commit, and no
+  one pushes a stage by hand: promotion is the fast-forward script
+  (`bin/promote staging|main`), which refuses anything else.
+- The rulesets live as GitHub exports in `.github/rulesets/`; James
+  applies them, and a change to one is a pull request first. Their
+  `check` is pinned to GitHub Actions (integration 15368), so no
+  other app can report it green.
+- **Do not apply `main.json` yet** (2026-11-22). It has no pull
+  request rule: applied, it replaces today's `main` ruleset (a pull
+  request and a green `check`) and lets anyone who can push send a
+  green `staging` commit to production without James's approval.
+  It waits until `bin/promote main` checks that approval (#75).
+- Delete a feature branch once it lands.
+- Rolling a release back: `docs/rollback.md`.
+
+**Status on 2026-11-22: not yet in force.** `next` and `staging` do
+not exist on origin yet, and no one creates them until James says how
+the flow starts. The rulesets that enforce the above wait for James to
+apply them (#75). Until then the 2026-07-30 rules hold:
+`main` takes pull requests only, `check` is required, and James
+merges with "Rebase and merge". Update this paragraph the day the
+flow goes live.
+
+The commit style below is unchanged by the flow (typed subjects,
+batch versions, version sync); G1 (#83) records that decision.
 
 ## Commit style
 
@@ -216,6 +249,7 @@ Run through this before every commit:
    any `git commit` while they disagree. The hook enforces only
    equality; bumping per batch (step 2) is yours to remember.
 4. **Update `ROADMAP.md`** as the final step of every batch.
-5. **Never amend a commit already pushed to `origin/main`** — follow-up
+5. **Never amend a commit already pushed to a stage**
+   (`next`, `staging` or `main`) — follow-up
    fixes go in a new commit. Ask before each commit; don't push unless
    asked.
