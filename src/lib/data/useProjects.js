@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { realtimeChannel, supabase } from "./supabase.js";
 import { useCurrentUserEmail } from "./useCurrentUserEmail.js";
-import { slugify } from "../slug.js";
 import {
-  computeDependentShifts, dayDelta, progressOf, phaseDone,
+  computeDependentShifts, dayDelta, newProjectFields, progressOf, phaseDone,
 } from "../projects.js";
 
 // Projects subsystem hooks (Batch 22).
@@ -248,6 +247,42 @@ async function dbInsert(table, row, cols) {
   return data;
 }
 
+// The one project-row writer. Standalone rather than a hook method so
+// a surface that only needs to CREATE a project — the Inbox's
+// promote-to-project button — obeys the create invariants without
+// mounting the whole projects dataset and its realtime channel. Reads
+// just the columns `newProjectFields` derives from, which also means
+// the slug is checked against a project created on another device
+// since this tab loaded. Returns the new project's id.
+export async function insertProject({
+  title, description, queueState, userEmail,
+}) {
+  const { data: rows, error } = await supabase.from("projects")
+    .select("slug, queue_state, sort_order, archived_at, completed_at");
+  if (error) throw error;
+  const fields = newProjectFields({
+    title,
+    description,
+    queueState,
+    projects: (rows ?? []).map(r => ({
+      slug: r.slug,
+      queueState: r.queue_state,
+      sortOrder: r.sort_order,
+      archivedAt: r.archived_at,
+      completedAt: r.completed_at,
+    })),
+  });
+  const project = await dbInsert("projects", {
+    title: fields.title,
+    slug: fields.slug,
+    description: fields.description,
+    created_by: userEmail,
+    queue_state: fields.queueState,
+    sort_order: fields.sortOrder,
+  }, PROJECT_COLS);
+  return project.id;
+}
+
 async function dbUpdate(table, id, patch) {
   const { error } = await supabase.from(table).update(patch).eq("id", id);
   if (error) throw error;
@@ -355,28 +390,15 @@ export function useProjects() {
     return Math.max(0, ...sorts) + 1;
   }, [tables]);
 
-  // Slugs are unique across ALL projects (archived included) — the
-  // taken set feeds slugify's -2/-3… collision suffixes.
-  const takenSlugs = useCallback(() => new Set(
-    (tables?.projects ?? []).map(p => p.slug).filter(Boolean)
-  ), [tables]);
-
   const createProject = useCallback(async ({
     title, description, queueState = "ranked",
   }) => {
-    const trimmed = (title ?? "").trim();
-    if (!trimmed) throw new Error("Title required.");
-    const data = await dbInsert("projects", {
-      title: trimmed,
-      slug: slugify(trimmed, takenSlugs()),
-      description: (description ?? "").trim() || null,
-      created_by: userEmail,
-      queue_state: queueState,
-      sort_order: queueState === "ranked" ? rankedTailSort() : 0,
-    }, PROJECT_COLS);
+    const id = await insertProject({
+      title, description, queueState, userEmail,
+    });
     await fetchAll();
-    return data.id;
-  }, [userEmail, rankedTailSort, takenSlugs, fetchAll]);
+    return id;
+  }, [userEmail, fetchAll]);
 
   // Create a whole project in one shot from an approved agent proposal:
   // the project (tail of the ranked queue), and — if steps were proposed
@@ -386,29 +408,22 @@ export function useProjects() {
   const createProjectTree = useCallback(async ({
     title, description, steps = [],
   }) => {
-    const trimmed = (title ?? "").trim();
-    if (!trimmed) throw new Error("Title required.");
-    const project = await dbInsert("projects", {
-      title: trimmed,
-      slug: slugify(trimmed, takenSlugs()),
-      description: (description ?? "").trim() || null,
-      created_by: userEmail,
-      queue_state: "ranked",
-      sort_order: rankedTailSort(),
-    }, PROJECT_COLS);
+    const projectId = await insertProject({
+      title, description, queueState: "ranked", userEmail,
+    });
     const cleanSteps = (steps ?? [])
       .map(s => (typeof s === "string" ? s : s?.title) ?? "")
       .map(s => s.trim())
       .filter(Boolean);
     if (cleanSteps.length) {
       const phase = await dbInsert("project_phases", {
-        project_id: project.id,
+        project_id: projectId,
         title: "Steps",
         sort_order: 0,
       }, PHASE_COLS);
       for (let i = 0; i < cleanSteps.length; i += 1) {
         await dbInsert("project_steps", {
-          project_id: project.id,
+          project_id: projectId,
           phase_id: phase.id,
           title: cleanSteps[i],
           sort_order: i,
@@ -416,8 +431,8 @@ export function useProjects() {
       }
     }
     await fetchAll();
-    return project.id;
-  }, [userEmail, rankedTailSort, takenSlugs, fetchAll]);
+    return projectId;
+  }, [userEmail, fetchAll]);
 
   const updateProject = useCallback(async (id, patch) => {
     await dbUpdate("projects", id, projectPatch(patch));

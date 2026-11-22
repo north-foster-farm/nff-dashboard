@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useInboxItems } from "../lib/data/useInboxItems.js";
 import { useCurrentUserEmail } from "../lib/data/useCurrentUserEmail.js";
-import { supabase } from "../lib/data/supabase.js";
+import { insertProject } from "../lib/data/useProjects.js";
 import { navigate, pathForProject } from "../lib/browser/router.js";
 
 // The Inbox page (Batch 21) — every captured "just a thought…" with
@@ -223,23 +223,24 @@ function ItemRow({
   };
 
   // Promote to project (Batch 22, deferred from 21): the thought
-  // becomes a planned project's title + description, and the page
-  // jumps straight to its detail view. The thought stays in the inbox
-  // until someone archives it — same contract as promote-to-event.
-  // Direct insert (not useProjects) so each inbox row doesn't mount
-  // the whole projects data hook just for this button.
+  // becomes a project's title + description, and the page jumps
+  // straight to its detail view. The thought stays in the inbox until
+  // someone archives it — same contract as promote-to-event. It lands
+  // unprioritized: a captured thought is not a ranked commitment until
+  // someone says so. `insertProject` rather than the useProjects hook
+  // so an inbox row gets the create invariants (unique slug, bucket,
+  // queue position) without mounting the whole projects dataset.
   const promoteToProject = async () => {
     if (!read) inbox.markRead(item.id).catch(() => {});
-    const { data, error } = await supabase.from("projects").insert({
+    const projectId = await insertProject({
       title: item.body.length > 80
         ? item.body.slice(0, 77) + "…"
         : item.body,
       description: item.body.length > 80 ? item.body : null,
-      status: "planned",
-      created_by: userEmail,
-    }).select("id").single();
-    if (error) throw error;
-    navigate(pathForProject(data.id));
+      queueState: "unprioritized",
+      userEmail,
+    });
+    navigate(pathForProject(projectId));
   };
 
   return (
