@@ -300,13 +300,14 @@ proposal → `createProjectTree`), `Inbox.jsx` (promote a thought).
   tension with the standing "no implicit mutation of committed data"
   rule — an auto-complete cascade is a write the user didn't ask for.
   Decide deliberately rather than by default.
-- **The multi-device concurrency lesson is unbanked.** The duplicate-
-  placement and tombstone/move bugs (`ROADMAP.md:4142`) were
-  root-caused in code that no longer exists. Any future feature where
-  two devices write derived rows off the same realtime trigger hits
-  the same class of bug; the mitigation (deterministic survivor by
-  lexically smallest id) belongs somewhere that isn't a deleted
-  module.
+- **The multi-device concurrency lesson is banked** (Roadmap v2 0.12).
+  The duplicate-placement and tombstone/move bugs were root-caused in
+  code that no longer exists; both, and the deterministic-survivor
+  mitigation, now live in `docs/history/platform-and-infra.md` under
+  2026-07-02 and in that chapter's Current state. Still open here is
+  only the project-side consequence: any future feature where two
+  devices write derived rows off the same trigger must pick its
+  survivor rule deliberately.
 - **Horizon, if scheduling ever returns:** the design doc's target was
   today + a rolling 7 days, blocked on multi-date deltas
   (`docs/specs/scheduling-engine-design.md:133`). The planner already

@@ -221,6 +221,46 @@ both sides, narrative test code, as few tests as possible, cull
 ruthlessly. The hook's own error message declares `--no-verify` "not
 the workflow".
 
+**2026-07-02 — two devices, one debounce.** The Schedule's auto-reflow
+planner produced the only genuine concurrency bugs this repo has had,
+and both were root-caused in code that no longer exists — Round 5's
+NO-LEGACY pass retired the planner and deleted `reflowPlan`,
+`placementKey`, `planSignature`, `isStale`, `reconcilePlan`, the
+`useScheduleReflow` hook and `reflowBridge` with it (the gravestone is
+`src/lib/schedule/reflow.js:55-59`). The findings are banked here
+because the *shape* of the bug outlives the module: any future feature
+where two clients write derived rows off the same realtime trigger
+gets both of these for free.
+
+- **Duplicate placements.** James runs two devices. Their debounce
+  timers reset on the *same* realtime events, so they fired in the
+  same instant and each inserted the same (step, gap) pair under a
+  different uuid. Reconciliation then hid the damage: duplicate
+  placement keys counted as in-plan, so `toPlace` and `toRemove` both
+  came back empty and the duplicate never healed, while `stale` stayed
+  true forever. **The mitigation is the durable part —** dedupe by
+  placement key and keep the **lexically smallest id**. Every device
+  computes the same survivor from the same rows, so concurrent healers
+  delete the same extra rows instead of fighting over which to keep.
+  No lock, no leader election, no server round-trip: a total order the
+  clients already share is enough.
+- **The engine borrowing the user's delete.** Found underneath the
+  first, and worse. `syncNow` reused the user-facing `removeDelta` —
+  which *tombstones* — for its own stale placements, so an engine MOVE
+  tombstoned the step it was moving, excluding it from the very plan
+  doing the moving; on the next sync the step fell off the day
+  entirely. The fix separated the two paths: a `hardRemove` (plain
+  delete, never tombstones) for engine reconciliation, `removeDelta`
+  left as the user path. The general rule: a tombstone records a
+  *human's* intent, and machinery that reuses it inherits an exclusion
+  it did not mean.
+
+Both were verified live against prod, which is the only way this repo
+can verify anything (see the prod-only test protocol below). The
+contemporaneous write-up was Round 4 of the audit-v2 feedback, which
+survives only in untracked `.ignored/` and in Roadmap v1 — recoverable
+as `git show db18151^:ROADMAP.md`, around line 4142.
+
 **2026-07-29 — the housekeeping arc.** `f77e6bc` scaffolds
 `docs/history/` and `docs/ecommerce/PREP.md`; `063ffb7` lands the H1
 promotion, moving durable planning docs out of untracked `.ignored/`
@@ -316,6 +356,18 @@ policy** and no `using (true)` grant. The client ships only the
 publishable key; the secret key exists solely in `.env.local` and
 Netlify env, and `.env.example` documents why the split is safe and
 warns against ever prefixing the secret with `VITE_`.
+
+**Concurrent writers have no platform-level answer.** There is no
+lock service, no leader election and no server-side arbitration — the
+app is a static SPA talking straight to Postgres, and James genuinely
+runs two devices at once. The one thing that has worked is the
+lexically-smallest-id survivor rule (2026-07-02 above): when two
+clients can derive the same row, give the row a key both compute
+identically and let every client keep the same winner. The one
+exception, `attachment_doc_data`, buys its safety with a Postgres
+advisory lock and still has no same-key conflict banner
+(`docs/history/projects.md`). Assume any new derived-row feature needs
+one of those two answers chosen deliberately.
 
 **Backups.** `.backups/` holds 56 exports, first `2026-05-31T23-09Z`,
 last **`2026-07-03T02-37Z`**. Backups precede pushes and the last
