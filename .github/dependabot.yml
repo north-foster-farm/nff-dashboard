@@ -1,0 +1,50 @@
+version: 2
+updates:
+  # Dependabot waits 7 days after a release before proposing it
+  # (security updates ignore the cooldown). Minor and patch updates
+  # arrive as one weekly group; a major version stays its own pull
+  # request, because it waits for James's approval.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "America/New_York"
+    cooldown:
+      default-days: 7
+    groups:
+      npm-weekly:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "npm"
+    directory: "/mcp"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "America/New_York"
+    cooldown:
+      default-days: 7
+    groups:
+      mcp-weekly:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "America/New_York"
+    cooldown:
+      default-days: 7
+    groups:
+      actions-weekly:
+        update-types:
+          - "minor"
+          - "patch"

@@ -6,6 +6,10 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  # Pinned with .nvmrc, which CI reads too.
+  NODE_VERSION = "26.12.0"
+
 [functions]
   # Scheduled function `heartbeat` lives at netlify/functions/heartbeat.mjs.
   # The schedule itself is declared inline in that file via `export const

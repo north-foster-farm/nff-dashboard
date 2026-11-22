@@ -3,11 +3,18 @@
 # every PR and every push. The `check` job is the required status
 # in the main-branch ruleset, so a PR can't merge (and therefore
 # nothing can reach the auto-deploying main) until it's green.
+#
+# The `supply-chain` job holds the dependency policy: signatures and
+# provenance, and the 7-day cooldown (security/ holds the recorded
+# waivers and the approved list of unattested packages).
 name: check
 
 on:
   pull_request:
   push:
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -15,14 +22,54 @@ jobs:
     # The suite's timezone (America/New_York) is set in
     # vitest.config.js, so a local run and CI run the same way.
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          # Match the development machine's node major — npm's peer/
-          # optional resolution differs across npm majors, and the
-          # lockfile must validate under the same resolver that
-          # writes it.
-          node-version: 26
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          # Pinned in .nvmrc: npm's peer/optional resolution differs
+          # across npm majors, and the lockfile must validate under
+          # the same resolver that writes it.
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm run check
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm ci
+        working-directory: mcp
+      # Fails on an invalid registry signature or attestation.
+      - run: npm audit signatures
+      - run: npm audit signatures
+        working-directory: mcp
+      # Fails on a version under 7 days old with no recorded waiver,
+      # and on a package with no attestation James has not approved.
+      - run: npm run check:supply
+
+  # npm audit over both lockfiles and the GitHub advisory database over
+  # the Actions in use, set against security/exceptions.json. It fails
+  # while a known vulnerability has neither an update nor a recorded
+  # exception. The log is public: counts only. The token is the run's
+  # own, to lift the advisory API's rate limit.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - run: npm run check:audit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
