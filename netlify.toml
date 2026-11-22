@@ -1,6 +1,12 @@
 # Netlify build + routing config for the admin.northfosterfarm.com dashboard.
 # See https://docs.netlify.com/configure-builds/file-based-configuration/
 
+# Environments (F1.2, #74): production builds from `main`, staging from
+# the `staging` branch over its own Supabase project. Their env values
+# differ by deploy context and live in the Netlify UI, never here (the
+# secret key cannot be committed); docs/staging.md lists each one. The
+# build itself is the same in every context.
+
 [build]
   # Vite outputs a static SPA into ./dist
   command = "npm run build"
