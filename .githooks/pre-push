@@ -1,0 +1,19 @@
+#!/bin/sh
+# Migration discipline (D4, #63): refuse a push whose commits edit,
+# delete or rename an applied migration, or reuse a migration number.
+# Installed with the pre-commit hook (core.hooksPath .githooks, set by
+# `npm install`). Git gives one line per ref on stdin:
+#   <local ref> <local sha> <remote ref> <remote sha>
+# A deleted ref has an all-zero local sha and is skipped.
+status=0
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case $local_sha in
+    *[!0]*) ;;
+    *) continue ;;
+  esac
+  node scripts/check-migrations.mjs "$local_sha" || status=1
+done
+if [ $status -ne 0 ]; then
+  echo "pre-push: BLOCKED — see check-migrations above." >&2
+fi
+exit $status

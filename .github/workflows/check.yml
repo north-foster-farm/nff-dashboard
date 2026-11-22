@@ -16,6 +16,10 @@ jobs:
     # vitest.config.js, so a local run and CI run the same way.
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history and origin/main: scripts/check-migrations.mjs
+          # compares the commit with where it branched from main (#63).
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           # Match the development machine's node major — npm's peer/

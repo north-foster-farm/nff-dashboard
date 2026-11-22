@@ -45,7 +45,8 @@ The loop, exactly:
 `npm run check` is the single definition of "ready to commit" — the
 pre-commit hook runs it. It chains eslint (errors gate; warnings are
 the visible improvement backlog), stylelint, the unit suite with
-coverage thresholds, and `scripts/check-format.sh`.
+coverage thresholds, `scripts/check-format.sh` and
+`scripts/check-migrations.mjs`.
 
 Everything below is a RATCHET — limits tighten as code improves and
 never loosen to make a commit pass:
@@ -63,6 +64,12 @@ never loosen to make a commit pass:
   repo-wide (markdown may end a line with EXACTLY two spaces — the
   hard break); max-len 80 checked on ADDED non-template lines only
   (.js/.mjs/.sql/.sh/.css; JSX/HTML exempt).
+- **Migration discipline** (`scripts/check-migrations.mjs`, D4,
+  #63): a migration on `origin/main` is applied, so editing,
+  deleting or renaming one fails, and so does a number already in
+  use. It runs in `npm run check` (so CI) and in
+  `.githooks/pre-push` for each commit pushed; it needs
+  `origin/main` fetched.
 - **Lib purity** (`src/lib/libPurity.test.js`): impurity lives only
   in `src/lib/data/` (supabase, outbox, capture I/O, use* hooks) and
   `src/lib/browser/` (React + browser APIs). Nothing else under
