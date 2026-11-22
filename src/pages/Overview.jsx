@@ -27,7 +27,7 @@ import {
 } from "../lib/browser/router.js";
 import { useProcessingDates } from "../lib/data/useProcessingDates.js";
 import { batchLifecycle, isMeatSpecies, weeksTimeline } from "../lib/metrics.js";
-import { isActiveProject } from "../lib/projects.js";
+import { isQueuedProject, projectRunsOnDay } from "../lib/projects.js";
 import { Pane, LoadSpine, AttentionCard, NowRule } from "../components/ui.jsx";
 import { farmLoad } from "../lib/load/farmLoad.js";
 import { useScheduleDeltas } from "../lib/data/useScheduleDeltas.js";
@@ -372,7 +372,7 @@ function TodayScheduleCard({ data, today, blocks, ruleOpts }) {
     [data, today, ruleOpts]
   );
   const todaysProjects = useMemo(
-    () => (data.projects ?? []).filter(p => isActiveProject(p, todayISO)),
+    () => (data.projects ?? []).filter(p => projectRunsOnDay(p, todayISO)),
     [data, todayISO]
   );
 
@@ -899,12 +899,9 @@ function UpcomingPlaceRow({ choreId, placeId, placesById, completions }) {
 // ─── Projects, orders, updates ───────────────────────────────────────────────
 
 function ProjectsInProgressCard({ data }) {
-  // Active = in its [start, target] window and not completed — the same
-  // selector the sidebar badge uses, so the two never disagree, and a
-  // prep project whose day has passed drops off both.
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const inProgress = (data.projects ?? [])
-    .filter(p => isActiveProject(p, todayISO));
+  // Live work = the ranked queue, minus completed and archived — the
+  // same selector the sidebar badge uses, so the two never disagree.
+  const inProgress = (data.projects ?? []).filter(isQueuedProject);
   return (
     <Pane title="Active projects" icon={FolderKanban}>
       {inProgress.length === 0 ? (

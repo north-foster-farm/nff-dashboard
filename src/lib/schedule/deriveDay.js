@@ -21,7 +21,7 @@ import {
 } from "../chores.js";
 import { resolveBlockMinutes } from "../sunTimes.js";
 import { getEventOccurrences } from "../recurrence.js";
-import { isActiveProject } from "../projects.js";
+import { projectRunsOnDay } from "../projects.js";
 import { projectGaps, PARTITION_ADMINS } from "./partition.js";
 import { defaultAssignees } from "./availability.js";
 
@@ -116,7 +116,8 @@ export function deriveDay({ data, dayDate, dayUTC, dayISO, ruleOpts, deltas = []
   const events = getEventOccurrences(data.events, dayUTC, dayEnd, null)
     .filter((o) => o.date === dayISO);
   const choreRollups = rollupChoresForDay(data, dayDate, ruleOpts);
-  const projects = (data.projects ?? []).filter((p) => isActiveProject(p, dayISO));
+  const projects = (data.projects ?? [])
+    .filter((p) => projectRunsOnDay(p, dayISO));
   // Project blocks (the gaps) trim against the same availability the rest of
   // the day reads: time-off reservations + per-day buffer windows (the
   // all-occurrences buffer templates ride a separate hook and are folded in
