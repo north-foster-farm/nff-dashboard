@@ -3,16 +3,15 @@
 // clone whose origin/main holds the applied migrations. The clone gets
 // this repo's scripts/ and .githooks/ as committed files, and a link to
 // its node_modules, so the check and the hooks run as they would here.
-// Everything lives in a temporary folder and talks to no service. Git
-// runs without the machine's global or system config.
+// Every git command, the check and the hooks run through
+// ./sandboxGit.js, which keeps them off the real repository (#99).
 
-import { execFileSync, spawnSync } from "node:child_process";
 import {
-  cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync,
-  writeFileSync,
+  cpSync, mkdirSync, renameSync, symlinkSync, unlinkSync, writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+import { makeSandboxRoot } from "./sandboxGit.js";
 
 export const repoRoot = join(import.meta.dirname, "..", "..");
 export const MIGRATIONS = join("supabase", "migrations");
@@ -23,39 +22,20 @@ export const APPLIED = {
   "0002_second_table.sql": "create table second_table (id uuid);\n",
 };
 
-export const hermeticEnv = {
-  ...process.env,
-  GIT_CONFIG_NOSYSTEM: "1",
-  GIT_CONFIG_GLOBAL: "/dev/null",
-  GIT_AUTHOR_NAME: "Criteria Test",
-  GIT_AUTHOR_EMAIL: "criteria@example.invalid",
-  GIT_COMMITTER_NAME: "Criteria Test",
-  GIT_COMMITTER_EMAIL: "criteria@example.invalid",
-};
-
-export function git(cwd, ...args) {
-  return execFileSync("git", args, { cwd, env: hermeticEnv, stdio: "pipe" })
-    .toString()
-    .trim();
-}
-
 export function makeSandbox() {
-  const root = mkdtempSync(join(tmpdir(), "nff-migrations-"));
-  const origin = join(root, "origin.git");
-  git(root, "init", "--bare", "--initial-branch=main", origin);
-  const clone = join(root, "clone");
-  git(root, "clone", "--quiet", origin, clone);
-  seedMain(clone);
-  git(clone, "checkout", "--quiet", "-b", "lane/change");
-  return {
-    root,
-    origin,
-    clone,
-    remove: () => rmSync(root, { recursive: true, force: true }),
-  };
+  const box = makeSandboxRoot("nff-migrations-");
+  const origin = join(box.root, "origin.git");
+  box.git(box.root, "init", "--quiet", "--bare", "--initial-branch=main",
+    origin);
+  const clone = join(box.root, "clone");
+  box.git(box.root, "clone", "--quiet", origin, clone);
+  box.announce(clone);
+  seedMain(box, clone);
+  box.git(clone, "checkout", "--quiet", "-b", "lane/change");
+  return { ...box, origin, clone };
 }
 
-function seedMain(clone) {
+function seedMain(box, clone) {
   cpSync(join(repoRoot, "scripts"), join(clone, "scripts"),
     { recursive: true });
   cpSync(join(repoRoot, ".githooks"), join(clone, ".githooks"),
@@ -66,53 +46,47 @@ function seedMain(clone) {
   for (const [name, sql] of Object.entries(APPLIED)) {
     writeFileSync(join(clone, MIGRATIONS, name), sql);
   }
-  git(clone, "add", "--all");
-  git(clone, "commit", "--quiet", "-m", "applied migrations");
-  git(clone, "push", "--quiet", "origin", "HEAD:main");
+  box.git(clone, "add", "--all");
+  box.git(clone, "commit", "--quiet", "-m", "applied migrations");
+  box.assertContained(clone);
+  box.git(clone, "push", "--quiet", "origin", "HEAD:main");
 }
 
 // Each change is committed on the clone's branch, as a pull request's
 // commits would be.
-export function commitChange(clone, message, change) {
-  change(join(clone, MIGRATIONS));
-  git(clone, "add", "--all");
-  git(clone, "commit", "--quiet", "-m", message);
+export function commitChange(sandbox, message, change) {
+  change(join(sandbox.clone, MIGRATIONS));
+  sandbox.git(sandbox.clone, "add", "--all");
+  sandbox.git(sandbox.clone, "commit", "--quiet", "-m", message);
 }
 
 export const edits = {
   writeMigration: (name, sql) => (dir) => writeFileSync(join(dir, name), sql),
   deleteMigration: (name) => (dir) => unlinkSync(join(dir, name)),
   renameMigration: (from, to) => (dir) =>
-    execFileSync("git", ["mv", join(dir, from), join(dir, to)],
-      { cwd: dir, env: hermeticEnv }),
+    renameSync(join(dir, from), join(dir, to)),
 };
 
 // The check as CI and the hook run it: from the clone's root.
-export function runCheck(clone) {
-  const result = spawnSync("node", ["scripts/check-migrations.mjs"], {
-    cwd: clone,
-    env: hermeticEnv,
-    stdio: "pipe",
-    timeout: 30_000,
-  });
-  const output = `${result.stdout}${result.stderr}`;
-  return { exitCode: result.status, output };
+export function runCheck(sandbox) {
+  sandbox.assertContained(sandbox.clone);
+  return sandbox.spawn("node", ["scripts/check-migrations.mjs"],
+    sandbox.clone, 30_000);
 }
 
 // A push through the clone's own hooks, installed the way `npm install`
 // installs them here (core.hooksPath .githooks).
-export function pushBranch(clone) {
-  git(clone, "config", "core.hooksPath", ".githooks");
-  const result = spawnSync(
-    "git", ["push", "--quiet", "origin", "HEAD:refs/heads/lane/change"],
-    { cwd: clone, env: hermeticEnv, stdio: "pipe", timeout: 60_000 });
-  const output = `${result.stdout}${result.stderr}`;
-  return { exitCode: result.status, output };
+export function pushBranch(sandbox) {
+  sandbox.git(sandbox.clone, "config", "core.hooksPath", ".githooks");
+  sandbox.assertContained(sandbox.clone);
+  return sandbox.spawn("git",
+    ["push", "--quiet", "origin", "HEAD:refs/heads/lane/change"],
+    sandbox.clone);
 }
 
 export function originHas(sandbox, branch) {
-  const result = spawnSync("git",
+  const lookup = sandbox.spawn("git",
     ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`],
-    { cwd: sandbox.origin, env: hermeticEnv, stdio: "pipe" });
-  return result.status === 0;
+    sandbox.origin);
+  return lookup.exitCode === 0;
 }

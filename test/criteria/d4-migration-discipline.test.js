@@ -15,8 +15,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  APPLIED, commitChange, edits, git, makeSandbox, originHas, pushBranch,
-  runCheck,
+  APPLIED, commitChange, edits, makeSandbox, originHas, pushBranch, runCheck,
 } from "./migrationSandbox.js";
 
 const [firstApplied, lastApplied] = Object.keys(APPLIED);
@@ -37,7 +36,7 @@ describe("D4 migration discipline check (#63)", () => {
   const expectRefused = (sandbox, what) => {
     expect(existsSync(join(sandbox.clone, CHECK_SCRIPT)),
       `${CHECK_SCRIPT} exists`).toBe(true);
-    const check = runCheck(sandbox.clone);
+    const check = runCheck(sandbox);
     expect(check.exitCode,
       `the check should fail a branch that ${what}; it said: ` +
       check.output).not.toBe(0);
@@ -46,28 +45,28 @@ describe("D4 migration discipline check (#63)", () => {
   it("criterion 1: editing, deleting or renumbering an applied " +
     "migration fails the check", () => {
     const edited = freshSandbox();
-    commitChange(edited.clone, "edit an applied migration",
+    commitChange(edited, "edit an applied migration",
       edits.writeMigration(lastApplied,
         `${APPLIED[lastApplied]}alter table second_table add x int;\n`));
     expectRefused(edited, `edits ${lastApplied}`);
 
     const deleted = freshSandbox();
-    commitChange(deleted.clone, "delete an applied migration",
+    commitChange(deleted, "delete an applied migration",
       edits.deleteMigration(firstApplied));
     expectRefused(deleted, `deletes ${firstApplied}`);
 
     const renumbered = freshSandbox();
-    commitChange(renumbered.clone, "renumber an applied migration",
+    commitChange(renumbered, "renumber an applied migration",
       edits.renameMigration(lastApplied, "0003_second_table.sql"));
     expectRefused(renumbered, `renumbers ${lastApplied} to 0003`);
   }, 60_000);
 
   it("criterion 2: a new migration with the next number passes", () => {
     const sandbox = freshSandbox();
-    commitChange(sandbox.clone, "add the next migration",
+    commitChange(sandbox, "add the next migration",
       edits.writeMigration(NEXT_NUMBER_MIGRATION, NEXT_NUMBER_SQL));
 
-    const check = runCheck(sandbox.clone);
+    const check = runCheck(sandbox);
 
     expect(check.exitCode,
       `the check should pass a branch that only adds ` +
@@ -76,9 +75,9 @@ describe("D4 migration discipline check (#63)", () => {
 
   it("criterion 3: the pre-push hook runs it", () => {
     const bad = freshSandbox();
-    commitChange(bad.clone, "edit an applied migration",
+    commitChange(bad, "edit an applied migration",
       edits.writeMigration(firstApplied, "drop table first_table;\n"));
-    const refusedPush = pushBranch(bad.clone);
+    const refusedPush = pushBranch(bad);
     expect(refusedPush.exitCode,
       `git push should be refused by the pre-push hook when the branch ` +
       `edits ${firstApplied}; it said: ${refusedPush.output}`).not.toBe(0);
@@ -86,14 +85,14 @@ describe("D4 migration discipline check (#63)", () => {
       "the refused branch should not reach origin").toBe(false);
 
     const good = freshSandbox();
-    commitChange(good.clone, "add the next migration",
+    commitChange(good, "add the next migration",
       edits.writeMigration(NEXT_NUMBER_MIGRATION, NEXT_NUMBER_SQL));
-    const acceptedPush = pushBranch(good.clone);
+    const acceptedPush = pushBranch(good);
     expect(acceptedPush.exitCode,
       `git push of a branch that only adds ${NEXT_NUMBER_MIGRATION} ` +
       `should go through; it said: ${acceptedPush.output}`).toBe(0);
-    expect(git(good.origin, "rev-parse", "refs/heads/lane/change"),
+    expect(good.git(good.origin, "rev-parse", "refs/heads/lane/change"),
       "origin should hold the pushed branch")
-      .toBe(git(good.clone, "rev-parse", "HEAD"));
+      .toBe(good.git(good.clone, "rev-parse", "HEAD"));
   }, 120_000);
 });
