@@ -116,6 +116,11 @@ flow goes live.
 The commit style below is unchanged by the flow (typed subjects,
 batch versions, version sync); G1 (#83) records that decision.
 
+Cloud lanes: a comment or issue by James that names the Claude app
+starts a run (`.github/workflows/claude.yml`) that pushes
+`lane/cloud-<issue>`; the coordinator opens the PR. Rules for those
+runs: `docs/cloud-lanes.md`.
+
 ## Commit style
 
 Every commit on this repo follows one consistent shape. Match it.
