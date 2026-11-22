@@ -39,6 +39,9 @@ import {
   PlaceTreeNode, PlaceTreeSection,
 } from "../components/PlaceTree.jsx";
 import { useRoute, navigate, usePersistedState } from "../lib/browser/router.js";
+import {
+  blockLabel, NO_BLOCK_BUCKET, NO_BLOCK_LABEL,
+} from "../lib/schedule/placement.js";
 
 // The page renders its own header (title + tabs) in place of the generic
 // SectionHeader, so it can fit a tab bar + inline actions.
@@ -159,7 +162,7 @@ function jumpToSection(domId) {
 function TodayTab({ data, currentUser, onChangeUser }) {
   const [scope, setScope] = useState("mine"); // "mine" | "all"
   // Collapsed block groups (issue: long lists need folding). Persisted
-  // per session, keyed by block id ("anytime" for the no-block group).
+  // per session, keyed by block id (the orphan bucket for no-block rows).
   const [collapsedBlocks, setCollapsedBlocks] = usePersistedState(
     "chores:today-collapsed", []
   );
@@ -195,7 +198,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
   const userEmail = useCurrentUserEmail();
 
   // Group instances by their block_id (the new schema), with a single
-  // "" bucket for chores that have no block (anytime). Order blocks by
+  // "" bucket for chores that have no block. Order blocks by
   // today's resolved start time so sun-event blocks land where they
   // actually fall on the clock.
   //
@@ -280,8 +283,8 @@ function TodayTab({ data, currentUser, onChangeUser }) {
           const block = blockKey ? blocks.find(b => b.id === blockKey) : null;
           const Icon = blockIcon(block);
           return {
-            id: blockKey || "anytime",
-            label: block ? block.name : "Anytime",
+            id: blockKey || NO_BLOCK_BUCKET,
+            label: blockLabel(block),
             icon: <Icon size={12} className="shrink-0" />,
           };
         })}
@@ -293,7 +296,7 @@ function TodayTab({ data, currentUser, onChangeUser }) {
 
       {visibleBlockKeys.map(blockKey => {
         const block = blockKey ? blocks.find(b => b.id === blockKey) : null;
-        const key = blockKey || "anytime";
+        const key = blockKey || NO_BLOCK_BUCKET;
         return (
           <BlockGroup
             key={key}
@@ -338,7 +341,7 @@ function BlockGroup({
   block, domId, instances, roots, childrenByParent, completions, choreCtx,
   currentUserEmail, blocks, blockById, collapsed, onToggleCollapsed,
 }) {
-  const headerLabel = block ? block.name : "Anytime";
+  const headerLabel = blockLabel(block);
   const timeLabel = block
     ? displayBlockSide(block.startKind, block.startMinutes)
     : "";
@@ -1090,7 +1093,7 @@ function SecondaryRow({
   dormantNote,
 }) {
   // Pill is conditional — appears only when the helper resolves
-  // (window or anytime chores). Render at the end so the layout
+  // (window or block-less chores). Render at the end so the layout
   // stays calm for the simple-daily-chore majority.
   const [editing, setEditing] = useState(null); // 'schedule' | 'frequency' | null
 
@@ -1177,7 +1180,10 @@ function ScheduleQuickEdit({ chore, blocks, onSave, onCancel }) {
       onClick={(e) => e.stopPropagation()}
       className={EDIT_CHIP_INPUT}
     >
-      <option value="">— anytime —</option>
+      {/* F30: every chore belongs to a block. Clearing one is not
+          offered — the empty option shows only for a chore that is
+          already block-less, so it can be given one. */}
+      {initial === "" && <option value="">{NO_BLOCK_LABEL}</option>}
       {activeBlocks.map(b => (
         <option key={b.id} value={b.id}>{b.name}</option>
       ))}

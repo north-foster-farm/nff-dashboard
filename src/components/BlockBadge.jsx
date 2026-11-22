@@ -1,5 +1,6 @@
 import { Clock, Moon, Sun, Sunrise, Sunset } from "lucide-react";
 import { resolveBlockMinutes } from "../lib/sunTimes.js";
+import { blockLabel } from "../lib/schedule/placement.js";
 
 // Compact, icon-only time-of-day indicator for chore rows. Replaces
 // the old text block label ("Morning", "Afternoon", …) which ate too
@@ -12,7 +13,7 @@ import { resolveBlockMinutes } from "../lib/sunTimes.js";
 //   11 AM – 3:59 PM                          → Sun
 //   sunset-anchored or 4 PM – 8:59 PM        → Sunset
 //   9 PM onward / pre-dawn                   → Moon
-//   no block ("anytime")                     → Clock
+//   no block (an orphan bucket)              → Clock
 //
 // The block name stays available as a tooltip + aria-label, so the
 // label is discoverable without paying for its width.
@@ -41,7 +42,7 @@ function BlockBadge({
   block, tone = "default", size = 11, className = "",
 }) {
   const Icon = blockIcon(block);
-  const label = block?.name ?? "Anytime";
+  const label = blockLabel(block);
   return (
     <span
       title={label}
@@ -83,7 +84,7 @@ export function BlockBadgeList({
   }
 
   const Icon = blockIcon(sorted[0]);
-  const names = sorted.map(b => b?.name ?? "Anytime").join(", ");
+  const names = sorted.map(blockLabel).join(", ");
   const label = `${sorted.length} blocks: ${names}`;
   return (
     <span

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { assessEdit } from "../lib/schedule/overrides.js";
+import {
+  NO_BLOCK_BUCKET, NO_BLOCK_LABEL,
+} from "../lib/schedule/placement.js";
 
 // The per-row edit sheet for the Schedule (S6 3/3 — S63/S70/S73). Lets a
 // row be moved to another block, given a clock time, or (commitment-backed
@@ -10,7 +13,8 @@ import { assessEdit } from "../lib/schedule/overrides.js";
 //
 // Props:
 //   label            - the row's display name
-//   fromBucket       - its current block bucket id ("anytime" if none)
+//   fromBucket       - its current block bucket id (the no-block
+//                      orphan bucket if its block no longer resolves)
 //   fromBlockName    - its current block's name (for the "why")
 //   isFirstInBlock   - is it first in its block (sharpens the "why")
 //   currentClockTime - existing clock time, or null
@@ -22,8 +26,6 @@ import { assessEdit } from "../lib/schedule/overrides.js";
 //                      translates "project:<min>" to a clockTime)
 //   onApply(change)  - change = { toBlockId, clockTime, toDate }
 //   onClose()
-const ANYTIME = "anytime";
-
 function ymd(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -35,7 +37,7 @@ export default function ScheduleEditSheet({
   label, fromBucket, fromBlockName, isFirstInBlock, currentClockTime,
   canMoveDay, committed, blocks, gapTargets = [], onApply, onClose,
 }) {
-  const [toBlockId, setToBlockId] = useState(fromBucket ?? ANYTIME);
+  const [toBlockId, setToBlockId] = useState(fromBucket ?? NO_BLOCK_BUCKET);
   const [clockTime, setClockTime] = useState(currentClockTime ?? "");
   const [toDate, setToDate] = useState(""); // "" = stay today
   const [confirming, setConfirming] = useState(false);
@@ -139,7 +141,13 @@ export default function ScheduleEditSheet({
                 {gapTargets.map((t) => (
                   <option key={t.bucket} value={t.bucket}>{t.label}</option>
                 ))}
-                <option value={ANYTIME}>Anytime</option>
+                {/* F30: the no-block bucket is not a destination.
+                    It is listed only when the row is ALREADY there,
+                    so an orphan can be moved out but nothing can be
+                    filed in. */}
+                {fromBucket === NO_BLOCK_BUCKET && (
+                  <option value={NO_BLOCK_BUCKET}>{NO_BLOCK_LABEL}</option>
+                )}
               </select>
             </label>
 
