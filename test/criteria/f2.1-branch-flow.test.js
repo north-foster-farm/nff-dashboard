@@ -12,13 +12,12 @@
 // and bin/promote, run in a throwaway git sandbox with no remote
 // service.
 
-import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  headOf, hermeticEnv, makeSandbox, pushNewCommit,
+  headOf, makeSandbox, pushNewCommit, runPromote,
 } from "./gitSandbox.js";
 import { pushStartsWorkflow } from "./workflowTriggers.js";
 
@@ -67,16 +66,6 @@ function enforcedOn(rulesets, branch) {
   return { ruleTypes: rules.map((rule) => rule.type), requiredChecks };
 }
 
-function runPromote(sandbox, stage) {
-  const result = spawnSync(promote, [stage], {
-    cwd: sandbox.farm,
-    env: hermeticEnv,
-    stdio: "pipe",
-    timeout: 30_000,
-  });
-  const output = `${result.stdout}${result.stderr}`;
-  return { exitCode: result.status, output };
-}
 
 function expectPromotionRefused(sandbox, stage) {
   const stageBefore = headOf(sandbox, stage);
@@ -134,22 +123,26 @@ describe("F2.1 branch flow (#75)", () => {
     // Forward, one stage at a time: staging takes next's commit, and
     // main takes staging's, not next's newer one.
     const forward = freshSandbox();
-    pushNewCommit(forward.farm, "next", "on-next");
+    pushNewCommit(forward, forward.farm, "next", "on-next");
     expectPromotionMoves(forward, "staging");
-    pushNewCommit(forward.farm, "next", "newer-on-next");
+    pushNewCommit(forward, forward.farm, "next", "newer-on-next");
     expectPromotionMoves(forward, "main");
 
     // Someone pushed straight to a stage, so it is no longer behind
     // the stage before it: promoting onto it would not be a
     // fast-forward, and bin/promote refuses.
     const divergedStaging = freshSandbox();
-    pushNewCommit(divergedStaging.farm, "next", "on-next");
-    pushNewCommit(divergedStaging.elsewhere, "staging", "straight-to-staging");
+    pushNewCommit(divergedStaging, divergedStaging.farm, "next",
+      "on-next");
+    pushNewCommit(divergedStaging, divergedStaging.elsewhere, "staging",
+      "straight-to-staging");
     expectPromotionRefused(divergedStaging, "staging");
 
     const divergedMain = freshSandbox();
-    pushNewCommit(divergedMain.farm, "staging", "on-staging");
-    pushNewCommit(divergedMain.elsewhere, "main", "straight-to-main");
+    pushNewCommit(divergedMain, divergedMain.farm, "staging",
+      "on-staging");
+    pushNewCommit(divergedMain, divergedMain.elsewhere, "main",
+      "straight-to-main");
     expectPromotionRefused(divergedMain, "main");
   }, 60_000);
 });

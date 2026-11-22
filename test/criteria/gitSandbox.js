@@ -1,75 +1,80 @@
 // A throwaway origin with the three stages, for driving bin/promote the
 // way it runs for real: from a clone, against a remote called origin.
-// Everything lives in a temporary folder and talks to no service. Git
-// runs without the machine's global or system config, so a signing key
-// or hook path on the Mac (or its absence in CI) changes nothing.
+// Every git command, and bin/promote itself, runs through
+// ./sandboxGit.js, which keeps them off the real repository (#99).
 
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { makeSandboxRoot } from "./sandboxGit.js";
 
 export const STAGES = ["next", "staging", "main"];
 
-export const hermeticEnv = {
-  ...process.env,
-  GIT_CONFIG_NOSYSTEM: "1",
-  GIT_CONFIG_GLOBAL: "/dev/null",
-  GIT_AUTHOR_NAME: "Criteria Test",
-  GIT_AUTHOR_EMAIL: "criteria@example.invalid",
-  GIT_COMMITTER_NAME: "Criteria Test",
-  GIT_COMMITTER_EMAIL: "criteria@example.invalid",
-};
-
-function git(cwd, ...args) {
-  return execFileSync("git", args, { cwd, env: hermeticEnv, stdio: "pipe" })
-    .toString()
-    .trim();
-}
+const repoBin = join(import.meta.dirname, "..", "..", "bin");
 
 // origin.git holds next, staging and main, all at one first commit.
 // `farm` is the clone bin/promote runs in; `elsewhere` is a second
 // clone, standing in for anyone else who pushes to origin.
 export function makeSandbox() {
-  const root = mkdtempSync(join(tmpdir(), "nff-branch-flow-"));
-  const origin = join(root, "origin.git");
-  git(root, "init", "--bare", "--initial-branch=main", origin);
-  const farm = cloneOf(root, origin, "farm");
-  commitIn(farm, "first");
-  for (const stage of STAGES) git(farm, "push", "origin", `HEAD:${stage}`);
-  const elsewhere = cloneOf(root, origin, "elsewhere");
-  return {
-    root,
-    origin,
-    farm,
-    elsewhere,
-    remove: () => rmSync(root, { recursive: true, force: true }),
-  };
+  const box = makeSandboxRoot("nff-branch-flow-");
+  const origin = join(box.root, "origin.git");
+  box.git(box.root, "init", "--quiet", "--bare", "--initial-branch=main",
+    origin);
+  const farm = cloneOf(box, origin, "farm");
+  box.announce(farm);
+  copyBinInto(box, farm);
+  commitIn(box, farm, "first");
+  for (const stage of STAGES) pushTo(box, farm, stage);
+  const elsewhere = cloneOf(box, origin, "elsewhere");
+  return { ...box, origin, farm, elsewhere };
 }
 
-function cloneOf(root, origin, name) {
-  const dir = join(root, name);
-  git(root, "clone", "--quiet", origin, dir);
+function cloneOf(box, origin, name) {
+  const dir = join(box.root, name);
+  box.git(box.root, "clone", "--quiet", origin, dir);
   return dir;
 }
 
-function commitIn(clone, label) {
+// The sandbox runs its own copy of bin/, committed as the real one is,
+// never the real file: a script that moves to its own folder would
+// otherwise run git in the real worktree (#99).
+function copyBinInto(box, farm) {
+  if (!existsSync(repoBin)) return;
+  cpSync(repoBin, join(farm, "bin"), { recursive: true });
+  box.git(farm, "add", "bin");
+}
+
+function commitIn(box, clone, label) {
   writeFileSync(join(clone, `${label}.txt`), `${label}\n`);
-  git(clone, "add", `${label}.txt`);
-  git(clone, "commit", "--quiet", "--no-verify", "-m", label);
-  return git(clone, "rev-parse", "HEAD");
+  box.git(clone, "add", `${label}.txt`);
+  box.git(clone, "commit", "--quiet", "-m", label);
+  return box.git(clone, "rev-parse", "HEAD");
+}
+
+function pushTo(box, clone, stage) {
+  box.assertContained(clone);
+  box.git(clone, "push", "--quiet", "origin", `HEAD:${stage}`);
 }
 
 // Add a commit on top of what origin's `stage` holds now, push it there
 // from `clone`, and return its SHA.
-export function pushNewCommit(clone, stage, label) {
-  git(clone, "fetch", "--quiet", "origin");
-  git(clone, "checkout", "--quiet", "--detach", `origin/${stage}`);
-  const sha = commitIn(clone, label);
-  git(clone, "push", "--quiet", "origin", `HEAD:${stage}`);
+export function pushNewCommit(sandbox, clone, stage, label) {
+  sandbox.git(clone, "fetch", "--quiet", "origin");
+  sandbox.git(clone, "checkout", "--quiet", "--detach", `origin/${stage}`);
+  const sha = commitIn(sandbox, clone, label);
+  pushTo(sandbox, clone, stage);
   return sha;
 }
 
 export function headOf(sandbox, stage) {
-  return git(sandbox.origin, "rev-parse", `refs/heads/${stage}`);
+  return sandbox.git(sandbox.origin, "rev-parse", `refs/heads/${stage}`);
+}
+
+// bin/promote as it runs for real: the farm clone's own copy, run from
+// the farm clone with the sandbox's env, so any git it starts is held
+// to the same rules.
+export function runPromote(sandbox, stage) {
+  sandbox.assertContained(sandbox.farm);
+  return sandbox.spawn(join(sandbox.farm, "bin", "promote"), [stage],
+    sandbox.farm, 30_000);
 }
