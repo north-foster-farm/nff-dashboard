@@ -56,6 +56,10 @@ html[data-theme="dark"] {
   --c-cat-pickups: #65cda2;
   --c-cat-processing: #ff3347;
   --c-cat-default: #8e8877;
+  --c-on-cat: #0d1410;
+  --c-row-active: rgb(173 200 173 / 12%);
+  --c-row-hover: rgb(173 200 173 / 7%);
+  --c-row-active-dim: rgb(255 255 255 / 5%);
 }
 
 html[data-theme="light"] {
@@ -86,6 +90,10 @@ html[data-theme="light"] {
   --c-cat-pickups: #21ab4f;
   --c-cat-processing: #99000f;
   --c-cat-default: #7a7666;
+  --c-on-cat: #fff;
+  --c-row-active: rgb(41 125 90 / 16%);
+  --c-row-hover: rgb(41 125 90 / 9%);
+  --c-row-active-dim: rgb(0 0 0 / 6%);
 }
 
 /* ---- Type roles (Nacelle vendored in-app; system fallback in docs) ---- */
