@@ -15,7 +15,12 @@ process.env.TZ = "America/New_York";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.js"],
+    // Criteria tests join the suite once their implementation lands
+    // (test/criteria/vitest.config.js runs the ones still waiting).
+    include: [
+      "src/**/*.test.js",
+      "test/criteria/f2.1-branch-flow.test.js",
+    ],
     coverage: {
       // Terminal summary only — no coverage/ artifact tree to
       // ignore, stage by accident, or go stale.

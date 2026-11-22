@@ -95,10 +95,14 @@ it replaces the 2026-07-30 override (PRs rebase-merged straight into
   release.
 - **`main`** takes only fast-forwards from `staging`, through a
   `staging` into `main` release pull request that James approves.
-  Netlify publishes it.
+  Once he approves, `bin/promote main` fast-forwards `main`, which
+  marks the pull request merged; GitHub's merge button would rewrite
+  the commits. Netlify publishes it.
 - No stage takes a force-push, a deletion or a merge commit, and no
   one pushes a stage by hand: promotion is the fast-forward script
-  (`bin/promote`), which refuses anything else.
+  (`bin/promote staging|main`), which refuses anything else.
+- The rulesets live as GitHub exports in `.github/rulesets/`; James
+  applies them, and a change to one is a pull request first.
 - Delete a feature branch once it lands.
 - Rolling a release back: `docs/rollback.md`.
 

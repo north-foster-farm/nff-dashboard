@@ -1,0 +1,27 @@
+{
+  "name": "staging: fast-forward from next, green check only",
+  "target": "branch",
+  "source_type": "Repository",
+  "source": "north-foster-farm/nff-dashboard",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": ["refs/heads/staging"]
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [{ "context": "check" }]
+      }
+    }
+  ],
+  "bypass_actors": []
+}

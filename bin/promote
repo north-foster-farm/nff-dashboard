@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Promote one stage of the branch flow (F2.1, #75; CLAUDE.md, "Branch &
+# merge"): fast-forward origin's `staging` to `next`, or `main` to
+# `staging`. Anything that is not a fast-forward is refused and the
+# stage is left where it was. The rulesets under .github/rulesets/
+# enforce the same on GitHub, and require `check` to be green on the
+# commit, so this script asks GitHub nothing.
+#
+#   bin/promote staging    next    -> staging
+#   bin/promote main       staging -> main
+set -euo pipefail
+
+usage() {
+  echo "usage: bin/promote staging|main" >&2
+  exit 2
+}
+
+[ "$#" -eq 1 ] || usage
+stage="$1"
+case "$stage" in
+  staging) from="next" ;;
+  main) from="staging" ;;
+  *) usage ;;
+esac
+
+git fetch --quiet origin "$from" "$stage"
+target="$(git rev-parse --verify "refs/remotes/origin/$from^{commit}")"
+current="$(git rev-parse --verify "refs/remotes/origin/$stage^{commit}")"
+
+if [ "$target" = "$current" ]; then
+  echo "$stage already holds $from ($target); nothing to promote."
+  exit 0
+fi
+
+if ! git merge-base --is-ancestor "$current" "$target"; then
+  echo "refused: $stage ($current) is not behind $from ($target)," >&2
+  echo "so promoting would not be a fast-forward. $stage is unchanged." >&2
+  exit 1
+fi
+
+# A plain push, never a forced one: if origin moved since the fetch,
+# git refuses it as a non-fast-forward and the stage stays put.
+git push --quiet origin "$target:refs/heads/$stage"
+echo "promoted $stage to $from: $current -> $target"
