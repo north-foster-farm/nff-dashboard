@@ -95,16 +95,28 @@ it replaces the 2026-07-30 override (PRs rebase-merged straight into
   release.
 - **`main`** takes only fast-forwards from `staging`, through a
   `staging` into `main` release pull request that James approves.
-  Netlify publishes it.
+  Once he approves, `bin/promote main` fast-forwards `main`, which
+  marks the pull request merged; GitHub's merge button would rewrite
+  the commits. Netlify publishes it.
 - No stage takes a force-push, a deletion or a merge commit, and no
   one pushes a stage by hand: promotion is the fast-forward script
-  (`bin/promote`), which refuses anything else.
+  (`bin/promote staging|main`), which refuses anything else.
+- The rulesets live as GitHub exports in `.github/rulesets/`; James
+  applies them, and a change to one is a pull request first. Their
+  `check` is pinned to GitHub Actions (integration 15368), so no
+  other app can report it green.
+- **Do not apply `main.json` yet** (2026-11-22). It has no pull
+  request rule: applied, it replaces today's `main` ruleset (a pull
+  request and a green `check`) and lets anyone who can push send a
+  green `staging` commit to production without James's approval.
+  It waits until `bin/promote main` checks that approval (#75).
 - Delete a feature branch once it lands.
 - Rolling a release back: `docs/rollback.md`.
 
 **Status on 2026-11-22: not yet in force.** `next` and `staging` do
-not exist on origin yet, and the rulesets that enforce the above wait
-for James to apply them (#75). Until then the 2026-07-30 rules hold:
+not exist on origin yet, and no one creates them until James says how
+the flow starts. The rulesets that enforce the above wait for James to
+apply them (#75). Until then the 2026-07-30 rules hold:
 `main` takes pull requests only, `check` is required, and James
 merges with "Rebase and merge". Update this paragraph the day the
 flow goes live.
