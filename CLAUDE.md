@@ -181,7 +181,56 @@ These rules hold across the workspace (`~/Code/nff/CLAUDE.md`).
   parsers, crypto, dates). Lean toward fewer: write small simple code
   yourself. James approves every new package first: propose the
   package, version, license, maintenance, what it replaces and why it
-  beats hand-rolling, and wait. Approved packages are pinned.
+  beats hand-rolling, and wait. Approved packages run the latest
+  stable release; pin one only for a compelling, written reason
+  (James, 2026-11-21; this said "Approved packages are pinned").
+
+## Working rules from the site (G1, 2026-11-22)
+
+The site's agent rules (`north-foster-farm/CLAUDE.md`, "Working rules
+for agents"), as they apply here. Where the dashboard differs on
+purpose, the line says so.
+
+- **Do small work, don't file it.** A fix that can be done, checked
+  and landed in about 15 minutes goes in the change you're making, or
+  in a batch with others in the same area. Don't open an issue for a
+  follow-up smaller than the fix itself.
+- **Keep the open issues honest.** Close what is done or superseded as
+  soon as you notice it. Every planned issue sits in a milestone, and
+  a milestone is edited or closed the moment its scope changes. Steps
+  only James can take are asked on a pull request or in the chat,
+  never in an issue (James, 2026-11-16).
+- **Work has landed when it is on `next`.** Once the `next`, `staging`,
+  `main` flow is live (F2.1, #75), check `next`'s history before calling
+  anything stalled: the coordinator may land a PR by fast-forward, so
+  GitHub shows it closed, not merged. Until then, landed means merged
+  into `main`.
+- **Fakes return recorded responses.** A fake or stub for a network
+  service (Supabase, a push service) returns a fixture recorded from a
+  real request against staging, with secrets and ids scrubbed but the
+  real shape kept, and its source and date beside it. Never a
+  hand-written response object.
+- **This repo and its branches are public**, the `screenshots` branch
+  included. No customer data, no credentials, no production screens,
+  and no full names of James's family members in code, issues,
+  comments or screenshots.
+- **e2e.** The dashboard has no end-to-end suite yet (F3.1, #78). When
+  it has one, it runs in GitHub Actions against staging, never on the
+  Mac, at most one full run an hour; after a failure rerun only the
+  failing tests. Claude cloud runs have no browser: never ask one to
+  run Playwright.
+
+Deliberately different from the site:
+
+- **Commit style.** The dashboard keeps its own ("Commit style"
+  above: typed subjects, batch versions, `ROADMAP.md` per batch,
+  version sync). Assumed by G1 on 2026-11-22 as the proposal's
+  default; James may overrule on the PR.
+- **No customer copy rules or dated pages.** The dashboard has no
+  customer-facing pages; product microcopy follows the voice guide
+  (`public/style-guide/`).
+- **No `Record-shape:` trailer.** Records live in Supabase, whose
+  migrations are additive-only ("Data safety"); D4 (#63) checks them.
 
 ## Data safety — the app is LIVE in production
 
