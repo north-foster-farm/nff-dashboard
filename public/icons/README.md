@@ -1,8 +1,9 @@
 # App icons
 
 `icon.svg` is the master: the rooster mark from `/logo.svg` (cream)
-on a brand-green radial-gradient field. Every PNG here is exported
-from it.
+on a brand-green radial-gradient field. Its clip path crops away the
+NFF letterforms, which share path data with the rooster. Every PNG
+here is exported from it.
 
 Regenerate after editing `icon.svg` (requires Inkscape):
 
