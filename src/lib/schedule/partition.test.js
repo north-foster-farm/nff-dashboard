@@ -22,6 +22,7 @@ import {
   OVERNIGHT_LEAD,
   OVERNIGHT_TRAIL,
 } from "./partition.js";
+import { sunMinutesOfDay } from "../sunTimes.js";
 
 const d = (y, m, day) => new Date(y, m - 1, day);
 const DATE = d(2026, 6, 26);
@@ -477,4 +478,57 @@ describe("whoFree — availability-aware (opts form)", () => {
       expect(whoFree({ s: 600, e: 660 }, []))
         .toEqual({ freeCount: 2, who: ["James", "Jim"] });
     });
+});
+
+// ── Sun-anchored breaks (0.9) ───────────────────────────────────────────
+// F15 lets a break anchor either side to sunrise/sunset instead of fixed
+// minutes, and `createBreak` stores such a row with null minutes. The
+// availability engine resolves those anchors (availability.js), so a
+// dusk break shrinks a person's availability — but the partitioner read
+// the raw minutes, so the project block stayed drawn over an evening
+// nobody was available for. A December date keeps the resolved sunset
+// mid-day under any plausible test timezone, so these expectations need
+// no TZ pin.
+const WINTER_DATE = d(2026, 12, 21);
+const WINTER_DATE_ISO = "2026-12-21";
+const WINTER_SUNSET = sunMinutesOfDay(WINTER_DATE, "sunset");
+
+function onDateHours(person, dateISO, startMin, endMin) {
+  return {
+    id: `wh-${person}-${dateISO}`, person, weekday: null, onDate: dateISO,
+    startMin, endMin,
+  };
+}
+
+describe("projectGaps — sun-anchored breaks (0.9)", () => {
+  const workdayStart = WINTER_SUNSET - 240;
+  const workdayEnd = WINTER_SUNSET + 120;
+  // One block ending exactly at the workday start and one opening at its
+  // end, so the whole workday is a single project gap bracketing sunset.
+  const blocksBracketingTheWorkday = [
+    fixedBlock("winter-morning", workdayStart - 60),
+    fixedBlock("winter-evening", workdayEnd),
+  ];
+  const duskBreak = {
+    id: "br-dusk", name: "Dusk feeding", startMin: null, endMin: workdayEnd,
+    startSun: "sunset", endSun: null, isActive: true,
+  };
+  const bothAdminsWorkThroughDusk = {
+    hours: [
+      onDateHours("James", WINTER_DATE_ISO, workdayStart, workdayEnd),
+      onDateHours("Jim", WINTER_DATE_ISO, workdayStart, workdayEnd),
+    ],
+    timeOff: [],
+    breaks: [duskBreak],
+  };
+
+  it("trims the evening project gap at that date's sunset", () => {
+    const gaps = projectGaps({
+      date: WINTER_DATE,
+      blocks: blocksBracketingTheWorkday,
+      availability: bothAdminsWorkThroughDusk,
+    });
+    expect(gaps.map((gap) => [gap.startMin, gap.endMin]))
+      .toEqual([[workdayStart, WINTER_SUNSET]]);
+  });
 });
